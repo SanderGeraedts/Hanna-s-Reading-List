@@ -49,6 +49,8 @@ export interface StorytelBook {
   title: string
   authors: string[]
   status: ReadingStatus
+  /** 0..1, from the most recently updated listening/reading position */
+  progress?: number
   /** portrait e-book cover, when the title exists as an e-book */
   ebookCover?: string
   /** square audiobook cover */
@@ -62,7 +64,7 @@ interface RawFormat {
   cover?: { url?: string }
   durationInMilliseconds?: number
   durationInCharacters?: number
-  position?: { position?: number }
+  position?: { position?: number; updatedTime?: string }
 }
 
 interface RawModel {
@@ -88,6 +90,18 @@ function mapModel(m: RawModel): StorytelBook | null {
   const formats = Array.isArray(m.formats) ? m.formats : []
   const ebook = formats.find((f) => f.type === 'ebook')
   const abook = formats.find((f) => f.type === 'abook')
+  // progress: audiobook positions are in ms (like the duration), e-book positions
+  // in characters; use whichever format was touched most recently
+  const progressOf = (f?: RawFormat) => {
+    const pos = f?.position?.position
+    const total = f?.type === 'abook' ? f.durationInMilliseconds : f?.durationInCharacters
+    return pos && total ? Math.min(1, Math.max(0, pos / total)) : undefined
+  }
+  const latest = [abook, ebook]
+    .filter((f): f is RawFormat => !!f?.position?.position)
+    .sort((a, b) => (b.position?.updatedTime ?? '').localeCompare(a.position?.updatedTime ?? ''))[0]
+  const progress = progressOf(latest)
+
   let status = STATE_TO_STATUS[(m.state ?? '').toUpperCase()]
   if (!status) status = abook?.position?.position ? 'reading' : 'want'
   return {
@@ -95,6 +109,7 @@ function mapModel(m: RawModel): StorytelBook | null {
     title: m.title,
     authors: (m.authors ?? []).map((a) => a?.name).filter((n): n is string => !!n),
     status,
+    progress,
     ebookCover: ebook?.cover?.url || undefined,
     abookCover: abook?.cover?.url || undefined,
     durationMs: abook?.durationInMilliseconds || undefined,

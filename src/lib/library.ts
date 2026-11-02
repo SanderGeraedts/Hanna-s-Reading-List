@@ -21,6 +21,8 @@ export interface Book {
   /** Dominant colour used for the spine and back cover */
   color: string
   status: ReadingStatus
+  /** reading progress, 0..1 – shown as a bookmark while the book is being read */
+  progress?: number
   addedAt: number
 }
 

@@ -90,6 +90,7 @@ async function toNewBook(b: StorytelBook): Promise<NewBook> {
     coverAspect: analysis?.aspect,
     color: analysis?.color ?? colorFromString(b.title),
     status: b.status,
+    progress: b.progress,
     storytelId: b.storytelId,
   }
 }
@@ -109,8 +110,16 @@ export async function importStorytelBooks(
       existing.find((e) => !e.storytelId && sameBook(e, item))
     if (!match) {
       toAdd.push(item)
-    } else if (match.status !== item.status || match.storytelId !== item.storytelId) {
-      cb.updateBook(match.id, { status: item.status, storytelId: item.storytelId })
+    } else if (
+      match.status !== item.status ||
+      match.storytelId !== item.storytelId ||
+      (item.progress !== undefined && Math.abs((match.progress ?? 0) - item.progress) > 0.005)
+    ) {
+      cb.updateBook(match.id, {
+        status: item.status,
+        storytelId: item.storytelId,
+        ...(item.progress !== undefined && { progress: item.progress }),
+      })
       summary.updated++
     } else {
       summary.unchanged++
@@ -130,6 +139,7 @@ export async function importStorytelBooks(
           title: item.title,
           authors: item.authors,
           status: item.status,
+          progress: item.progress,
           storytelId: item.storytelId,
           color: colorFromString(item.title),
         })

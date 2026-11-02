@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import type { Book } from '#/lib/library'
+import { hexToHsl } from '#/lib/library'
 import type { BookDims, Slot } from '#/lib/shelfLayout'
 import { pageTextures, paintBack, paintFallbackCover, paintSpine } from './textures'
 
@@ -204,10 +205,91 @@ export function BookMesh(props: BookMeshProps) {
       >
         <boxGeometry args={[dims.w, dims.h, dims.t]} />
       </mesh>
+      {book.status === 'reading' && (
+        <Bookmark dims={dims} progress={book.progress ?? 0} bookColor={book.color} />
+      )}
     </group>
   )
 }
 
 function damp3(v: THREE.Vector3, x: number, y: number, z: number, lambda: number, dt: number) {
   v.set(damp(v.x, x, lambda, dt), damp(v.y, y, lambda, dt), damp(v.z, z, lambda, dt))
+}
+
+// ---------------------------------------------------------------------------
+// Bookmark: a satin ribbon that leaves the pages at the reading position,
+// loops over the top edge and hangs down the spine, so it shows on the shelf
+// ---------------------------------------------------------------------------
+
+const RIBBON = { width: 0.013, thickness: 0.0008, hang: 0.11, rise: 0.014 }
+const CORNFLOWER = '#6c84e0'
+const MUSTARD = '#d9a441'
+
+/** Path in the book's local x/y plane (spine at x = -w/2, top at y = h/2). */
+function ribbonGeometry(dims: BookDims) {
+  const spineX = -dims.w / 2
+  const top = dims.h / 2
+  const path = new THREE.CatmullRomCurve3(
+    [
+      [spineX + 0.03, top - 0.012], // tucked between the pages
+      [spineX + 0.028, top + RIBBON.rise * 0.6],
+      [spineX + 0.016, top + RIBBON.rise], // over the top edge
+      [spineX + 0.002, top + RIBBON.rise * 0.55],
+      [spineX - 0.0025, top - 0.006], // round the spine
+      [spineX - 0.0025, top - RIBBON.hang * 0.6],
+      [spineX - 0.0018, top - RIBBON.hang], // hanging down the spine
+    ].map(([x, y]) => new THREE.Vector3(x, y, 0)),
+    false,
+    'centripetal',
+  )
+  // flat strip: thin across the path, wide along z (the book's thickness)
+  const shape = new THREE.Shape()
+  // (ExtrudeGeometry maps shape x to the path's binormal – here the z axis)
+  shape.moveTo(-RIBBON.width / 2, -RIBBON.thickness / 2)
+  shape.lineTo(RIBBON.width / 2, -RIBBON.thickness / 2)
+  shape.lineTo(RIBBON.width / 2, RIBBON.thickness / 2)
+  shape.lineTo(-RIBBON.width / 2, RIBBON.thickness / 2)
+  shape.closePath()
+  return new THREE.ExtrudeGeometry(shape, { steps: 48, bevelEnabled: false, extrudePath: path })
+}
+
+function Bookmark({
+  dims,
+  progress,
+  bookColor,
+}: {
+  dims: BookDims
+  progress: number
+  bookColor: string
+}) {
+  const group = useRef<THREE.Group>(null)
+  // pick a colour that stands out from the book: mustard on blue books, cornflower otherwise
+  const color = useMemo(() => {
+    const [h, sat] = hexToHsl(bookColor)
+    return sat > 0.15 && h > 190 && h < 260 ? MUSTARD : CORNFLOWER
+  }, [bookColor])
+  const geometry = useMemo(() => ribbonGeometry(dims), [dims])
+  const material = useMemo(
+    // satin: smooth with a soft sheen
+    () => new THREE.MeshStandardMaterial({ color, roughness: 0.38, metalness: 0.05 }),
+    [color],
+  )
+  useEffect(() => () => geometry.dispose(), [geometry])
+  useEffect(() => () => material.dispose(), [material])
+
+  // local frame: front cover at +z, back cover at -z; page 1 sits just behind the front cover
+  const inset = RIBBON.width / 2 + 0.002
+  const span = Math.max(0, dims.t / 2 - inset)
+  const targetZ = THREE.MathUtils.lerp(span, -span, THREE.MathUtils.clamp(progress, 0, 1))
+
+  useFrame((_, dt) => {
+    const g = group.current
+    if (g) g.position.z = THREE.MathUtils.damp(g.position.z, targetZ, 8, Math.min(dt, 0.05))
+  })
+
+  return (
+    <group ref={group} position={[0, 0, targetZ]}>
+      <mesh castShadow geometry={geometry} material={material} />
+    </group>
+  )
 }

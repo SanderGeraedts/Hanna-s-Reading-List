@@ -7,11 +7,13 @@ interface Props {
   book: Book
   onFace: (face: Face) => void
   onStatus: (status: ReadingStatus) => void
+  onProgress: (progress: number) => void
   onRemove: () => void
   onClose: () => void
 }
 
-export function BookPanel({ book, onFace, onStatus, onRemove, onClose }: Props) {
+export function BookPanel({ book, onFace, onStatus, onProgress, onRemove, onClose }: Props) {
+  const pct = Math.round((book.progress ?? 0) * 100)
   return (
     <aside className="panel" aria-label={`Details for ${book.title}`}>
       <div className="panel-top">
@@ -50,6 +52,27 @@ export function BookPanel({ book, onFace, onStatus, onRemove, onClose }: Props) 
           ))}
         </select>
       </label>
+
+      {book.status === 'reading' && (
+        <label className="field">
+          <span className="progress-label">
+            <span>Progress</span>
+            <span>
+              {pct}%
+              {book.pages ? ` · page ${Math.round((pct / 100) * book.pages)} of ${book.pages}` : ''}
+            </span>
+          </span>
+          <input
+            className="range"
+            type="range"
+            min={0}
+            max={100}
+            step={1}
+            value={pct}
+            onChange={(e) => onProgress(Number(e.target.value) / 100)}
+          />
+        </label>
+      )}
 
       {book.description && <p className="description">{book.description}</p>}
 

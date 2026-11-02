@@ -124,6 +124,7 @@ function Home() {
           book={selected}
           onFace={showFace}
           onStatus={(status) => updateBook(selected.id, { status })}
+          onProgress={(progress) => updateBook(selected.id, { progress })}
           onRemove={() => {
             select(null)
             removeBook(selected.id)

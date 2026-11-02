@@ -6,7 +6,7 @@ A 3D bookshelf for a personal reading list, built with **React**, **TanStack Sta
 - Books stand on a wooden bookcase with their spines out. The spine colour comes from the cover, the thickness from the page count, and the width from the cover's shape.
 - **Organise:** drag a book along or between shelves to move it, or use **Arrange by** to sort by title, author, year, colour, date added or reading status.
 - **Inspect:** click a book to pull it off the shelf. Drag to turn it, use **Front / Spine / Back** or the ← → keys to flip it, and press Esc (or click the room) to put it back.
-- Mark a book as *Want to read*, *Reading* or *Read*.
+- Mark a book as *Want to read*, *Reading* or *Read*. A book you're reading gets a satin ribbon bookmark: it leaves the pages at your progress point (set with the slider in the book panel, or imported from Storytel) and hangs down the spine, so you can see on the shelf how far along you are.
 
 ## Getting started
 

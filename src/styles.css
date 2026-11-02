@@ -475,3 +475,12 @@ textarea.input {
   width: 100%;
   accent-color: var(--accent);
 }
+
+.progress-label {
+  display: flex;
+  justify-content: space-between;
+}
+.range {
+  width: 100%;
+  accent-color: var(--accent);
+}
