@@ -80,7 +80,7 @@ function Home() {
                 if (e.target.value) sortBy(e.target.value as SortKey)
               }}
             >
-              <option value="">Choose…</option>
+              <option value="">Sort…</option>
               {Object.entries(SORT_LABELS).map(([k, label]) => (
                 <option key={k} value={k}>
                   {label}
@@ -89,7 +89,7 @@ function Home() {
             </select>
           </label>
           <button className="btn primary" onClick={() => setAdding(true)}>
-            + Add book
+            + Add<span className="hide-mobile"> book</span>
           </button>
         </div>
       </header>
@@ -133,7 +133,12 @@ function Home() {
       )}
 
       {adding && (
-        <AddBookDialog existing={books} onAdd={addBook} onClose={() => setAdding(false)} />
+        <AddBookDialog
+          existing={books}
+          onAdd={addBook}
+          onUpdate={updateBook}
+          onClose={() => setAdding(false)}
+        />
       )}
     </div>
   )

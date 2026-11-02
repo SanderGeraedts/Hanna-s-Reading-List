@@ -2,7 +2,7 @@
 
 A 3D bookshelf for a personal reading list, built with **React**, **TanStack Start** and **Three.js** (via `@react-three/fiber`).
 
-- Add books by searching [Open Library](https://openlibrary.org), by ISBN, or by hand.
+- Add books by searching [Open Library](https://openlibrary.org), by ISBN, by hand, or by importing your **Storytel** bookshelf.
 - Books stand on a wooden bookcase with their spines out. The spine colour comes from the cover, the thickness from the page count, and the width from the cover's shape.
 - **Organise:** drag a book along or between shelves to move it, or use **Arrange by** to sort by title, author, year, colour, date added or reading status.
 - **Inspect:** click a book to pull it off the shelf. Drag to turn it, use **Front / Spine / Back** or the ← → keys to flip it, and press Esc (or click the room) to put it back.
@@ -27,6 +27,15 @@ npm run build      # production build -> dist/
 
 No public API provides spine or back-cover images. Open Library, Google Books and ISBNdb only serve front covers, so the other sides are generated. Books without a cover on Open Library get a generated front cover too.
 
+## Storytel import
+
+The **Storytel** tab in *Add book* signs in with your Storytel email and password and imports your bookshelf. Storytel statuses map to reading statuses: want to read, reading, and finished (shown as *Read*). Running it again adds new books and updates statuses. It never creates duplicates.
+
+- Storytel has **no public API**. The import uses the same private endpoints as the Storytel apps (`www.storytel.com/api/login.action` and `api.storytel.net/libraries/bookshelf`). The approach follows the open-source [storytel-player](https://github.com/debba/storytel-player). Storytel can change these endpoints at any time, and automated access may go against its terms of service.
+- The password is sent to this app's server function (`src/server/storytel.ts`), used for a single sign-in, and then discarded. Nothing is stored, logged, or returned to the browser.
+- Accounts that sign in with Google, Apple or Facebook have no Storytel password, so they can't use this.
+- Covers: the Storytel e-book cover if there is one, otherwise an Open Library match, otherwise the square audiobook cover, centre-cropped. Year, page count, ISBN and blurb come from the best Open Library match. When there's no match, the page count is estimated from the book's length.
+
 ## How it fits together
 
 ```
@@ -35,6 +44,9 @@ src/
     index.tsx                  page: toolbar, 3D scene, book panel, add dialog
     api/cover.$kind.$value.ts  server route that proxies Open Library covers (CORS-safe for WebGL, cached)
   server/openLibrary.ts        TanStack Start server functions: search, work details, ISBN lookup
+  server/storytel.ts           Storytel sign-in + bookshelf fetch (server-only)
+  lib/storytelImport.ts        merges a Storytel shelf into the library, enriched via Open Library
+  routes/api/remote-cover.ts   cover proxy restricted to *.storytel.com
   components/
     BookshelfScene.tsx         Canvas, bookcase, lights, camera fit, drag-to-reorder, inspect controls
     BookMesh.tsx               one book: 6-sided box, cover loading, pull-out/fly/rotate animation

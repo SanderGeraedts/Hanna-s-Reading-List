@@ -8,6 +8,11 @@ export function coverUrlForIsbn(isbn: string, size: 'S' | 'M' | 'L' = 'L') {
   return `/api/cover/isbn/${isbn}?size=${size}`
 }
 
+/** Storytel covers go through a same-origin proxy so WebGL can use them. */
+export function remoteCoverUrl(url: string) {
+  return `/api/remote-cover?url=${encodeURIComponent(url)}`
+}
+
 const PALETTE = ['#7a2e2e', '#2e4a7a', '#2f5d46', '#6b4c8a', '#8a5a2b', '#3d3d3d', '#a0522d', '#1f5f6b']
 
 /** Stable fallback colour for books without a cover. */

@@ -301,31 +301,150 @@ export function pageTextures() {
   return pagesCache
 }
 
-export function woodTexture() {
-  const W = 1024
-  const H = 256
-  const c = canvas(W, H)
-  const ctx = c.getContext('2d', { willReadFrequently: true })!
-  ctx.fillStyle = '#7b4a26'
+interface OakPalette {
+  /** base tones across the board, top to bottom */
+  base: string[]
+  /** latewood (dark grain lines), as "r, g, b" */
+  late: string
+  /** earlywood (light grain lines) */
+  early: string
+  pores: string
+  flecks: string
+}
+
+/** Grey "sonoma"-style oak, like a light grey laminate: beige with a cool grey cast. */
+const GREY_OAK: OakPalette = {
+  base: ['#cbc3b6', '#c0b8aa', '#d0c9bd', '#b8afa0', '#c7bfb2'],
+  late: '112, 102, 88',
+  early: '226, 221, 211',
+  pores: '96, 88, 76',
+  flecks: '238, 234, 226',
+}
+
+/** Warm honey European oak (used for the floor). */
+const HONEY_OAK: OakPalette = {
+  base: ['#bda283', '#b39776', '#c2a888', '#ab8e6c', '#bb9f7f'],
+  late: '96, 72, 46',
+  early: '222, 204, 174',
+  pores: '78, 58, 36',
+  flecks: '240, 222, 186',
+}
+
+/**
+ * Paints European oak: straight, fairly tight grain, open pores and the ray
+ * flecks typical of quarter-sawn oak. Grain runs along u (horizontal).
+ */
+function paintOak(ctx: CanvasRenderingContext2D, W: number, H: number, p: OakPalette) {
+  const base = ctx.createLinearGradient(0, 0, 0, H)
+  p.base.forEach((c, i) => base.addColorStop(i / (p.base.length - 1), c))
+  ctx.fillStyle = base
   ctx.fillRect(0, 0, W, H)
-  for (let i = 0; i < 90; i++) {
+
+  // growth rings: long, nearly straight lines with a slow drift
+  for (let i = 0; i < 140; i++) {
     const y = Math.random() * H
-    const amp = 2 + Math.random() * 6
-    const freq = 0.004 + Math.random() * 0.01
+    const drift = (Math.random() - 0.5) * 14
+    const wobble = 0.6 + Math.random() * 1.6
+    const freq = 0.001 + Math.random() * 0.003
     const phase = Math.random() * Math.PI * 2
-    ctx.strokeStyle = Math.random() > 0.5 ? 'rgba(60,30,12,0.25)' : 'rgba(170,110,60,0.18)'
-    ctx.lineWidth = 0.6 + Math.random() * 2.2
+    const late = Math.random() < 0.55 // latewood is darker and denser
+    ctx.strokeStyle = late
+      ? `rgba(${p.late}, ${0.18 + Math.random() * 0.22})`
+      : `rgba(${p.early}, ${0.12 + Math.random() * 0.15})`
+    ctx.lineWidth = late ? 0.8 + Math.random() * 2.2 : 1 + Math.random() * 3
     ctx.beginPath()
-    for (let x = 0; x <= W; x += 8) {
-      const yy = y + Math.sin(x * freq + phase) * amp
+    for (let x = 0; x <= W; x += 16) {
+      const yy = y + (drift * x) / W + Math.sin(x * freq + phase) * wobble
       if (x === 0) ctx.moveTo(x, yy)
       else ctx.lineTo(x, yy)
     }
     ctx.stroke()
   }
-  grain(ctx, W, H, 0.05)
+
+  // open pores: tiny dark dashes along the grain
+  for (let i = 0; i < 9000; i++) {
+    ctx.fillStyle = `rgba(${p.pores}, ${0.12 + Math.random() * 0.2})`
+    ctx.fillRect(Math.random() * W, Math.random() * H, 2 + Math.random() * 7, 0.8)
+  }
+
+  // medullary ray flecks: short, pale, slightly lustrous streaks
+  for (let i = 0; i < 260; i++) {
+    const x = Math.random() * W
+    const y = Math.random() * H
+    const len = 6 + Math.random() * 34
+    const h = 1.5 + Math.random() * 3.5
+    const g = ctx.createLinearGradient(x, 0, x + len, 0)
+    const a = 0.12 + Math.random() * 0.18
+    g.addColorStop(0, `rgba(${p.flecks}, 0)`)
+    g.addColorStop(0.5, `rgba(${p.flecks}, ${a})`)
+    g.addColorStop(1, `rgba(${p.flecks}, 0)`)
+    ctx.fillStyle = g
+    ctx.fillRect(x, y, len, h)
+  }
+
+  grain(ctx, W, H, 0.035)
+}
+
+/** Grey oak for the bookcase. */
+export function woodTexture() {
+  const W = 2048
+  const H = 512
+  const c = canvas(W, H)
+  paintOak(c.getContext('2d', { willReadFrequently: true })!, W, H, GREY_OAK)
   const t = toTexture(c)
   t.wrapS = THREE.RepeatWrapping
   t.wrapT = THREE.RepeatWrapping
   return t
+}
+
+/** Honey oak floorboards: one tile holds 4 boards with staggered end joints. */
+export const FLOOR_TILE_METRES = 0.8
+
+export function floorTexture() {
+  const W = 2048
+  const H = 1024
+  const boards = 4
+  const c = canvas(W, H)
+  const ctx = c.getContext('2d', { willReadFrequently: true })!
+  paintOak(ctx, W, H, HONEY_OAK)
+
+  const bh = H / boards
+  for (let b = 0; b < boards; b++) {
+    const y = b * bh
+    // each board a slightly different shade
+    ctx.fillStyle = `rgba(${Math.random() < 0.5 ? '255, 245, 225' : '60, 40, 20'}, ${0.04 + Math.random() * 0.06})`
+    ctx.fillRect(0, y, W, bh)
+    // seam between boards
+    ctx.fillStyle = 'rgba(55, 38, 20, 0.55)'
+    ctx.fillRect(0, y, W, 3)
+    // a staggered end joint per board
+    const jx = ((b * 0.37 + 0.15) % 1) * W
+    ctx.fillRect(jx, y, 3, bh)
+  }
+  const t = toTexture(c)
+  t.wrapS = THREE.RepeatWrapping
+  t.wrapT = THREE.RepeatWrapping
+  return t
+}
+
+const WALL_HEIGHT_M = 8
+
+/**
+ * Lavender-cornflower wall: deeper at the floor, fading to a pale periwinkle above the bookcase.
+ * Slightly over-saturated on purpose – the warm room lights pull it back toward grey.
+ */
+export function wallTexture() {
+  const c = canvas(4, 1024)
+  const ctx = c.getContext('2d')!
+  const g = ctx.createLinearGradient(0, 0, 0, c.height)
+  // stops are placed by height above the floor (metres); canvas y=0 is the top
+  const at = (metres: number) => 1 - metres / WALL_HEIGHT_M
+  g.addColorStop(at(WALL_HEIGHT_M), '#e3e9ff')
+  g.addColorStop(at(3.2), '#cdd8ff')
+  g.addColorStop(at(2), '#aabcfa')
+  g.addColorStop(at(0.9), '#8ba1f0')
+  g.addColorStop(at(0), '#6c84e0')
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, c.width, c.height)
+  return toTexture(c)
 }

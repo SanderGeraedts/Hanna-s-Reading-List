@@ -4,11 +4,12 @@ import * as THREE from 'three'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import type { Book } from '#/lib/library'
-import { SHELF, computeLayout, rowFloorY } from '#/lib/shelfLayout'
+import { FRAME, SHELF, computeLayout, rowFloorY, shelfFitFor } from '#/lib/shelfLayout'
 import type { ShelfLayout } from '#/lib/shelfLayout'
 import { BookMesh } from './BookMesh'
+import { Decorations } from './Decorations'
 import type { InspectTarget } from './BookMesh'
-import { woodTexture } from './textures'
+import { FLOOR_TILE_METRES, floorTexture, wallTexture, woodTexture } from './textures'
 
 export interface BookshelfSceneProps {
   books: Book[]
@@ -19,11 +20,13 @@ export interface BookshelfSceneProps {
 }
 
 const FOV = 35
+const DEFAULT_INSPECT = { fill: 0.6, yShift: 0 }
+const PORTRAIT_INSPECT = { fill: 0.4, yShift: 0.17 }
 
 export function BookshelfScene(props: BookshelfSceneProps) {
   return (
     <Canvas
-      shadows
+      shadows="soft"
       dpr={[1, 2]}
       camera={{ fov: FOV, near: 0.05, far: 60, position: [0, 0.7, 4] }}
       gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping }}
@@ -60,7 +63,11 @@ function Scene({ books, selectedId, inspect, onSelect, onReorder }: BookshelfSce
       drag ? drag.order.map((id) => byId.get(id)).filter((b): b is Book => !!b) : books,
     [drag, books, byId],
   )
-  const layout = useMemo(() => computeLayout(ordered), [ordered])
+  const size = useThree((s) => s.size)
+  const aspect = size.width / Math.max(1, size.height)
+  const fit = useMemo(() => shelfFitFor(aspect), [aspect])
+  const portrait = aspect < 0.8
+  const layout = useMemo(() => computeLayout(ordered, fit), [ordered, fit])
 
   // keep the case size stable while dragging so the camera doesn't jump around
   const stableLayout = useRef<ShelfLayout>(layout)
@@ -80,7 +87,7 @@ function Scene({ books, selectedId, inspect, onSelect, onReorder }: BookshelfSce
   const insertionOrder = useCallback(
     (id: string, x: number, y: number): string[] => {
       const others = books.filter((b) => b.id !== id)
-      const lay = computeLayout(others, caseLayout.rows)
+      const lay = computeLayout(others, { innerWidth: fit.innerWidth, minRows: caseLayout.rows })
       // which shelf is the pointer over?
       let row = 0
       for (let r = 0; r < lay.rows; r++) {
@@ -104,7 +111,7 @@ function Scene({ books, selectedId, inspect, onSelect, onReorder }: BookshelfSce
       ids.splice(index, 0, id)
       return ids
     },
-    [books, caseLayout.rows],
+    [books, caseLayout.rows, fit.innerWidth],
   )
 
   const onPointerDown = useCallback(
@@ -127,7 +134,7 @@ function Scene({ books, selectedId, inspect, onSelect, onReorder }: BookshelfSce
       e.stopPropagation()
       dragPlane.constant = -(SHELF.depth / 2 + 0.06)
       if (!e.ray.intersectPlane(dragPlane, hit)) return
-      const lim = SHELF.innerWidth / 2
+      const lim = caseLayout.innerWidth / 2
       dragPoint.current.set(
         THREE.MathUtils.clamp(hit.x, -lim, lim),
         THREE.MathUtils.clamp(hit.y, 0.1, caseLayout.caseHeight),
@@ -137,7 +144,7 @@ function Scene({ books, selectedId, inspect, onSelect, onReorder }: BookshelfSce
       if (!drag) setHovered(null)
       if (!drag || order.join() !== drag.order.join()) updateDrag({ id, order })
     },
-    [dragPlane, hit, insertionOrder, caseLayout.caseHeight, updateDrag],
+    [dragPlane, hit, insertionOrder, caseLayout.caseHeight, caseLayout.innerWidth, updateDrag],
   )
 
   const onPointerUp = useCallback(
@@ -194,6 +201,7 @@ function Scene({ books, selectedId, inspect, onSelect, onReorder }: BookshelfSce
       <Lights caseHeight={caseLayout.caseHeight} cameraBase={cameraBase} />
       <Room />
       <Bookcase layout={caseLayout} />
+      <Decorations items={layout.decor} />
 
       {ordered.map((book) => {
         const slot = layout.slots.get(book.id)
@@ -212,6 +220,8 @@ function Scene({ books, selectedId, inspect, onSelect, onReorder }: BookshelfSce
             inspect={inspect}
             cameraBase={cameraBase}
             fov={FOV}
+            // on phones the details panel covers the bottom half: show the book smaller, higher up
+            inspectFrame={portrait ? PORTRAIT_INSPECT : DEFAULT_INSPECT}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
@@ -234,9 +244,9 @@ function useCameraRig(caseWidth: number, caseHeight: number, parallax: boolean) 
   const aspect = size.width / Math.max(1, size.height)
   const tan = Math.tan(THREE.MathUtils.degToRad(FOV / 2))
   // leave room for the header at the top
-  const distH = (caseHeight * 1.28) / 2 / tan
-  const distW = (caseWidth * 1.12) / 2 / (tan * aspect)
-  const dist = Math.max(distH, distW, 1.6) + SHELF.depth / 2
+  const distH = (caseHeight * FRAME.vertical) / 2 / tan
+  const distW = (caseWidth * FRAME.horizontal) / 2 / (tan * aspect)
+  const dist = Math.max(distH, distW, 0.9) + SHELF.depth / 2
   base.set(0, caseHeight / 2 + caseHeight * 0.04, dist)
 
   useFrame((state, dt) => {
@@ -263,21 +273,34 @@ function useCameraRig(caseWidth: number, caseHeight: number, parallax: boolean) 
 }
 
 function Lights({ caseHeight, cameraBase }: { caseHeight: number; cameraBase: THREE.Vector3 }) {
+  const keyLight = useRef<THREE.DirectionalLight>(null)
+  // the shadow frustum follows the bookcase height; three.js needs telling when it changes
+  useEffect(() => {
+    keyLight.current?.shadow.camera.updateProjectionMatrix()
+  }, [caseHeight])
   return (
     <>
       <hemisphereLight args={['#fff1dc', '#5a3c26', 1.5]} />
       <ambientLight intensity={0.35} color="#ffe9cf" />
       <directionalLight
+        ref={keyLight}
         position={[0.9, caseHeight + 0.9, 4.2]}
         intensity={2.6}
         color="#ffe7c4"
         castShadow
         shadow-mapSize={[2048, 2048]}
-        shadow-bias={-0.0004}
-        shadow-camera-left={-2.5}
-        shadow-camera-right={2.5}
-        shadow-camera-top={4}
-        shadow-camera-bottom={-1}
+        // Bias is a fraction of the shadow camera's depth range, so keep that range
+        // tight around the bookcase: with the default 0.5–500 m, even a tiny bias
+        // shifts shadows by decimetres and they float away from what casts them.
+        shadow-camera-near={1}
+        shadow-camera-far={10}
+        shadow-bias={-0.0001}
+        shadow-normalBias={0.01}
+        shadow-radius={3}
+        shadow-camera-left={-1.5}
+        shadow-camera-right={1.5}
+        shadow-camera-top={caseHeight + 0.6}
+        shadow-camera-bottom={-1.2}
       />
       {/* soft light near the viewer so an inspected book is well lit */}
       <pointLight
@@ -290,16 +313,36 @@ function Lights({ caseHeight, cameraBase }: { caseHeight: number; cameraBase: TH
   )
 }
 
+/** must match WALL_HEIGHT_M in textures.ts so the gradient stops land at real heights */
+const WALL_HEIGHT = 8
+const FLOOR_SIZE = 30
+
 function Room() {
+  const wall = useMemo(() => wallTexture(), [])
+  const floor = useMemo(() => {
+    const t = floorTexture()
+    // boards run away from the viewer
+    t.center.set(0.5, 0.5)
+    t.rotation = Math.PI / 2
+    t.repeat.set(FLOOR_SIZE / FLOOR_TILE_METRES, FLOOR_SIZE / FLOOR_TILE_METRES)
+    return t
+  }, [])
+  useEffect(
+    () => () => {
+      wall.dispose()
+      floor.dispose()
+    },
+    [wall, floor],
+  )
   return (
     <>
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[30, 30]} />
-        <meshStandardMaterial color="#4a3426" roughness={0.9} />
+        <planeGeometry args={[FLOOR_SIZE, FLOOR_SIZE]} />
+        <meshStandardMaterial map={floor} color="#f2ebe2" roughness={0.55} />
       </mesh>
-      <mesh position={[0, 5, -SHELF.depth / 2 - 0.02]} receiveShadow>
-        <planeGeometry args={[30, 10]} />
-        <meshStandardMaterial color="#c9b49a" roughness={1} />
+      <mesh position={[0, WALL_HEIGHT / 2, -SHELF.depth / 2 - 0.02]} receiveShadow>
+        <planeGeometry args={[30, WALL_HEIGHT]} />
+        <meshStandardMaterial map={wall} roughness={1} />
       </mesh>
     </>
   )
@@ -307,13 +350,21 @@ function Room() {
 
 function Bookcase({ layout }: { layout: ShelfLayout }) {
   const wood = useMemo(() => woodTexture(), [])
+  // the texture tile is 1.6 m x 0.4 m of wood; repeat it on the tall back panel so grain isn't stretched
+  const backWood = useMemo(() => {
+    const t = wood.clone()
+    t.repeat.set(1, layout.caseHeight / 0.4)
+    return t
+  }, [wood, layout.caseHeight])
   useEffect(() => () => wood.dispose(), [wood])
+  useEffect(() => () => backWood.dispose(), [backWood])
   const { rows, caseHeight } = layout
-  const W = SHELF.innerWidth
+  const W = layout.innerWidth
   const D = SHELF.depth
   const outer = W + SHELF.side * 2
 
-  const mat = <meshStandardMaterial map={wood} color="#e8c39b" roughness={0.7} />
+  // satin oil finish: fairly matte with a soft sheen
+  const mat = <meshStandardMaterial map={wood} color="#f6f4f0" roughness={0.62} />
   return (
     <group>
       {/* sides */}
@@ -343,7 +394,7 @@ function Bookcase({ layout }: { layout: ShelfLayout }) {
       {/* back panel */}
       <mesh position={[0, caseHeight / 2, -D / 2 + 0.005]} receiveShadow>
         <boxGeometry args={[W, caseHeight, 0.01]} />
-        <meshStandardMaterial map={wood} color="#b48a63" roughness={0.85} />
+        <meshStandardMaterial map={backWood} color="#dedad2" roughness={0.75} />
       </mesh>
     </group>
   )

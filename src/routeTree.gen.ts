@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiRemoteCoverRouteImport } from './routes/api/remote-cover'
 import { Route as ApiCoverKindValueRouteImport } from './routes/api/cover.$kind.$value'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRemoteCoverRoute = ApiRemoteCoverRouteImport.update({
+  id: '/api/remote-cover',
+  path: '/api/remote-cover',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCoverKindValueRoute = ApiCoverKindValueRouteImport.update({
@@ -25,27 +31,31 @@ const ApiCoverKindValueRoute = ApiCoverKindValueRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/remote-cover': typeof ApiRemoteCoverRoute
   '/api/cover/$kind/$value': typeof ApiCoverKindValueRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/remote-cover': typeof ApiRemoteCoverRoute
   '/api/cover/$kind/$value': typeof ApiCoverKindValueRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/remote-cover': typeof ApiRemoteCoverRoute
   '/api/cover/$kind/$value': typeof ApiCoverKindValueRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/cover/$kind/$value'
+  fullPaths: '/' | '/api/remote-cover' | '/api/cover/$kind/$value'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/cover/$kind/$value'
-  id: '__root__' | '/' | '/api/cover/$kind/$value'
+  to: '/' | '/api/remote-cover' | '/api/cover/$kind/$value'
+  id: '__root__' | '/' | '/api/remote-cover' | '/api/cover/$kind/$value'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiRemoteCoverRoute: typeof ApiRemoteCoverRoute
   ApiCoverKindValueRoute: typeof ApiCoverKindValueRoute
 }
 
@@ -56,6 +66,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/remote-cover': {
+      id: '/api/remote-cover'
+      path: '/api/remote-cover'
+      fullPath: '/api/remote-cover'
+      preLoaderRoute: typeof ApiRemoteCoverRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/cover/$kind/$value': {
@@ -70,6 +87,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiRemoteCoverRoute: ApiRemoteCoverRoute,
   ApiCoverKindValueRoute: ApiCoverKindValueRoute,
 }
 export const routeTree = rootRouteImport

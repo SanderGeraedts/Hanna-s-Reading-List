@@ -4,12 +4,16 @@ import { getWorkDetails, lookupIsbn, searchBooks } from '#/server/openLibrary'
 import type { SearchResult } from '#/server/openLibrary'
 import type { Book, NewBook } from '#/lib/library'
 import { analyzeCover, colorFromString, coverUrlForId, coverUrlForIsbn } from '#/lib/cover'
+import { importStorytelLibrary } from '#/server/storytel'
+import { importStorytelBooks } from '#/lib/storytelImport'
+import type { ImportSummary } from '#/lib/storytelImport'
 
-type Tab = 'search' | 'isbn' | 'manual'
+type Tab = 'search' | 'isbn' | 'manual' | 'storytel'
 
 interface Props {
   existing: Book[]
   onAdd: (book: NewBook) => void
+  onUpdate: (id: string, patch: Partial<Book>) => void
   onClose: () => void
 }
 
@@ -35,7 +39,7 @@ async function buildBook(r: SearchResult, description?: string): Promise<NewBook
   }
 }
 
-export function AddBookDialog({ existing, onAdd, onClose }: Props) {
+export function AddBookDialog({ existing, onAdd, onUpdate, onClose }: Props) {
   const [tab, setTab] = useState<Tab>('search')
   const dialog = useRef<HTMLDialogElement>(null)
 
@@ -69,6 +73,7 @@ export function AddBookDialog({ existing, onAdd, onClose }: Props) {
               ['search', 'Search'],
               ['isbn', 'ISBN'],
               ['manual', 'Manual'],
+              ['storytel', 'Storytel'],
             ] as const
           ).map(([key, label]) => (
             <button
@@ -85,6 +90,7 @@ export function AddBookDialog({ existing, onAdd, onClose }: Props) {
         {tab === 'search' && <SearchTab existing={existing} onAdd={onAdd} />}
         {tab === 'isbn' && <IsbnTab onAdd={onAdd} />}
         {tab === 'manual' && <ManualTab onAdd={onAdd} />}
+        {tab === 'storytel' && <StorytelTab existing={existing} onAdd={onAdd} onUpdate={onUpdate} />}
         <p className="attribution">
           Book data and covers from{' '}
           <a href="https://openlibrary.org" target="_blank" rel="noreferrer">
@@ -300,6 +306,120 @@ function ManualTab({ onAdd }: { onAdd: (b: NewBook) => void }) {
       <button className="btn" disabled={!form.title.trim()}>
         Add book
       </button>
+    </form>
+  )
+}
+
+type StorytelPhase =
+  | { kind: 'form' }
+  | { kind: 'signing-in' }
+  | { kind: 'importing'; done: number; total: number }
+  | { kind: 'done'; summary: ImportSummary; total: number }
+
+function StorytelTab({
+  existing,
+  onAdd,
+  onUpdate,
+}: {
+  existing: Book[]
+  onAdd: (b: NewBook) => void
+  onUpdate: (id: string, patch: Partial<Book>) => void
+}) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [phase, setPhase] = useState<StorytelPhase>({ kind: 'form' })
+  const [error, setError] = useState<string | null>(null)
+  const busy = phase.kind === 'signing-in' || phase.kind === 'importing'
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setPhase({ kind: 'signing-in' })
+    try {
+      const items = await importStorytelLibrary({ data: { email, password } })
+      // the password is not needed any more – drop it from memory right away
+      setPassword('')
+      const summary = await importStorytelBooks(items, existing, {
+        addBook: onAdd,
+        updateBook: onUpdate,
+        onProgress: (done, total) => setPhase({ kind: 'importing', done, total }),
+      })
+      setPhase({ kind: 'done', summary, total: items.length })
+    } catch (err) {
+      setPassword('')
+      setError(err instanceof Error ? err.message : 'Import failed')
+      setPhase({ kind: 'form' })
+    }
+  }
+
+  if (phase.kind === 'done') {
+    const { summary, total } = phase
+    return (
+      <div className="tab-panel">
+        <p className="success">
+          Found {total} book{total === 1 ? '' : 's'} on your Storytel shelf: {summary.added} added
+          {summary.updated ? `, ${summary.updated} updated` : ''}
+          {summary.unchanged ? `, ${summary.unchanged} already up to date` : ''}.
+        </p>
+        <button className="btn" onClick={() => setPhase({ kind: 'form' })}>
+          Import again
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <form className="tab-panel" onSubmit={submit}>
+      <p className="muted">
+        Import the books on your Storytel bookshelf. Statuses carry over: <em>want to read</em>,{' '}
+        <em>reading</em> and <em>finished</em>. Importing again adds new books and updates statuses.
+      </p>
+      <label className="field">
+        <span>Storytel email</span>
+        <input
+          className="input"
+          type="email"
+          autoComplete="username"
+          required
+          disabled={busy}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+      </label>
+      <label className="field">
+        <span>Storytel password</span>
+        <input
+          className="input"
+          type="password"
+          autoComplete="current-password"
+          required
+          disabled={busy}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+      </label>
+      {error && <p className="error">{error}</p>}
+      {phase.kind === 'importing' && (
+        <div className="progress" aria-live="polite">
+          <progress max={Math.max(1, phase.total)} value={phase.done} />
+          <span className="muted">
+            Adding books {phase.done} / {phase.total} (fetching covers and details)
+          </span>
+        </div>
+      )}
+      <button className="btn primary" disabled={busy || !email || !password}>
+        {phase.kind === 'signing-in'
+          ? 'Signing in…'
+          : phase.kind === 'importing'
+            ? 'Importing…'
+            : 'Sign in & import'}
+      </button>
+      <p className="attribution">
+        Your password goes to this app&apos;s server, which uses it once to sign in to Storytel and
+        then forgets it. Nothing is stored. Storytel has no public API, so this uses the same
+        private endpoints as its apps and may stop working if Storytel changes them. Accounts that
+        sign in with Google, Apple or Facebook have no password to use here.
+      </p>
     </form>
   )
 }

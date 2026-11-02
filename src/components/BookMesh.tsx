@@ -24,6 +24,8 @@ export interface BookMeshProps {
   /** where the camera sits (not the animated camera, the resting one) */
   cameraBase: THREE.Vector3
   fov: number
+  /** fraction of the view height the inspected book fills, and how far up it sits */
+  inspectFrame: { fill: number; yShift: number }
   onPointerDown: (e: ThreeEvent<PointerEvent>, id: string) => void
   onPointerMove: (e: ThreeEvent<PointerEvent>, id: string) => void
   onPointerUp: (e: ThreeEvent<PointerEvent>, id: string) => void
@@ -40,7 +42,7 @@ export function nearestTurn(angle: number, ref: number) {
   return angle + Math.round((ref - angle) / TAU) * TAU
 }
 
-function useCoverTexture(url: string | undefined) {
+function useCoverTexture(url: string | undefined, bookAspect: number) {
   const [tex, setTex] = useState<THREE.Texture | null>(null)
   useEffect(() => {
     if (!url) return
@@ -51,6 +53,13 @@ function useCoverTexture(url: string | undefined) {
       (t) => {
         t.colorSpace = THREE.SRGBColorSpace
         t.anisotropy = 8
+        // centre-crop covers that are wider than the book (e.g. square audiobook art)
+        const img = t.image as { width: number; height: number }
+        const imgAspect = img.width / img.height
+        if (imgAspect > bookAspect * 1.04) {
+          t.repeat.x = bookAspect / imgAspect
+          t.offset.x = (1 - t.repeat.x) / 2
+        }
         if (disposed) return t.dispose()
         loaded = t
         setTex(t)
@@ -63,17 +72,28 @@ function useCoverTexture(url: string | undefined) {
       loaded?.dispose()
       setTex(null)
     }
-  }, [url])
+  }, [url, bookAspect])
   return tex
 }
 
 export function BookMesh(props: BookMeshProps) {
-  const { book, dims, slot, selected, dragging, hovered, dragPoint, inspect, cameraBase, fov } =
-    props
+  const {
+    book,
+    dims,
+    slot,
+    selected,
+    dragging,
+    hovered,
+    dragPoint,
+    inspect,
+    cameraBase,
+    fov,
+    inspectFrame,
+  } = props
   const group = useRef<THREE.Group>(null)
 
   // ---- textures ---------------------------------------------------------
-  const cover = useCoverTexture(book.coverUrl)
+  const cover = useCoverTexture(book.coverUrl, dims.w / dims.h)
   const painted = useMemo(
     () => ({
       spine: paintSpine(book, dims),
@@ -153,9 +173,11 @@ export function BookMesh(props: BookMeshProps) {
     tmp.base.z += 0.035 * a.hover + 0.28 * out
     tmp.base.y += 0.01 * a.hover
 
-    // distance at which the book fills ~60% of the view height
-    const dist = dims.h / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)) * 0.6)
-    tmp.target.set(cameraBase.x, cameraBase.y, cameraBase.z - dist)
+    // distance at which the book fills `fill` of the view height
+    const tan = Math.tan(THREE.MathUtils.degToRad(fov / 2))
+    const dist = dims.h / (2 * tan * inspectFrame.fill)
+    const viewHeight = 2 * dist * tan
+    tmp.target.set(cameraBase.x, cameraBase.y + viewHeight * inspectFrame.yShift, cameraBase.z - dist)
     g.position.lerpVectors(tmp.base, tmp.target, fly)
 
     g.rotation.set(

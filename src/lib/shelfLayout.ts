@@ -45,9 +45,33 @@ export interface Slot {
   row: number
 }
 
+export type DecorKind = 'koala' | 'succulent' | 'frame' | 'candle' | 'vase'
+
+/** Decorations in placement order (the koala always comes first) and their footprint width. */
+export const DECOR: Array<{ kind: DecorKind; width: number }> = [
+  { kind: 'koala', width: 0.17 },
+  { kind: 'succulent', width: 0.11 },
+  { kind: 'frame', width: 0.15 },
+  { kind: 'candle', width: 0.08 },
+  { kind: 'vase', width: 0.11 },
+]
+const DECOR_PER_ROW = 2
+const DECOR_GAP = 0.05
+const DECOR_MARGIN = 0.035
+
+export interface DecorSlot {
+  kind: DecorKind
+  /** centre x, and the y of the shelf surface it stands on */
+  x: number
+  floorY: number
+  row: number
+}
+
 export interface ShelfLayout {
   slots: Map<string, Slot>
+  decor: DecorSlot[]
   dims: Map<string, BookDims>
+  innerWidth: number
   rows: number
   caseWidth: number
   caseHeight: number
@@ -58,8 +82,44 @@ export function rowFloorY(row: number, rows: number) {
   return (rows - 1 - row) * SHELF.rowHeight + SHELF.board
 }
 
+export interface ShelfFit {
+  innerWidth: number
+  minRows: number
+}
+
+/** Header room and side margin the camera keeps around the bookcase. */
+export const FRAME = { vertical: 1.28, horizontal: 1.12 }
+
+/**
+ * Shapes the bookcase to the screen: wide on desktop, narrow and taller on a
+ * portrait phone so the camera can come closer and the books appear bigger.
+ * Widths are quantised so small viewport changes (mobile URL bar) don't reflow.
+ */
+export function shelfFitFor(aspect: number): ShelfFit {
+  const sides = SHELF.side * 2
+  // a pleasant width for this screen shape, and the case height that pairs with it
+  const target = clamp(aspect * 1.45, 0.6, SHELF.innerWidth)
+  const pairedHeight = ((target + sides) * FRAME.horizontal) / (aspect * FRAME.vertical)
+  const minRows = Math.max(
+    SHELF.minRows,
+    Math.round((pairedHeight - SHELF.board) / SHELF.rowHeight),
+  )
+  // now pick the width that makes exactly `minRows` shelves fill the screen
+  const caseHeight = minRows * SHELF.rowHeight + SHELF.board
+  const fitted = (caseHeight * FRAME.vertical * aspect) / FRAME.horizontal - sides
+  const innerWidth = clamp(Math.floor(fitted * 20) / 20, 0.6, SHELF.innerWidth)
+  return { innerWidth, minRows }
+}
+
+function clamp(v: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, v))
+}
+
 /** Packs books left-to-right, top shelf first, wrapping to the next shelf. */
-export function computeLayout(books: Book[], minRows = SHELF.minRows): ShelfLayout {
+export function computeLayout(
+  books: Book[],
+  { innerWidth = SHELF.innerWidth, minRows = SHELF.minRows }: Partial<ShelfFit> = {},
+): ShelfLayout {
   const dims = new Map<string, BookDims>()
   const placed: Array<{ id: string; row: number; x: number; d: BookDims }> = []
   let row = 0
@@ -67,28 +127,60 @@ export function computeLayout(books: Book[], minRows = SHELF.minRows): ShelfLayo
   for (const b of books) {
     const d = bookDims(b)
     dims.set(b.id, d)
-    if (x > 0 && x + d.t > SHELF.innerWidth) {
+    if (x > 0 && x + d.t > innerWidth) {
       row++
       x = 0
     }
     placed.push({ id: b.id, row, x: x + d.t / 2, d })
     x += d.t + SHELF.gap
   }
-  const rows = Math.max(minRows, row + 1)
+  // right edge of the books on each shelf
+  const usedEnd = (r: number) => {
+    let end = 0
+    for (const p of placed) if (p.row === r) end = Math.max(end, p.x + p.d.t / 2)
+    return end
+  }
+  // fill free space at the right end of each shelf with decorations
+  const placeDecor = (rowCount: number) => {
+    const out: Array<Omit<DecorSlot, 'floorY'>> = []
+    let next = 0
+    for (let r = 0; r < rowCount && next < DECOR.length; r++) {
+      let right = innerWidth - DECOR_MARGIN
+      const left = usedEnd(r) + DECOR_MARGIN
+      for (let n = 0; n < DECOR_PER_ROW && next < DECOR.length; n++) {
+        const d = DECOR[next]
+        if (right - d.width < left) break
+        out.push({ kind: d.kind, x: -innerWidth / 2 + right - d.width / 2, row: r })
+        right -= d.width + DECOR_GAP
+        next++
+      }
+    }
+    return out
+  }
+
+  let rows = Math.max(minRows, row + 1)
+  let decor = placeDecor(rows)
+  // there is always room for at least one koala: grow a shelf if needed
+  if (!decor.some((d) => d.kind === 'koala')) {
+    rows++
+    decor = placeDecor(rows)
+  }
   const slots = new Map<string, Slot>()
   for (const p of placed) {
     slots.set(p.id, {
       row: p.row,
-      x: -SHELF.innerWidth / 2 + p.x,
+      x: -innerWidth / 2 + p.x,
       y: rowFloorY(p.row, rows) + p.d.h / 2,
       z: SHELF.depth / 2 - p.d.w / 2 - 0.012,
     })
   }
   return {
     slots,
+    decor: decor.map((d) => ({ ...d, floorY: rowFloorY(d.row, rows) })),
     dims,
+    innerWidth,
     rows,
-    caseWidth: SHELF.innerWidth + SHELF.side * 2,
+    caseWidth: innerWidth + SHELF.side * 2,
     caseHeight: rows * SHELF.rowHeight + SHELF.board,
   }
 }

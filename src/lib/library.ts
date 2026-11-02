@@ -11,6 +11,8 @@ export interface Book {
   isbn?: string
   /** Open Library work key, e.g. "/works/OL45804W" */
   workKey?: string
+  /** Storytel consumable id, set for books imported from Storytel */
+  storytelId?: string
   /** URL of the front cover (served through our same-origin proxy so WebGL can use it) */
   coverUrl?: string
   /** width / height of the cover image, used to shape the 3D book */
