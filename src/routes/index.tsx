@@ -40,7 +40,12 @@ function Home() {
   useEffect(() => {
     if (!selectedId) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLSelectElement ||
+        e.target instanceof HTMLTextAreaElement
+      )
+        return
       // a dialog on top (e.g. the cover picker) handles its own keys
       if (document.querySelector('dialog[open]')) return
       if (e.key === 'Escape') select(null)

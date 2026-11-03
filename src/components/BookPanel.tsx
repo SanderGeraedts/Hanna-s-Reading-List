@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Book, ReadingStatus } from '#/lib/library'
 import { STATUS_LABELS, timesRead } from '#/lib/library'
 import type { SeriesInfo } from '#/lib/series'
+import { backText } from './textures'
 
 export type Face = 'front' | 'spine' | 'back'
 
@@ -33,6 +34,7 @@ export function BookPanel({
   const pct = Math.round((book.progress ?? 0) * 100)
   const reads = timesRead(book)
   const [seriesName, setSeriesName] = useState(book.series ?? '')
+  const [blurb, setBlurb] = useState(backText(book))
   const [seriesNo, setSeriesNo] = useState(book.seriesIndex?.toString() ?? '')
   const saveSeries = (name: string, no: string) => {
     const n = Number(no)
@@ -147,7 +149,24 @@ export function BookPanel({
         </div>
       </div>
 
-      {book.description && <p className="description">{book.description}</p>}
+      <label className="field">
+        <span>Back cover</span>
+        <textarea
+          className="input back-text"
+          rows={5}
+          value={blurb}
+          onFocus={() => onFace('back')}
+          onChange={(e) => setBlurb(e.target.value)}
+          onBlur={() => {
+            const text = blurb.trim()
+            const placeholder = backText({ ...book, description: undefined })
+            // leaving it empty (or untouched) keeps the placeholder text
+            const description = text && text !== placeholder ? text : undefined
+            if (description !== book.description) onUpdate({ description })
+            if (!text) setBlurb(placeholder)
+          }}
+        />
+      </label>
 
       <div className="panel-actions">
         <button className="btn" onClick={onClose}>

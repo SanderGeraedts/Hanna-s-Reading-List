@@ -396,9 +396,7 @@ export function paintBack(book: Book, dims: BookDims) {
   ctx.fillStyle = accent
   ctx.fillRect(W / 2 - 40, pad + 96, 80, 3)
 
-  const blurb =
-    book.description ??
-    `A book on Hanna's reading list${book.year ? `, first published in ${book.year}` : ''}.`
+  const blurb = backText(book)
   ctx.fillStyle = ink
   ctx.textAlign = 'left'
   ctx.font = `400 22px ${SERIF}`
@@ -641,4 +639,12 @@ export function wallTexture() {
   ctx.fillStyle = g
   ctx.fillRect(0, 0, c.width, c.height)
   return toTexture(c)
+}
+
+/** Text printed on the back cover: the blurb, or a short placeholder when there is none. */
+export function backText(book: Book) {
+  return (
+    book.description?.trim() ||
+    `A book on Hanna's reading list${book.year ? `, first published in ${book.year}` : ''}.`
+  )
 }

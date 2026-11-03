@@ -300,13 +300,12 @@ textarea.input {
   color: var(--muted);
   text-align: center;
 }
-.description {
-  margin: 0;
+.back-text {
+  font-family: inherit;
   font-size: 0.875rem;
   line-height: 1.5;
   color: #e3d6c1;
-  max-height: 10rem;
-  overflow: auto;
+  min-height: 6rem;
 }
 .panel-actions {
   display: flex;
