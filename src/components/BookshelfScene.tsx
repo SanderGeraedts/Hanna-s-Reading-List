@@ -333,6 +333,10 @@ function useCameraRig(
   const camera = useThree((s) => s.camera)
   const size = useThree((s) => s.size)
   const base = useMemo(() => new THREE.Vector3(), [])
+  /** height the camera looks at; eased like the camera so the view never jolts */
+  const lookY = useRef<number | null>(null)
+  /** vertical parallax offset, eased gently like the sideways one */
+  const tiltY = useRef(0)
 
   const aspect = size.width / Math.max(1, size.height)
   const tan = Math.tan(THREE.MathUtils.degToRad(FOV / 2))
@@ -372,12 +376,16 @@ function useCameraRig(
     // a touch of parallax following the mouse
     const px = opts.parallax ? state.pointer.x * 0.06 : 0
     const py = opts.parallax ? state.pointer.y * 0.04 : 0
+    lookY.current = THREE.MathUtils.damp(lookY.current ?? base.y, base.y, 6, d)
+    tiltY.current = THREE.MathUtils.damp(tiltY.current, py, 3, d)
     c.position.set(
       THREE.MathUtils.damp(c.position.x, base.x + px, 3, d),
-      THREE.MathUtils.damp(c.position.y, base.y + py, 6, d),
+      lookY.current + tiltY.current,
       THREE.MathUtils.damp(c.position.z, base.z, 3, d),
     )
-    c.lookAt(0, c.position.y - py, 0)
+    // look straight ahead at the shelf height (not following the parallax),
+    // easing at the same rate as the camera so scrolling stays level
+    c.lookAt(0, lookY.current, 0)
   })
 
   useEffect(() => {
