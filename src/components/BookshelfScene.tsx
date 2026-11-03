@@ -57,7 +57,7 @@ function Scene({ books, selectedId, inspect, onSelect, onReorder, arrangement }:
     dragRef.current = d
     setDrag(d)
   }, [])
-  const pending = useRef<{ id: string; x: number; y: number } | null>(null)
+  const pending = useRef<{ id: string; x: number; y: number; t: number; touch: boolean } | null>(null)
   const dragPoint = useRef(new THREE.Vector3())
   const gl = useThree((s) => s.gl)
 
@@ -83,7 +83,13 @@ function Scene({ books, selectedId, inspect, onSelect, onReorder, arrangement }:
   if (!drag) stableLayout.current = layout
   const caseLayout = drag ? stableLayout.current : layout
 
-  const cameraBase = useCameraRig(caseLayout.caseWidth, caseLayout.caseHeight, !selectedId)
+  const scroll = useRef<ScrollState>({ y: null, min: 0, max: 0, worldPerPx: 0 })
+  const cameraBase = useCameraRig(caseLayout.caseWidth, caseLayout.caseHeight, {
+    parallax: !selectedId,
+    portrait,
+    scroll,
+    dragging: !!drag,
+  })
 
   useEffect(() => {
     gl.domElement.style.cursor = drag ? 'grabbing' : hovered && !selectedId ? 'grab' : 'auto'
@@ -128,7 +134,13 @@ function Scene({ books, selectedId, inspect, onSelect, onReorder, arrangement }:
       if (selectedId || e.button !== 0) return
       e.stopPropagation()
       ;(e.target as Element).setPointerCapture(e.pointerId)
-      pending.current = { id, x: e.nativeEvent.clientX, y: e.nativeEvent.clientY }
+      pending.current = {
+        id,
+        x: e.nativeEvent.clientX,
+        y: e.nativeEvent.clientY,
+        t: performance.now(),
+        touch: e.nativeEvent.pointerType !== 'mouse',
+      }
     },
     [selectedId],
   )
@@ -140,6 +152,8 @@ function Scene({ books, selectedId, inspect, onSelect, onReorder, arrangement }:
       const drag = dragRef.current
       const moved = Math.hypot(e.nativeEvent.clientX - p.x, e.nativeEvent.clientY - p.y)
       if (!drag && moved < 6) return
+      // on touch screens a swipe scrolls the shelf; press and hold a book to move it
+      if (!drag && p.touch && performance.now() - p.t < LONG_PRESS_MS) return
       e.stopPropagation()
       dragPlane.constant = -(SHELF.depth / 2 + 0.06)
       if (!e.ray.intersectPlane(dragPlane, hit)) return
@@ -169,6 +183,55 @@ function Scene({ books, selectedId, inspect, onSelect, onReorder, arrangement }:
     },
     [onReorder, onSelect, updateDrag],
   )
+
+  // ---- scrolling: mouse wheel, or a swipe on touch screens -------------------
+  useEffect(() => {
+    if (selectedId) return
+    const el = gl.domElement
+    let swipe: { id: number; y: number; t: number; scrolling: boolean } | null = null
+    const scrollBy = (px: number) => {
+      const s = scroll.current
+      if (s.y === null || s.max <= s.min) return
+      s.y = THREE.MathUtils.clamp(s.y + px * s.worldPerPx, s.min, s.max)
+    }
+    const wheel = (e: WheelEvent) => {
+      if (scroll.current.max <= scroll.current.min) return
+      e.preventDefault()
+      scrollBy(-(e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY))
+    }
+    const down = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse') return
+      swipe = { id: e.pointerId, y: e.clientY, t: performance.now(), scrolling: false }
+    }
+    const move = (e: PointerEvent) => {
+      if (!swipe || e.pointerId !== swipe.id || dragRef.current) return
+      const dy = e.clientY - swipe.y
+      if (!swipe.scrolling) {
+        // a press held still is the start of moving a book, not a swipe
+        if (Math.abs(dy) < 8 || performance.now() - swipe.t > LONG_PRESS_MS) return
+        swipe.scrolling = true
+        pending.current = null // so lifting the finger doesn't open a book
+        setHovered(null)
+      }
+      scrollBy(dy)
+      swipe.y = e.clientY
+    }
+    const up = (e: PointerEvent) => {
+      if (swipe && e.pointerId === swipe.id) swipe = null
+    }
+    el.addEventListener('wheel', wheel, { passive: false })
+    el.addEventListener('pointerdown', down)
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+    window.addEventListener('pointercancel', up)
+    return () => {
+      el.removeEventListener('wheel', wheel)
+      el.removeEventListener('pointerdown', down)
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      window.removeEventListener('pointercancel', up)
+    }
+  }, [selectedId, gl])
 
   // ---- inspecting: drag anywhere to turn the book -------------------------
   useEffect(() => {
@@ -246,32 +309,75 @@ function Scene({ books, selectedId, inspect, onSelect, onReorder, arrangement }:
   )
 }
 
-/** Positions the camera so the whole bookcase fits, whatever the window shape. */
-function useCameraRig(caseWidth: number, caseHeight: number, parallax: boolean) {
+interface ScrollState {
+  /** camera height the shelf is scrolled to (null until first framed: start at the top) */
+  y: number | null
+  min: number
+  max: number
+  /** world units per screen pixel at the bookcase, for 1:1 swiping */
+  worldPerPx: number
+}
+
+const LONG_PRESS_MS = 350
+
+/**
+ * Frames the bookcase. On wide screens the whole case fits; on a phone held
+ * upright it is framed to the width of the screen and the camera scrolls up
+ * and down it instead of shrinking it to fit.
+ */
+function useCameraRig(
+  caseWidth: number,
+  caseHeight: number,
+  opts: { parallax: boolean; portrait: boolean; scroll: RefObject<ScrollState>; dragging: boolean },
+) {
   const camera = useThree((s) => s.camera)
   const size = useThree((s) => s.size)
   const base = useMemo(() => new THREE.Vector3(), [])
 
   const aspect = size.width / Math.max(1, size.height)
   const tan = Math.tan(THREE.MathUtils.degToRad(FOV / 2))
+  // phones use (nearly) the full width; desktops keep a margin round the case
+  const marginW = opts.portrait ? 1.09 : FRAME.horizontal
+  const distW = (caseWidth * marginW) / 2 / (tan * aspect)
   // leave room for the header at the top
   const distH = (caseHeight * FRAME.vertical) / 2 / tan
-  const distW = (caseWidth * FRAME.horizontal) / 2 / (tan * aspect)
-  const dist = Math.max(distH, distW, 0.9) + SHELF.depth / 2
-  base.set(0, caseHeight / 2 + caseHeight * 0.04, dist)
+  // desktops show the whole case; phones held upright scroll through it
+  const toCase = Math.max(distW, opts.portrait ? 0 : distH, 0.9)
+  base.z = toCase + SHELF.depth / 2
+
+  const s = opts.scroll.current
+  const viewH = 2 * toCase * tan
+  s.worldPerPx = viewH / Math.max(1, size.height)
+  if (distH <= toCase) {
+    // everything fits: centre it, as before
+    s.min = s.max = caseHeight / 2 + caseHeight * 0.04
+  } else {
+    s.min = viewH * 0.42 // bottom: a strip of floor below the case
+    s.max = caseHeight - viewH * 0.5 + viewH * 0.14 // top: clear of the header
+  }
+  s.y = s.y === null ? s.max : THREE.MathUtils.clamp(s.y, s.min, s.max)
+  base.set(0, s.y, base.z)
 
   useFrame((state, dt) => {
     const d = Math.min(dt, 0.05)
     const c = state.camera
+    const sc = opts.scroll.current
+    // dragging a book near the top or bottom edge scrolls the shelf
+    if (opts.dragging && sc.y !== null && sc.max > sc.min) {
+      const edge = state.pointer.y
+      const speed = edge > 0.7 ? (edge - 0.7) / 0.3 : edge < -0.7 ? (edge + 0.7) / 0.3 : 0
+      sc.y = THREE.MathUtils.clamp(sc.y + speed * 1.2 * d, sc.min, sc.max)
+    }
+    if (sc.y !== null) base.y = sc.y
     // a touch of parallax following the mouse
-    const px = parallax ? state.pointer.x * 0.06 : 0
-    const py = parallax ? state.pointer.y * 0.04 : 0
+    const px = opts.parallax ? state.pointer.x * 0.06 : 0
+    const py = opts.parallax ? state.pointer.y * 0.04 : 0
     c.position.set(
       THREE.MathUtils.damp(c.position.x, base.x + px, 3, d),
-      THREE.MathUtils.damp(c.position.y, base.y + py, 3, d),
+      THREE.MathUtils.damp(c.position.y, base.y + py, 6, d),
       THREE.MathUtils.damp(c.position.z, base.z, 3, d),
     )
-    c.lookAt(0, base.y, 0)
+    c.lookAt(0, c.position.y - py, 0)
   })
 
   useEffect(() => {

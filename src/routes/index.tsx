@@ -3,6 +3,7 @@ import { ClientOnly, createFileRoute } from '@tanstack/react-router'
 import { BookshelfScene } from '#/components/BookshelfScene'
 import { AddBookDialog } from '#/components/AddBookDialog'
 import { BookPanel } from '#/components/BookPanel'
+import { CoverPicker } from '#/components/CoverPicker'
 import type { Face } from '#/components/BookPanel'
 import { nearestTurn } from '#/components/BookMesh'
 import type { InspectTarget } from '#/components/BookMesh'
@@ -18,6 +19,7 @@ function Home() {
   const { books, loaded, arrangement, addBook, removeBook, updateBook, reorder, sortBy } = useLibrary()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
+  const [pickingCover, setPickingCover] = useState(false)
   const inspect = useRef<InspectTarget>({ rotY: 0, rotX: 0 })
 
   const selected = books.find((b) => b.id === selectedId) ?? null
@@ -39,6 +41,8 @@ function Home() {
     if (!selectedId) return
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return
+      // a dialog on top (e.g. the cover picker) handles its own keys
+      if (document.querySelector('dialog[open]')) return
       if (e.key === 'Escape') select(null)
       // snap to the next quarter turn
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
@@ -118,7 +122,10 @@ function Home() {
           </div>
         )}
         {books.length > 1 && !selected && (
-          <p className="stage-hint">Click a book to pull it off the shelf · drag to rearrange</p>
+          <p className="stage-hint">
+            <span className="hint-mouse">Click a book to pull it off the shelf · drag to rearrange</span>
+            <span className="hint-touch">Tap a book to take it out · swipe to scroll · hold to move</span>
+          </p>
         )}
       </main>
 
@@ -137,11 +144,20 @@ function Home() {
           onProgress={(progress) => updateBook(selected.id, { progress })}
           onUpdate={(patch) => updateBook(selected.id, patch)}
           detectedSeries={selectedSeries}
+          onChangeCover={() => setPickingCover(true)}
           onRemove={() => {
             select(null)
             removeBook(selected.id)
           }}
           onClose={() => select(null)}
+        />
+      )}
+
+      {selected && pickingCover && (
+        <CoverPicker
+          book={selected}
+          onChange={(patch) => updateBook(selected.id, patch)}
+          onClose={() => setPickingCover(false)}
         />
       )}
 

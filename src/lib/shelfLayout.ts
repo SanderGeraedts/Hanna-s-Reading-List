@@ -111,6 +111,13 @@ export const FRAME = { vertical: 1.28, horizontal: 1.12 }
  */
 export function shelfFitFor(aspect: number): ShelfFit {
   const sides = SHELF.side * 2
+  if (aspect < 0.8) {
+    // phone held upright: a narrow case across the full width, scrolled vertically,
+    // so the books come out large enough to read and tap
+    const innerWidth = clamp(Math.floor(aspect * 1.25 * 20) / 20, 0.5, SHELF.innerWidth)
+    const viewHeight = ((innerWidth + sides) * 1.09) / aspect
+    return { innerWidth, minRows: Math.max(2, Math.ceil((viewHeight * 0.75) / SHELF.rowHeight)) }
+  }
   // a pleasant width for this screen shape, and the case height that pairs with it
   const target = clamp(aspect * 1.45, 0.6, SHELF.innerWidth)
   const pairedHeight = ((target + sides) * FRAME.horizontal) / (aspect * FRAME.vertical)

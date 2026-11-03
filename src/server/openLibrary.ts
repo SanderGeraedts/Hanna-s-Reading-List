@@ -162,3 +162,44 @@ export const lookupIsbn = createServerFn({ method: 'GET' })
       description: cleanDescription(edition.description) ?? cleanDescription(work?.description),
     }
   })
+
+/**
+ * Cover ids a book could use instead of its current cover: every edition of
+ * its work that has a cover, plus the covers of the works a title search finds.
+ */
+export const getCoverChoices = createServerFn({ method: 'GET' })
+  .validator((input: { workKey?: string; query: string }) => {
+    const workKey = input?.workKey ? String(input.workKey) : undefined
+    if (workKey && !/^\/works\/OL\d+W$/.test(workKey)) throw new Error('Invalid work key')
+    return { workKey, query: String(input?.query ?? '').trim().slice(0, 200) }
+  })
+  .handler(async ({ data }): Promise<number[]> => {
+    const ids: number[] = []
+    const add = (id?: number) => {
+      if (id && id > 0 && !ids.includes(id)) ids.push(id)
+    }
+    const editions = async (workKey: string) => {
+      const json = await getJson<{ entries?: Array<{ covers?: number[] }> }>(
+        `${OL}${workKey}/editions.json?limit=100`,
+      ).catch(() => null)
+      for (const e of json?.entries ?? []) add(e.covers?.find((c) => c > 0))
+    }
+
+    const search = async () => {
+      if (data.query.length < 2) return []
+      const url = new URL('/search.json', OL)
+      url.searchParams.set('q', data.query)
+      url.searchParams.set('limit', '8')
+      url.searchParams.set('fields', 'key,cover_i')
+      const json = await getJson<{ docs: Array<{ key: string; cover_i?: number }> }>(url.toString()).catch(
+        () => null,
+      )
+      return json?.docs ?? []
+    }
+
+    const [, docs] = await Promise.all([data.workKey ? editions(data.workKey) : null, search()])
+    for (const d of docs) add(d.cover_i)
+    // no work of our own: also look through the editions of the best search match
+    if (!data.workKey && docs[0]?.key) await editions(docs[0].key)
+    return ids.slice(0, 36)
+  })

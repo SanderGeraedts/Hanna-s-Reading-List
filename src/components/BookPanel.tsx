@@ -14,6 +14,7 @@ interface Props {
   onUpdate: (patch: Partial<Book>) => void
   /** series found automatically, shown as a hint when none was entered */
   detectedSeries?: SeriesInfo
+  onChangeCover: () => void
   onRemove: () => void
   onClose: () => void
 }
@@ -25,6 +26,7 @@ export function BookPanel({
   onProgress,
   onUpdate,
   detectedSeries,
+  onChangeCover,
   onRemove,
   onClose,
 }: Props) {
@@ -62,6 +64,9 @@ export function BookPanel({
         <button onClick={() => onFace('back')}>Back</button>
       </div>
       <p className="hint">Drag to turn the book · ← → to flip · Esc to put it back</p>
+      <button className="btn change-cover" onClick={onChangeCover}>
+        Change cover…
+      </button>
 
       <label className="field">
         <span>Status</span>
