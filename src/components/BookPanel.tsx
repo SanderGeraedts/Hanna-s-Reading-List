@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import type { Book, ReadingStatus } from '#/lib/library'
-import { STATUS_LABELS } from '#/lib/library'
+import { STATUS_LABELS, timesRead } from '#/lib/library'
+import type { SeriesInfo } from '#/lib/series'
 
 export type Face = 'front' | 'spine' | 'back'
 
@@ -8,12 +10,35 @@ interface Props {
   onFace: (face: Face) => void
   onStatus: (status: ReadingStatus) => void
   onProgress: (progress: number) => void
+  /** edits to other details: times read, series */
+  onUpdate: (patch: Partial<Book>) => void
+  /** series found automatically, shown as a hint when none was entered */
+  detectedSeries?: SeriesInfo
   onRemove: () => void
   onClose: () => void
 }
 
-export function BookPanel({ book, onFace, onStatus, onProgress, onRemove, onClose }: Props) {
+export function BookPanel({
+  book,
+  onFace,
+  onStatus,
+  onProgress,
+  onUpdate,
+  detectedSeries,
+  onRemove,
+  onClose,
+}: Props) {
   const pct = Math.round((book.progress ?? 0) * 100)
+  const reads = timesRead(book)
+  const [seriesName, setSeriesName] = useState(book.series ?? '')
+  const [seriesNo, setSeriesNo] = useState(book.seriesIndex?.toString() ?? '')
+  const saveSeries = (name: string, no: string) => {
+    const n = Number(no)
+    onUpdate({
+      series: name.trim() || undefined,
+      seriesIndex: name.trim() && no.trim() && Number.isFinite(n) ? n : undefined,
+    })
+  }
   return (
     <aside className="panel" aria-label={`Details for ${book.title}`}>
       <div className="panel-top">
@@ -73,6 +98,49 @@ export function BookPanel({ book, onFace, onStatus, onProgress, onRemove, onClos
           />
         </label>
       )}
+
+      {(book.status === 'read' || reads > 0) && (
+        <div className="field">
+          <span>Times read</span>
+          <div className="stepper" role="group" aria-label="Times read">
+            <button
+              className="btn"
+              aria-label="One fewer"
+              disabled={reads <= (book.status === 'read' ? 1 : 0)}
+              onClick={() => onUpdate({ readCount: reads - 1 })}
+            >
+              −
+            </button>
+            <output aria-live="polite">{reads}</output>
+            <button className="btn" aria-label="One more" onClick={() => onUpdate({ readCount: reads + 1 })}>
+              +
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="field">
+        <span>Series</span>
+        <div className="series-row">
+          <input
+            className="input"
+            value={seriesName}
+            placeholder={detectedSeries && !book.series ? detectedSeries.name : 'Not in a series'}
+            aria-label="Series name"
+            onChange={(e) => setSeriesName(e.target.value)}
+            onBlur={() => saveSeries(seriesName, seriesNo)}
+          />
+          <input
+            className="input series-no"
+            value={seriesNo}
+            inputMode="decimal"
+            placeholder={detectedSeries?.index && !book.series ? `#${detectedSeries.index}` : '#'}
+            aria-label="Number in series"
+            onChange={(e) => setSeriesNo(e.target.value.replace(/[^\d.]/g, ''))}
+            onBlur={() => saveSeries(seriesName, seriesNo)}
+          />
+        </div>
+      </div>
 
       {book.description && <p className="description">{book.description}</p>}
 

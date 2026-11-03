@@ -67,9 +67,23 @@ export interface DecorSlot {
   row: number
 }
 
+/** A book nook: a little lit alley in a book-sized box, standing between groups of books. */
+export const NOOK = { width: 0.12, height: 0.3, depth: 0.22, gap: 0.012 }
+
+export interface NookSlot {
+  /** id of the book the nook stands in front of */
+  before: string
+  /** the group that starts after the nook, painted on its hanging sign */
+  label: string
+  x: number
+  floorY: number
+  row: number
+}
+
 export interface ShelfLayout {
   slots: Map<string, Slot>
   decor: DecorSlot[]
+  nooks: NookSlot[]
   dims: Map<string, BookDims>
   innerWidth: number
   rows: number
@@ -119,25 +133,38 @@ function clamp(v: number, min: number, max: number) {
 export function computeLayout(
   books: Book[],
   { innerWidth = SHELF.innerWidth, minRows = SHELF.minRows }: Partial<ShelfFit> = {},
+  /** book id -> label of a nook to stand just before that book */
+  nooksBefore: Map<string, string> = new Map(),
 ): ShelfLayout {
   const dims = new Map<string, BookDims>()
   const placed: Array<{ id: string; row: number; x: number; d: BookDims }> = []
+  const nookPlaced: Array<{ before: string; label: string; row: number; x: number }> = []
   let row = 0
   let x = 0
-  for (const b of books) {
-    const d = bookDims(b)
-    dims.set(b.id, d)
-    if (x > 0 && x + d.t > innerWidth) {
+  const fit = (width: number) => {
+    if (x > 0 && x + width > innerWidth) {
       row++
       x = 0
     }
+  }
+  for (const b of books) {
+    const d = bookDims(b)
+    dims.set(b.id, d)
+    const label = nooksBefore.get(b.id)
+    if (label !== undefined) {
+      fit(NOOK.width + NOOK.gap * 2)
+      nookPlaced.push({ before: b.id, label, row, x: x + NOOK.gap + NOOK.width / 2 })
+      x += NOOK.width + NOOK.gap * 2
+    }
+    fit(d.t)
     placed.push({ id: b.id, row, x: x + d.t / 2, d })
     x += d.t + SHELF.gap
   }
-  // right edge of the books on each shelf
+  // right edge of the books (and nooks) on each shelf
   const usedEnd = (r: number) => {
     let end = 0
     for (const p of placed) if (p.row === r) end = Math.max(end, p.x + p.d.t / 2)
+    for (const n of nookPlaced) if (n.row === r) end = Math.max(end, n.x + NOOK.width / 2)
     return end
   }
   // fill free space at the right end of each shelf with decorations
@@ -177,6 +204,11 @@ export function computeLayout(
   return {
     slots,
     decor: decor.map((d) => ({ ...d, floorY: rowFloorY(d.row, rows) })),
+    nooks: nookPlaced.map((n) => ({
+      ...n,
+      x: -innerWidth / 2 + n.x,
+      floorY: rowFloorY(n.row, rows),
+    })),
     dims,
     innerWidth,
     rows,

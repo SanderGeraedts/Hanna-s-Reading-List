@@ -114,6 +114,17 @@ function authorLine(book: Book) {
 
 const PX_PER_UNIT = 2400
 
+/**
+ * Size and height of the medal on a finished book's spine (book units).
+ * Shared by the spine texture (which paints the ribbon) and the 3D medal.
+ */
+export function medalLayout(dims: BookDims) {
+  const r = Math.min(0.011, Math.max(0.0055, dims.t * 0.36))
+  const fromBottom = r + 0.007
+  const ribbon = r * 2.4 // ribbon length above the medal's centre
+  return { r, fromBottom, top: fromBottom + ribbon + r * 0.28 }
+}
+
 export function paintSpine(book: Book, dims: BookDims) {
   const H = Math.min(1024, Math.round(dims.h * PX_PER_UNIT * 1.3))
   const W = Math.max(40, Math.round((H * dims.t) / dims.h))
@@ -132,9 +143,10 @@ export function paintSpine(book: Book, dims: BookDims) {
   ctx.fillStyle = grad
   ctx.fillRect(0, 0, W, H)
 
-  // decorative bands
+  // decorative bands (a finished book's medal takes the place of the bottom pair)
+  const read = book.status === 'read'
   ctx.fillStyle = accent
-  for (const y of [H * 0.05, H * 0.9]) {
+  for (const y of read ? [H * 0.05] : [H * 0.05, H * 0.9]) {
     ctx.fillRect(0, y, W, Math.max(2, H * 0.006))
     ctx.fillRect(0, y + H * 0.014, W, Math.max(1, H * 0.003))
   }
@@ -146,7 +158,10 @@ export function paintSpine(book: Book, dims: BookDims) {
   ctx.fillStyle = ink
   ctx.textBaseline = 'middle'
   const maxFont = W * 0.5
-  const titleSpace = H * 0.56
+  // on finished books the text stops short of the medal and its ribbon
+  const textEnd = read ? H * (1 - medalLayout(dims).top / dims.h) - H * 0.02 : H * 0.87
+  const authorSpace = Math.min(H * 0.22, (textEnd - H * 0.1) * 0.3)
+  const titleSpace = Math.min(H * 0.56, textEnd - H * 0.1 - authorSpace - H * 0.03)
   const titleSize = fitFont(ctx, book.title, titleSpace, Math.round(maxFont), 10)
   ctx.font = `600 ${titleSize}px ${SERIF}`
   ctx.textAlign = 'left'
@@ -154,16 +169,195 @@ export function paintSpine(book: Book, dims: BookDims) {
 
   const author = (book.authors[0]?.split(' ').slice(-1)[0] ?? '').toUpperCase()
   if (author) {
-    const authorSize = fitFont(ctx, author, H * 0.22, Math.round(Math.min(maxFont * 0.7, titleSize)), 8, '400')
+    const authorSize = fitFont(ctx, author, authorSpace, Math.round(Math.min(maxFont * 0.7, titleSize)), 8, '400')
     ctx.font = `400 ${authorSize}px ${SERIF}`
     ctx.textAlign = 'right'
     ctx.globalAlpha = 0.85
-    ctx.fillText(ellipsize(ctx, author, H * 0.22), H * 0.87, 0)
+    ctx.fillText(ellipsize(ctx, author, authorSpace), textEnd, 0)
   }
   ctx.restore()
 
   grain(ctx, W, H, 0.05)
+  if (read) paintMedalRibbon(ctx, W, H, dims)
   return toTexture(c)
+}
+
+/** Medal ribbon: a tapered striped band running up from the medal to a gold clasp. */
+function paintMedalRibbon(ctx: CanvasRenderingContext2D, W: number, H: number, dims: BookDims) {
+  const { r, fromBottom } = medalLayout(dims)
+  ctx.save()
+  // draw in book units, origin at the medal centre, y growing downwards
+  ctx.translate(W / 2, H * (1 - fromBottom / dims.h))
+  ctx.scale(W / dims.t, H / dims.h)
+  const top = -r * 2.4
+  const halfTop = r * 0.62
+  const halfBottom = r * 0.42
+  const band = () => {
+    ctx.beginPath()
+    ctx.moveTo(-halfTop, top)
+    ctx.lineTo(halfTop, top)
+    ctx.lineTo(halfBottom, 0)
+    ctx.lineTo(-halfBottom, 0)
+    ctx.closePath()
+  }
+  ctx.shadowColor = 'rgba(0,0,0,0.45)'
+  ctx.shadowBlur = r * 0.25 * (H / dims.h)
+  ctx.shadowOffsetY = r * 0.08 * (H / dims.h)
+  ctx.fillStyle = '#2f4fb5'
+  band()
+  ctx.fill()
+  ctx.shadowColor = 'transparent'
+  // stripes: white centre with red pinstripes, following the taper
+  ctx.save()
+  band()
+  ctx.clip()
+  const stripe = (frac: number, width: number, color: string) => {
+    ctx.fillStyle = color
+    ctx.beginPath()
+    ctx.moveTo((frac - width) * halfTop, top)
+    ctx.lineTo((frac + width) * halfTop, top)
+    ctx.lineTo((frac + width) * halfBottom, 0)
+    ctx.lineTo((frac - width) * halfBottom, 0)
+    ctx.closePath()
+    ctx.fill()
+  }
+  stripe(0, 0.3, '#f4f1e8')
+  stripe(0, 0.08, '#d23a3a')
+  // soft fold shading across the band
+  const fold = ctx.createLinearGradient(-halfTop, 0, halfTop, 0)
+  fold.addColorStop(0, 'rgba(0,0,0,0.25)')
+  fold.addColorStop(0.5, 'rgba(255,255,255,0.08)')
+  fold.addColorStop(1, 'rgba(0,0,0,0.3)')
+  ctx.fillStyle = fold
+  ctx.fillRect(-halfTop, top, halfTop * 2, -top)
+  ctx.restore()
+  // gold clasp bar at the top of the ribbon
+  const clasp = ctx.createLinearGradient(0, top - r * 0.28, 0, top + r * 0.05)
+  clasp.addColorStop(0, '#fff0a8')
+  clasp.addColorStop(0.5, '#e0ad3a')
+  clasp.addColorStop(1, '#8a5c12')
+  ctx.fillStyle = clasp
+  ctx.fillRect(-halfTop * 1.12, top - r * 0.28, halfTop * 2.24, r * 0.33)
+  ctx.restore()
+}
+
+export type MedalTier = 'bronze' | 'silver' | 'gold'
+
+/** Read once: bronze, twice: silver, three times or more: gold. */
+export function medalTier(timesRead: number): MedalTier {
+  return timesRead >= 3 ? 'gold' : timesRead === 2 ? 'silver' : 'bronze'
+}
+
+export const METALS: Record<
+  MedalTier,
+  { light: string; mid: string; dark: string; groove: string; shine: string; rim: string; ink: string }
+> = {
+  gold: {
+    light: '#fff4b8',
+    mid: '#e9bb45',
+    dark: '#9a6a16',
+    groove: '100,60,5',
+    shine: '255,245,200',
+    rim: '#c9962c',
+    ink: '#6b4208',
+  },
+  silver: {
+    light: '#ffffff',
+    mid: '#c8cdd4',
+    dark: '#6c737d',
+    groove: '60,66,76',
+    shine: '255,255,255',
+    rim: '#a9afb8',
+    ink: '#3f4650',
+  },
+  bronze: {
+    light: '#ffd2a6',
+    mid: '#c47c43',
+    dark: '#6b3812',
+    groove: '80,38,10',
+    shine: '255,225,190',
+    rim: '#a5622d',
+    ink: '#4f2608',
+  },
+}
+
+const medalFaces = new Map<string, THREE.CanvasTexture>()
+
+/**
+ * The medal's face: struck metal with a milled rim, a ring of laurel leaves
+ * and the number of times the book has been read, embossed in the middle.
+ * Cached per metal and number, never disposed.
+ */
+export function medalFaceTexture(tier: MedalTier, count: number) {
+  const key = `${tier}:${count}`
+  const cached = medalFaces.get(key)
+  if (cached) return cached
+  const m = METALS[tier]
+  const S = 256
+  const c = canvas(S, S)
+  const ctx = c.getContext('2d')!
+  const R = S / 2
+  ctx.translate(R, R)
+
+  // body, lit from the top left
+  const body = ctx.createRadialGradient(-R * 0.35, -R * 0.4, R * 0.05, 0, 0, R)
+  body.addColorStop(0, m.light)
+  body.addColorStop(0.45, m.mid)
+  body.addColorStop(1, m.dark)
+  ctx.fillStyle = body
+  ctx.beginPath()
+  ctx.arc(0, 0, R, 0, Math.PI * 2)
+  ctx.fill()
+
+  // milled rim
+  ctx.strokeStyle = `rgba(${m.groove},0.55)`
+  ctx.lineWidth = 2
+  for (let i = 0; i < 72; i++) {
+    const a = (i / 72) * Math.PI * 2
+    ctx.beginPath()
+    ctx.moveTo(Math.cos(a) * R * 0.9, Math.sin(a) * R * 0.9)
+    ctx.lineTo(Math.cos(a) * R * 0.99, Math.sin(a) * R * 0.99)
+    ctx.stroke()
+  }
+  // raised inner ring: dark groove plus a highlight
+  ctx.lineWidth = R * 0.04
+  ctx.strokeStyle = `rgba(${m.groove},0.6)`
+  ctx.beginPath()
+  ctx.arc(0, 0, R * 0.84, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.lineWidth = R * 0.02
+  ctx.strokeStyle = `rgba(${m.shine},0.7)`
+  ctx.beginPath()
+  ctx.arc(0, 0, R * 0.8, 0, Math.PI * 2)
+  ctx.stroke()
+
+  // laurel leaves round the field
+  ctx.fillStyle = `rgba(${m.groove},0.5)`
+  for (let i = 0; i < 18; i++) {
+    if (i === 0 || i === 9) continue // gaps at top and bottom
+    const a = -Math.PI / 2 + (i / 18) * Math.PI * 2
+    ctx.beginPath()
+    ctx.ellipse(Math.cos(a) * R * 0.68, Math.sin(a) * R * 0.68, R * 0.06, R * 0.03, a + Math.PI / 2, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  // the number, struck into the face: dark, with a light lower edge
+  const text = count > 99 ? '99+' : String(count)
+  const size = R * (text.length === 1 ? 0.95 : text.length === 2 ? 0.72 : 0.52)
+  ctx.font = `700 ${size}px ${SERIF}`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  const y = R * 0.05
+  ctx.fillStyle = `rgba(${m.shine},0.85)`
+  ctx.fillText(text, R * 0.03, y + R * 0.035)
+  ctx.fillStyle = m.ink
+  ctx.fillText(text, 0, y)
+
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  tex.anisotropy = 4
+  medalFaces.set(key, tex)
+  return tex
 }
 
 export function paintBack(book: Book, dims: BookDims) {

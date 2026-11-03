@@ -164,7 +164,8 @@ export const importStorytelLibrary = createServerFn({ method: 'POST' })
         ...CLIENT_HEADERS,
         Authorization: `Bearer ${jwt}`,
         'content-type': 'application/x-www-form-urlencoded',
-        Accept: 'application/json',
+        // must be */* – the endpoint answers 406 to "application/json"
+        Accept: '*/*',
       },
     })
     if (!shelfRes.ok) {

@@ -4,9 +4,9 @@ A 3D bookshelf for a personal reading list, built with **React**, **TanStack Sta
 
 - Add books by searching [Open Library](https://openlibrary.org), by ISBN, by hand, or by importing your **Storytel** bookshelf.
 - Books stand on a wooden bookcase with their spines out. The spine colour comes from the cover, the thickness from the page count, and the width from the cover's shape.
-- **Organise:** drag a book along or between shelves to move it, or use **Arrange by** to sort by title, author, year, colour, date added or reading status.
+- **Organise:** drag a book along or between shelves to move it, or use **Arrange by** to sort by title, author, series, year, colour, date added or reading status. Sorting by reading status puts a little book nook (a lamplit alley at night, with a sign naming the next group) between the groups. Sorting by series keeps each author's series together and in order. The series is read from the title ("Percy Jackson, Teil 4: …", "Die Kane-Chroniken 2: …", "(Dune, #2)") or from a title opening shared by an author's books ("Harry Potter and the …"). You can type a series and number in the book panel instead.
 - **Inspect:** click a book to pull it off the shelf. Drag to turn it, use **Front / Spine / Back** or the ← → keys to flip it, and press Esc (or click the room) to put it back.
-- Mark a book as *Want to read*, *Reading* or *Read*. A book you're reading gets a satin ribbon bookmark: it leaves the pages at your progress point (set with the slider in the book panel, or imported from Storytel) and hangs down the spine, so you can see on the shelf how far along you are.
+- Mark a book as *Want to read*, *Reading* or *Read*. A book you're reading gets a large paperclip bookmark, each in its own rainbow colour, clipped onto your current page (set with the slider in the book panel, or imported from Storytel); it pokes up above the pages, so you can see on the shelf how far along you are. Finished books get a medal on a striped ribbon at the bottom of the spine, showing how many times you've read the book (set with *Times read* in the book panel): bronze for once, silver for twice, gold for three times or more.
 
 ## Getting started
 

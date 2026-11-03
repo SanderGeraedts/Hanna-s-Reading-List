@@ -3,11 +3,13 @@ import type { RefObject } from 'react'
 import * as THREE from 'three'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
-import type { Book } from '#/lib/library'
+import type { Book, SortKey } from '#/lib/library'
+import { STATUS_LABELS } from '#/lib/library'
 import { FRAME, SHELF, computeLayout, rowFloorY, shelfFitFor } from '#/lib/shelfLayout'
 import type { ShelfLayout } from '#/lib/shelfLayout'
-import { BookMesh } from './BookMesh'
+import { BookMesh, RAINBOW } from './BookMesh'
 import { Decorations } from './Decorations'
+import { BookNooks } from './BookNook'
 import type { InspectTarget } from './BookMesh'
 import { FLOOR_TILE_METRES, floorTexture, wallTexture, woodTexture } from './textures'
 
@@ -17,6 +19,8 @@ export interface BookshelfSceneProps {
   inspect: RefObject<InspectTarget>
   onSelect: (id: string | null) => void
   onReorder: (ids: string[]) => void
+  /** the sort last applied to the shelf; 'status' puts book nooks between the groups */
+  arrangement?: SortKey | null
 }
 
 const FOV = 35
@@ -44,7 +48,7 @@ interface DragState {
   order: string[]
 }
 
-function Scene({ books, selectedId, inspect, onSelect, onReorder }: BookshelfSceneProps) {
+function Scene({ books, selectedId, inspect, onSelect, onReorder, arrangement }: BookshelfSceneProps) {
   const [hovered, setHovered] = useState<string | null>(null)
   const [drag, setDrag] = useState<DragState | null>(null)
   // handlers read the ref so back-to-back pointer events never see stale state
@@ -63,11 +67,16 @@ function Scene({ books, selectedId, inspect, onSelect, onReorder }: BookshelfSce
       drag ? drag.order.map((id) => byId.get(id)).filter((b): b is Book => !!b) : books,
     [drag, books, byId],
   )
+  const clipColors = useMemo(() => rainbowClips(books), [books])
   const size = useThree((s) => s.size)
   const aspect = size.width / Math.max(1, size.height)
   const fit = useMemo(() => shelfFitFor(aspect), [aspect])
   const portrait = aspect < 0.8
-  const layout = useMemo(() => computeLayout(ordered, fit), [ordered, fit])
+  const nooksBefore = useMemo(
+    () => (arrangement === 'status' ? statusNooks(ordered) : new Map<string, string>()),
+    [arrangement, ordered],
+  )
+  const layout = useMemo(() => computeLayout(ordered, fit, nooksBefore), [ordered, fit, nooksBefore])
 
   // keep the case size stable while dragging so the camera doesn't jump around
   const stableLayout = useRef<ShelfLayout>(layout)
@@ -202,6 +211,7 @@ function Scene({ books, selectedId, inspect, onSelect, onReorder }: BookshelfSce
       <Room />
       <Bookcase layout={caseLayout} />
       <Decorations items={layout.decor} />
+      <BookNooks items={layout.nooks} />
 
       {ordered.map((book) => {
         const slot = layout.slots.get(book.id)
@@ -211,6 +221,7 @@ function Scene({ books, selectedId, inspect, onSelect, onReorder }: BookshelfSce
           <BookMesh
             key={book.id}
             book={book}
+            clipColor={clipColors.get(book.id)}
             dims={dims}
             slot={slot}
             selected={book.id === selectedId}
@@ -435,4 +446,31 @@ function Backdrop({
       <meshBasicMaterial ref={mat} color="#140d08" transparent opacity={0} depthWrite={false} />
     </mesh>
   )
+}
+
+/**
+ * Each book being read gets the next rainbow colour, in the order they were
+ * added, so a book keeps its clip colour when the shelf is sorted or rearranged.
+ */
+function rainbowClips(books: Book[]) {
+  const reading = books
+    .filter((b) => b.status === 'reading')
+    .sort((a, b) => (a.addedAt < b.addedAt ? -1 : a.addedAt > b.addedAt ? 1 : a.id.localeCompare(b.id)))
+  return new Map(reading.map((b, i) => [b.id, RAINBOW[i % RAINBOW.length]]))
+}
+
+/**
+ * A nook before the first book of each reading-status group after the first.
+ * Going by first appearance keeps it to one nook per group even after a few
+ * books have been dragged out of place.
+ */
+function statusNooks(books: Book[]) {
+  const out = new Map<string, string>()
+  const seen = new Set<string>()
+  for (const b of books) {
+    if (seen.has(b.status)) continue
+    if (seen.size > 0) out.set(b.id, STATUS_LABELS[b.status])
+    seen.add(b.status)
+  }
+  return out
 }

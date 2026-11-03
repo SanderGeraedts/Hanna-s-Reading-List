@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ClientOnly, createFileRoute } from '@tanstack/react-router'
 import { BookshelfScene } from '#/components/BookshelfScene'
 import { AddBookDialog } from '#/components/AddBookDialog'
@@ -8,18 +8,21 @@ import { nearestTurn } from '#/components/BookMesh'
 import type { InspectTarget } from '#/components/BookMesh'
 import { SORT_LABELS, STATUS_LABELS, useLibrary } from '#/lib/library'
 import type { SortKey } from '#/lib/library'
+import { detectSeries } from '#/lib/series'
 
 export const Route = createFileRoute('/')({ component: Home })
 
 const FACE_ANGLE: Record<Face, number> = { front: 0, spine: Math.PI / 2, back: Math.PI }
 
 function Home() {
-  const { books, loaded, addBook, removeBook, updateBook, reorder, sortBy } = useLibrary()
+  const { books, loaded, arrangement, addBook, removeBook, updateBook, reorder, sortBy } = useLibrary()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
   const inspect = useRef<InspectTarget>({ rotY: 0, rotX: 0 })
 
   const selected = books.find((b) => b.id === selectedId) ?? null
+  const seriesMap = useMemo(() => detectSeries(books), [books])
+  const selectedSeries = selected ? seriesMap.get(selected.id) : undefined
 
   const select = useCallback((id: string | null) => {
     if (id) inspect.current = { rotY: 0, rotX: 0 }
@@ -102,6 +105,7 @@ function Home() {
             inspect={inspect}
             onSelect={select}
             onReorder={reorder}
+            arrangement={arrangement}
           />
         </ClientOnly>
 
@@ -123,8 +127,16 @@ function Home() {
           key={selected.id}
           book={selected}
           onFace={showFace}
-          onStatus={(status) => updateBook(selected.id, { status })}
+          // finishing a book counts as its first read
+          onStatus={(status) =>
+            updateBook(selected.id, {
+              status,
+              ...(status === 'read' && !selected.readCount && { readCount: 1 }),
+            })
+          }
           onProgress={(progress) => updateBook(selected.id, { progress })}
+          onUpdate={(patch) => updateBook(selected.id, patch)}
+          detectedSeries={selectedSeries}
           onRemove={() => {
             select(null)
             removeBook(selected.id)

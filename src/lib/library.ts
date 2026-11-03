@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { detectSeries } from './series'
 
 export type ReadingStatus = 'want' | 'reading' | 'read'
 
@@ -23,6 +24,11 @@ export interface Book {
   status: ReadingStatus
   /** reading progress, 0..1 – shown as a bookmark while the book is being read */
   progress?: number
+  /** how many times the book has been finished (entered by hand) */
+  readCount?: number
+  /** series name and number, entered by hand (otherwise read from the title) */
+  series?: string
+  seriesIndex?: number
   addedAt: number
 }
 
@@ -30,11 +36,12 @@ export type NewBook = Omit<Book, 'id' | 'addedAt' | 'status'> & {
   status?: ReadingStatus
 }
 
-export type SortKey = 'title' | 'author' | 'year' | 'color' | 'added' | 'status'
+export type SortKey = 'title' | 'author' | 'series' | 'year' | 'color' | 'added' | 'status'
 
 export const SORT_LABELS: Record<SortKey, string> = {
   title: 'Title',
   author: 'Author',
+  series: 'Series',
   year: 'Year',
   color: 'Colour',
   added: 'Date added',
@@ -48,6 +55,12 @@ export const STATUS_LABELS: Record<ReadingStatus, string> = {
 }
 
 const STORAGE_KEY = 'hannas-reading-list:v1'
+const ARRANGEMENT_KEY = 'hannas-reading-list:arrangement'
+
+/** Times a book has been read: finished books count at least once. */
+export function timesRead(book: Book) {
+  return Math.max(book.readCount ?? 0, book.status === 'read' ? 1 : 0)
+}
 
 function loadBooks(): Book[] {
   try {
@@ -64,9 +77,17 @@ function loadBooks(): Book[] {
 export function useLibrary() {
   const [books, setBooks] = useState<Book[]>([])
   const [loaded, setLoaded] = useState(false)
+  /** the sort last applied; drag-and-drop tweaks keep it (the shelf is still mostly in that order) */
+  const [arrangement, setArrangement] = useState<SortKey | null>(null)
 
   useEffect(() => {
     setBooks(loadBooks())
+    try {
+      const a = localStorage.getItem(ARRANGEMENT_KEY)
+      if (a && a in SORT_LABELS) setArrangement(a as SortKey)
+    } catch {
+      /* ignore */
+    }
     setLoaded(true)
   }, [])
 
@@ -110,9 +131,15 @@ export function useLibrary() {
 
   const sortBy = useCallback((key: SortKey) => {
     setBooks((prev) => sortBooks(prev, key))
+    setArrangement(key)
+    try {
+      localStorage.setItem(ARRANGEMENT_KEY, key)
+    } catch {
+      /* ignore */
+    }
   }, [])
 
-  return { books, loaded, addBook, removeBook, updateBook, reorder, sortBy }
+  return { books, loaded, arrangement, addBook, removeBook, updateBook, reorder, sortBy }
 }
 
 const collator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true })
@@ -158,6 +185,22 @@ export function sortBooks(books: Book[], key: SortKey): Book[] {
           collator.compare(authorSurname(a), authorSurname(b)) ||
           collator.compare(a.title, b.title),
       )
+    case 'series': {
+      // books of one author stay together; within that, each series in order,
+      // and standalone books sit between them by title
+      const series = detectSeries(copy)
+      return copy.sort((a, b) => {
+        const sa = series.get(a.id)
+        const sb = series.get(b.id)
+        return (
+          collator.compare(authorSurname(a), authorSurname(b)) ||
+          collator.compare(sortableTitle(sa?.name ?? a.title), sortableTitle(sb?.name ?? b.title)) ||
+          (sa?.index ?? 999) - (sb?.index ?? 999) ||
+          (a.year ?? 9999) - (b.year ?? 9999) ||
+          collator.compare(a.title, b.title)
+        )
+      })
+    }
     case 'year':
       return copy.sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999))
     case 'added':
