@@ -95,3 +95,37 @@ export function detectSeries(books: Book[]): Map<string, SeriesInfo> {
   }
   return out
 }
+
+/** Label of the group of books that are not part of a series on this shelf. */
+export const STANDALONE = 'Standalone'
+
+export interface ShelfGroup {
+  /** stable key of the group; '' for the standalone books */
+  key: string
+  /** series name, or STANDALONE */
+  name: string
+  index?: number
+}
+
+/**
+ * The group each book goes in when the shelf is arranged by series: a series
+ * needs at least two of its books on the shelf, everything else is standalone.
+ */
+export function seriesGroups(books: Book[]): Map<string, ShelfGroup> {
+  const series = detectSeries(books)
+  const keyOf = (name: string) => name.toLowerCase().replace(/[\s…]+/g, ' ').trim()
+  const counts = new Map<string, number>()
+  for (const info of series.values()) counts.set(keyOf(info.name), (counts.get(keyOf(info.name)) ?? 0) + 1)
+  const out = new Map<string, ShelfGroup>()
+  for (const b of books) {
+    const info = series.get(b.id)
+    const key = info && keyOf(info.name)
+    out.set(
+      b.id,
+      info && key && (counts.get(key) ?? 0) >= 2
+        ? { key, name: info.name, index: info.index }
+        : { key: '', name: STANDALONE },
+    )
+  }
+  return out
+}

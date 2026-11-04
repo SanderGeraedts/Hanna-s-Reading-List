@@ -348,15 +348,25 @@ textarea.input {
     padding: 0.45rem 0.7rem;
     font-size: 0.8rem;
   }
+  /* the panel becomes a bottom sheet; its height is set by dragging the handle */
   .panel {
     top: auto;
-    bottom: 1rem;
-    right: 1rem;
-    left: 1rem;
+    bottom: 0;
+    right: 0;
+    left: 0;
     width: auto;
     transform: none;
-    max-height: 45vh;
-    animation: none;
+    max-height: 88vh;
+    height: 45vh;
+    align-content: start;
+    /* rows keep their natural height; the sheet scrolls instead of squashing them */
+    grid-auto-rows: max-content;
+    padding: 0 1rem 1rem;
+    border-radius: 18px 18px 0 0;
+    border-bottom: 0;
+    background: var(--surface-solid);
+    overscroll-behavior: contain;
+    animation: sheet-up 0.3s ease-out;
   }
   .stage-hint {
     white-space: normal;
@@ -578,4 +588,97 @@ textarea.input {
   background: rgba(0, 0, 0, 0.5);
   color: #fff;
   font-size: 1.4rem;
+}
+
+/* ---- Storytel refresh ------------------------------------------------ */
+.topbar .btn.refresh {
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-size: 1.2rem;
+  line-height: 1;
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--header-ink);
+  border-color: rgba(40, 50, 90, 0.2);
+}
+.topbar .btn.refresh:hover:not(:disabled) {
+  background: #fff;
+}
+.btn.refresh.spinning span {
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.toast {
+  position: fixed;
+  z-index: 6;
+  left: 50%;
+  bottom: 1.25rem;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 2rem);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.6rem 0.55rem 1rem;
+  border-radius: 999px;
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.875rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.toast.busy {
+  padding-right: 1rem;
+}
+.toast.error {
+  border-color: var(--danger);
+  border-radius: var(--radius);
+}
+.toast .icon-btn {
+  font-size: 1.3rem;
+}
+@media (max-width: 720px) {
+  .topbar .btn.refresh {
+    width: 2.1rem;
+    height: 2.1rem;
+    padding: 0;
+  }
+}
+
+/* ---- bottom sheet (phones) ------------------------------------------ */
+@keyframes sheet-up {
+  from {
+    transform: translateY(40%);
+    opacity: 0;
+  }
+}
+.sheet-grab {
+  display: grid;
+  gap: 0.25rem;
+}
+.panel.sheet .sheet-grab {
+  /* stays on top while the sheet's content scrolls underneath */
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0 -1rem;
+  padding: 0 1rem 0.5rem;
+  background: var(--surface-solid);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+.sheet-handle {
+  justify-self: center;
+  width: 2.75rem;
+  height: 5px;
+  margin: 0.6rem 0 0.35rem;
+  border-radius: 999px;
+  background: rgba(240, 220, 190, 0.35);
 }

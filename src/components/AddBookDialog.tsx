@@ -4,17 +4,22 @@ import { getWorkDetails, lookupIsbn, searchBooks } from '#/server/openLibrary'
 import type { SearchResult } from '#/server/openLibrary'
 import type { Book, NewBook } from '#/lib/library'
 import { analyzeCover, colorFromString, coverUrlForId, coverUrlForIsbn } from '#/lib/cover'
-import { importStorytelLibrary } from '#/server/storytel'
+import { forgetStorytelLogin, importStorytelLibrary, storytelLoginStatus } from '#/server/storytel'
+import type { StorytelLogin } from '#/lib/useStorytelSync'
 import { importStorytelBooks } from '#/lib/storytelImport'
 import type { ImportSummary } from '#/lib/storytelImport'
 
-type Tab = 'search' | 'isbn' | 'manual' | 'storytel'
+export type Tab = 'search' | 'isbn' | 'manual' | 'storytel'
 
 interface Props {
   existing: Book[]
   onAdd: (book: NewBook) => void
   onUpdate: (id: string, patch: Partial<Book>) => void
   onClose: () => void
+  /** the Storytel login remembered on this device, if any */
+  storytelLogin: StorytelLogin
+  onStorytelLogin: (login: StorytelLogin) => void
+  initialTab?: Tab
 }
 
 /** Turns an Open Library result into a book, sampling the cover for spine colour + shape. */
@@ -39,8 +44,16 @@ async function buildBook(r: SearchResult, description?: string): Promise<NewBook
   }
 }
 
-export function AddBookDialog({ existing, onAdd, onUpdate, onClose }: Props) {
-  const [tab, setTab] = useState<Tab>('search')
+export function AddBookDialog({
+  existing,
+  onAdd,
+  onUpdate,
+  onClose,
+  storytelLogin,
+  onStorytelLogin,
+  initialTab = 'search',
+}: Props) {
+  const [tab, setTab] = useState<Tab>(initialTab)
   const dialog = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
@@ -90,7 +103,15 @@ export function AddBookDialog({ existing, onAdd, onUpdate, onClose }: Props) {
         {tab === 'search' && <SearchTab existing={existing} onAdd={onAdd} />}
         {tab === 'isbn' && <IsbnTab onAdd={onAdd} />}
         {tab === 'manual' && <ManualTab onAdd={onAdd} />}
-        {tab === 'storytel' && <StorytelTab existing={existing} onAdd={onAdd} onUpdate={onUpdate} />}
+        {tab === 'storytel' && (
+          <StorytelTab
+            existing={existing}
+            onAdd={onAdd}
+            onUpdate={onUpdate}
+            login={storytelLogin}
+            onLogin={onStorytelLogin}
+          />
+        )}
         <p className="attribution">
           Book data and covers from{' '}
           <a href="https://openlibrary.org" target="_blank" rel="noreferrer">
@@ -320,10 +341,14 @@ function StorytelTab({
   existing,
   onAdd,
   onUpdate,
+  login,
+  onLogin,
 }: {
   existing: Book[]
   onAdd: (b: NewBook) => void
   onUpdate: (id: string, patch: Partial<Book>) => void
+  login: StorytelLogin
+  onLogin: (login: StorytelLogin) => void
 }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -337,8 +362,9 @@ function StorytelTab({
     setPhase({ kind: 'signing-in' })
     try {
       const items = await importStorytelLibrary({ data: { email, password } })
-      // the password is not needed any more – drop it from memory right away
+      // the server keeps the login (sealed in a cookie); the page doesn't need it
       setPassword('')
+      onLogin(await storytelLoginStatus().catch(() => ({ saved: false })))
       const summary = await importStorytelBooks(items, existing, {
         addBook: onAdd,
         updateBook: onUpdate,
@@ -362,7 +388,24 @@ function StorytelTab({
           {summary.unchanged ? `, ${summary.unchanged} already up to date` : ''}.
         </p>
         <button className="btn" onClick={() => setPhase({ kind: 'form' })}>
-          Import again
+          Done
+        </button>
+      </div>
+    )
+  }
+
+  if (login.saved && phase.kind === 'form') {
+    return (
+      <div className="tab-panel">
+        <p className="muted">
+          Signed in to Storytel as <strong>{login.account}</strong>. Use the ↻ button in the top
+          bar to add new books and bring statuses and progress up to date.
+        </p>
+        <button
+          className="btn"
+          onClick={async () => onLogin(await forgetStorytelLogin().catch(() => login))}
+        >
+          Sign out of Storytel
         </button>
       </div>
     )
@@ -415,8 +458,9 @@ function StorytelTab({
             : 'Sign in & import'}
       </button>
       <p className="attribution">
-        Your password goes to this app&apos;s server, which uses it once to sign in to Storytel and
-        then forgets it. Nothing is stored. Storytel has no public API, so this uses the same
+        Your password goes to this app&apos;s server to sign in to Storytel. To keep you signed in,
+        it is kept encrypted in a cookie on this device that only the server can read, until you
+        sign out here. Storytel has no public API, so this uses the same
         private endpoints as its apps and may stop working if Storytel changes them. Accounts that
         sign in with Google, Apple or Facebook have no password to use here.
       </p>

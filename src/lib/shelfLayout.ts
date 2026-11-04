@@ -80,10 +80,22 @@ export interface NookSlot {
   row: number
 }
 
+/** A slim labelled marker standing before each series when sorted by series. */
+export const DIVIDER = { width: 0.03, height: 0.2, depth: 0.15, gap: 0.008 }
+
+export type DividerSlot = NookSlot
+
+/** What stands just before a book: a nook (between reading-status groups) or a series divider. */
+export interface Separator {
+  kind: 'nook' | 'divider'
+  label: string
+}
+
 export interface ShelfLayout {
   slots: Map<string, Slot>
   decor: DecorSlot[]
   nooks: NookSlot[]
+  dividers: DividerSlot[]
   dims: Map<string, BookDims>
   innerWidth: number
   rows: number
@@ -140,12 +152,13 @@ function clamp(v: number, min: number, max: number) {
 export function computeLayout(
   books: Book[],
   { innerWidth = SHELF.innerWidth, minRows = SHELF.minRows }: Partial<ShelfFit> = {},
-  /** book id -> label of a nook to stand just before that book */
-  nooksBefore: Map<string, string> = new Map(),
+  /** book id -> what stands just before that book */
+  separators: Map<string, Separator> = new Map(),
 ): ShelfLayout {
   const dims = new Map<string, BookDims>()
   const placed: Array<{ id: string; row: number; x: number; d: BookDims }> = []
-  const nookPlaced: Array<{ before: string; label: string; row: number; x: number }> = []
+  const sepPlaced: Array<{ before: string; label: string; row: number; x: number; kind: Separator['kind'] }> =
+    []
   let row = 0
   let x = 0
   const fit = (width: number) => {
@@ -157,11 +170,13 @@ export function computeLayout(
   for (const b of books) {
     const d = bookDims(b)
     dims.set(b.id, d)
-    const label = nooksBefore.get(b.id)
-    if (label !== undefined) {
-      fit(NOOK.width + NOOK.gap * 2)
-      nookPlaced.push({ before: b.id, label, row, x: x + NOOK.gap + NOOK.width / 2 })
-      x += NOOK.width + NOOK.gap * 2
+    const sep = separators.get(b.id)
+    if (sep) {
+      const { width, gap } = sep.kind === 'nook' ? NOOK : DIVIDER
+      // keep the marker on the same shelf as the book it introduces
+      fit(width + gap * 2 + d.t)
+      sepPlaced.push({ before: b.id, label: sep.label, kind: sep.kind, row, x: x + gap + width / 2 })
+      x += width + gap * 2
     }
     fit(d.t)
     placed.push({ id: b.id, row, x: x + d.t / 2, d })
@@ -171,7 +186,10 @@ export function computeLayout(
   const usedEnd = (r: number) => {
     let end = 0
     for (const p of placed) if (p.row === r) end = Math.max(end, p.x + p.d.t / 2)
-    for (const n of nookPlaced) if (n.row === r) end = Math.max(end, n.x + NOOK.width / 2)
+    for (const n of sepPlaced) {
+      const width = n.kind === 'nook' ? NOOK.width : DIVIDER.width
+      if (n.row === r) end = Math.max(end, n.x + width / 2)
+    }
     return end
   }
   // fill free space at the right end of each shelf with decorations
@@ -199,6 +217,16 @@ export function computeLayout(
     rows++
     decor = placeDecor(rows)
   }
+  const placedOf = (kind: Separator['kind']) =>
+    sepPlaced
+      .filter((n) => n.kind === kind)
+      .map(({ before, label, row, x }) => ({
+        before,
+        label,
+        row,
+        x: -innerWidth / 2 + x,
+        floorY: rowFloorY(row, rows),
+      }))
   const slots = new Map<string, Slot>()
   for (const p of placed) {
     slots.set(p.id, {
@@ -211,11 +239,8 @@ export function computeLayout(
   return {
     slots,
     decor: decor.map((d) => ({ ...d, floorY: rowFloorY(d.row, rows) })),
-    nooks: nookPlaced.map((n) => ({
-      ...n,
-      x: -innerWidth / 2 + n.x,
-      floorY: rowFloorY(n.row, rows),
-    })),
+    nooks: placedOf('nook'),
+    dividers: placedOf('divider'),
     dims,
     innerWidth,
     rows,

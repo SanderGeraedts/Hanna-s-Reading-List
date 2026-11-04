@@ -8,7 +8,12 @@ import netlify from '@netlify/vite-plugin-tanstack-start'
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
-  plugins: [tanstackStart(), netlify(), viteReact()],
+  plugins: [
+    tanstackStart(),
+    // the app has no edge functions; their local emulator (Deno) fails to start on Windows
+    netlify({ dev: { edgeFunctions: { enabled: false } } }),
+    viteReact(),
+  ],
 })
 
 export default config

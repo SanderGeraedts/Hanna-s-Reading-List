@@ -194,7 +194,8 @@ export function BookMesh(props: BookMeshProps) {
     <group ref={group} position={[slot.x, slot.y, slot.z]} rotation={[0, SPINE_OUT, 0]}>
       <mesh
         castShadow
-        receiveShadow
+        // taken out to look at, the book is lit evenly: no shadow from the bookcase on it
+        receiveShadow={!selected}
         material={materials}
         onPointerDown={(e) => props.onPointerDown(e, book.id)}
         onPointerMove={(e) => props.onPointerMove(e, book.id)}

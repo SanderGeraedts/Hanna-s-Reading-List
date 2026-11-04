@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { Book, ReadingStatus } from '#/lib/library'
 import { STATUS_LABELS, timesRead } from '#/lib/library'
 import type { SeriesInfo } from '#/lib/series'
@@ -18,6 +19,107 @@ interface Props {
   onChangeCover: () => void
   onRemove: () => void
   onClose: () => void
+  /** on phones: called with the share of the screen height the sheet covers */
+  onSheet?: (share: number) => void
+}
+
+const SHEET_QUERY = '(max-width: 720px)'
+const SHEET_KEY = 'hannas-reading-list:sheet'
+const SHEET_DEFAULT = 0.45
+const SHEET_MIN_PX = 96 // enough for the handle and the title
+const SHEET_MAX = 0.88
+
+function savedSheetShare() {
+  try {
+    const v = Number(localStorage.getItem(SHEET_KEY))
+    return v > 0 && v < 1 ? v : SHEET_DEFAULT
+  } catch {
+    return SHEET_DEFAULT
+  }
+}
+
+/**
+ * On phones the panel is a bottom sheet whose height follows a drag on its
+ * handle or title. The height is remembered for the next book.
+ */
+function useSheet(onSheet?: (share: number) => void) {
+  const [isSheet, setIsSheet] = useState(false)
+  const [height, setHeight] = useState<number | null>(null)
+  const drag = useRef<{ y: number; h: number; id: number; moved: boolean } | null>(null)
+  const panel = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    const mq = window.matchMedia(SHEET_QUERY)
+    const update = () => setIsSheet(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+
+  useEffect(() => {
+    if (!isSheet) {
+      setHeight(null)
+      onSheet?.(0)
+      return
+    }
+    const fit = () => {
+      const h = Math.round(savedSheetShare() * window.innerHeight)
+      setHeight(h)
+      onSheet?.(h / window.innerHeight)
+    }
+    fit()
+    window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+  }, [isSheet, onSheet])
+
+  const clampHeight = (h: number) =>
+    Math.round(Math.min(window.innerHeight * SHEET_MAX, Math.max(SHEET_MIN_PX, h)))
+
+  const handlers = isSheet
+    ? {
+        onPointerDown: (e: ReactPointerEvent<HTMLElement>) => {
+          const h = panel.current?.getBoundingClientRect().height ?? height ?? 0
+          drag.current = { y: e.clientY, h, id: e.pointerId, moved: false }
+        },
+        onPointerMove: (e: ReactPointerEvent<HTMLElement>) => {
+          const d = drag.current
+          if (!d || d.id !== e.pointerId) return
+          const dy = e.clientY - d.y
+          if (!d.moved) {
+            if (Math.abs(dy) < 6) return
+            // only now take the pointer, so taps on the × still work
+            d.moved = true
+            try {
+              e.currentTarget.setPointerCapture(e.pointerId)
+            } catch {
+              /* the pointer is already gone */
+            }
+          }
+          const h = clampHeight(d.h - dy)
+          setHeight(h)
+          onSheet?.(h / window.innerHeight)
+        },
+        onPointerUp: (e: ReactPointerEvent<HTMLElement>) => {
+          const d = drag.current
+          drag.current = null
+          if (!d?.moved) return
+          if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+            e.currentTarget.releasePointerCapture(e.pointerId)
+          }
+          const share = clampHeight(d.h - (e.clientY - d.y)) / window.innerHeight
+          try {
+            localStorage.setItem(SHEET_KEY, share.toFixed(3))
+          } catch {
+            /* ignore */
+          }
+        },
+        onPointerCancel: () => {
+          drag.current = null
+        },
+      }
+    : {}
+
+  return { isSheet, height, handlers, panel }
 }
 
 export function BookPanel({
@@ -30,22 +132,53 @@ export function BookPanel({
   onChangeCover,
   onRemove,
   onClose,
+  onSheet,
 }: Props) {
+  const sheet = useSheet(onSheet)
   const pct = Math.round((book.progress ?? 0) * 100)
   const reads = timesRead(book)
   const [seriesName, setSeriesName] = useState(book.series ?? '')
   const [blurb, setBlurb] = useState(backText(book))
   const [seriesNo, setSeriesNo] = useState(book.seriesIndex?.toString() ?? '')
-  const saveSeries = (name: string, no: string) => {
-    const n = Number(no)
-    onUpdate({
-      series: name.trim() || undefined,
-      seriesIndex: name.trim() && no.trim() && Number.isFinite(n) ? n : undefined,
-    })
+
+  // what the text fields would save: only the parts that differ from the book
+  const pendingPatch = (): Partial<Book> => {
+    const patch: Partial<Book> = {}
+    const n = Number(seriesNo)
+    const index = seriesNo.trim() && Number.isFinite(n) ? n : undefined
+    // a number on its own belongs to the series found from the title
+    const name = seriesName.trim() || (index !== undefined ? detectedSeries?.name : undefined)
+    const series = name || undefined
+    const seriesIndex = name ? index : undefined
+    if (series !== book.series || seriesIndex !== book.seriesIndex) {
+      patch.series = series
+      patch.seriesIndex = seriesIndex
+    }
+    const text = blurb.trim()
+    // leaving it empty (or untouched) keeps the placeholder text
+    const description = text && text !== backText({ ...book, description: undefined }) ? text : undefined
+    if (description !== book.description) patch.description = description
+    return patch
   }
+  const save = () => {
+    const patch = pendingPatch()
+    if (Object.keys(patch).length) onUpdate(patch)
+  }
+  // closing the panel straight from a field (on a phone, without the field
+  // losing focus first) must not lose what was typed
+  const saveOnClose = useRef(save)
+  saveOnClose.current = save
+  useEffect(() => () => saveOnClose.current(), [])
   return (
-    <aside className="panel" aria-label={`Details for ${book.title}`}>
-      <div className="panel-top">
+    <aside
+      ref={sheet.panel}
+      className={sheet.isSheet ? 'panel sheet' : 'panel'}
+      aria-label={`Details for ${book.title}`}
+      style={sheet.height ? { height: sheet.height } : undefined}
+    >
+      <div className="sheet-grab" {...sheet.handlers}>
+        {sheet.isSheet && <div className="sheet-handle" aria-hidden />}
+        <div className="panel-top">
         <div>
           <h2>{book.title}</h2>
           <p className="byline">{book.authors.join(', ') || 'Unknown author'}</p>
@@ -58,6 +191,7 @@ export function BookPanel({
         <button className="icon-btn" onClick={onClose} aria-label="Put back on the shelf">
           ×
         </button>
+      </div>
       </div>
 
       <div className="segmented" role="group" aria-label="Show side">
@@ -135,7 +269,7 @@ export function BookPanel({
             placeholder={detectedSeries && !book.series ? detectedSeries.name : 'Not in a series'}
             aria-label="Series name"
             onChange={(e) => setSeriesName(e.target.value)}
-            onBlur={() => saveSeries(seriesName, seriesNo)}
+            onBlur={save}
           />
           <input
             className="input series-no"
@@ -144,7 +278,7 @@ export function BookPanel({
             placeholder={detectedSeries?.index && !book.series ? `#${detectedSeries.index}` : '#'}
             aria-label="Number in series"
             onChange={(e) => setSeriesNo(e.target.value.replace(/[^\d.]/g, ''))}
-            onBlur={() => saveSeries(seriesName, seriesNo)}
+            onBlur={save}
           />
         </div>
       </div>
@@ -158,12 +292,8 @@ export function BookPanel({
           onFocus={() => onFace('back')}
           onChange={(e) => setBlurb(e.target.value)}
           onBlur={() => {
-            const text = blurb.trim()
-            const placeholder = backText({ ...book, description: undefined })
-            // leaving it empty (or untouched) keeps the placeholder text
-            const description = text && text !== placeholder ? text : undefined
-            if (description !== book.description) onUpdate({ description })
-            if (!text) setBlurb(placeholder)
+            save()
+            if (!blurb.trim()) setBlurb(backText({ ...book, description: undefined }))
           }}
         />
       </label>

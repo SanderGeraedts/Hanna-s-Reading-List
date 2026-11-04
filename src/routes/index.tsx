@@ -10,6 +10,8 @@ import type { InspectTarget } from '#/components/BookMesh'
 import { SORT_LABELS, STATUS_LABELS, useLibrary } from '#/lib/library'
 import type { SortKey } from '#/lib/library'
 import { detectSeries } from '#/lib/series'
+import { useStorytelSync } from '#/lib/useStorytelSync'
+import type { Tab } from '#/components/AddBookDialog'
 
 export const Route = createFileRoute('/')({ component: Home })
 
@@ -18,9 +20,24 @@ const FACE_ANGLE: Record<Face, number> = { front: 0, spine: Math.PI / 2, back: M
 function Home() {
   const { books, loaded, arrangement, addBook, removeBook, updateBook, reorder, sortBy } = useLibrary()
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [adding, setAdding] = useState(false)
+  const [adding, setAdding] = useState<Tab | null>(null)
   const [pickingCover, setPickingCover] = useState(false)
   const inspect = useRef<InspectTarget>({ rotY: 0, rotX: 0 })
+  // share of the screen the details sheet covers on phones; the scene keeps the book above it
+  const sheet = useRef(0.45)
+  const onSheet = useCallback((share: number) => {
+    sheet.current = share
+  }, [])
+  const syncCallbacks = useMemo(() => ({ addBook, updateBook }), [addBook, updateBook])
+  const storytel = useStorytelSync(books, syncCallbacks)
+  const { state: syncState, dismiss: dismissSync } = storytel
+
+  // the result message fades by itself
+  useEffect(() => {
+    if (syncState.kind !== 'done') return
+    const t = setTimeout(dismissSync, 5000)
+    return () => clearTimeout(t)
+  }, [syncState, dismissSync])
 
   const selected = books.find((b) => b.id === selectedId) ?? null
   const seriesMap = useMemo(() => detectSeries(books), [books])
@@ -100,7 +117,17 @@ function Home() {
               ))}
             </select>
           </label>
-          <button className="btn primary" onClick={() => setAdding(true)}>
+          <button
+            className={`btn icon refresh${syncState.kind === 'busy' ? ' spinning' : ''}`}
+            disabled={syncState.kind === 'busy'}
+            // not signed in yet: open the Storytel sign-in instead
+            onClick={storytel.login.saved ? storytel.refresh : () => setAdding('storytel')}
+            aria-label="Refresh from Storytel"
+            title="Refresh from Storytel"
+          >
+            <span aria-hidden>↻</span>
+          </button>
+          <button className="btn primary" onClick={() => setAdding('search')}>
             + Add<span className="hide-mobile"> book</span>
           </button>
         </div>
@@ -115,13 +142,14 @@ function Home() {
             onSelect={select}
             onReorder={reorder}
             arrangement={arrangement}
+            sheet={sheet}
           />
         </ClientOnly>
 
         {loaded && books.length === 0 && (
           <div className="empty">
             <p>Add your first book to start filling the shelf.</p>
-            <button className="btn primary" onClick={() => setAdding(true)}>
+            <button className="btn primary" onClick={() => setAdding('search')}>
               + Add book
             </button>
           </div>
@@ -147,7 +175,11 @@ function Home() {
             })
           }
           onProgress={(progress) => updateBook(selected.id, { progress })}
-          onUpdate={(patch) => updateBook(selected.id, patch)}
+          onUpdate={(patch) => {
+            updateBook(selected.id, patch)
+            // arranged by series: move the book to its new series straight away
+            if (arrangement === 'series' && ('series' in patch || 'seriesIndex' in patch)) sortBy('series')
+          }}
           detectedSeries={selectedSeries}
           onChangeCover={() => setPickingCover(true)}
           onRemove={() => {
@@ -155,6 +187,7 @@ function Home() {
             removeBook(selected.id)
           }}
           onClose={() => select(null)}
+          onSheet={onSheet}
         />
       )}
 
@@ -171,8 +204,41 @@ function Home() {
           existing={books}
           onAdd={addBook}
           onUpdate={updateBook}
-          onClose={() => setAdding(false)}
+          onClose={() => setAdding(null)}
+          storytelLogin={storytel.login}
+          onStorytelLogin={storytel.setLogin}
+          initialTab={adding}
         />
+      )}
+
+      {syncState.kind !== 'idle' && (
+        <div className={`toast ${syncState.kind}`} role="status" aria-live="polite">
+          {syncState.kind === 'busy' ? (
+            <span>
+              {syncState.total
+                ? `Adding new books ${syncState.done} / ${syncState.total}…`
+                : 'Checking Storytel…'}
+            </span>
+          ) : (
+            <>
+              <span>{syncState.message}</span>
+              {syncState.kind === 'error' && !storytel.login.saved && (
+                <button
+                  className="btn"
+                  onClick={() => {
+                    dismissSync()
+                    setAdding('storytel')
+                  }}
+                >
+                  Sign in
+                </button>
+              )}
+              <button className="icon-btn" onClick={dismissSync} aria-label="Dismiss">
+                ×
+              </button>
+            </>
+          )}
+        </div>
       )}
     </div>
   )

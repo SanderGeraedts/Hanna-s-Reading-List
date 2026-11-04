@@ -6,10 +6,12 @@ import type { ThreeEvent } from '@react-three/fiber'
 import type { Book, SortKey } from '#/lib/library'
 import { STATUS_LABELS } from '#/lib/library'
 import { FRAME, SHELF, computeLayout, rowFloorY, shelfFitFor } from '#/lib/shelfLayout'
-import type { ShelfLayout } from '#/lib/shelfLayout'
+import type { Separator, ShelfLayout } from '#/lib/shelfLayout'
 import { BookMesh, RAINBOW } from './BookMesh'
 import { Decorations } from './Decorations'
 import { BookNooks } from './BookNook'
+import { SeriesDividers } from './SeriesDivider'
+import { seriesGroups } from '#/lib/series'
 import type { InspectTarget } from './BookMesh'
 import { FLOOR_TILE_METRES, floorTexture, wallTexture, woodTexture } from './textures'
 
@@ -21,11 +23,27 @@ export interface BookshelfSceneProps {
   onReorder: (ids: string[]) => void
   /** the sort last applied to the shelf; 'status' puts book nooks between the groups */
   arrangement?: SortKey | null
+  /** share of the screen height covered by the details sheet on phones (0..1) */
+  sheet?: RefObject<number>
 }
 
 const FOV = 35
 const DEFAULT_INSPECT = { fill: 0.6, yShift: 0 }
-const PORTRAIT_INSPECT = { fill: 0.4, yShift: 0.17 }
+/** share of a phone screen taken by the header at the top */
+const HEADER_SHARE = 0.1
+
+/**
+ * On a phone the details sheet covers the bottom of the screen: fit the
+ * inspected book into the space between the header and the sheet.
+ */
+function portraitInspect(frame: { fill: number; yShift: number }, sheet: number, aspect: number) {
+  const s = Math.min(0.9, Math.max(0, sheet))
+  const free = Math.max(0.15, 1 - s - HEADER_SHARE)
+  // also keep the widest books (cover aspect up to 0.82) inside the screen width
+  const byWidth = (0.88 * aspect) / 0.82
+  frame.fill = Math.min(0.6, free * 0.85, byWidth)
+  frame.yShift = (s - HEADER_SHARE) / 2
+}
 
 export function BookshelfScene(props: BookshelfSceneProps) {
   return (
@@ -48,7 +66,15 @@ interface DragState {
   order: string[]
 }
 
-function Scene({ books, selectedId, inspect, onSelect, onReorder, arrangement }: BookshelfSceneProps) {
+function Scene({
+  books,
+  selectedId,
+  inspect,
+  onSelect,
+  onReorder,
+  arrangement,
+  sheet,
+}: BookshelfSceneProps) {
   const [hovered, setHovered] = useState<string | null>(null)
   const [drag, setDrag] = useState<DragState | null>(null)
   // handlers read the ref so back-to-back pointer events never see stale state
@@ -72,11 +98,19 @@ function Scene({ books, selectedId, inspect, onSelect, onReorder, arrangement }:
   const aspect = size.width / Math.max(1, size.height)
   const fit = useMemo(() => shelfFitFor(aspect), [aspect])
   const portrait = aspect < 0.8
-  const nooksBefore = useMemo(
-    () => (arrangement === 'status' ? statusNooks(ordered) : new Map<string, string>()),
+  // one object, updated in place every frame as the sheet is dragged
+  const portraitFrame = useMemo(() => ({ fill: 0.4, yShift: 0.17 }), [])
+  useFrame(() => portraitInspect(portraitFrame, sheet?.current ?? 0.45, aspect))
+  const separators = useMemo(
+    () =>
+      arrangement === 'status'
+        ? statusNooks(ordered)
+        : arrangement === 'series'
+          ? seriesDividers(ordered)
+          : new Map<string, Separator>(),
     [arrangement, ordered],
   )
-  const layout = useMemo(() => computeLayout(ordered, fit, nooksBefore), [ordered, fit, nooksBefore])
+  const layout = useMemo(() => computeLayout(ordered, fit, separators), [ordered, fit, separators])
 
   // keep the case size stable while dragging so the camera doesn't jump around
   const stableLayout = useRef<ShelfLayout>(layout)
@@ -275,6 +309,7 @@ function Scene({ books, selectedId, inspect, onSelect, onReorder, arrangement }:
       <Bookcase layout={caseLayout} />
       <Decorations items={layout.decor} />
       <BookNooks items={layout.nooks} />
+      <SeriesDividers items={layout.dividers} />
 
       {ordered.map((book) => {
         const slot = layout.slots.get(book.id)
@@ -294,8 +329,8 @@ function Scene({ books, selectedId, inspect, onSelect, onReorder, arrangement }:
             inspect={inspect}
             cameraBase={cameraBase}
             fov={FOV}
-            // on phones the details panel covers the bottom half: show the book smaller, higher up
-            inspectFrame={portrait ? PORTRAIT_INSPECT : DEFAULT_INSPECT}
+            // on phones the details sheet covers the bottom: show the book above it
+            inspectFrame={portrait ? portraitFrame : DEFAULT_INSPECT}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
@@ -579,12 +614,28 @@ function rainbowClips(books: Book[]) {
  * books have been dragged out of place.
  */
 function statusNooks(books: Book[]) {
-  const out = new Map<string, string>()
+  const out = new Map<string, Separator>()
   const seen = new Set<string>()
   for (const b of books) {
     if (seen.has(b.status)) continue
-    if (seen.size > 0) out.set(b.id, STATUS_LABELS[b.status])
+    if (seen.size > 0) out.set(b.id, { kind: 'nook', label: STATUS_LABELS[b.status] })
     seen.add(b.status)
+  }
+  return out
+}
+
+/** A labelled divider before the first book of each series, and before the standalone books. */
+function seriesDividers(books: Book[]) {
+  const out = new Map<string, Separator>()
+  const groups = seriesGroups(books)
+  // nothing to divide when no series has two books on the shelf
+  if (![...groups.values()].some((g) => g.key)) return out
+  const seen = new Set<string>()
+  for (const b of books) {
+    const g = groups.get(b.id)!
+    if (seen.has(g.key)) continue
+    seen.add(g.key)
+    out.set(b.id, { kind: 'divider', label: g.name })
   }
   return out
 }

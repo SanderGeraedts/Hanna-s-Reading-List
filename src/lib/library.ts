@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { detectSeries } from './series'
+import { seriesGroups } from './series'
 
 export type ReadingStatus = 'want' | 'reading' | 'read'
 
@@ -186,16 +186,29 @@ export function sortBooks(books: Book[], key: SortKey): Book[] {
           collator.compare(a.title, b.title),
       )
     case 'series': {
-      // books of one author stay together; within that, each series in order,
-      // and standalone books sit between them by title
-      const series = detectSeries(copy)
+      // each series together and in order, the series by author; books that
+      // are not part of a series stand together at the end, by author
+      const groups = seriesGroups(copy)
+      const groupAuthor = new Map<string, string>()
+      for (const b of copy) {
+        const key = groups.get(b.id)!.key
+        const name = authorSurname(b)
+        const known = groupAuthor.get(key)
+        if (known === undefined || collator.compare(name, known) < 0) groupAuthor.set(key, name)
+      }
       return copy.sort((a, b) => {
-        const sa = series.get(a.id)
-        const sb = series.get(b.id)
+        const ga = groups.get(a.id)!
+        const gb = groups.get(b.id)!
+        const standalone = Number(ga.key === '') - Number(gb.key === '')
+        if (standalone) return standalone
+        if (ga.key === '' && gb.key === '') {
+          return collator.compare(authorSurname(a), authorSurname(b)) || collator.compare(a.title, b.title)
+        }
         return (
-          collator.compare(authorSurname(a), authorSurname(b)) ||
-          collator.compare(sortableTitle(sa?.name ?? a.title), sortableTitle(sb?.name ?? b.title)) ||
-          (sa?.index ?? 999) - (sb?.index ?? 999) ||
+          collator.compare(groupAuthor.get(ga.key)!, groupAuthor.get(gb.key)!) ||
+          collator.compare(sortableTitle(ga.name), sortableTitle(gb.name)) ||
+          ga.key.localeCompare(gb.key) ||
+          (ga.index ?? 999) - (gb.index ?? 999) ||
           (a.year ?? 9999) - (b.year ?? 9999) ||
           collator.compare(a.title, b.title)
         )
