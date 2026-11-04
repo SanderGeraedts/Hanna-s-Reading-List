@@ -682,3 +682,111 @@ textarea.input {
   border-radius: 999px;
   background: rgba(240, 220, 190, 0.35);
 }
+
+/* ---- sign in -------------------------------------------------------- */
+.signin {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  overflow: auto;
+  background: radial-gradient(ellipse at top, #3d2c20, var(--bg) 70%);
+}
+.signin-card {
+  width: min(100%, 22rem);
+  display: grid;
+  gap: 1rem;
+  padding: 2rem 1.5rem;
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+}
+.signin-card h1 {
+  font-size: 1.6rem;
+}
+.signin-card form {
+  display: grid;
+  gap: 1rem;
+}
+
+/* ---- account menu --------------------------------------------------- */
+.account {
+  position: relative;
+}
+.account > summary {
+  list-style: none;
+}
+.account > summary::-webkit-details-marker {
+  display: none;
+}
+.topbar .account-btn {
+  position: relative;
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--header-ink);
+  border-color: rgba(40, 50, 90, 0.2);
+}
+.topbar .account-btn:hover {
+  background: #fff;
+}
+.sync-dot {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #5fae68;
+}
+.sync-dot.saving,
+.sync-dot.loading {
+  background: var(--accent);
+}
+.sync-dot.offline,
+.sync-dot.too-big {
+  background: var(--danger);
+}
+.account-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  width: max-content;
+  max-width: min(18rem, calc(100vw - 2rem));
+  display: grid;
+  gap: 0.6rem;
+  justify-items: start;
+  padding: 0.9rem 1rem;
+  background: var(--surface-solid);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  font-size: 0.875rem;
+}
+.account-menu p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.topbar .account-menu .sync-text {
+  color: var(--muted);
+}
+.topbar .account-menu .sync-text.offline,
+.topbar .account-menu .sync-text.too-big {
+  color: var(--danger);
+}
+@media (max-width: 720px) {
+  .topbar .account-btn {
+    width: 2.1rem;
+    height: 2.1rem;
+  }
+}

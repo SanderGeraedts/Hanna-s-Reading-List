@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { deleteCookie, getCookie, setCookie } from '@tanstack/react-start/server'
 import type { ReadingStatus } from '#/lib/library'
+import { asUser, pb, pocketbaseUrl, sessionToken, tokenUserId } from './pocketbase'
 
 /**
  * Storytel has no public API. This uses the same private endpoints as
@@ -12,9 +13,10 @@ import type { ReadingStatus } from '#/lib/library'
  *  2. POST https://api.storytel.net/libraries/bookshelf (empty body) -> whole shelf
  *
  * Credentials are never logged and never returned to the browser. After signing
- * in they are kept in an encrypted, httpOnly cookie on that device (until "Sign
- * out") so the shelf can be refreshed later without signing in again (a stopgap until
- * there is a proper auth flow). Accounts that sign in with Google/Apple/Facebook
+ * in they are sealed (AES-GCM, key held by this app) and kept until "Sign out",
+ * so the shelf can be refreshed later without signing in again: with the
+ * signed-in account when there is an account server, otherwise in an httpOnly
+ * cookie on that device. Accounts that sign in with Google/Apple/Facebook
  * have no Storytel password and cannot use this.
  */
 
@@ -241,8 +243,8 @@ async function unseal(token: string | undefined): Promise<Credentials | null> {
   }
 }
 
-async function rememberLogin(c: Credentials) {
-  setCookie(COOKIE, await seal(c), {
+function rememberInCookie(sealed: string) {
+  setCookie(COOKIE, sealed, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
@@ -251,8 +253,76 @@ async function rememberLogin(c: Credentials) {
   })
 }
 
-function forgetLogin() {
+function forgetCookie() {
   deleteCookie(COOKIE, { path: '/' })
+}
+
+// With an account server, the sealed login is kept with the account instead,
+// so it follows Hanna to every device. PocketBase only ever stores ciphertext:
+// the key stays with this app (STORYTEL_COOKIE_SECRET).
+
+interface LoginRecord {
+  id: string
+  sealed: string
+  account: string
+}
+
+const accountToken = () => (pocketbaseUrl() ? sessionToken() : null)
+
+async function findLoginRecord(token: string) {
+  const list = await pb<{ items: LoginRecord[] }>(
+    '/api/collections/storytel_logins/records?perPage=1&skipTotal=1',
+    { token },
+  )
+  return list.items[0] ?? null
+}
+
+async function saveLoginRecord(token: string, sealed: string, account: string) {
+  const body = { sealed, account }
+  const existing = await findLoginRecord(token)
+  if (existing) {
+    await pb(`/api/collections/storytel_logins/records/${existing.id}`, { method: 'PATCH', token, body })
+  } else {
+    await pb('/api/collections/storytel_logins/records', {
+      method: 'POST',
+      token,
+      body: { ...body, owner: tokenUserId(token) },
+    })
+  }
+}
+
+async function rememberLogin(c: Credentials) {
+  const sealed = await seal(c)
+  const token = accountToken()
+  if (!token) return rememberInCookie(sealed)
+  await asUser((t) => saveLoginRecord(t, sealed, maskEmail(c.email)))
+  forgetCookie()
+}
+
+async function savedLogin(): Promise<Credentials | null> {
+  const fromCookie = await unseal(getCookie(COOKIE))
+  const token = accountToken()
+  if (!token) return fromCookie
+  return asUser(async (t) => {
+    const record = await findLoginRecord(t)
+    if (record) return unseal(record.sealed)
+    // signed in on a device that still had a cookie from before accounts: move it over
+    if (fromCookie) {
+      await saveLoginRecord(t, await seal(fromCookie), maskEmail(fromCookie.email))
+      forgetCookie()
+    }
+    return fromCookie
+  })
+}
+
+async function forgetLogin() {
+  forgetCookie()
+  const token = accountToken()
+  if (!token) return
+  await asUser(async (t) => {
+    const record = await findLoginRecord(t)
+    if (record) await pb(`/api/collections/storytel_logins/records/${record.id}`, { method: 'DELETE', token: t })
+  })
 }
 
 /** "h…a@gmail.com": enough to recognise the account, without showing the address. */
@@ -265,8 +335,8 @@ export const importStorytelLibrary = createServerFn({ method: 'POST' })
   .validator((input: { email: string; password: string }) => validCredentials(input))
   .handler(async ({ data }): Promise<StorytelBook[]> => {
     const books = await fetchShelf(data)
-    // stay signed in on this device, so ↻ can refresh the shelf later (the
-    // import still works if the server has no cookie secret configured)
+    // stay signed in, so ↻ can refresh the shelf later (the import still
+    // works if the server has no secret configured or can't save the login)
     await rememberLogin(data).catch(() => {})
     return books
   })
@@ -274,9 +344,9 @@ export const importStorytelLibrary = createServerFn({ method: 'POST' })
 /** Fetches the shelf again with the login remembered on this device. */
 export const refreshStorytelLibrary = createServerFn({ method: 'POST' }).handler(
   async (): Promise<StorytelBook[]> => {
-    const credentials = await unseal(getCookie(COOKIE))
+    const credentials = await savedLogin()
     if (!credentials) {
-      forgetLogin()
+      await forgetLogin()
       throw new Error('No saved Storytel login on this device. Sign in again under + Add → Storytel.')
     }
     try {
@@ -284,7 +354,7 @@ export const refreshStorytelLibrary = createServerFn({ method: 'POST' }).handler
     } catch (e) {
       // a changed password: drop the stale login so the form shows again
       if (e instanceof LoginRejected) {
-        forgetLogin()
+        await forgetLogin()
         throw new Error('Storytel no longer accepts the saved login. Sign in again under + Add → Storytel.')
       }
       throw e
@@ -294,12 +364,12 @@ export const refreshStorytelLibrary = createServerFn({ method: 'POST' }).handler
 
 export const storytelLoginStatus = createServerFn({ method: 'GET' }).handler(
   async (): Promise<{ saved: boolean; account?: string }> => {
-    const credentials = await unseal(getCookie(COOKIE))
+    const credentials = await savedLogin()
     return credentials ? { saved: true, account: maskEmail(credentials.email) } : { saved: false }
   },
 )
 
 export const forgetStorytelLogin = createServerFn({ method: 'POST' }).handler(async () => {
-  forgetLogin()
+  await forgetLogin()
   return { saved: false }
 })

@@ -8,7 +8,10 @@ import type { Face } from '#/components/BookPanel'
 import { nearestTurn } from '#/components/BookMesh'
 import type { InspectTarget } from '#/components/BookMesh'
 import { SORT_LABELS, STATUS_LABELS, useLibrary } from '#/lib/library'
-import type { SortKey } from '#/lib/library'
+import type { SortKey, SyncStatus } from '#/lib/library'
+import { useSession } from '#/lib/session'
+import type { Account } from '#/lib/session'
+import { SignIn } from '#/components/SignIn'
 import { detectSeries } from '#/lib/series'
 import { useStorytelSync } from '#/lib/useStorytelSync'
 import type { Tab } from '#/components/AddBookDialog'
@@ -18,7 +21,37 @@ export const Route = createFileRoute('/')({ component: Home })
 const FACE_ANGLE: Record<Face, number> = { front: 0, spine: Math.PI / 2, back: Math.PI }
 
 function Home() {
-  const { books, loaded, arrangement, addBook, removeBook, updateBook, reorder, sortBy } = useLibrary()
+  const session = useSession()
+  const { state } = session
+  if (state.kind === 'loading') return <div className="stage-loading">Opening the shelf…</div>
+  if (state.kind === 'signed-out') return <SignIn onSignIn={session.signIn} />
+  if (state.kind === 'error') return <SignIn onSignIn={session.signIn} problem={state.message} onRetry={session.retry} />
+  if (state.kind === 'local') return <Shelf />
+  return (
+    <Shelf
+      key={state.account.id}
+      account={state.account}
+      offline={state.offline}
+      onSignOut={session.signOut}
+      onExpired={session.expired}
+    />
+  )
+}
+
+interface ShelfProps {
+  /** signed in to the account server; none: the shelf lives in this browser only */
+  account?: Account
+  /** signed in earlier, but the server can't be reached right now */
+  offline?: boolean
+  onSignOut?: () => Promise<void>
+  onExpired?: () => void
+}
+
+function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
+  const { books, loaded, arrangement, sync, addBook, removeBook, updateBook, reorder, sortBy } = useLibrary(
+    account?.id ?? null,
+    onExpired,
+  )
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [adding, setAdding] = useState<Tab | null>(null)
   const [pickingCover, setPickingCover] = useState(false)
@@ -130,6 +163,9 @@ function Home() {
           <button className="btn primary" onClick={() => setAdding('search')}>
             + Add<span className="hide-mobile"> book</span>
           </button>
+          {account && onSignOut && (
+            <AccountMenu account={account} sync={offline && sync === 'loading' ? 'offline' : sync} onSignOut={onSignOut} />
+          )}
         </div>
       </header>
 
@@ -241,5 +277,57 @@ function Home() {
         </div>
       )}
     </div>
+  )
+}
+
+const SYNC_TEXT: Record<SyncStatus, string> = {
+  local: 'Saved in this browser',
+  loading: 'Loading your shelf…',
+  saved: 'All changes saved',
+  saving: 'Saving…',
+  offline: "Can't reach the server. Changes are kept on this device and saved when it's back.",
+  'too-big': 'The shelf is too large to save (too many uploaded covers). Changes are kept on this device.',
+}
+
+function AccountMenu({
+  account,
+  sync,
+  onSignOut,
+}: {
+  account: Account
+  sync: SyncStatus
+  onSignOut: () => Promise<void>
+}) {
+  const [busy, setBusy] = useState(false)
+  const name = account.name || account.email
+  return (
+    <details className="account">
+      <summary className="btn account-btn" aria-label={`Account: ${name}. ${SYNC_TEXT[sync]}`} title={SYNC_TEXT[sync]}>
+        <span aria-hidden>{name.slice(0, 1).toUpperCase()}</span>
+        <span className={`sync-dot ${sync}`} aria-hidden />
+      </summary>
+      <div className="account-menu">
+        <p>
+          Signed in as <strong>{account.email}</strong>
+        </p>
+        <p className={`muted sync-text ${sync}`} role="status">
+          {SYNC_TEXT[sync]}
+        </p>
+        <button
+          className="btn small"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true)
+            try {
+              await onSignOut()
+            } catch {
+              setBusy(false)
+            }
+          }}
+        >
+          {busy ? 'Signing out…' : 'Sign out'}
+        </button>
+      </div>
+    </details>
   )
 }

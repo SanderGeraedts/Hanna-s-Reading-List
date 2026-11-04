@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { loadShelf, saveShelf } from '#/server/shelf'
 import { seriesGroups } from './series'
+import { NOT_SIGNED_IN } from './signedOut'
 
 export type ReadingStatus = 'want' | 'reading' | 'read'
 
@@ -56,15 +58,32 @@ export const STATUS_LABELS: Record<ReadingStatus, string> = {
 
 const STORAGE_KEY = 'hannas-reading-list:v1'
 const ARRANGEMENT_KEY = 'hannas-reading-list:arrangement'
+/** the shelf this browser had before accounts, kept once it was merged into one */
+const PRE_ACCOUNT_BACKUP_KEY = 'hannas-reading-list:v1:before-account'
+/** Netlify functions accept requests up to 6 MB; uploaded covers are the bulk of it */
+const SYNC_LIMIT = 5_500_000
+const DEBOUNCE_MS = 1200
+const RETRY_MS = 30_000
+
+export type SyncStatus =
+  /** no account: the shelf lives in this browser only */
+  | 'local'
+  | 'loading'
+  | 'saved'
+  | 'saving'
+  /** the server can't be reached: changes are kept here and sent later */
+  | 'offline'
+  /** too large to send (lots of uploaded covers) */
+  | 'too-big'
 
 /** Times a book has been read: finished books count at least once. */
 export function timesRead(book: Book) {
   return Math.max(book.readCount ?? 0, book.status === 'read' ? 1 : 0)
 }
 
-function loadBooks(): Book[] {
+function loadBooks(key: string): Book[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(key)
     if (!raw) return []
     const parsed = JSON.parse(raw)
     return Array.isArray(parsed) ? (parsed as Book[]) : []
@@ -73,32 +92,233 @@ function loadBooks(): Book[] {
   }
 }
 
-/** The library lives in localStorage, so the shelf is personal to this browser. */
-export function useLibrary() {
+function loadArrangement(key: string): SortKey | null {
+  try {
+    const a = localStorage.getItem(key)
+    return a && a in SORT_LABELS ? (a as SortKey) : null
+  } catch {
+    return null
+  }
+}
+
+function store(key: string, value: string | null) {
+  try {
+    if (value === null) localStorage.removeItem(key)
+    else localStorage.setItem(key, value)
+  } catch {
+    /* storage full or blocked – the shelf still works for this session */
+  }
+}
+
+function flagged(key: string | null) {
+  try {
+    return !!key && !!localStorage.getItem(key)
+  } catch {
+    return false
+  }
+}
+
+function storageKeys(accountId: string | null) {
+  return accountId
+    ? {
+        books: `${STORAGE_KEY}:${accountId}`,
+        arrangement: `${ARRANGEMENT_KEY}:${accountId}`,
+        /** set while this device has changes the server hasn't got yet */
+        unsynced: `${STORAGE_KEY}:${accountId}:unsynced`,
+      }
+    : { books: STORAGE_KEY, arrangement: ARRANGEMENT_KEY, unsynced: null }
+}
+
+const norm = (s: string | undefined) => (s ?? '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '')
+
+/** Adds the books of `extra` that `base` doesn't have yet (same id, Storytel id, ISBN, or title and author). */
+export function mergeShelves(base: Book[], extra: Book[]) {
+  const keys = (b: Book) =>
+    [
+      `id:${b.id}`,
+      b.storytelId && `st:${b.storytelId}`,
+      b.isbn && `isbn:${b.isbn}`,
+      `ta:${norm(b.title)}|${norm(b.authors[0])}`,
+    ].filter((k): k is string => !!k)
+  // only compared with `base`: two copies already on the same shelf both stay
+  const seen = new Set(base.flatMap(keys))
+  return [...base, ...extra.filter((b) => !keys(b).some((k) => seen.has(k)))]
+}
+
+/**
+ * The library. Without an account it lives in this browser's localStorage.
+ * With one, the account server holds it and this device keeps a copy, so the
+ * shelf opens at once and keeps working offline. Changes are sent a moment
+ * after they're made; edits from other devices are picked up when the page
+ * comes back into view. The newest save wins.
+ *
+ * The account must not change while mounted (give the component a `key`).
+ */
+export function useLibrary(accountId: string | null = null, onSignedOut?: () => void) {
   const [books, setBooks] = useState<Book[]>([])
   const [loaded, setLoaded] = useState(false)
   /** the sort last applied; drag-and-drop tweaks keep it (the shelf is still mostly in that order) */
   const [arrangement, setArrangement] = useState<SortKey | null>(null)
+  const [sync, setSync] = useState<SyncStatus>(accountId ? 'loading' : 'local')
 
-  useEffect(() => {
-    setBooks(loadBooks())
-    try {
-      const a = localStorage.getItem(ARRANGEMENT_KEY)
-      if (a && a in SORT_LABELS) setArrangement(a as SortKey)
-    } catch {
-      /* ignore */
-    }
-    setLoaded(true)
+  const [keys] = useState(() => storageKeys(accountId))
+  const latest = useRef({ books, arrangement })
+  latest.current = { books, arrangement }
+  /** the next change comes from the server (or this device's copy), not from an edit */
+  const fromServer = useRef(false)
+  const serverUpdated = useRef<string | null>(null)
+  const saving = useRef(false)
+  const saveAgain = useRef(false)
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const signedOut = useRef(onSignedOut)
+  signedOut.current = onSignedOut
+
+  const adopt = useCallback((b: Book[], a: SortKey | null) => {
+    fromServer.current = true
+    setBooks(b)
+    setArrangement(a)
   }, [])
 
+  // assigned below; lets `failed` and `push` refer to each other
+  const pushRef = useRef<() => void>(() => {})
+
+  const failed = useCallback(
+    (e: unknown) => {
+      if (e instanceof Error && e.message === NOT_SIGNED_IN) {
+        signedOut.current?.()
+        return
+      }
+      setSync('offline')
+      clearTimeout(timer.current)
+      timer.current = setTimeout(() => {
+        if (flagged(keys.unsynced)) pushRef.current()
+      }, RETRY_MS)
+    },
+    [keys],
+  )
+
+  const push = useCallback(async () => {
+    if (!accountId) return
+    clearTimeout(timer.current)
+    if (saving.current) {
+      saveAgain.current = true
+      return
+    }
+    const { books, arrangement } = latest.current
+    if (JSON.stringify(books).length > SYNC_LIMIT) {
+      setSync('too-big')
+      return
+    }
+    saving.current = true
+    setSync('saving')
+    try {
+      const r = await saveShelf({ data: { books, arrangement } })
+      serverUpdated.current = r.updated
+      if (!saveAgain.current) {
+        store(keys.unsynced!, null)
+        setSync('saved')
+      }
+    } catch (e) {
+      saveAgain.current = false
+      failed(e)
+    } finally {
+      saving.current = false
+      if (saveAgain.current) {
+        saveAgain.current = false
+        pushRef.current()
+      }
+    }
+  }, [accountId, keys, failed])
+  pushRef.current = push
+
+  // first load: this device's copy straight away, then the server's
+  useEffect(() => {
+    let local = loadBooks(keys.books)
+    let localArrangement = loadArrangement(keys.arrangement)
+    // first sign-in on this device: bring along the shelf this browser had
+    const preAccount = accountId && !local.length ? loadBooks(STORAGE_KEY) : []
+    if (preAccount.length) {
+      local = preAccount
+      localArrangement = loadArrangement(ARRANGEMENT_KEY)
+    }
+    adopt(local, localArrangement)
+    setLoaded(true)
+    if (!accountId) return
+
+    let cancelled = false
+    loadShelf()
+      .then((remote) => {
+        if (cancelled) return
+        serverUpdated.current = remote?.updated ?? null
+        if (preAccount.length) {
+          // merge it into the account, and keep the old copy aside, just in case
+          adopt(mergeShelves(remote?.books ?? [], preAccount), remote?.arrangement ?? localArrangement)
+          store(PRE_ACCOUNT_BACKUP_KEY, JSON.stringify(preAccount))
+          store(STORAGE_KEY, null)
+          store(ARRANGEMENT_KEY, null)
+          store(keys.unsynced!, '1')
+          timer.current = setTimeout(() => pushRef.current(), 0)
+        } else if (!remote || flagged(keys.unsynced)) {
+          // nothing saved yet, or changes made here while offline: send this device's copy
+          if (local.length || remote) {
+            store(keys.unsynced!, '1')
+            pushRef.current()
+          } else setSync('saved')
+        } else {
+          adopt(remote.books, remote.arrangement)
+          setSync('saved')
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) failed(e)
+      })
+    return () => {
+      cancelled = true
+      clearTimeout(timer.current)
+    }
+    // runs once: the account is fixed for the life of the component
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // keep this device's copy, and send edits to the server
   useEffect(() => {
     if (!loaded) return
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(books))
-    } catch {
-      /* storage full or blocked – the shelf still works for this session */
+    store(keys.books, JSON.stringify(books))
+    store(keys.arrangement, arrangement)
+    if (fromServer.current) {
+      fromServer.current = false
+      return
     }
-  }, [books, loaded])
+    if (!accountId) return
+    store(keys.unsynced!, '1')
+    clearTimeout(timer.current)
+    timer.current = setTimeout(() => pushRef.current(), DEBOUNCE_MS)
+  }, [books, arrangement, loaded, accountId, keys])
+
+  // back on the page: send what's waiting, or pick up changes from other devices
+  useEffect(() => {
+    if (!accountId) return
+    const check = async () => {
+      if (document.visibilityState !== 'visible' || saving.current) return
+      if (flagged(keys.unsynced)) return pushRef.current()
+      try {
+        const remote = await loadShelf()
+        if (remote && remote.updated !== serverUpdated.current && !flagged(keys.unsynced)) {
+          serverUpdated.current = remote.updated
+          adopt(remote.books, remote.arrangement)
+        }
+        setSync('saved')
+      } catch (e) {
+        failed(e)
+      }
+    }
+    document.addEventListener('visibilitychange', check)
+    window.addEventListener('online', check)
+    return () => {
+      document.removeEventListener('visibilitychange', check)
+      window.removeEventListener('online', check)
+    }
+  }, [accountId, keys, adopt, failed])
 
   const addBook = useCallback((book: NewBook) => {
     const full: Book = {
@@ -132,14 +352,9 @@ export function useLibrary() {
   const sortBy = useCallback((key: SortKey) => {
     setBooks((prev) => sortBooks(prev, key))
     setArrangement(key)
-    try {
-      localStorage.setItem(ARRANGEMENT_KEY, key)
-    } catch {
-      /* ignore */
-    }
   }, [])
 
-  return { books, loaded, arrangement, addBook, removeBook, updateBook, reorder, sortBy }
+  return { books, loaded, arrangement, sync, addBook, removeBook, updateBook, reorder, sortBy }
 }
 
 const collator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true })
