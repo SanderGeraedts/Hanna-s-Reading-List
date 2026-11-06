@@ -9,6 +9,7 @@ import type { BookDims } from '#/lib/shelfLayout'
  */
 
 const SERIF = 'Georgia, "Times New Roman", serif'
+const SANS = 'Inter, system-ui, -apple-system, "Segoe UI", sans-serif'
 
 function canvas(w: number, h: number) {
   const c = document.createElement('canvas')
@@ -149,6 +150,19 @@ export function paintSpine(book: Book, dims: BookDims) {
   for (const y of read ? [H * 0.05] : [H * 0.05, H * 0.9]) {
     ctx.fillRect(0, y, W, Math.max(2, H * 0.006))
     ctx.fillRect(0, y + H * 0.014, W, Math.max(1, H * 0.003))
+  }
+
+  // a small language tag above the top bands, read across the spine
+  if (book.language) {
+    const code = book.language.toUpperCase()
+    ctx.save()
+    ctx.font = `600 ${Math.round(Math.min(W * 0.36, H * 0.03))}px ${SANS}`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillStyle = ink
+    ctx.globalAlpha = 0.8
+    ctx.fillText(code, W / 2, H * 0.028)
+    ctx.restore()
   }
 
   // text runs top-to-bottom (English convention)

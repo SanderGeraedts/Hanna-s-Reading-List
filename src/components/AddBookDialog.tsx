@@ -1,3 +1,4 @@
+import { guessLanguage } from '#/lib/languages'
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { getWorkDetails, lookupIsbn, searchBooks } from '#/server/openLibrary'
@@ -23,7 +24,10 @@ interface Props {
 }
 
 /** Turns an Open Library result into a book, sampling the cover for spine colour + shape. */
-async function buildBook(r: SearchResult, description?: string): Promise<NewBook> {
+async function buildBook(
+  r: SearchResult,
+  details: { description?: string; genres?: string[] } = {},
+): Promise<NewBook> {
   const coverUrl = r.coverId
     ? coverUrlForId(r.coverId)
     : r.isbn
@@ -37,7 +41,9 @@ async function buildBook(r: SearchResult, description?: string): Promise<NewBook
     pages: r.pages,
     isbn: r.isbn,
     workKey: r.workKey || undefined,
-    description,
+    description: details.description,
+    genres: details.genres,
+    language: r.language ?? guessLanguage(r.title),
     coverUrl: analysis ? coverUrl : undefined,
     coverAspect: analysis?.aspect,
     color: analysis?.color ?? colorFromString(r.title),
@@ -163,10 +169,8 @@ function SearchTab({ existing, onAdd }: { existing: Book[]; onAdd: (b: NewBook) 
   async function add(r: SearchResult) {
     setAdding(r.workKey)
     try {
-      const details = await getWorkDetails({ data: { workKey: r.workKey } }).catch(() => ({
-        description: undefined,
-      }))
-      onAdd(await buildBook(r, details.description))
+      const details = await getWorkDetails({ data: { workKey: r.workKey } }).catch(() => undefined)
+      onAdd(await buildBook(r, details))
       setAdded((s) => new Set(s).add(r.workKey))
     } finally {
       setAdding(null)
@@ -238,7 +242,7 @@ function IsbnTab({ onAdd }: { onAdd: (b: NewBook) => void }) {
         setStatus('idle')
         return
       }
-      onAdd(await buildBook(found, found.description))
+      onAdd(await buildBook(found, found))
       setStatus('done')
       setIsbn('')
     } catch (err) {
@@ -293,6 +297,7 @@ function ManualTab({ onAdd }: { onAdd: (b: NewBook) => void }) {
       year: Number(form.year) || undefined,
       pages: Number(form.pages) || undefined,
       description: form.description.trim() || undefined,
+      language: guessLanguage(title),
       color: colorFromString(title),
     })
     setForm({ title: '', author: '', year: '', pages: '', description: '' })

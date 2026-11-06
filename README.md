@@ -5,6 +5,8 @@ A 3D bookshelf for a personal reading list, built with **React**, **TanStack Sta
 - Add books by searching [Open Library](https://openlibrary.org), by ISBN, by hand, or by importing your **Storytel** bookshelf.
 - Books stand on a wooden bookcase with their spines out. The spine colour comes from the cover, the thickness from the page count, and the width from the cover's shape.
 - **Organise:** drag a book along or between shelves to move it, or use **Arrange by** to sort by title, author, series, year, colour, date added or reading status. Sorting by reading status puts a little book nook (a lamplit alley at night, with a sign naming the next group) between the groups. Sorting by series keeps each author's series together and in order. The series is read from the title ("Percy Jackson, Teil 4: …", "Die Kane-Chroniken 2: …", "(Dune, #2)") or from a title opening shared by an author's books ("Harry Potter and the …"). You can type a series and number in the book panel instead.
+- **Search:** the magnifier in the top bar (or the `/` key) finds books by title, author, series, genre, language, how you have it, or the friend you lent it to. Pick a result to take the book off the shelf.
+- **Details:** in the book panel you can rename a book (✎; titles with edition notes like "(10th Anniversary Recording)" get a one-tap *Shorten*, and the original can be restored), and set how you have it (paperback, e-book, Storytel, library…), its language, its genres, and whether it's lent to a friend (to whom and since when). Renamed titles stay renamed when Storytel refreshes. Genres come from Open Library's subjects when a book is added; books from before get them once in the background, and books Open Library doesn't know take the genres of their series or author. The language is guessed from the title and shown as a small tag at the top of the spine. **Arrange by** can also group the shelf by genre, language or how you have it, with a labelled divider before each group.
 - **Inspect:** click a book to pull it off the shelf. Drag to turn it, use **Front / Spine / Back** or the ← → keys to flip it, and press Esc (or click the room) to put it back.
 - **Covers:** if a cover is wrong, open the book and choose **Change cover…**. You can pick the cover of another edition from Open Library, or upload your own picture (it's scaled down and saved with your library).
 - **On a phone:** held upright, the bookcase fills the width of the screen. Swipe up and down to scroll through the shelves, tap a book to take it out, and press and hold a book to move it.
@@ -54,11 +56,17 @@ src/
     BookMesh.tsx               one book: 6-sided box, cover loading, pull-out/fly/rotate animation
     textures.ts                canvas painters for spine, back, fallback cover, page edges, wood
     AddBookDialog.tsx          search / ISBN / manual tabs
-    BookPanel.tsx              details, face buttons, status, remove
+    BookPanel.tsx              details, face buttons, status, rename, format, language, genres, lent, remove
+    SearchBox.tsx              search the shelf
   lib/
     library.ts                 Book model, localStorage persistence, sorting
     shelfLayout.ts             book dimensions and shelf packing
     cover.ts                   cover URLs, dominant-colour + aspect analysis
+    search.ts                  matching books for the search box
+    genres.ts                  shelf genres from Open Library / Storytel subjects
+    languages.ts               language codes, names, and a guess from the title
+    titles.ts                  tidying edition notes out of titles
+    useBookDetails.ts          fills in genres and language for books added before those existed
 ```
 
 The library is stored in the browser's `localStorage` (key `hannas-reading-list:v1`), so each browser has its own shelf. To sync a shelf across devices, replace `useLibrary` with server functions backed by a database.
