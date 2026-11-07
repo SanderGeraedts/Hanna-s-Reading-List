@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import type { Book, SortKey } from '#/lib/library'
-import { FRAME, SHELF, computeLayout, rowFloorY, shelfFitFor } from '#/lib/shelfLayout'
+import { FRAME, SHELF, computeLayout, fitShelf, rowFloorY } from '#/lib/shelfLayout'
 import { arrangementSeparators } from '#/lib/separators'
 import type { ShelfLayout } from '#/lib/shelfLayout'
 import { BookMesh, RAINBOW } from './BookMesh'
@@ -95,12 +95,13 @@ function Scene({
   const clipColors = useMemo(() => rainbowClips(books), [books])
   const size = useThree((s) => s.size)
   const aspect = size.width / Math.max(1, size.height)
-  const fit = useMemo(() => shelfFitFor(aspect), [aspect])
   const portrait = aspect < 0.8
   // one object, updated in place every frame as the sheet is dragged
   const portraitFrame = useMemo(() => ({ fill: 0.4, yShift: 0.17 }), [])
   useFrame(() => portraitInspect(portraitFrame, sheet?.current ?? 0.45, aspect))
   const separators = useMemo(() => arrangementSeparators(ordered, arrangement), [arrangement, ordered])
+  // the case's width follows the screen, and widens on big screens so the books stay large (#39)
+  const fit = useMemo(() => fitShelf(ordered, aspect, separators), [ordered, aspect, separators])
   const layout = useMemo(() => computeLayout(ordered, fit, separators), [ordered, fit, separators])
 
   // keep the case size stable while dragging so the camera doesn't jump around

@@ -283,3 +283,37 @@ export function computeLayout(
     caseHeight: rows * SHELF.rowHeight + SHELF.board,
   }
 }
+
+/** The widest a desktop bookcase may grow to fill a large, wide screen. */
+export const MAX_INNER_WIDTH = 4
+
+/**
+ * The bookcase for this screen and these books (#39). Phones keep the narrow,
+ * scrolling case. On a desktop the whole case is always in view, so a full
+ * shelf used to grow taller and taller and the books got small, with empty
+ * space left and right. Here the case also tries wider widths and keeps the
+ * one that shows the books largest on this screen: the case's shape follows
+ * the screen's.
+ */
+export function fitShelf(books: Book[], aspect: number, separators: Map<string, Separator> = new Map()): ShelfFit {
+  const base = shelfFitFor(aspect)
+  if (aspect < 0.8) return base
+  const sides = SHELF.side * 2
+  // how far the camera has to be to show the whole case (the same sums as the camera rig)
+  const distance = (innerWidth: number) => {
+    const { caseHeight } = computeLayout(books, { innerWidth, minRows: base.minRows }, separators)
+    return Math.max(((innerWidth + sides) * FRAME.horizontal) / aspect, caseHeight * FRAME.vertical)
+  }
+  let best = base
+  let bestDistance = distance(base.innerWidth)
+  for (let w = base.innerWidth + 0.1; w <= MAX_INNER_WIDTH + 1e-9; w += 0.1) {
+    const innerWidth = Math.round(w * 10) / 10
+    const d = distance(innerWidth)
+    // only take a wider case when the books come out clearly bigger
+    if (d < bestDistance * 0.98) {
+      best = { innerWidth, minRows: base.minRows }
+      bestDistance = d
+    }
+  }
+  return best
+}
