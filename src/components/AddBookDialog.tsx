@@ -9,8 +9,10 @@ import { forgetStorytelLogin, importStorytelLibrary, storytelLoginStatus } from 
 import type { StorytelLogin } from '#/lib/useStorytelSync'
 import { importStorytelBooks } from '#/lib/storytelImport'
 import type { ImportSummary } from '#/lib/storytelImport'
+import { sameIsbn } from '#/lib/isbn'
+import { BarcodeScanner } from './BarcodeScanner'
 
-export type Tab = 'search' | 'isbn' | 'manual' | 'storytel'
+export type Tab = 'search' | 'scan' | 'isbn' | 'manual' | 'storytel'
 
 interface Props {
   existing: Book[]
@@ -60,6 +62,8 @@ export function AddBookDialog({
   initialTab = 'search',
 }: Props) {
   const [tab, setTab] = useState<Tab>(initialTab)
+  /** an ISBN Open Library didn't know, carried over to the manual tab */
+  const [manualIsbn, setManualIsbn] = useState<string | undefined>()
   const dialog = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
@@ -90,6 +94,7 @@ export function AddBookDialog({
           {(
             [
               ['search', 'Search'],
+              ['scan', 'Scan'],
               ['isbn', 'ISBN'],
               ['manual', 'Manual'],
               ['storytel', 'Storytel'],
@@ -107,8 +112,18 @@ export function AddBookDialog({
           ))}
         </div>
         {tab === 'search' && <SearchTab existing={existing} onAdd={onAdd} />}
+        {tab === 'scan' && (
+          <ScanTab
+            existing={existing}
+            onAdd={onAdd}
+            onManual={(isbn) => {
+              setManualIsbn(isbn)
+              setTab('manual')
+            }}
+          />
+        )}
         {tab === 'isbn' && <IsbnTab onAdd={onAdd} />}
-        {tab === 'manual' && <ManualTab onAdd={onAdd} />}
+        {tab === 'manual' && <ManualTab onAdd={onAdd} isbn={manualIsbn} />}
         {tab === 'storytel' && (
           <StorytelTab
             existing={existing}
@@ -226,6 +241,103 @@ function SearchTab({ existing, onAdd }: { existing: Book[]; onAdd: (b: NewBook) 
   )
 }
 
+type ScanFind =
+  | { kind: 'looking'; isbn: string }
+  | { kind: 'found'; isbn: string; result: SearchResult & { description?: string; genres?: string[] } }
+  | { kind: 'unknown'; isbn: string }
+  | { kind: 'on-shelf'; isbn: string; book: Book }
+  | { kind: 'error'; isbn: string; message: string }
+
+/**
+ * Scan the barcode on the back of a book (#19): look it up, show it, and add
+ * it as a paperback with one tap. The camera keeps going, so a pile of books
+ * (or a bookshop shelf) can be added one after another.
+ */
+function ScanTab({
+  existing,
+  onAdd,
+  onManual,
+}: {
+  existing: Book[]
+  onAdd: (b: NewBook) => void
+  onManual: (isbn: string) => void
+}) {
+  const [find, setFind] = useState<ScanFind | null>(null)
+  const [adding, setAdding] = useState(false)
+  const [added, setAdded] = useState<string[]>([])
+  const lookups = useRef(0)
+
+  async function scanned(isbn: string) {
+    const onShelf = existing.find((b) => sameIsbn(b.isbn, isbn))
+    if (onShelf) return setFind({ kind: 'on-shelf', isbn, book: onShelf })
+    const n = ++lookups.current
+    setFind({ kind: 'looking', isbn })
+    try {
+      const result = await lookupIsbn({ data: { isbn } })
+      if (n !== lookups.current) return
+      setFind(result ? { kind: 'found', isbn, result } : { kind: 'unknown', isbn })
+    } catch (err) {
+      if (n === lookups.current) {
+        setFind({ kind: 'error', isbn, message: err instanceof Error ? err.message : 'Lookup failed' })
+      }
+    }
+  }
+
+  async function add(result: SearchResult & { description?: string; genres?: string[] }) {
+    setAdding(true)
+    try {
+      const book = await buildBook(result, result)
+      onAdd({ ...book, formats: ['paperback'] })
+      setAdded((a) => [result.title, ...a])
+      setFind(null)
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  return (
+    <div className="tab-panel scan-tab">
+      <BarcodeScanner onIsbn={scanned} paused={find?.kind === 'found' || adding} />
+      {find?.kind === 'looking' && <p className="muted">Looking up {find.isbn}…</p>}
+      {find?.kind === 'found' && (
+        <div className="scan-card">
+          <div>
+            <strong>{find.result.title}</strong>
+            <span className="muted">{find.result.authors.join(', ')}</span>
+          </div>
+          <div className="merge-actions">
+            <button className="btn primary" disabled={adding} onClick={() => add(find.result)}>
+              {adding ? 'Adding…' : 'Add as paperback'}
+            </button>
+            <button className="btn" disabled={adding} onClick={() => setFind(null)}>
+              Skip
+            </button>
+          </div>
+        </div>
+      )}
+      {find?.kind === 'on-shelf' && (
+        <p className="muted">
+          <strong>{find.book.title}</strong> is already on your shelf.
+        </p>
+      )}
+      {find?.kind === 'unknown' && (
+        <div className="scan-card">
+          <span>Open Library doesn't know ISBN {find.isbn}.</span>
+          <button className="btn" onClick={() => onManual(find.isbn)}>
+            Add it by hand
+          </button>
+        </div>
+      )}
+      {find?.kind === 'error' && <p className="error">{find.message}</p>}
+      {added.length > 0 && (
+        <p className="success">
+          Added {added.length === 1 ? `“${added[0]}”` : `${added.length} books`}. Scan the next one.
+        </p>
+      )}
+    </div>
+  )
+}
+
 function IsbnTab({ onAdd }: { onAdd: (b: NewBook) => void }) {
   const [isbn, setIsbn] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'done'>('idle')
@@ -276,7 +388,7 @@ function IsbnTab({ onAdd }: { onAdd: (b: NewBook) => void }) {
   )
 }
 
-function ManualTab({ onAdd }: { onAdd: (b: NewBook) => void }) {
+function ManualTab({ onAdd, isbn }: { onAdd: (b: NewBook) => void; isbn?: string }) {
   const [form, setForm] = useState({ title: '', author: '', year: '', pages: '', description: '' })
   const [done, setDone] = useState(false)
   const set = (k: keyof typeof form) => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -299,6 +411,8 @@ function ManualTab({ onAdd }: { onAdd: (b: NewBook) => void }) {
       description: form.description.trim() || undefined,
       language: guessLanguage(title),
       color: colorFromString(title),
+      // scanned in a shop or at home: a physical copy
+      ...(isbn && { isbn, formats: ['paperback' as const] }),
     })
     setForm({ title: '', author: '', year: '', pages: '', description: '' })
     setDone(true)
@@ -306,6 +420,7 @@ function ManualTab({ onAdd }: { onAdd: (b: NewBook) => void }) {
 
   return (
     <form className="tab-panel" onSubmit={submit}>
+      {isbn && <p className="muted">Scanned ISBN {isbn}. Open Library doesn't know it, so fill in the rest by hand.</p>}
       <label className="field">
         <span>Title *</span>
         <input className="input" autoFocus required value={form.title} onChange={set('title')} />

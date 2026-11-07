@@ -2,7 +2,7 @@
 
 A 3D bookshelf for a personal reading list, built with **React**, **TanStack Start** and **Three.js** (via `@react-three/fiber`).
 
-- Add books by searching [Open Library](https://openlibrary.org), by ISBN, by hand, or by importing your **Storytel** bookshelf.
+- Add books by searching [Open Library](https://openlibrary.org), by **scanning the barcode** on the back with the phone camera (Chrome on Android; scan one book after another, each added as a paperback), by ISBN, by hand, or by importing your **Storytel** bookshelf.
 - Books stand on a wooden bookcase with their spines out. The spine colour comes from the cover, the thickness from the page count, and the width from the cover's shape. Heights vary a little, but all books of one series are the same height.
 - **Organise:** drag a book along or between shelves to move it, or use **Arrange by** to sort by title, author, series, year, colour, date added or reading status. Sorting by reading status puts a little book nook (a lamplit alley at night, with a sign naming the next group) between the groups. Sorting by series keeps each author's series together and in order, with a walnut divider before each series; when you've read every book of a series on the shelf (at least two), its divider turns gold with a star. The series is read from the title ("Percy Jackson, Teil 4: …", "Die Kane-Chroniken 2: …", "(Dune, #2)") or from a title opening shared by an author's books ("Harry Potter and the …"). You can type a series and number in the book panel instead.
 - **Search:** the magnifier in the top bar (or the `/` key) finds books by title, author, series, genre, language, how you have it, or the friend you lent it to. Pick a result to take the book off the shelf.
