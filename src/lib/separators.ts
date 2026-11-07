@@ -3,6 +3,7 @@ import { STATUS_LABELS, groupLabel, hexToHsl } from './library'
 import { seriesGroups } from './series'
 import type { Separator } from './shelfLayout'
 import { themeFor } from './nookThemes'
+import { motifFor } from './nookMotifs'
 
 /**
  * What stands between the groups of books for each arrangement (#17).
@@ -120,7 +121,16 @@ export function arrangementSeparators(books: Book[], arrangement: SortKey | null
 
   for (const g of groups) {
     const { theme, variant } = themeFor(g.label, g.books, g.genre)
-    out.set(g.books[0].id, { kind: 'nook', label: g.label, theme, variant, ...(g.complete && { complete: true }) })
+    // a series' nook has something from the series in it (#56)
+    const motif = arrangement === 'series' && g.key ? motifFor(g.label, g.books) : undefined
+    out.set(g.books[0].id, {
+      kind: 'nook',
+      label: g.label,
+      theme,
+      variant,
+      ...(g.complete && { complete: true }),
+      ...(motif && { motif }),
+    })
   }
   return out
 }
