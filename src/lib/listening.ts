@@ -18,6 +18,25 @@ export function listenOnly(book: Book) {
   return formats.length > 0 && formats.every((f) => AUDIO_FORMATS.includes(f))
 }
 
+/**
+ * Pages and listening time are one number for a book she only listens to
+ * (#51): a minute is a page. Setting one gives the other too. Books she also
+ * has on paper or as an e-book keep their own page count.
+ */
+export function lengthPatch(book: Book, change: { pages?: number | undefined } | { minutes?: number | undefined }): Partial<Book> {
+  if (!listenOnly(book)) return change
+  const n = 'pages' in change ? change.pages : (change as { minutes?: number }).minutes
+  return { pages: n, minutes: n }
+}
+
+/** Fills in the missing one of pages and minutes when a book becomes listen-only (#51). */
+export function linkOnFormatChange(book: Book, next: Book): Partial<Book> {
+  if (!listenOnly(next) || listenOnly(book)) return {}
+  if (next.minutes && !next.pages) return { pages: next.minutes }
+  if (next.pages && !next.minutes) return { minutes: next.pages }
+  return {}
+}
+
 /** The page count that sets how thick the book stands: its minutes when she only listens to it. */
 export function thicknessPages(book: Book): number | undefined {
   const pages = book.pages && book.pages > 0 ? book.pages : undefined

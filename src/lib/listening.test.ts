@@ -62,6 +62,52 @@ describe('listening time for audiobooks (#48)', () => {
       [onShelf],
       { updateBook: (id: string, p: Partial<Book>) => updates.push([id, p]), addBook: () => {}, onProgress: () => {} },
     )
-    expect(updates).toEqual([['b', { minutes: 625 }]])
+    // a minute is a page for a book she only listens to (#51)
+    expect(updates).toEqual([['b', { minutes: 625, pages: 625 }]])
+  })
+})
+
+describe('pages and listening time move together (#51)', async () => {
+  const { lengthPatch, linkOnFormatChange } = await import('./listening')
+
+  it('setting one sets the other for a book she only listens to', () => {
+    const audio = book({ formats: ['storytel'] })
+    expect(lengthPatch(audio, { pages: 500 })).toEqual({ pages: 500, minutes: 500 })
+    expect(lengthPatch(audio, { minutes: 625 })).toEqual({ pages: 625, minutes: 625 })
+    expect(lengthPatch(audio, { minutes: undefined })).toEqual({ pages: undefined, minutes: undefined })
+  })
+
+  it('a book she also has on paper keeps its own page count', () => {
+    expect(lengthPatch(book({ formats: ['paperback', 'storytel'] }), { minutes: 625 })).toEqual({ minutes: 625 })
+  })
+
+  it('fills in the other when a book becomes listen-only', () => {
+    const paper = book({ formats: ['paperback'], pages: 320 })
+    expect(linkOnFormatChange(paper, { ...paper, formats: ['audiobook'] })).toEqual({ minutes: 320 })
+    expect(linkOnFormatChange(paper, { ...paper, formats: ['paperback', 'audiobook'] })).toEqual({})
+  })
+
+  it('new Storytel books take their pages from the listening time', async () => {
+    const added: Array<Partial<Book>> = []
+    await importStorytelBooks(
+      [{ storytelId: 'n', title: 'Neu', authors: ['A'], status: 'want', durationMs: 300 * 60_000 }] as never,
+      [],
+      { updateBook: () => {}, addBook: (b: Partial<Book>) => added.push(b), onProgress: () => {} },
+    )
+    expect(added[0]).toMatchObject({ pages: 300, minutes: 300 })
+  })
+
+  it('Storytel corrects the time, and the pages only of a listen-only book', async () => {
+    const updates: Array<[string, Partial<Book>]> = []
+    const item = { storytelId: 'st', title: 'Tintenherz', authors: ['Cornelia Funke'], status: 'want', durationMs: 625 * 60_000 }
+    await importStorytelBooks(
+      [item, { ...item, storytelId: 'st2', title: 'Tintenblut' }] as never,
+      [
+        book({ id: 'a', storytelId: 'st', minutes: 600, pages: 600 }),
+        book({ id: 'p', title: 'Tintenblut', storytelId: 'st2', formats: ['paperback', 'storytel'], pages: 700, minutes: 625 }),
+      ],
+      { updateBook: (id: string, p: Partial<Book>) => updates.push([id, p]), addBook: () => {}, onProgress: () => {} },
+    )
+    expect(updates).toEqual([['a', { minutes: 625, pages: 625 }]])
   })
 })
