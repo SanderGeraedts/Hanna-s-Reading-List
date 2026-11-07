@@ -2,6 +2,7 @@ import type { Book } from './library'
 import { seriesGroups } from './series'
 import { thicknessPages } from './listening'
 import type { NookThemeId } from './nookThemes'
+import type { MotifId } from './nookMotifs'
 
 /** World units: 1 unit ≈ 1 metre. */
 export const SHELF = {
@@ -91,6 +92,8 @@ export interface NookSlot {
   /** nooks: the scene inside, and this group's own version of it */
   theme?: NookThemeId
   variant?: number
+  /** something from the series standing in the nook (#56) */
+  motif?: MotifId
 }
 
 /** A slim labelled marker standing before each series when sorted by series. */
@@ -107,6 +110,8 @@ export interface Separator {
   /** nooks: the scene inside, and this group's own version of it */
   theme?: NookThemeId
   variant?: number
+  /** something from the series standing in the nook (#56) */
+  motif?: MotifId
 }
 
 export interface ShelfLayout {
@@ -184,6 +189,7 @@ export function computeLayout(
     complete?: boolean
     theme?: NookThemeId
     variant?: number
+    motif?: MotifId
   }> = []
   let row = 0
   let x = 0
@@ -210,6 +216,7 @@ export function computeLayout(
         x: x + gap + width / 2,
         ...(sep.complete && { complete: true }),
         ...(sep.theme && { theme: sep.theme, variant: sep.variant }),
+        ...(sep.motif && { motif: sep.motif }),
       })
       x += width + gap * 2
     }
@@ -255,11 +262,12 @@ export function computeLayout(
   const placedOf = (kind: Separator['kind']) =>
     sepPlaced
       .filter((n) => n.kind === kind)
-      .map(({ before, label, row, x, complete, theme, variant }) => ({
+      .map(({ before, label, row, x, complete, theme, variant, motif }) => ({
         before,
         label,
         ...(complete && { complete }),
         ...(theme && { theme, variant }),
+        ...(motif && { motif }),
         row,
         x: -innerWidth / 2 + x,
         floorY: rowFloorY(row, rows),
