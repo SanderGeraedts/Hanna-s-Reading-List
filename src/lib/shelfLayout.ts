@@ -1,5 +1,6 @@
 import type { Book } from './library'
 import { seriesGroups } from './series'
+import { thicknessPages } from './listening'
 import type { NookThemeId } from './nookThemes'
 
 /** World units: 1 unit ≈ 1 metre. */
@@ -39,7 +40,8 @@ export function bookDims(book: Book, seriesKey?: string): BookDims {
   const r = hash(seriesKey ? `series:${seriesKey}` : book.id)
   const h = 0.27 + r * 0.08
   const aspect = Math.min(0.82, Math.max(0.58, book.coverAspect ?? 0.66))
-  const pages = book.pages && book.pages > 0 ? book.pages : 280
+  // an audiobook she only listens to: a minute counts as a page (#48)
+  const pages = thicknessPages(book) ?? 280
   const t = Math.min(0.075, Math.max(0.018, 0.012 + pages * 0.000075))
   return { w: h * aspect, h, t }
 }

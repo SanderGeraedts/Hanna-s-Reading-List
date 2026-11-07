@@ -42,6 +42,7 @@ export function mergeBooks(keep: Book, other: Book): Book {
         ? other.published
         : undefined),
     pages: keep.pages ?? other.pages,
+    minutes: keep.minutes ?? other.minutes,
     isbn: keep.isbn ?? other.isbn,
     workKey: keep.workKey ?? other.workKey,
     coverUrl: keep.coverUrl ?? other.coverUrl,

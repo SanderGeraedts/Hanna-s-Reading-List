@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import type { Book } from '#/lib/library'
 import type { BookDims } from '#/lib/shelfLayout'
+import { formatDuration, listenOnly } from '#/lib/listening'
 
 /**
  * Procedural textures. No public API provides spine or back-cover images,
@@ -439,12 +440,13 @@ export function paintBack(book: Book, dims: BookDims) {
   ctx.textAlign = 'center'
   ctx.fillText(book.isbn ? `ISBN ${book.isbn}` : 'NO ISBN', bx + bw / 2, barcodeTop + bh - 26)
 
-  if (book.pages) {
+  const length = listenOnly(book) && book.minutes ? formatDuration(book.minutes) : book.pages ? `${book.pages} pages` : null
+  if (length) {
     ctx.fillStyle = ink
     ctx.globalAlpha = 0.7
     ctx.textAlign = 'left'
     ctx.font = `400 18px ${SERIF}`
-    ctx.fillText(`${book.pages} pages`, pad, barcodeTop + bh - 24)
+    ctx.fillText(length, pad, barcodeTop + bh - 24)
     ctx.globalAlpha = 1
   }
 

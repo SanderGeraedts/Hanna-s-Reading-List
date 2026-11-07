@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatPublished, normalizeIsbn, parsePublished, publishedYear } from '#/lib/bookFacts'
+import { formatDuration, hasAudio, listenOnly, parseDuration } from '#/lib/listening'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { Book, BookFormat, ReadingStatus } from '#/lib/library'
 import { FORMAT_LABELS, STATUS_LABELS, formatsOf, timesRead, withFormats } from '#/lib/library'
@@ -165,6 +166,24 @@ export function BookPanel({
       setPagesDraft(book.pages?.toString() ?? '')
     }
   }
+  const [minutesDraft, setMinutesDraft] = useState(book.minutes ? formatDuration(book.minutes) : '')
+  const [minutesProblem, setMinutesProblem] = useState(false)
+  /** the listening time as typed (#48), or empty to clear it */
+  const saveMinutes = () => {
+    if (!minutesDraft.trim()) {
+      setMinutesProblem(false)
+      if (book.minutes !== undefined) onUpdate({ minutes: undefined })
+      return
+    }
+    const minutes = parseDuration(minutesDraft)
+    setMinutesProblem(!minutes)
+    if (!minutes) return
+    setMinutesDraft(formatDuration(minutes))
+    if (minutes !== book.minutes) onUpdate({ minutes })
+  }
+  const audio = hasAudio(book)
+  /** only listened to: the length sets the thickness and the progress is in time */
+  const byTime = listenOnly(book) && !!book.minutes
   const [isbnDraft, setIsbnDraft] = useState(book.isbn ?? '')
   const [isbnProblem, setIsbnProblem] = useState(false)
   /** the ISBN as typed (#43): a valid ISBN-10 or -13, or empty to clear it */
@@ -326,7 +345,8 @@ export function BookPanel({
           <p className="muted">
             {[
               book.published ? formatPublished(book.published) : book.year,
-              book.pages && `${book.pages} pages`,
+              book.pages && !byTime && `${book.pages} pages`,
+              audio && book.minutes && formatDuration(book.minutes),
               book.isbn && `ISBN ${book.isbn}`,
             ]
               .filter(Boolean)
@@ -370,7 +390,11 @@ export function BookPanel({
             <span>Progress</span>
             <span>
               {pct}%
-              {book.pages ? ` · page ${Math.round((pct / 100) * book.pages)} of ${book.pages}` : ''}
+              {byTime
+                ? ` · ${formatDuration(Math.round((pct / 100) * book.minutes!))} of ${formatDuration(book.minutes!)}`
+                : book.pages
+                  ? ` · page ${Math.round((pct / 100) * book.pages)} of ${book.pages}`
+                  : ''}
             </span>
           </span>
           <input
@@ -536,6 +560,7 @@ export function BookPanel({
         </div>
       </div>
 
+      <div className={audio ? 'field-row facts-row' : undefined}>
       <label className="field pages-field">
         <span>Pages</span>
         <input
@@ -551,9 +576,37 @@ export function BookPanel({
           }}
         />
         <small id="pages-hint" className="muted">
-          As in your copy. Sets how thick the book is on the shelf.
+          {audio ? 'As in the printed book.' : 'As in your copy. Sets how thick the book is on the shelf.'}
         </small>
       </label>
+      {audio && (
+        <label className="field">
+          <span>Length</span>
+          <input
+            className="input"
+            value={minutesDraft}
+            placeholder="e.g. 10:25"
+            aria-invalid={minutesProblem}
+            aria-describedby="minutes-hint"
+            onChange={(e) => {
+              setMinutesDraft(e.target.value)
+              setMinutesProblem(false)
+            }}
+            onBlur={saveMinutes}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur()
+            }}
+          />
+          <small id="minutes-hint" className={minutesProblem ? 'error' : 'muted'}>
+            {minutesProblem
+              ? 'Try 10:25 or 10 h 25 min.'
+              : listenOnly(book)
+                ? 'Hours and minutes. A minute counts as a page on the shelf.'
+                : 'Hours and minutes of the audiobook.'}
+          </small>
+        </label>
+      )}
+      </div>
 
       <div className="field-row facts-row">
         <label className="field">

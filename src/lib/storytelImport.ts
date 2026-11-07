@@ -89,6 +89,7 @@ async function toNewBook(b: StorytelBook): Promise<NewBook> {
     authors: b.authors.length ? b.authors : (ol?.authors ?? []),
     year: ol?.year,
     pages: ol?.pages ?? estimatedPages,
+    ...(b.durationMs && { minutes: Math.round(b.durationMs / 60_000) }),
     isbn: ol?.isbn,
     workKey: ol?.workKey,
     description: details?.description,
@@ -121,6 +122,10 @@ export async function importStorytelBooks(
       // the same book listed twice by Storytel, already merged into one
       existing.find((e) => e.storytelIds?.includes(item.storytelId)) ??
       existing.find((e) => !e.storytelId && sameBook(e, item))
+    // books from before #48 learn their listening time on the next refresh (quietly: not a change she made)
+    if (match && match.minutes === undefined && item.durationMs) {
+      cb.updateBook(match.id, { minutes: Math.round(item.durationMs / 60_000) })
+    }
     if (!match) {
       toAdd.push(item)
     } else if (match.storytelId !== item.storytelId && match.storytelIds?.includes(item.storytelId)) {
