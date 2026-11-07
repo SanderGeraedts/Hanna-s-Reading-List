@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { loadShelf, saveShelf } from '#/server/shelf'
+import { loadShelf, saveShelf, type RemoteShelf } from '#/server/shelf'
 import { seriesGroups } from './series'
 import { NOT_SIGNED_IN } from './signedOut'
 import { languageName } from './languages'
@@ -99,8 +99,11 @@ export const STATUS_LABELS: Record<ReadingStatus, string> = {
 
 const STORAGE_KEY = 'hannas-reading-list:v1'
 const ARRANGEMENT_KEY = 'hannas-reading-list:arrangement'
-/** the shelf this browser had before accounts, kept once it was merged into one */
-const PRE_ACCOUNT_BACKUP_KEY = 'hannas-reading-list:v1:before-account'
+/**
+ * Set once the shelf this browser had before accounts (under STORAGE_KEY) is
+ * safely on the account server. The old copy itself is left in place as a backup.
+ */
+const MIGRATED_KEY = 'hannas-reading-list:v1:migrated'
 /** Netlify functions accept requests up to 6 MB; uploaded covers are the bulk of it */
 const SYNC_LIMIT = 5_500_000
 const DEBOUNCE_MS = 1200
@@ -159,6 +162,11 @@ function flagged(key: string | null) {
   }
 }
 
+/** The shelf this browser had before accounts, while it hasn't reached an account yet. */
+function preAccountShelf(accountId: string | null) {
+  return accountId && !flagged(MIGRATED_KEY) ? loadBooks(STORAGE_KEY) : []
+}
+
 function storageKeys(accountId: string | null) {
   return accountId
     ? {
@@ -211,6 +219,10 @@ export function useLibrary(accountId: string | null = null, onSignedOut?: () => 
   const saving = useRef(false)
   const saveAgain = useRef(false)
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  /** the merged pre-account shelf, until it has been put on screen and sent */
+  const migrating = useRef<Book[] | null>(null)
+  /** a save is on its way that includes the pre-account shelf */
+  const migrationSent = useRef(false)
   const signedOut = useRef(onSignedOut)
   signedOut.current = onSignedOut
 
@@ -246,6 +258,7 @@ export function useLibrary(accountId: string | null = null, onSignedOut?: () => 
       return
     }
     const { books, arrangement } = latest.current
+    const withPreAccount = migrationSent.current
     if (JSON.stringify(books).length > SYNC_LIMIT) {
       setSync('too-big')
       return
@@ -255,6 +268,10 @@ export function useLibrary(accountId: string | null = null, onSignedOut?: () => 
     try {
       const r = await saveShelf({ data: { books, arrangement } })
       serverUpdated.current = r.updated
+      if (withPreAccount) {
+        migrationSent.current = false
+        store(MIGRATED_KEY, JSON.stringify({ account: accountId, at: r.updated }))
+      }
       if (!saveAgain.current) {
         store(keys.unsynced!, null)
         setSync('saved')
@@ -272,43 +289,50 @@ export function useLibrary(accountId: string | null = null, onSignedOut?: () => 
   }, [accountId, keys, failed])
   pushRef.current = push
 
-  // first load: this device's copy straight away, then the server's
+  // the server's copy, folded into this device's: on first load and when the page comes back into view
+  const reconcile = useCallback(
+    (remote: RemoteShelf | null) => {
+      const before = serverUpdated.current
+      serverUpdated.current = remote?.updated ?? null
+      const unsynced = flagged(keys.unsynced)
+      const current = latest.current
+      // this device's copy wins when the server has none or this device has unsent changes
+      const mine = !remote || unsynced
+      const pre = preAccountShelf(accountId)
+      if (pre.length) {
+        // bring along the shelf this browser had before accounts; it stays marked as
+        // waiting (and stays on the device) until the server has confirmed it has it
+        const merged = mergeShelves(mine ? current.books : remote.books, pre)
+        const arrangement = (mine ? current.arrangement : remote.arrangement) ?? loadArrangement(ARRANGEMENT_KEY)
+        migrating.current = merged
+        store(keys.unsynced!, '1')
+        adopt(merged, arrangement)
+      } else if (mine) {
+        if (current.books.length || remote) {
+          store(keys.unsynced!, '1')
+          pushRef.current()
+        } else setSync('saved')
+      } else {
+        if (remote.updated !== before) adopt(remote.books, remote.arrangement)
+        setSync('saved')
+      }
+    },
+    [accountId, keys, adopt],
+  )
+
+  // first load: this device's copy straight away (with the pre-account shelf), then the server's
   useEffect(() => {
-    let local = loadBooks(keys.books)
-    let localArrangement = loadArrangement(keys.arrangement)
-    // first sign-in on this device: bring along the shelf this browser had
-    const preAccount = accountId && !local.length ? loadBooks(STORAGE_KEY) : []
-    if (preAccount.length) {
-      local = preAccount
-      localArrangement = loadArrangement(ARRANGEMENT_KEY)
-    }
-    adopt(local, localArrangement)
+    adopt(
+      mergeShelves(loadBooks(keys.books), preAccountShelf(accountId)),
+      loadArrangement(keys.arrangement) ?? (accountId ? loadArrangement(ARRANGEMENT_KEY) : null),
+    )
     setLoaded(true)
     if (!accountId) return
 
     let cancelled = false
     loadShelf()
       .then((remote) => {
-        if (cancelled) return
-        serverUpdated.current = remote?.updated ?? null
-        if (preAccount.length) {
-          // merge it into the account, and keep the old copy aside, just in case
-          adopt(mergeShelves(remote?.books ?? [], preAccount), remote?.arrangement ?? localArrangement)
-          store(PRE_ACCOUNT_BACKUP_KEY, JSON.stringify(preAccount))
-          store(STORAGE_KEY, null)
-          store(ARRANGEMENT_KEY, null)
-          store(keys.unsynced!, '1')
-          timer.current = setTimeout(() => pushRef.current(), 0)
-        } else if (!remote || flagged(keys.unsynced)) {
-          // nothing saved yet, or changes made here while offline: send this device's copy
-          if (local.length || remote) {
-            store(keys.unsynced!, '1')
-            pushRef.current()
-          } else setSync('saved')
-        } else {
-          adopt(remote.books, remote.arrangement)
-          setSync('saved')
-        }
+        if (!cancelled) reconcile(remote)
       })
       .catch((e) => {
         if (!cancelled) failed(e)
@@ -328,6 +352,11 @@ export function useLibrary(accountId: string | null = null, onSignedOut?: () => 
     store(keys.arrangement, arrangement)
     if (fromServer.current) {
       fromServer.current = false
+      if (!accountId || books !== migrating.current) return
+      // the merged pre-account shelf is on screen: send it
+      migrating.current = null
+      migrationSent.current = true
+      pushRef.current()
       return
     }
     if (!accountId) return
@@ -344,11 +373,7 @@ export function useLibrary(accountId: string | null = null, onSignedOut?: () => 
       if (flagged(keys.unsynced)) return pushRef.current()
       try {
         const remote = await loadShelf()
-        if (remote && remote.updated !== serverUpdated.current && !flagged(keys.unsynced)) {
-          serverUpdated.current = remote.updated
-          adopt(remote.books, remote.arrangement)
-        }
-        setSync('saved')
+        if (!flagged(keys.unsynced)) reconcile(remote)
       } catch (e) {
         failed(e)
       }
@@ -359,7 +384,7 @@ export function useLibrary(accountId: string | null = null, onSignedOut?: () => 
       document.removeEventListener('visibilitychange', check)
       window.removeEventListener('online', check)
     }
-  }, [accountId, keys, adopt, failed])
+  }, [accountId, keys, reconcile, failed])
 
   const addBook = useCallback((book: NewBook) => {
     const full: Book = {

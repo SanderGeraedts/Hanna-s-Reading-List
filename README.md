@@ -46,7 +46,7 @@ With `POCKETBASE_URL` set, the app asks people to sign in and keeps each person'
 
 - The browser never talks to PocketBase. Sign-in goes through server functions (`src/server/auth.ts`), which keep the PocketBase token in an httpOnly, `SameSite=Lax` cookie (`__Host-session` in production). Tokens last 30 days and are renewed on every visit.
 - Each device keeps a copy of the shelf, so it opens at once and works offline. Changes are saved a moment after they're made, and changes from other devices are picked up when the page comes back into view (`useLibrary` in `src/lib/library.ts`).
-- The first sign-in on a device merges the shelf that browser already had into the account.
+- The first sign-in on a device moves the shelf that browser had before accounts into the account, with every book and the arrangement, added to whatever another device already saved (no duplicates: same id, Storytel id, ISBN, or title and author). It only counts as done once the server has confirmed the save, so if the server can't be reached it's tried again on the next visit. The old copy (`hannas-reading-list:v1`) is left in the browser as a backup; `hannas-reading-list:v1:migrated` records that it was moved. Tests for this are in `src/lib/library.sync.test.ts` (`npm test`).
 
 Without `POCKETBASE_URL` there's no sign-in, and each browser keeps its own shelf in `localStorage`.
 
