@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatPublished, normalizeIsbn, parsePublished, publishedYear } from '#/lib/bookFacts'
-import { formatDuration, hasAudio, listenOnly, parseDuration } from '#/lib/listening'
+import { formatDuration, hasAudio, lengthPatch, linkOnFormatChange, listenOnly, parseDuration } from '#/lib/listening'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { Book, BookFormat, ReadingStatus } from '#/lib/library'
 import { FORMAT_LABELS, STATUS_LABELS, formatsOf, timesRead, withFormats } from '#/lib/library'
@@ -159,9 +159,9 @@ export function BookPanel({
   const savePages = () => {
     const n = Number(pagesDraft)
     if (!pagesDraft.trim()) {
-      if (book.pages !== undefined) onUpdate({ pages: undefined })
+      if (book.pages !== undefined) setLength({ pages: undefined })
     } else if (Number.isInteger(n) && n > 0 && n <= 20000) {
-      if (n !== book.pages) onUpdate({ pages: n })
+      if (n !== book.pages) setLength({ pages: n })
     } else {
       setPagesDraft(book.pages?.toString() ?? '')
     }
@@ -172,14 +172,21 @@ export function BookPanel({
   const saveMinutes = () => {
     if (!minutesDraft.trim()) {
       setMinutesProblem(false)
-      if (book.minutes !== undefined) onUpdate({ minutes: undefined })
+      if (book.minutes !== undefined) setLength({ minutes: undefined })
       return
     }
     const minutes = parseDuration(minutesDraft)
     setMinutesProblem(!minutes)
     if (!minutes) return
     setMinutesDraft(formatDuration(minutes))
-    if (minutes !== book.minutes) onUpdate({ minutes })
+    if (minutes !== book.minutes) setLength({ minutes })
+  }
+  /** pages or minutes; for a book she only listens to, the other follows (#51) */
+  function setLength(change: { pages?: number } | { minutes?: number }) {
+    const patch = lengthPatch(book, change)
+    onUpdate(patch)
+    if ('pages' in patch) setPagesDraft(patch.pages?.toString() ?? '')
+    if ('minutes' in patch) setMinutesDraft(patch.minutes ? formatDuration(patch.minutes) : '')
   }
   const audio = hasAudio(book)
   /** only listened to: the length sets the thickness and the progress is in time */
@@ -221,8 +228,13 @@ export function BookPanel({
   const [genreDraft, setGenreDraft] = useState('')
   const tidy = tidyTitle(book.title)
   const formats = formatsOf(book)
-  const toggleFormat = (f: BookFormat) =>
-    onUpdate(withFormats(formats.includes(f) ? formats.filter((x) => x !== f) : [...formats, f]))
+  const toggleFormat = (f: BookFormat) => {
+    const patch = withFormats(formats.includes(f) ? formats.filter((x) => x !== f) : [...formats, f])
+    const link = linkOnFormatChange(book, { ...book, ...patch })
+    onUpdate({ ...patch, ...link })
+    if (link.pages) setPagesDraft(String(link.pages))
+    if (link.minutes) setMinutesDraft(formatDuration(link.minutes))
+  }
   const languages =
     book.language && !LANGUAGE_CHOICES.includes(book.language)
       ? [...LANGUAGE_CHOICES, book.language]

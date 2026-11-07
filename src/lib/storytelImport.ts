@@ -7,6 +7,7 @@ import { analyzeCover, colorFromString, coverUrlForId, remoteCoverUrl } from './
 import { genresFromSubjects } from './genres'
 import { guessLanguage } from './languages'
 import { tidyTitle } from './titles'
+import { listenOnly } from './listening'
 
 export interface ImportCallbacks {
   addBook: (book: NewBook) => void
@@ -88,7 +89,8 @@ async function toNewBook(b: StorytelBook): Promise<NewBook> {
     title: b.title,
     authors: b.authors.length ? b.authors : (ol?.authors ?? []),
     year: ol?.year,
-    pages: ol?.pages ?? estimatedPages,
+    // the listening time from Storytel; a minute is a page (#51)
+    pages: b.durationMs ? Math.round(b.durationMs / 60_000) : (ol?.pages ?? estimatedPages),
     ...(b.durationMs && { minutes: Math.round(b.durationMs / 60_000) }),
     isbn: ol?.isbn,
     workKey: ol?.workKey,
@@ -122,9 +124,15 @@ export async function importStorytelBooks(
       // the same book listed twice by Storytel, already merged into one
       existing.find((e) => e.storytelIds?.includes(item.storytelId)) ??
       existing.find((e) => !e.storytelId && sameBook(e, item))
-    // books from before #48 learn their listening time on the next refresh (quietly: not a change she made)
-    if (match && match.minutes === undefined && item.durationMs) {
-      cb.updateBook(match.id, { minutes: Math.round(item.durationMs / 60_000) })
+    // the listening time comes from Storytel (#48, #51); for a book she only
+    // listens to the pages follow it. Quietly: not a change she made.
+    if (match && item.durationMs) {
+      const minutes = Math.round(item.durationMs / 60_000)
+      const patch: Partial<Book> = {
+        ...(match.minutes !== minutes && { minutes }),
+        ...(listenOnly(match) && match.pages !== minutes && { pages: minutes }),
+      }
+      if (Object.keys(patch).length) cb.updateBook(match.id, patch)
     }
     if (!match) {
       toAdd.push(item)
