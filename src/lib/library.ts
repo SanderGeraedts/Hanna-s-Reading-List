@@ -50,6 +50,8 @@ export interface Book {
   finished?: string[]
   /** favourite quotes Hanna noted from the book, shown on the dashboard once it is read */
   quotes?: string[]
+  /** quotes (hers or built-in) she gave a heart on the dashboard (#66) */
+  lovedQuotes?: string[]
   /** series name and number, entered by hand (otherwise read from the title) */
   series?: string
   seriesIndex?: number

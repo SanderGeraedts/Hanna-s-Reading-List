@@ -2,6 +2,21 @@ import { useMemo, useState } from 'react'
 import type { Book } from '#/lib/library'
 import { formatDuration } from '#/lib/listening'
 import { pickQuote, quoteChoices } from '#/lib/quotes'
+import { toggleLoved } from '#/lib/insights'
+import {
+  BreakdownCard,
+  CurrentlyReadingCard,
+  GoalCard,
+  LentCard,
+  LovedQuotesCard,
+  MonthlyChart,
+  OnThisDayCard,
+  PileCard,
+  RecordsCard,
+  SeriesCard,
+  StreakCard,
+  YearReviewCard,
+} from './DashboardExtras'
 import { pickReadNext, readNextChoices } from '#/lib/readNext'
 import { finishedByDay, monthWeeks, periodStats, readingYears } from '#/lib/stats'
 import type { Period } from '#/lib/stats'
@@ -9,33 +24,69 @@ import type { Period } from '#/lib/stats'
 /**
  * The dashboard (#59): how many books Hanna read, what to read next, a quote
  * from a book she has read, and a calendar of the days she finished them.
+ * The extras (#66) are in DashboardExtras.
  */
 
 const LAST_QUOTE_KEY = 'hannas-reading-list:last-quote'
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const monthName = (month: number, style: 'long' | 'short' = 'long') =>
+export const monthName = (month: number, style: 'long' | 'short' = 'long') =>
   new Date(2000, month - 1, 1).toLocaleDateString('en-GB', { month: style })
 
-interface Props {
+export interface Props {
   books: Book[]
   /** open a book on the shelf */
   onShowBook: (id: string) => void
 }
 
-export function Dashboard({ books, onShowBook }: Props) {
+interface DashboardProps extends Props {
+  onUpdate: (id: string, patch: Partial<Book>) => void
+}
+
+export interface PeriodPick {
+  kind: Period['kind']
+  year: number
+  month: number
+}
+
+export const toPeriod = ({ kind, year, month }: PeriodPick): Period =>
+  kind === 'all' ? { kind } : kind === 'year' ? { kind, year } : { kind, year, month }
+
+export const periodLabel = ({ kind, year, month }: PeriodPick) =>
+  kind === 'all' ? 'all time' : kind === 'year' ? `in ${year}` : `in ${monthName(month)} ${year}`
+
+export function Dashboard({ books, onShowBook, onUpdate }: DashboardProps) {
+  const now = new Date()
+  // the period picked under "Books read"; the charts and records follow it
+  const [pick, setPick] = useState<PeriodPick>({ kind: 'year', year: now.getFullYear(), month: now.getMonth() + 1 })
+  const period = toPeriod(pick)
+  // a year in review for a year that is over, or this year from December
+  const reviewYear = pick.kind === 'all' ? now.getFullYear() - (now.getMonth() === 11 ? 0 : 1) : pick.year
+  const showReview = reviewYear < now.getFullYear() || now.getMonth() === 11
   return (
     <div className="dashboard">
       <div className="dashboard-grid">
-        <ReadCount books={books} onShowBook={onShowBook} />
-        <QuoteCard books={books} />
+        <ReadCount books={books} onShowBook={onShowBook} pick={pick} onPick={setPick} />
+        <GoalCard books={books} />
+        <QuoteCard books={books} onUpdate={onUpdate} />
         <ReadNextCard books={books} onShowBook={onShowBook} />
+        <CurrentlyReadingCard books={books} onShowBook={onShowBook} />
+        <SeriesCard books={books} onShowBook={onShowBook} />
+        <MonthlyChart books={books} year={pick.year} />
         <Calendar books={books} onShowBook={onShowBook} />
+        <BreakdownCard books={books} period={period} label={periodLabel(pick)} />
+        <RecordsCard books={books} period={period} label={periodLabel(pick)} onShowBook={onShowBook} />
+        <PileCard books={books} />
+        <StreakCard books={books} />
+        <OnThisDayCard books={books} onShowBook={onShowBook} />
+        <LentCard books={books} onShowBook={onShowBook} />
+        {showReview && <YearReviewCard books={books} year={reviewYear} onShowBook={onShowBook} />}
+        <LovedQuotesCard books={books} onUpdate={onUpdate} />
       </div>
     </div>
   )
 }
 
-function Cover({ book, small }: { book: Book; small?: boolean }) {
+export function Cover({ book, small }: { book: Book; small?: boolean }) {
   return book.coverUrl ? (
     <img className={`dash-cover${small ? ' small' : ''}`} src={book.coverUrl} alt="" loading="lazy" />
   ) : (
@@ -47,22 +98,23 @@ function Cover({ book, small }: { book: Book; small?: boolean }) {
 
 // ---------------------------------------------------------------------------
 
-function ReadCount({ books, onShowBook }: Props) {
-  const now = new Date()
-  const [kind, setKind] = useState<Period['kind']>('year')
-  const [year, setYear] = useState(now.getFullYear())
-  const [month, setMonth] = useState(now.getMonth() + 1)
+function ReadCount({
+  books,
+  onShowBook,
+  pick,
+  onPick,
+}: Props & { pick: PeriodPick; onPick: (pick: PeriodPick) => void }) {
+  const { kind, year, month } = pick
+  const setKind = (k: Period['kind']) => onPick({ ...pick, kind: k })
+  const setYear = (y: number) => onPick({ ...pick, year: y })
+  const setMonth = (m: number) => onPick({ ...pick, month: m })
   const years = useMemo(() => readingYears(books), [books])
-  const stats = useMemo(() => {
-    const period: Period = kind === 'all' ? { kind } : kind === 'year' ? { kind, year } : { kind, year, month }
-    return periodStats(books, period)
-  }, [books, kind, year, month])
+  const stats = useMemo(() => periodStats(books, toPeriod({ kind, year, month })), [books, kind, year, month])
 
-  const label = kind === 'all' ? 'all time' : kind === 'year' ? `in ${year}` : `in ${monthName(month)} ${year}`
+  const label = periodLabel(pick)
   const step = (by: number) => {
     const d = new Date(year, month - 1 + by, 1)
-    setYear(d.getFullYear())
-    setMonth(d.getMonth() + 1)
+    onPick({ ...pick, year: d.getFullYear(), month: d.getMonth() + 1 })
   }
 
   return (
@@ -151,7 +203,7 @@ function ReadCount({ books, onShowBook }: Props) {
 
 // ---------------------------------------------------------------------------
 
-function QuoteCard({ books }: { books: Book[] }) {
+function QuoteCard({ books, onUpdate }: Pick<DashboardProps, 'books' | 'onUpdate'>) {
   const choices = useMemo(() => quoteChoices(books), [books])
   // a new quote each time the dashboard opens, not the one from last time
   const [quote] = useState(() => {
@@ -169,7 +221,9 @@ function QuoteCard({ books }: { books: Book[] }) {
     }
     return q
   })
-  const shown = quote && choices.some((c) => c.text === quote.text) ? quote : choices[0]
+  // the book as it is now, so a heart shows straight away
+  const shown = (quote && choices.find((c) => c.text === quote.text && c.book.id === quote.book.id)) ?? choices[0]
+  const loved = !!shown && !!shown.book.lovedQuotes?.includes(shown.text)
 
   return (
     <section className="dash-card quote-card" aria-label="A quote">
@@ -181,6 +235,15 @@ function QuoteCard({ books }: { books: Book[] }) {
             <cite>{shown.book.title}</cite>
             {shown.book.authors[0] && <span className="muted"> · {shown.book.authors[0]}</span>}
           </figcaption>
+          <button
+            className={`love-btn${loved ? ' loved' : ''}`}
+            aria-pressed={loved}
+            aria-label={loved ? 'Loved: take the heart away' : 'Love this quote'}
+            title={loved ? 'Loved' : 'Love this quote'}
+            onClick={() => onUpdate(shown.book.id, toggleLoved(shown.book, shown.text))}
+          >
+            {loved ? '♥' : '♡'}
+          </button>
         </figure>
       ) : (
         <p className="muted">

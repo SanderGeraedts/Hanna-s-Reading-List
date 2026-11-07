@@ -1486,3 +1486,337 @@ textarea.input {
     width: 1.2rem;
   }
 }
+
+/* ---- dashboard extras (#66) ------------------------------------------- */
+.small-text {
+  font-size: 0.8rem;
+}
+.link-btn {
+  font: inherit;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.link-btn:hover,
+.link-btn:focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.book-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+.book-line {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+}
+.book-line-text {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+  flex: 1;
+  font-size: 0.9rem;
+}
+.progress-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.progress-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+/* reading goal */
+.goal-body {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+.goal-ring {
+  width: 7.5rem;
+  flex-shrink: 0;
+}
+.goal-track,
+.goal-fill {
+  fill: none;
+  stroke-width: 9;
+}
+.goal-track {
+  stroke: rgba(255, 255, 255, 0.1);
+}
+.goal-fill {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.6s ease-out;
+}
+.goal-number {
+  fill: var(--text);
+  font-family: var(--serif);
+  font-size: 26px;
+  font-weight: 600;
+}
+.goal-of {
+  fill: var(--muted);
+  font-size: 11px;
+}
+.goal-pace {
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  margin-bottom: 0.3rem !important;
+}
+.goal-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: end;
+}
+.goal-form label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+}
+.goal-form .input {
+  width: 6rem;
+}
+
+/* series */
+.series-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.7rem;
+}
+.series-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+.series-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.series-steps {
+  display: flex;
+  gap: 2px;
+  margin-top: 0.3rem;
+}
+.series-steps button {
+  flex: 1;
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+}
+.series-steps button.on {
+  background: rgba(217, 168, 91, 0.45);
+}
+.series-steps button.read {
+  background: var(--accent);
+}
+
+/* books per month: one series, so no legend; the title names it */
+.chart-wrap {
+  position: relative;
+}
+.bar-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.bar-chart .grid {
+  stroke: rgba(240, 220, 190, 0.1);
+  stroke-width: 1;
+}
+.bar-chart .axis {
+  fill: var(--muted);
+  font-size: 9px;
+}
+.bar-chart .bar {
+  fill: var(--accent);
+  transition: opacity 0.15s;
+}
+.bar-chart:has(.bar.active) .bar:not(.active) {
+  opacity: 0.45;
+}
+.bar-chart .bar-label {
+  fill: var(--text);
+  font-size: 10px;
+  font-weight: 600;
+}
+.chart-tip {
+  position: absolute;
+  top: 0;
+  transform: translate(-50%, -100%);
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.table-view table {
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+  border-collapse: collapse;
+}
+.table-view th,
+.table-view td {
+  padding: 0.15rem 0.75rem 0.15rem 0;
+  text-align: left;
+  font-weight: 400;
+}
+.table-view summary {
+  cursor: pointer;
+}
+
+/* what I read */
+.hbars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+.hbars li {
+  display: grid;
+  grid-template-columns: minmax(5rem, 9rem) 1fr 2rem;
+  gap: 0.6rem;
+  align-items: center;
+  font-size: 0.85rem;
+}
+.hbar-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hbar-track {
+  height: 10px;
+}
+.hbar {
+  display: block;
+  height: 100%;
+  min-width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: var(--accent);
+}
+.hbar-value {
+  text-align: right;
+  color: var(--muted);
+}
+
+/* records */
+.records {
+  margin: 0;
+  display: grid;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+.records div {
+  display: grid;
+  grid-template-columns: 8.5rem 1fr;
+  gap: 0.6rem;
+}
+.records dt {
+  color: var(--muted);
+}
+.records dd {
+  margin: 0;
+  min-width: 0;
+}
+
+/* year in review, quotes */
+.review-card {
+  grid-column: 1 / -1;
+  background: linear-gradient(135deg, rgba(217, 168, 91, 0.16), var(--surface) 60%);
+}
+.review-stats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  font-family: var(--serif);
+}
+.review-stats strong {
+  font-size: 1.8rem;
+  color: var(--accent);
+}
+.small-quote {
+  margin: 0;
+  font-family: var(--serif);
+  font-style: italic;
+  line-height: 1.45;
+}
+.small-quote cite {
+  font-style: normal;
+  font-family: var(--sans);
+  font-size: 0.8rem;
+}
+.quote-card figure {
+  position: relative;
+}
+.love-btn {
+  justify-self: start;
+  padding: 0.1rem 0.4rem;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.love-btn:hover {
+  transform: scale(1.15);
+}
+.love-btn.loved {
+  color: #e2737e;
+}
+.loved-card {
+  grid-column: 1 / -1;
+}
+.loved-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.8rem;
+}
+.loved-list li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: start;
+  justify-content: space-between;
+}
+
+@media (max-width: 720px) {
+  .records div {
+    grid-template-columns: 1fr;
+    gap: 0.1rem;
+  }
+  .goal-ring {
+    width: 6rem;
+  }
+}
