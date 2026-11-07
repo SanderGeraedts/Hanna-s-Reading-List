@@ -64,6 +64,9 @@ export function mergeBooks(keep: Book, other: Book): Book {
       finished: uniq([...(keep.finished ?? []), ...(other.finished ?? [])]).sort(),
     }),
     ...((keep.quotes || other.quotes) && { quotes: uniq([...(keep.quotes ?? []), ...(other.quotes ?? [])]) }),
+    ...((keep.lovedQuotes || other.lovedQuotes) && {
+      lovedQuotes: uniq([...(keep.lovedQuotes ?? []), ...(other.lovedQuotes ?? [])]),
+    }),
     storytelId: storytelIds[0],
     ...(storytelIds.length > 1 && { storytelIds: storytelIds.slice(1) }),
     mergedIds: uniq([...(keep.mergedIds ?? []), other.id, ...(other.mergedIds ?? [])]),
