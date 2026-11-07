@@ -1,9 +1,10 @@
 # Account server on the NAS (HexOS / TrueNAS)
 
-This sets up sign-in and shelf syncing for Hanna's Reading List. It runs two containers on the NAS:
+This sets up sign-in and shelf syncing for Hanna's Reading List. It runs three containers on the NAS:
 
 - **PocketBase** stores the accounts, each person's shelf, and their remembered Storytel login (encrypted by the app; PocketBase never sees it in plain text).
 - **Tailscale** gives PocketBase an HTTPS address on the internet through **Funnel**. Nothing is opened on your router and your home IP stays private.
+- **Watchtower** keeps PocketBase up to date with `main`. It checks GitHub's container registry every 5 minutes and restarts PocketBase when there's a new image. It's not allowed to touch any other container.
 
 ```
 Hanna's browser ──► hanna.sanderg.nl (Netlify) ──► https://reading-list.<tailnet>.ts.net ──► NAS: Tailscale ──► PocketBase
@@ -27,7 +28,32 @@ Every record is limited to its owner by PocketBase's rules, and sign-up is close
 | --- | --- |
 | `compose.yaml` | Pasted into TrueNAS when you install the app (step 3) |
 | `serve.json` | `<dataset>/serve.json` on the NAS |
-| `pb_migrations/*.js` | `<dataset>/pb_migrations/` on the NAS. This is the database schema; PocketBase applies it on start-up. |
+| `pb_migrations/*.js` | Nowhere by hand. This is the database schema. It's built into the PocketBase image, and PocketBase applies it on start-up. |
+| `Dockerfile` | Built by GitHub Actions (`.github/workflows/backend.yml`) into `ghcr.io/sandergeraedts/reading-list-pocketbase` |
+
+## How a deploy works
+
+```
+push to main ──► Netlify builds the app                          (any change)
+            └──► GitHub Actions: build PocketBase image           (changes in deploy/nas/Dockerfile or pb_migrations/)
+                   ├─ start it on an empty database, check every migration applies and the rules hold
+                   └─ publish :stable and :sha-1234567 to ghcr.io
+                          ▼  within 5 minutes
+                 NAS: Watchtower pulls :stable, restarts pocketbase ──► PocketBase applies new migrations on start-up
+```
+
+GitHub never connects to the NAS. The NAS fetches the image itself, so there are no SSH keys or Tailscale keys in GitHub, and nothing is opened on the router.
+
+## 0. Publish the first image (on GitHub)
+
+The NAS needs the image to exist before it can install the app.
+
+1. Merge the accounts branch into `main` (or run the workflow by hand: **Actions → Backend image → Run workflow**). Wait for the **Backend image** run to go green.
+2. On GitHub, open your profile → **Packages → reading-list-pocketbase → Package settings**. Under **Danger Zone**, choose **Change visibility → Public**. Then the NAS can pull it without a login. It only holds PocketBase and the schema, no data or secrets.
+   - Prefer to keep it private? Create a personal access token with only `read:packages`, then add it in TrueNAS under **Apps → Configuration → Manage Container Images → Docker Registries** (`ghcr.io`, your GitHub username, the token). Watchtower also needs it: add `REPO_USER` and `REPO_PASS` to its environment.
+3. Under **Package settings → Manage Actions access**, check that the repository is listed with **Write**. It's added automatically by the first run.
+
+Merging is safe before the NAS is ready: until `POCKETBASE_URL` is set on Netlify (step 7), the site works as before.
 
 ## 1. Prepare Tailscale (in the browser, from anywhere)
 
@@ -48,10 +74,8 @@ Tailscale's free Personal plan includes Funnel.
 ## 2. Make a folder on the NAS (on your home network)
 
 1. Create a dataset (folder) for the app, for example `apps/reading-list` on your pool. In HexOS you can create a folder; in TrueNAS it's **Datasets → Add Dataset**. Find its full path in TrueNAS under **Datasets**. It looks like `/mnt/<pool>/apps/reading-list`.
-2. Inside it, create three empty folders: `tailscale`, `pb_data` and `pb_migrations`.
-3. Copy the files over (for example through an SMB share of that dataset):
-   - `serve.json` → `/mnt/<pool>/apps/reading-list/serve.json`
-   - everything in `pb_migrations/` → `/mnt/<pool>/apps/reading-list/pb_migrations/`
+2. Inside it, create two empty folders: `tailscale` and `pb_data`.
+3. Copy `serve.json` to `/mnt/<pool>/apps/reading-list/serve.json`, for example through an SMB share of that dataset. That's the only file you copy. The schema comes with the image.
 
 ## 3. Install the app
 
@@ -62,7 +86,8 @@ HexOS runs on TrueNAS SCALE. Custom Docker apps are added from the TrueNAS web i
 3. Paste `compose.yaml` and change two things:
    - Replace every `/mnt/POOL/apps/reading-list` with your dataset's real path.
    - Replace `tskey-auth-REPLACE-ME` with the auth key from step 1.
-4. Save. Both containers should show as running within a minute.
+4. Save. All three containers should show as running within a minute.
+5. Open the **watchtower** container's logs. Near the top it should say it's watching 1 container (only those with the enable label). If it says it can't reach the Docker API, check that the `/var/run/docker.sock` line is in the YAML exactly as written.
 
 ## 4. Finish the Tailscale side
 
@@ -118,7 +143,7 @@ Until `POCKETBASE_URL` is set, the site works as before: no sign-in, and each br
 
 ## 8. First sign-in
 
-The first time someone signs in on a device, the shelf that browser already had is merged into their account. Books the account already has (same Storytel id, ISBN, or title and author) are skipped, so nothing is duplicated. The old copy stays in that browser's storage as a backup (`hannas-reading-list:v1:before-account`).
+The first time someone signs in on a device, the shelf that browser already had is merged into their account. Books the account already has (same Storytel id, ISBN, or title and author) are skipped, so nothing is duplicated. The old copy stays in that browser's storage as a backup (`hannas-reading-list:v1`).
 
 Do this on each of Hanna's devices once and all her books end up on one shelf.
 
@@ -141,12 +166,36 @@ To restore, use **Settings → Backups → Restore** in the admin screen, or rol
 
 ## Updating
 
-- **Images:** change the version tags in the app's YAML in TrueNAS and save. Tailscale updates are routine. PocketBase is still pre-1.0, so read its [changelog](https://github.com/pocketbase/pocketbase/blob/master/CHANGELOG.md) before jumping a minor version (0.40 → 0.41). Take a backup first.
-- **Schema:** if the app gets a new file in `deploy/nas/pb_migrations/`, copy it to the NAS folder and restart the app. PocketBase applies it on start-up. Edits to collections in the admin screen aren't saved as migrations (`--automigrate=false`), so make lasting schema changes in this repo.
+### Schema changes: automatic
+
+1. Add a new file to `deploy/nas/pb_migrations/`. Never edit one that has already run: PocketBase only applies each file once. Name it `<unix time>_<what>.js`, like the existing one.
+2. Open a pull request. The **Backend image** workflow builds the image and applies every migration to an empty database. It must be green before you merge.
+3. Merge. Within about 10 minutes (the build, plus Watchtower's 5-minute check), PocketBase restarts with the new schema. Watch it happen in the watchtower container's logs.
+
+**Before merging a schema change, take a backup:** in the admin screen (`:8443/_/`), use **Settings → Backups → Backup now**. The CI check proves a migration works on an *empty* database, not on Hanna's data. If a migration fails on start-up, PocketBase won't start and nobody can sign in, but devices that are already signed in keep working offline.
+
+**Order matters when app code needs the new schema.** Netlify deploys the app straight away, while the server follows a few minutes later. So make schema changes that the current app tolerates: add fields and collections first, and start using them in a later merge.
+
+### Rolling back
+
+Every published image is also tagged with its commit, like `sha-1234567` (see **Packages → reading-list-pocketbase**).
+
+1. In TrueNAS, edit the app and change the pocketbase image from `:stable` to the last good `:sha-…` tag. Watchtower leaves it alone while it's pinned.
+2. If the bad migration already changed data, restore the backup you took (**Settings → Backups → Restore**), or roll back the dataset snapshot while the app is stopped.
+3. Fix it on `main` with a *new* migration, then set the image back to `:stable`.
+
+### PocketBase itself
+
+Change the version in `deploy/nas/Dockerfile` and merge. It deploys like a schema change. PocketBase is still pre-1.0, so read its [changelog](https://github.com/pocketbase/pocketbase/blob/master/CHANGELOG.md) before jumping a minor version (0.40 → 0.41), and take a backup first.
+
+### Tailscale, Watchtower and `serve.json`: by hand
+
+These change rarely, and they're the parts that keep the NAS reachable, so they're not automatic. Change the tags in the app's YAML in TrueNAS and save. For `serve.json`, copy the new file to the dataset and restart the app. Edits to collections in the admin screen aren't saved as migrations (`--automigrate=false`), so make lasting schema changes in this repo.
 
 ## Troubleshooting
 
 - **Logs:** in TrueNAS, open the app and view each container's logs.
+- **A merge didn't reach the NAS:** check that the **Backend image** run on GitHub is green and published `:stable`. Then check the watchtower logs: "Found new … image" means it updated. If it says "unauthorized", the package is private (step 0.2).
 - **Is Funnel on?** In the **tailscale** container shell, run `tailscale funnel status`. It should list port 443 as *Funnel on*. If the logs say Funnel isn't allowed, check step 1.3.
 - **The app says "The reading-list server can't be reached right now":** the NAS is off, the app is stopped, or Funnel is down. Check with the `curl …/api/health` from step 6.
 - **"Not signed in" right after signing in:** check that `POCKETBASE_URL` has no trailing slash and starts with `https://`.

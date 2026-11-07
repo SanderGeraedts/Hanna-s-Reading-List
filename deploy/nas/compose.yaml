@@ -4,6 +4,10 @@
 # Replace /mnt/POOL/apps/reading-list with the path of your dataset, and the
 # auth key with your own. PocketBase listens on 127.0.0.1 inside the shared
 # network namespace, so the only way in is through Tailscale.
+#
+# Deploys: GitHub Actions publishes the PocketBase image (with the schema
+# built in) as :stable. Watchtower checks for a new one every 5 minutes and
+# restarts only the pocketbase container with it.
 
 services:
   tailscale:
@@ -22,7 +26,8 @@ services:
     restart: unless-stopped
 
   pocketbase:
-    image: ghcr.io/muchobien/pocketbase:0.40.6
+    # built from deploy/nas/Dockerfile by .github/workflows/backend.yml
+    image: ghcr.io/sandergeraedts/reading-list-pocketbase:stable
     network_mode: service:tailscale
     depends_on:
       - tailscale
@@ -35,11 +40,28 @@ services:
       - --automigrate=false
     volumes:
       - /mnt/POOL/apps/reading-list/pb_data:/pb_data
-      - /mnt/POOL/apps/reading-list/pb_migrations:/pb_migrations:ro
+    labels:
+      # the only container Watchtower may update
+      com.centurylinklabs.watchtower.enable: "true"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8090/api/health"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 15s
+    restart: unless-stopped
+
+  watchtower:
+    # maintained fork of containrrr/watchtower (archived December 2025)
+    image: nickfedor/watchtower:1.23.2
+    environment:
+      # only containers labelled com.centurylinklabs.watchtower.enable=true
+      WATCHTOWER_LABEL_ENABLE: "true"
+      WATCHTOWER_POLL_INTERVAL: "300"
+      # remove the previous image after updating
+      WATCHTOWER_CLEANUP: "true"
+      TZ: Europe/Amsterdam
+    volumes:
+      # needed to pull images and restart the pocketbase container
+      - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
