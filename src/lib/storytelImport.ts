@@ -2,7 +2,7 @@ import { getWorkDetails, searchBooks } from '#/server/openLibrary'
 import type { SearchResult } from '#/server/openLibrary'
 import type { StorytelBook } from '#/server/storytel'
 import type { Book, NewBook } from './library'
-import { formatsOf, withFormats } from './library'
+import { formatsOf, statusPatch, withFormats } from './library'
 import { analyzeCover, colorFromString, coverUrlForId, remoteCoverUrl } from './cover'
 import { genresFromSubjects } from './genres'
 import { guessLanguage } from './languages'
@@ -142,7 +142,7 @@ export async function importStorytelBooks(
       const further = item.progress !== undefined && item.progress > (match.progress ?? 0) + 0.005
       if (ahead || further) {
         cb.updateBook(match.id, {
-          ...(ahead && { status: item.status }),
+          ...(ahead && statusPatch(match, item.status)),
           ...(further && { progress: item.progress }),
         })
         summary.updated++
@@ -153,7 +153,9 @@ export async function importStorytelBooks(
       (item.progress !== undefined && Math.abs((match.progress ?? 0) - item.progress) > 0.005)
     ) {
       cb.updateBook(match.id, {
+        // relistening to a finished book and finishing it again counts once more (#53)
         status: item.status,
+        ...statusPatch(match, item.status),
         storytelId: item.storytelId,
         // first time this book is matched to Storytel: she has it there too
         ...(!match.storytelId && { ...withFormats([...formatsOf(match), 'storytel']) }),

@@ -7,7 +7,7 @@ import { CoverPicker } from '#/components/CoverPicker'
 import type { Face } from '#/components/BookPanel'
 import { nearestTurn } from '#/components/BookMesh'
 import type { InspectTarget } from '#/components/BookMesh'
-import { SORT_LABELS, STATUS_LABELS, useLibrary } from '#/lib/library'
+import { SORT_LABELS, STATUS_LABELS, statusPatch, useLibrary } from '#/lib/library'
 import type { SortKey, SyncStatus } from '#/lib/library'
 import { useSession } from '#/lib/session'
 import type { Account } from '#/lib/session'
@@ -253,13 +253,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           key={selected.id}
           book={selected}
           onFace={showFace}
-          // finishing a book counts as its first read
-          onStatus={(status) =>
-            updateBook(selected.id, {
-              status,
-              ...(status === 'read' && !selected.readCount && { readCount: 1 }),
-            })
-          }
+          // finishing a book counts as a read, finishing it again as one more (#53)
+          onStatus={(status) => updateBook(selected.id, statusPatch(selected, status))}
           onProgress={(progress) => updateBook(selected.id, { progress })}
           onUpdate={(patch) => {
             updateBook(selected.id, patch)
