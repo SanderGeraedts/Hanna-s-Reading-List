@@ -1,5 +1,6 @@
 import type { Book } from './library'
 import { seriesGroups } from './series'
+import type { NookThemeId } from './nookThemes'
 
 /** World units: 1 unit ≈ 1 metre. */
 export const SHELF = {
@@ -83,8 +84,11 @@ export interface NookSlot {
   x: number
   floorY: number
   row: number
-  /** every book of this series on the shelf is read (series dividers only) */
+  /** every book of this series on the shelf is read (series only) */
   complete?: boolean
+  /** nooks: the scene inside, and this group's own version of it */
+  theme?: NookThemeId
+  variant?: number
 }
 
 /** A slim labelled marker standing before each series when sorted by series. */
@@ -98,6 +102,9 @@ export interface Separator {
   label: string
   /** a series whose books on the shelf are all read: the divider turns gold */
   complete?: boolean
+  /** nooks: the scene inside, and this group's own version of it */
+  theme?: NookThemeId
+  variant?: number
 }
 
 export interface ShelfLayout {
@@ -173,6 +180,8 @@ export function computeLayout(
     x: number
     kind: Separator['kind']
     complete?: boolean
+    theme?: NookThemeId
+    variant?: number
   }> = []
   let row = 0
   let x = 0
@@ -198,6 +207,7 @@ export function computeLayout(
         row,
         x: x + gap + width / 2,
         ...(sep.complete && { complete: true }),
+        ...(sep.theme && { theme: sep.theme, variant: sep.variant }),
       })
       x += width + gap * 2
     }
@@ -243,10 +253,11 @@ export function computeLayout(
   const placedOf = (kind: Separator['kind']) =>
     sepPlaced
       .filter((n) => n.kind === kind)
-      .map(({ before, label, row, x, complete }) => ({
+      .map(({ before, label, row, x, complete, theme, variant }) => ({
         before,
         label,
         ...(complete && { complete }),
+        ...(theme && { theme, variant }),
         row,
         x: -innerWidth / 2 + x,
         floorY: rowFloorY(row, rows),
@@ -271,26 +282,4 @@ export function computeLayout(
     caseWidth: innerWidth + SHELF.side * 2,
     caseHeight: rows * SHELF.rowHeight + SHELF.board,
   }
-}
-
-/**
- * A labelled divider before the first book of each series, and before the
- * standalone books. A series whose books on the shelf are all read gets a
- * gold divider (series always have at least two books here).
- */
-export function seriesDividers(books: Book[]) {
-  const out = new Map<string, Separator>()
-  const groups = seriesGroups(books)
-  // nothing to divide when no series has two books on the shelf
-  if (![...groups.values()].some((g) => g.key)) return out
-  const unread = new Set<string>()
-  for (const b of books) if (b.status !== 'read') unread.add(groups.get(b.id)!.key)
-  const seen = new Set<string>()
-  for (const b of books) {
-    const g = groups.get(b.id)!
-    if (seen.has(g.key)) continue
-    seen.add(g.key)
-    out.set(b.id, { kind: 'divider', label: g.name, ...(g.key && !unread.has(g.key) && { complete: true }) })
-  }
-  return out
 }

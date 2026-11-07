@@ -3,18 +3,24 @@ import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { NOOK, SHELF } from '#/lib/shelfLayout'
 import type { NookSlot } from '#/lib/shelfLayout'
+import { NOOK_THEMES } from '#/lib/nookThemes'
+import type { NookThemeId } from '#/lib/nookThemes'
 import { toTexture } from './textures'
+import { D, H, IH, IW, SHELL, W, sceneTextures } from './nookPaint'
 
 /**
- * Book nooks: book-sized boxes that open onto a tiny lamplit alley at night,
- * standing between groups of books. A hanging sign names the group that
- * follows. Origin is the bottom-centre, opening towards the viewer (+z).
+ * Book nooks: book-sized boxes that open onto a tiny scene, standing between
+ * groups of books. Each group gets a scene that fits it (a lamplit alley, an
+ * enchanted forest, a beach at sunset, a castle, …; see nookThemes) and its
+ * own version of it. A hanging sign names the group that follows, gold with a
+ * star for a series that's been read. Origin is the bottom-centre, opening
+ * towards the viewer (+z).
  */
 export function BookNooks({ items }: { items: NookSlot[] }) {
   return (
     <>
       {items.map((n) => (
-        <PlacedNook key={n.label} slot={n} />
+        <PlacedNook key={`${n.label}:${n.theme ?? 'alley'}`} slot={n} />
       ))}
     </>
   )
@@ -34,26 +40,37 @@ function PlacedNook({ slot }: { slot: NookSlot }) {
   })
   return (
     <group ref={group} position={[slot.x, slot.floorY, NOOK_Z]}>
-      <Nook label={slot.label} />
+      <Nook
+        label={slot.label}
+        theme={slot.theme ?? 'alley'}
+        variant={slot.variant ?? 0}
+        complete={!!slot.complete}
+      />
     </group>
   )
 }
 
-const SHELL = 0.007 // board thickness of the box
-const W = NOOK.width
-const H = NOOK.height
-const D = NOOK.depth
-const IW = W - SHELL * 2 // inner width
-const IH = H - SHELL * 2
-
-function Nook({ label }: { label: string }) {
-  const tex = useMemo(getNookTextures, [])
-  const sign = useMemo(() => signTexture(label), [label])
+function Nook({
+  label,
+  theme: themeId,
+  variant,
+  complete,
+}: {
+  label: string
+  theme: NookThemeId
+  variant: number
+  complete: boolean
+}) {
+  const theme = NOOK_THEMES[themeId]
+  const tex = useMemo(() => sceneTextures(themeId, variant), [themeId, variant])
+  const sign = useMemo(() => signTexture(label, complete), [label, complete])
   useEffect(() => () => sign.dispose(), [sign])
+  // daylight scenes don't glow; night scenes light up their windows
+  const glow = theme.sky === 'day' ? 0.15 : 1.4
 
   const shell = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: '#2d4440', roughness: 0.6, metalness: 0.05 }),
-    [],
+    () => new THREE.MeshStandardMaterial({ color: theme.shell, roughness: 0.6, metalness: 0.05 }),
+    [theme.shell],
   )
   const gilt = useMemo(
     () => new THREE.MeshStandardMaterial({ color: '#c9a24a', roughness: 0.35, metalness: 0.6 }),
@@ -115,8 +132,8 @@ function Nook({ label }: { label: string }) {
         <meshStandardMaterial
           map={tex.leftWall.map}
           emissiveMap={tex.leftWall.glow}
-          emissive="#ffc46b"
-          emissiveIntensity={1.4}
+          emissive={theme.glow}
+          emissiveIntensity={glow}
           roughness={0.9}
         />
       </mesh>
@@ -125,8 +142,8 @@ function Nook({ label }: { label: string }) {
         <meshStandardMaterial
           map={tex.rightWall.map}
           emissiveMap={tex.rightWall.glow}
-          emissive="#ffc46b"
-          emissiveIntensity={1.4}
+          emissive={theme.glow}
+          emissiveIntensity={glow}
           roughness={0.9}
         />
       </mesh>
@@ -137,21 +154,22 @@ function Nook({ label }: { label: string }) {
       <mesh position={[0, SHELL + 0.0005, SHELL / 2]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[IW, D - SHELL]} />
         <meshStandardMaterial
-          map={tex.cobbles.map}
-          emissiveMap={tex.cobbles.glow}
-          emissive="#ffb85c"
-          emissiveIntensity={0.9}
+          map={tex.ground.map}
+          emissiveMap={tex.ground.glow}
+          emissive={theme.glow}
+          emissiveIntensity={glow * 0.65}
           roughness={0.85}
         />
       </mesh>
 
       {/* fairy lights strung across the alley */}
-      {strings.map((s, i) => (
-        <FairyLights key={i} y={SHELL + s.y} z={s.z} sag={s.sag} />
-      ))}
+      {theme.lights &&
+        strings.map((s, i) => (
+          <FairyLights key={i} y={SHELL + s.y} z={s.z} sag={s.sag} colours={theme.lights!} />
+        ))}
 
-      {/* a street lamp by the left-hand houses */}
-      <group position={[-IW / 2 + 0.014, SHELL, D * 0.05]}>
+      {/* a street lamp by the left-hand wall */}
+      {theme.lamp && <group position={[-IW / 2 + 0.014, SHELL, D * 0.05]}>
         <mesh position={[0, 0.07, 0]}>
           <cylinderGeometry args={[0.0018, 0.0024, 0.14, 8]} />
           <meshStandardMaterial color="#1c1c22" roughness={0.5} metalness={0.4} />
@@ -164,7 +182,7 @@ function Nook({ label }: { label: string }) {
           <coneGeometry args={[0.0095, 0.008, 4]} />
           <meshStandardMaterial color="#1c1c22" roughness={0.5} metalness={0.4} />
         </mesh>
-      </group>
+      </group>}
 
       {/* hanging sign naming the books that follow */}
       <group position={[0, H - SHELL, D / 2 - 0.018]}>
@@ -189,7 +207,7 @@ function Nook({ label }: { label: string }) {
 }
 
 /** A string of warm bulbs hanging in a shallow curve between the house fronts. */
-function FairyLights({ y, z, sag }: { y: number; z: number; sag: number }) {
+function FairyLights({ y, z, sag, colours }: { y: number; z: number; sag: number; colours: string[] }) {
   const { wire, bulbs } = useMemo(() => {
     const pts: THREE.Vector3[] = []
     const n = 24
@@ -210,282 +228,36 @@ function FairyLights({ y, z, sag }: { y: number; z: number; sag: number }) {
       {bulbs.map((p, i) => (
         <mesh key={i} position={[p.x, p.y - 0.003, p.z]}>
           <sphereGeometry args={[0.0028, 8, 6]} />
-          <meshBasicMaterial color={['#ffd27a', '#ffb86b', '#fff0c2'][i % 3]} toneMapped={false} />
+          <meshBasicMaterial color={colours[i % colours.length]} toneMapped={false} />
         </mesh>
       ))}
     </group>
   )
 }
 
-// ---------------------------------------------------------------------------
-// textures (painted once, shared by every nook)
-// ---------------------------------------------------------------------------
-
-const PX = 2000 // pixels per metre
-
-function makeCanvas(w: number, h: number) {
-  const c = document.createElement('canvas')
-  c.width = Math.round(w * PX)
-  c.height = Math.round(h * PX)
-  return c
-}
-
-/** Seeded random so every nook's houses look the same. */
-function rng(seed: number) {
-  let s = seed
-  return () => {
-    s = (s * 1664525 + 1013904223) >>> 0
-    return s / 4294967296
-  }
-}
-
-interface WallTex {
-  map: THREE.Texture
-  glow: THREE.Texture
-}
-
-/**
- * House fronts along one side of the alley. `u` runs from the opening (0) to
- * the back (1) when `frontFirst`, the other way round otherwise.
- */
-function paintWall(frontFirst: boolean, palette: string[], seed: number): WallTex {
-  const wallLen = D - SHELL
-  const c = makeCanvas(wallLen, IH)
-  const g = makeCanvas(wallLen, IH)
-  const ctx = c.getContext('2d')!
-  const gl = g.getContext('2d')!
-  const cw = c.width
-  const ch = c.height
-  const rand = rng(seed)
-  gl.fillStyle = '#000'
-  gl.fillRect(0, 0, cw, ch)
-
-  // three narrow houses side by side, the one at the back lower
-  const houses = 3
-  const hw = cw / houses
-  for (let i = 0; i < houses; i++) {
-    const fromFront = frontFirst ? i : houses - 1 - i
-    const x0 = i * hw
-    const roof = ch * (0.08 + fromFront * 0.07 + rand() * 0.04)
-    ctx.fillStyle = palette[(i + seed) % palette.length]
-    ctx.fillRect(x0, roof, hw + 1, ch - roof)
-    // timber/plaster texture
-    ctx.globalAlpha = 0.08
-    for (let k = 0; k < 120; k++) {
-      ctx.fillStyle = rand() < 0.5 ? '#000' : '#fff'
-      ctx.fillRect(x0 + rand() * hw, roof + rand() * (ch - roof), 2 + rand() * 6, 1 + rand() * 3)
-    }
-    ctx.globalAlpha = 1
-    // eaves line and the dark gap to the next house
-    ctx.fillStyle = 'rgba(30,20,20,0.75)'
-    ctx.fillRect(x0, roof, hw, ch * 0.012)
-    ctx.fillStyle = 'rgba(0,0,0,0.35)'
-    ctx.fillRect(x0 + hw - 2, roof, 3, ch - roof)
-
-    // windows: two per floor
-    const floors = 3
-    const floorH = (ch * 0.74 - roof) / floors
-    for (let f = 0; f < floors; f++) {
-      for (let k = 0; k < 2; k++) {
-        const wx = x0 + hw * (0.2 + k * 0.42)
-        const wy = roof + ch * 0.04 + f * floorH
-        const ww = hw * 0.22
-        const wh = floorH * 0.55
-        const lit = rand() < 0.62
-        ctx.fillStyle = '#2a1e18'
-        ctx.fillRect(wx - 2, wy - 2, ww + 4, wh + 4)
-        if (lit) {
-          const grad = ctx.createLinearGradient(wx, wy, wx, wy + wh)
-          grad.addColorStop(0, '#ffe7a8')
-          grad.addColorStop(1, '#f0a24a')
-          ctx.fillStyle = grad
-          gl.fillStyle = rand() < 0.5 ? '#ffffff' : '#d9c6a0'
-          gl.fillRect(wx, wy, ww, wh)
-        } else {
-          ctx.fillStyle = '#26304f'
-        }
-        ctx.fillRect(wx, wy, ww, wh)
-        // glazing bars and a flower box
-        ctx.fillStyle = '#2a1e18'
-        ctx.fillRect(wx + ww / 2 - 1, wy, 2, wh)
-        ctx.fillRect(wx, wy + wh / 2 - 1, ww, 2)
-        ctx.fillStyle = '#5b3b26'
-        ctx.fillRect(wx - 3, wy + wh + 2, ww + 6, 5)
-        for (let p = 0; p < 4; p++) {
-          ctx.fillStyle = ['#e26d8a', '#f2c14e', '#ffffff', '#c45ab3'][(p + f + k) % 4]
-          ctx.beginPath()
-          ctx.arc(wx + (ww * (p + 0.5)) / 4, wy + wh + 1, 3, 0, Math.PI * 2)
-          ctx.fill()
-        }
-      }
-    }
-    // a door at street level
-    const dx = x0 + hw * 0.33
-    const dw = hw * 0.32
-    const dy = ch * 0.8
-    ctx.fillStyle = ['#7b2f2f', '#2f4f6b', '#3f5f3a'][(i + seed) % 3]
-    ctx.beginPath()
-    ctx.moveTo(dx, ch)
-    ctx.lineTo(dx, dy + dw / 2)
-    ctx.arc(dx + dw / 2, dy + dw / 2, dw / 2, Math.PI, 0)
-    ctx.lineTo(dx + dw, ch)
-    ctx.fill()
-    ctx.fillStyle = '#e8c56a'
-    ctx.beginPath()
-    ctx.arc(dx + dw * 0.8, ch - (ch - dy) * 0.45, 2.5, 0, Math.PI * 2)
-    ctx.fill()
-    // fanlight over the door, softly lit
-    ctx.fillStyle = '#ffd98a'
-    ctx.beginPath()
-    ctx.arc(dx + dw / 2, dy + dw / 2, dw * 0.36, Math.PI, 0)
-    ctx.fill()
-    gl.fillStyle = '#c8a870'
-    gl.beginPath()
-    gl.arc(dx + dw / 2, dy + dw / 2, dw * 0.36, Math.PI, 0)
-    gl.fill()
-  }
-  // darker towards the back of the alley
-  const shade = ctx.createLinearGradient(0, 0, cw, 0)
-  shade.addColorStop(frontFirst ? 0 : 1, 'rgba(0,0,10,0)')
-  shade.addColorStop(frontFirst ? 1 : 0, 'rgba(0,0,10,0.35)')
-  ctx.fillStyle = shade
-  ctx.fillRect(0, 0, cw, ch)
-  // and the night above the rooftops
-  const sky = ctx.createLinearGradient(0, 0, 0, ch * 0.3)
-  sky.addColorStop(0, '#141a3a')
-  sky.addColorStop(1, '#2b2f62')
-  ctx.globalCompositeOperation = 'destination-over'
-  ctx.fillStyle = sky
-  ctx.fillRect(0, 0, cw, ch)
-  ctx.globalCompositeOperation = 'source-over'
-
-  return { map: toTexture(c), glow: toTexture(g) }
-}
-
-function paintSky() {
-  const c = makeCanvas(IW, IH)
-  const ctx = c.getContext('2d')!
-  const cw = c.width
-  const ch = c.height
-  const grad = ctx.createLinearGradient(0, 0, 0, ch)
-  grad.addColorStop(0, '#0f1433')
-  grad.addColorStop(0.55, '#2e3170')
-  grad.addColorStop(0.85, '#7a5a8c')
-  grad.addColorStop(1, '#d9927a')
-  ctx.fillStyle = grad
-  ctx.fillRect(0, 0, cw, ch)
-  const rand = rng(7)
-  for (let i = 0; i < 40; i++) {
-    ctx.fillStyle = `rgba(255,255,240,${0.4 + rand() * 0.6})`
-    ctx.fillRect(rand() * cw, rand() * ch * 0.55, 1.5, 1.5)
-  }
-  // moon with a soft halo
-  const mx = cw * 0.66
-  const my = ch * 0.2
-  const halo = ctx.createRadialGradient(mx, my, 2, mx, my, cw * 0.3)
-  halo.addColorStop(0, 'rgba(255,245,210,0.55)')
-  halo.addColorStop(1, 'rgba(255,245,210,0)')
-  ctx.fillStyle = halo
-  ctx.fillRect(0, 0, cw, ch)
-  ctx.fillStyle = '#fff6d8'
-  ctx.beginPath()
-  ctx.arc(mx, my, cw * 0.075, 0, Math.PI * 2)
-  ctx.fill()
-  // distant rooftops and a little tower at the end of the street
-  ctx.fillStyle = '#1b1838'
-  ctx.beginPath()
-  ctx.moveTo(0, ch)
-  let x = 0
-  while (x < cw) {
-    const w = cw * (0.12 + rand() * 0.14)
-    const top = ch * (0.62 + rand() * 0.12)
-    ctx.lineTo(x, top + ch * 0.03)
-    ctx.lineTo(x + w / 2, top)
-    ctx.lineTo(x + w, top + ch * 0.03)
-    x += w
-  }
-  ctx.lineTo(cw, ch)
-  ctx.fill()
-  ctx.fillRect(cw * 0.36, ch * 0.5, cw * 0.1, ch * 0.5)
-  ctx.beginPath()
-  ctx.moveTo(cw * 0.34, ch * 0.5)
-  ctx.lineTo(cw * 0.41, ch * 0.4)
-  ctx.lineTo(cw * 0.48, ch * 0.5)
-  ctx.fill()
-  // a few lit windows far away
-  for (let i = 0; i < 10; i++) {
-    ctx.fillStyle = '#ffcf7a'
-    ctx.fillRect(rand() * cw, ch * (0.74 + rand() * 0.2), 2, 3)
-  }
-  return toTexture(c)
-}
-
-function paintCobbles(): WallTex {
-  const c = makeCanvas(IW, D - SHELL)
-  const g = makeCanvas(IW, D - SHELL)
-  const ctx = c.getContext('2d')!
-  const gl = g.getContext('2d')!
-  const cw = c.width
-  const ch = c.height
-  ctx.fillStyle = '#2b2724'
-  ctx.fillRect(0, 0, cw, ch)
-  const rand = rng(3)
-  const s = 13
-  for (let y = 0; y < ch + s; y += s * 0.8) {
-    const off = (Math.round(y / (s * 0.8)) % 2) * s * 0.5
-    for (let x = -s; x < cw + s; x += s) {
-      const v = 70 + rand() * 40
-      ctx.fillStyle = `rgb(${v + 8}, ${v + 2}, ${v - 6})`
-      ctx.beginPath()
-      ctx.ellipse(x + off, y, s * 0.42, s * 0.32, rand() * 0.4, 0, Math.PI * 2)
-      ctx.fill()
-    }
-  }
-  // warm pool of light from the windows and the lamp
-  gl.fillStyle = '#000'
-  gl.fillRect(0, 0, cw, ch)
-  const pool = gl.createRadialGradient(cw * 0.25, ch * 0.6, 4, cw * 0.4, ch * 0.55, cw * 0.9)
-  pool.addColorStop(0, 'rgba(255,220,160,0.55)')
-  pool.addColorStop(1, 'rgba(255,220,160,0)')
-  gl.fillStyle = pool
-  gl.fillRect(0, 0, cw, ch)
-  return { map: toTexture(c), glow: toTexture(g) }
-}
-
-let nookTextures: { leftWall: WallTex; rightWall: WallTex; sky: THREE.Texture; cobbles: WallTex } | null =
-  null
-function getNookTextures() {
-  nookTextures ??= {
-    // the left wall's texture runs from the opening to the back, the right wall's the other way
-    leftWall: paintWall(true, ['#c98f5a', '#d8b48a', '#a86a52'], 1),
-    rightWall: paintWall(false, ['#b87a8a', '#d6c08f', '#8f9fb0'], 2),
-    sky: paintSky(),
-    cobbles: paintCobbles(),
-  }
-  return nookTextures
-}
-
-function signTexture(label: string) {
+function signTexture(label: string, complete = false) {
   const c = document.createElement('canvas')
   c.width = 384
   c.height = 128
   const ctx = c.getContext('2d')!
   const grad = ctx.createLinearGradient(0, 0, 0, c.height)
-  grad.addColorStop(0, '#7a5232')
-  grad.addColorStop(1, '#4e321e')
+  // a finished series gets a gilded sign
+  grad.addColorStop(0, complete ? '#d9ad45' : '#7a5232')
+  grad.addColorStop(1, complete ? '#a87a22' : '#4e321e')
   ctx.fillStyle = grad
   ctx.fillRect(0, 0, c.width, c.height)
-  ctx.strokeStyle = '#d9b46a'
+  ctx.strokeStyle = complete ? '#fff0b0' : '#d9b46a'
   ctx.lineWidth = 6
   ctx.strokeRect(10, 10, c.width - 20, c.height - 20)
-  ctx.fillStyle = '#f6e7c4'
+  ctx.fillStyle = complete ? '#3a2614' : '#f6e7c4'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
+  const text = complete ? `★ ${label}` : label
   let size = 64
   do {
-    ctx.font = `italic 600 ${size}px Georgia, "Times New Roman", serif`
+    ctx.font = `italic 600 ${size}px Georgia, "Segoe UI Symbol", "Times New Roman", serif`
     size -= 2
-  } while (ctx.measureText(label).width > c.width - 56 && size > 18)
-  ctx.fillText(label, c.width / 2, c.height / 2 + 3)
+  } while (ctx.measureText(text).width > c.width - 56 && size > 18)
+  ctx.fillText(text, c.width / 2, c.height / 2 + 3)
   return toTexture(c)
 }

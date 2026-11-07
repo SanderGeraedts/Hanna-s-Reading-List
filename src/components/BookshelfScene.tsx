@@ -4,9 +4,9 @@ import * as THREE from 'three'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import type { Book, SortKey } from '#/lib/library'
-import { STATUS_LABELS, groupLabel } from '#/lib/library'
-import { FRAME, SHELF, computeLayout, rowFloorY, seriesDividers, shelfFitFor } from '#/lib/shelfLayout'
-import type { Separator, ShelfLayout } from '#/lib/shelfLayout'
+import { FRAME, SHELF, computeLayout, rowFloorY, shelfFitFor } from '#/lib/shelfLayout'
+import { arrangementSeparators } from '#/lib/separators'
+import type { ShelfLayout } from '#/lib/shelfLayout'
 import { BookMesh, RAINBOW } from './BookMesh'
 import { Decorations } from './Decorations'
 import { BookNooks } from './BookNook'
@@ -100,17 +100,7 @@ function Scene({
   // one object, updated in place every frame as the sheet is dragged
   const portraitFrame = useMemo(() => ({ fill: 0.4, yShift: 0.17 }), [])
   useFrame(() => portraitInspect(portraitFrame, sheet?.current ?? 0.45, aspect))
-  const separators = useMemo(
-    () =>
-      arrangement === 'status'
-        ? statusNooks(ordered)
-        : arrangement === 'series'
-          ? seriesDividers(ordered)
-          : arrangement === 'genre' || arrangement === 'language' || arrangement === 'format'
-            ? groupDividers(ordered, (b) => groupLabel(arrangement, b))
-            : new Map<string, Separator>(),
-    [arrangement, ordered],
-  )
+  const separators = useMemo(() => arrangementSeparators(ordered, arrangement), [arrangement, ordered])
   const layout = useMemo(() => computeLayout(ordered, fit, separators), [ordered, fit, separators])
 
   // keep the case size stable while dragging so the camera doesn't jump around
@@ -609,31 +599,4 @@ function rainbowClips(books: Book[]) {
   return new Map(reading.map((b, i) => [b.id, RAINBOW[i % RAINBOW.length]]))
 }
 
-/**
- * A nook before the first book of each reading-status group after the first.
- * Going by first appearance keeps it to one nook per group even after a few
- * books have been dragged out of place.
- */
-function statusNooks(books: Book[]) {
-  const out = new Map<string, Separator>()
-  const seen = new Set<string>()
-  for (const b of books) {
-    if (seen.has(b.status)) continue
-    if (seen.size > 0) out.set(b.id, { kind: 'nook', label: STATUS_LABELS[b.status] })
-    seen.add(b.status)
-  }
-  return out
-}
 
-/** A labelled divider before the first book of each group, when there is more than one group. */
-function groupDividers(books: Book[], label: (b: Book) => string) {
-  const out = new Map<string, Separator>()
-  const seen = new Set<string>()
-  for (const b of books) {
-    const l = label(b)
-    if (seen.has(l)) continue
-    seen.add(l)
-    out.set(b.id, { kind: 'divider', label: l })
-  }
-  return seen.size > 1 ? out : new Map<string, Separator>()
-}
