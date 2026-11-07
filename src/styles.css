@@ -1491,19 +1491,44 @@ textarea.input {
 .small-text {
   font-size: 0.8rem;
 }
-.link-btn {
+/* book titles on the dashboard; the book panel's own .link-btn stays as it is */
+.dashboard .link-btn {
   font: inherit;
+  margin: 0;
   padding: 0;
   border: 0;
   background: none;
   color: var(--text);
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
 }
-.link-btn:hover,
-.link-btn:focus-visible {
+.dashboard .link-btn:hover,
+.dashboard .link-btn:focus-visible {
   color: var(--accent);
   text-decoration: underline;
+}
+
+/* open a book in Storytel (#65) */
+.btn.storytel-link {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  justify-self: start;
+  width: fit-content;
+  margin-top: 0.5rem;
+  text-decoration: none;
+  /* dark text: white on this orange is too faint to read */
+  color: #1d0b02;
+  background: #ff5c28;
+  border-color: transparent;
+  font-weight: 600;
+}
+.btn.storytel-link:hover:not(:disabled) {
+  background: #ff7448;
+}
+.next-actions .btn.storytel-link {
+  margin-top: 0;
 }
 .book-list {
   list-style: none;
