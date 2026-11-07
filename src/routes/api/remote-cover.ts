@@ -1,20 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 /**
- * Same-origin proxy for Storytel and Google Books (#67) cover images, so WebGL
- * can use them as textures. Only https URLs on those services' own cover hosts
- * are allowed (no open proxy).
+ * Same-origin proxy for Storytel cover images, so WebGL can use them as textures.
+ * Only https URLs on Storytel's own domains are allowed (no open proxy).
  *
  *   /api/remote-cover?url=https%3A%2F%2Fcovers.storytel.com%2F...
  */
-const GOOGLE_COVER_HOSTS = ['books.google.com', 'books.googleusercontent.com']
-
 function isAllowed(url: URL) {
   return (
     url.protocol === 'https:' &&
-    (url.hostname === 'storytel.com' ||
-      url.hostname.endsWith('.storytel.com') ||
-      GOOGLE_COVER_HOSTS.includes(url.hostname))
+    (url.hostname === 'storytel.com' || url.hostname.endsWith('.storytel.com'))
   )
 }
 
