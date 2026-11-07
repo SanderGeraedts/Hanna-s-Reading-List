@@ -43,6 +43,13 @@ export interface Book {
   progress?: number
   /** how many times the book has been finished (entered by hand) */
   readCount?: number
+  /**
+   * the days it was finished (yyyy-mm-dd, oldest first), noted from #59 on;
+   * books finished before that have none until Hanna fills one in
+   */
+  finished?: string[]
+  /** favourite quotes Hanna noted from the book, shown on the dashboard once it is read */
+  quotes?: string[]
   /** series name and number, entered by hand (otherwise read from the title) */
   series?: string
   seriesIndex?: number
@@ -161,6 +168,11 @@ export type SyncStatus =
   /** too large to send (lots of uploaded covers) */
   | 'too-big'
 
+/** Today, or the given moment, as yyyy-mm-dd in local time. */
+export function localDay(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 /** Times a book has been read: finished books count at least once. */
 export function timesRead(book: Book) {
   return Math.max(book.readCount ?? 0, book.status === 'read' ? 1 : 0)
@@ -168,12 +180,13 @@ export function timesRead(book: Book) {
 
 /**
  * A new reading status, keeping count of the times read (#53): starting a
- * finished book again keeps its count, finishing it again adds one.
+ * finished book again keeps its count, finishing it again adds one. Each
+ * time it is finished the day is noted, for the dashboard (#59).
  */
-export function statusPatch(book: Book, status: ReadingStatus): Partial<Book> {
+export function statusPatch(book: Book, status: ReadingStatus, day = localDay()): Partial<Book> {
   if (status === book.status) return {}
   const reads = timesRead(book)
-  if (status === 'read') return { status, readCount: book.status === 'read' ? reads : reads + 1 }
+  if (status === 'read') return { status, readCount: reads + 1, finished: [...(book.finished ?? []), day] }
   // leaving "read": remember that it was finished
   return { status, ...(book.status === 'read' && { readCount: reads }) }
 }

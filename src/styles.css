@@ -1138,3 +1138,351 @@ textarea.input {
 .facts-row .input[aria-invalid='true'] {
   border-color: var(--danger);
 }
+
+/* ---- menu: shelf or dashboard (#59) ---------------------------------- */
+.brand-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+.view-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+.view-menu > summary {
+  list-style: none;
+}
+.view-menu > summary::-webkit-details-marker {
+  display: none;
+}
+.btn.icon {
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  line-height: 1;
+}
+.btn.icon.small {
+  width: 1.9rem;
+  height: 1.9rem;
+  font-size: 1rem;
+}
+.topbar .view-menu > summary {
+  font-size: 1.15rem;
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--header-ink);
+  border-color: rgba(40, 50, 90, 0.2);
+}
+.topbar .view-menu > summary:hover {
+  background: #fff;
+}
+.view-menu-list {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 0.5rem);
+  z-index: 5;
+  display: grid;
+  min-width: 11rem;
+  padding: 0.4rem;
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+}
+.view-menu-list button {
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  padding: 0.55rem 0.75rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.view-menu-list button:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.view-menu-list button.active {
+  color: var(--accent);
+  font-weight: 600;
+}
+@media (max-width: 720px) {
+  .topbar .view-menu > summary {
+    width: 2.1rem;
+    height: 2.1rem;
+  }
+}
+
+/* ---- dashboard (#59) ------------------------------------------------- */
+.dashboard {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow-y: auto;
+  padding: 6.5rem 1.5rem 2rem;
+  background: radial-gradient(ellipse at top, #3a2b20 0%, var(--bg) 60%);
+}
+.dashboard-grid {
+  max-width: 68rem;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+  align-items: start;
+}
+.dash-card {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  min-width: 0;
+}
+.dash-card p {
+  margin: 0;
+}
+.dash-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+}
+.dash-card h2 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+.dash-card .hint {
+  font-size: 0.75rem;
+}
+
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.2);
+}
+.segmented button {
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.8rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.segmented button.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+.period-pick {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+.period-pick .input {
+  width: auto;
+}
+
+.big-number {
+  font-family: var(--serif);
+  font-size: 1.1rem;
+}
+.big-number strong {
+  font-size: 3rem;
+  line-height: 1;
+  color: var(--accent);
+  margin-right: 0.15rem;
+}
+.count-details {
+  font-size: 0.85rem;
+}
+
+.dash-cover {
+  display: block;
+  width: 5.5rem;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: 3px 6px 6px 3px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  flex-shrink: 0;
+}
+.dash-cover.blank {
+  display: grid;
+  place-items: center;
+  padding: 0.4rem;
+  font-family: var(--serif);
+  font-size: 0.7rem;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+.dash-cover.small {
+  width: 2.2rem;
+  border-radius: 2px 3px 3px 2px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.45);
+}
+.cover-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: transform 0.15s;
+}
+.cover-btn:hover,
+.cover-btn:focus-visible {
+  transform: translateY(-3px);
+}
+.cover-row {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: end;
+}
+.cover-row .more {
+  font-size: 0.8rem;
+  align-self: center;
+}
+
+.quote-card {
+  align-self: stretch;
+  align-content: center;
+}
+.quote-card figure {
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+.quote-card blockquote {
+  margin: 0;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: clamp(1.1rem, 2.2vw, 1.4rem);
+  line-height: 1.45;
+}
+.quote-card blockquote::before {
+  content: '“';
+  display: block;
+  font-size: 3rem;
+  line-height: 0.6;
+  color: var(--accent);
+  font-style: normal;
+}
+.quote-card figcaption {
+  font-size: 0.85rem;
+}
+.quote-card cite {
+  font-style: normal;
+  font-weight: 600;
+}
+
+.next-book {
+  display: flex;
+  gap: 1rem;
+  align-items: start;
+}
+.next-title {
+  font-family: var(--serif);
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+.next-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.next-card > .btn {
+  justify-self: start;
+}
+
+.calendar-card {
+  align-self: stretch;
+}
+.calendar {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 3px;
+  table-layout: fixed;
+}
+.calendar th {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--muted);
+  padding-bottom: 0.2rem;
+}
+.calendar td {
+  vertical-align: top;
+  height: 3.6rem;
+  padding: 0.25rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.calendar td.outside {
+  background: none;
+}
+.calendar td.today {
+  outline: 1px solid var(--accent);
+}
+.calendar td.has-books {
+  background: rgba(217, 168, 91, 0.14);
+}
+.calendar .day-number {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-bottom: 0.15rem;
+}
+.calendar td.today .day-number {
+  color: var(--accent);
+  font-weight: 600;
+}
+.calendar .cover-btn {
+  display: inline-block;
+  margin: 0 2px 2px 0;
+}
+.calendar .dash-cover.small {
+  width: 1.6rem;
+}
+
+/* the book panel's finish dates */
+.finished-day {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+@media (max-width: 860px) {
+  .dashboard-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 720px) {
+  .dashboard {
+    padding: 4.25rem 0.75rem 1.5rem;
+  }
+  .dash-card {
+    padding: 1rem;
+  }
+  .calendar td {
+    height: 3rem;
+    padding: 0.15rem;
+  }
+  .calendar .dash-cover.small {
+    width: 1.2rem;
+  }
+}

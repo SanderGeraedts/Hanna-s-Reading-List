@@ -4,7 +4,7 @@ import type { Book } from './library'
 vi.mock('#/server/shelf', () => ({ loadShelf: async () => null, saveShelf: async () => ({ updated: 't' }) }))
 vi.mock('#/server/openLibrary', () => ({ searchBooks: async () => [], getWorkDetails: async () => null }))
 
-const { sortBooks, statusPatch, timesRead } = await import('./library')
+const { localDay, sortBooks, statusPatch, timesRead } = await import('./library')
 const { mergeBooks } = await import('./merge')
 const { importStorytelBooks } = await import('./storytelImport')
 
@@ -62,6 +62,8 @@ describe('paused books (#60)', () => {
 
   it('are finished when Storytel says so', async () => {
     const onShelf = book({ storytelId: 'st', status: 'paused', progress: 0.4 })
-    expect(await refresh(onShelf, 'read', 1)).toEqual([{ status: 'read', readCount: 1, storytelId: 'st', progress: 1 }])
+    expect(await refresh(onShelf, 'read', 1)).toEqual([
+      { status: 'read', readCount: 1, finished: [localDay()], storytelId: 'st', progress: 1 },
+    ])
   })
 })
