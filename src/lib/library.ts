@@ -3,6 +3,7 @@ import { loadShelf, saveShelf } from '#/server/shelf'
 import { seriesGroups } from './series'
 import { NOT_SIGNED_IN } from './signedOut'
 import { languageName } from './languages'
+import { isSortKey, type SortKey } from './sortKeys'
 
 export type ReadingStatus = 'want' | 'reading' | 'read'
 
@@ -75,17 +76,7 @@ export type NewBook = Omit<Book, 'id' | 'addedAt' | 'status'> & {
   status?: ReadingStatus
 }
 
-export type SortKey =
-  | 'title'
-  | 'author'
-  | 'series'
-  | 'genre'
-  | 'language'
-  | 'format'
-  | 'year'
-  | 'color'
-  | 'added'
-  | 'status'
+export type { SortKey }
 
 export const SORT_LABELS: Record<SortKey, string> = {
   title: 'Title',
@@ -145,7 +136,7 @@ function loadBooks(key: string): Book[] {
 function loadArrangement(key: string): SortKey | null {
   try {
     const a = localStorage.getItem(key)
-    return a && a in SORT_LABELS ? (a as SortKey) : null
+    return isSortKey(a) ? a : null
   } catch {
     return null
   }

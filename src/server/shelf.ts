@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
-import type { Book, SortKey } from '#/lib/library'
+import type { Book } from '#/lib/library'
+import { isSortKey, type SortKey } from '#/lib/sortKeys'
 import { asUser, pb, tokenUserId } from './pocketbase'
 
 /**
@@ -21,8 +22,6 @@ export interface RemoteShelf {
   updated: string
 }
 
-const SORT_KEYS = new Set(['title', 'author', 'series', 'year', 'color', 'added', 'status'])
-
 async function findRecord(token: string) {
   const list = await pb<{ items: ShelfRecord[] }>(
     '/api/collections/libraries/records?perPage=1&skipTotal=1',
@@ -33,7 +32,7 @@ async function findRecord(token: string) {
 
 const toShelf = (r: ShelfRecord): RemoteShelf => ({
   books: Array.isArray(r.books) ? r.books : [],
-  arrangement: SORT_KEYS.has(r.arrangement) ? (r.arrangement as SortKey) : null,
+  arrangement: isSortKey(r.arrangement) ? r.arrangement : null,
   updated: r.updated,
 })
 
@@ -52,7 +51,7 @@ export const saveShelf = createServerFn({ method: 'POST' })
     if (!input.books.every((b) => b && typeof b.id === 'string' && typeof b.title === 'string')) {
       throw new Error('Invalid shelf.')
     }
-    const arrangement = input.arrangement && SORT_KEYS.has(input.arrangement) ? input.arrangement : null
+    const arrangement = isSortKey(input.arrangement) ? input.arrangement : null
     return { books: input.books, arrangement }
   })
   .handler(
