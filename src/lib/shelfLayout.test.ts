@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Book } from './library'
-import { bookDims, computeLayout, seriesDividers } from './shelfLayout'
+import { bookDims, computeLayout } from './shelfLayout'
+import { arrangementSeparators } from './separators'
 
 const book = (id: string, title: string, extra: Partial<Book> = {}): Book => ({
   id,
@@ -48,7 +49,7 @@ describe('a gold divider for a series that is all read (#18)', () => {
   const pj = (n: number, extra: Partial<Book> = {}) => book(`pj${n}`, `Percy Jackson, Teil ${n}: Band ${n}`, extra)
   const kc = (n: number, extra: Partial<Book> = {}) => book(`kc${n}`, `Die Kane-Chroniken ${n}: Band ${n}`, extra)
   const flags = (shelf: Book[]) =>
-    Object.fromEntries([...seriesDividers(shelf).values()].map((d) => [d.label, !!d.complete]))
+    Object.fromEntries([...arrangementSeparators(shelf, 'series').values()].map((d) => [d.label, !!d.complete]))
 
   it('marks a series whose books on the shelf are all read', () => {
     const shelf = [pj(1, read), pj(2, read), kc(1, read), kc(2), book('solo', 'Alone', { ...read, authors: ['X'] })]
