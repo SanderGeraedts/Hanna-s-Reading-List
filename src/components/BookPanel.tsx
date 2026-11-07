@@ -5,6 +5,7 @@ import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { Book, BookFormat, ReadingStatus } from '#/lib/library'
 import { FORMAT_LABELS, STATUS_LABELS, formatsOf, localDay, timesRead, withFormats } from '#/lib/library'
 import { parseQuotes, quotesText } from '#/lib/quotes'
+import { storytelLink } from '#/lib/storytelLink'
 import { LANGUAGE_CHOICES, languageName } from '#/lib/languages'
 import { tidyTitle } from '#/lib/titles'
 import type { SeriesInfo } from '#/lib/series'
@@ -227,6 +228,8 @@ export function BookPanel({
   const cancelTitle = useRef(false)
   const [lentTo, setLentTo] = useState(book.lent?.to ?? '')
   const [quotesDraft, setQuotesDraft] = useState(quotesText(book.quotes))
+  // opens the Storytel app on a phone (#65)
+  const storytel = storytelLink(book)
   const finished = book.finished ?? []
   const setFinished = (days: string[]) => onUpdate({ finished: days.length ? [...days].sort() : undefined })
   const [genreDraft, setGenreDraft] = useState('')
@@ -370,6 +373,11 @@ export function BookPanel({
               .filter(Boolean)
               .join(' · ')}
           </p>
+          {storytel && (
+            <a className="btn small storytel-link" href={storytel} target="_blank" rel="noopener noreferrer">
+              <span aria-hidden>▶</span> Open in Storytel
+            </a>
+          )}
         </div>
         <button className="icon-btn" onClick={onClose} aria-label="Put back on the shelf">
           ×

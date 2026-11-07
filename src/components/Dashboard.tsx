@@ -18,6 +18,7 @@ import {
   YearReviewCard,
 } from './DashboardExtras'
 import { pickReadNext, readNextChoices } from '#/lib/readNext'
+import { storytelLink } from '#/lib/storytelLink'
 import { finishedByDay, monthWeeks, periodStats, readingYears } from '#/lib/stats'
 import type { Period } from '#/lib/stats'
 
@@ -262,6 +263,8 @@ function ReadNextCard({ books, onShowBook }: Props) {
   const choices = useMemo(() => readNextChoices(books), [books])
   const [pickedId, setPickedId] = useState<string | null>(null)
   const picked = choices.find((b) => b.id === pickedId)
+  // on a phone this opens the Storytel app (#65)
+  const storytel = picked && storytelLink(picked)
   const pick = () => setPickedId(pickReadNext(choices, pickedId)?.id ?? null)
 
   return (
@@ -279,6 +282,11 @@ function ReadNextCard({ books, onShowBook }: Props) {
               <button className="btn primary" onClick={() => onShowBook(picked.id)}>
                 Show on the shelf
               </button>
+              {storytel && (
+                <a className="btn storytel-link" href={storytel} target="_blank" rel="noopener noreferrer">
+                  <span aria-hidden>▶</span> Open in Storytel
+                </a>
+              )}
               {choices.length > 1 && (
                 <button className="btn" onClick={pick}>
                   🎲 Another
