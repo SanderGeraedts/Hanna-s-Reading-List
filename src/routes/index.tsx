@@ -13,6 +13,7 @@ import { useSession } from '#/lib/session'
 import type { Account } from '#/lib/session'
 import { SignIn } from '#/components/SignIn'
 import { detectSeries } from '#/lib/series'
+import { pickReadNext, readNextChoices } from '#/lib/readNext'
 import { useStorytelSync } from '#/lib/useStorytelSync'
 import type { Tab } from '#/components/AddBookDialog'
 import { SearchBox } from '#/components/SearchBox'
@@ -103,6 +104,12 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     (ids: string[]) => reorder(activeGenre ? reorderShown(books.map((b) => b.id), ids) : ids),
     [reorder, books, activeGenre],
   )
+
+  // what to read next (#58): from the genre shown, if one is picked
+  const readNext = useMemo(() => {
+    const shownIds = new Set(shown.map((b) => b.id))
+    return readNextChoices(books).filter((b) => shownIds.has(b.id))
+  }, [books, shown])
 
   const select = useCallback((id: string | null) => {
     if (id) inspect.current = { rotY: 0, rotX: 0 }
@@ -199,6 +206,21 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
               </select>
             </label>
           )}
+          <button
+            className="btn read-next"
+            aria-label="What to read next"
+            disabled={readNext.length === 0}
+            // pressing again shows another one
+            onClick={() => select(pickReadNext(readNext, selectedId)?.id ?? null)}
+            title={
+              readNext.length
+                ? 'Pick a book to read next: no re-reads, and only the next book of a series'
+                : 'Nothing to read next: no unread books waiting on the shelf'
+            }
+          >
+            <span aria-hidden>🎲</span>
+            <span className="hide-mobile"> What next?</span>
+          </button>
           <button
             className={`btn icon refresh${syncState.kind === 'busy' ? ' spinning' : ''}`}
             disabled={syncState.kind === 'busy'}

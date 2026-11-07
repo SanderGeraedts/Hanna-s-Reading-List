@@ -590,6 +590,18 @@ textarea.input {
   font-size: 1.4rem;
 }
 
+/* ---- What to read next (#58) ----------------------------------------- */
+.topbar .btn.read-next {
+  height: 2.4rem;
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--header-ink);
+  border-color: rgba(40, 50, 90, 0.2);
+  white-space: nowrap;
+}
+.topbar .btn.read-next:hover:not(:disabled) {
+  background: #fff;
+}
+
 /* ---- Storytel refresh ------------------------------------------------ */
 .topbar .btn.refresh {
   width: 2.4rem;
