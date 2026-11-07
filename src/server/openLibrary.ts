@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { genresFromSubjects } from '#/lib/genres'
 import { toLanguageCode } from '#/lib/languages'
+import { parsePublished, publishedYear } from '#/lib/bookFacts'
 
 /**
  * Server functions talking to the Open Library API (https://openlibrary.org/developers/api).
@@ -33,6 +34,8 @@ export interface WorkDetails {
 }
 
 export interface IsbnLookup extends SearchResult {
+  /** this edition's publication date: "2008", "2008-03" or "2008-03-12" */
+  published?: string
   description?: string
   genres: string[]
 }
@@ -169,12 +172,13 @@ export const lookupIsbn = createServerFn({ method: 'GET' })
       .map((a) => a?.name)
       .filter((n): n is string => !!n)
 
-    const yearMatch = edition.publish_date?.match(/\d{4}/)
+    const published = parsePublished(edition.publish_date) ?? undefined
     return {
       workKey,
       title: edition.title,
       authors,
-      year: yearMatch ? Number(yearMatch[0]) : undefined,
+      year: published ? publishedYear(published) : undefined,
+      published,
       pages: edition.number_of_pages,
       coverId: edition.covers?.find((c) => c > 0),
       isbn: data.isbn,
@@ -183,6 +187,20 @@ export const lookupIsbn = createServerFn({ method: 'GET' })
       language: toLanguageCode(edition.languages?.[0]?.key),
       genres: genresFromSubjects([...subjectsOf(edition), ...subjectsOf(work)]),
     }
+  })
+
+const isbnInput = (input: { isbn: string }) => {
+  const isbn = String(input?.isbn ?? '').replace(/[^0-9Xx]/g, '')
+  if (isbn.length !== 10 && isbn.length !== 13) throw new Error('An ISBN has 10 or 13 digits')
+  return { isbn }
+}
+
+/** Just the publication date of the edition with this ISBN (#44), for books already on the shelf. */
+export const getPublishDate = createServerFn({ method: 'GET' })
+  .validator(isbnInput)
+  .handler(async ({ data }): Promise<{ published?: string }> => {
+    const edition = await getJson<{ publish_date?: string }>(`${OL}/isbn/${data.isbn}.json`)
+    return { published: parsePublished(edition?.publish_date) ?? undefined }
   })
 
 /**

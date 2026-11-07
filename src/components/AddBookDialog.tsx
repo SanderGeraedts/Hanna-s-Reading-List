@@ -10,6 +10,7 @@ import type { StorytelLogin } from '#/lib/useStorytelSync'
 import { importStorytelBooks } from '#/lib/storytelImport'
 import type { ImportSummary } from '#/lib/storytelImport'
 import { sameIsbn } from '#/lib/isbn'
+import { normalizeIsbn, parsePublished, publishedYear } from '#/lib/bookFacts'
 import { BarcodeScanner } from './BarcodeScanner'
 
 export type Tab = 'search' | 'scan' | 'isbn' | 'manual' | 'storytel'
@@ -27,7 +28,7 @@ interface Props {
 
 /** Turns an Open Library result into a book, sampling the cover for spine colour + shape. */
 async function buildBook(
-  r: SearchResult,
+  r: SearchResult & { published?: string },
   details: { description?: string; genres?: string[] } = {},
 ): Promise<NewBook> {
   const coverUrl = r.coverId
@@ -40,6 +41,7 @@ async function buildBook(
     title: r.title,
     authors: r.authors,
     year: r.year,
+    ...(r.published && { published: r.published }),
     pages: r.pages,
     isbn: r.isbn,
     workKey: r.workKey || undefined,
@@ -389,32 +391,40 @@ function IsbnTab({ onAdd }: { onAdd: (b: NewBook) => void }) {
 }
 
 function ManualTab({ onAdd, isbn }: { onAdd: (b: NewBook) => void; isbn?: string }) {
-  const [form, setForm] = useState({ title: '', author: '', year: '', pages: '', description: '' })
+  const empty = { title: '', author: '', published: '', pages: '', isbn: isbn ?? '', description: '' }
+  const [form, setForm] = useState(empty)
+  const [problem, setProblem] = useState<string | null>(null)
   const [done, setDone] = useState(false)
   const set = (k: keyof typeof form) => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((f) => ({ ...f, [k]: e.target.value }))
     setDone(false)
+    setProblem(null)
   }
 
   function submit(e: FormEvent) {
     e.preventDefault()
     const title = form.title.trim()
     if (!title) return
+    const published = form.published.trim() ? parsePublished(form.published) : null
+    if (form.published.trim() && !published) return setProblem('Published: try 2008, 03.2008 or 12.03.2008.')
+    const typedIsbn = form.isbn.trim() ? normalizeIsbn(form.isbn) : null
+    if (form.isbn.trim() && !typedIsbn) return setProblem('Not a valid ISBN: check the digits.')
     onAdd({
       title,
       authors: form.author
         .split(/,|&/)
         .map((a) => a.trim())
         .filter(Boolean),
-      year: Number(form.year) || undefined,
+      ...(published && { published, year: publishedYear(published) }),
       pages: Number(form.pages) || undefined,
       description: form.description.trim() || undefined,
       language: guessLanguage(title),
       color: colorFromString(title),
       // scanned in a shop or at home: a physical copy
-      ...(isbn && { isbn, formats: ['paperback' as const] }),
+      ...(typedIsbn && { isbn: typedIsbn }),
+      ...(isbn && { formats: ['paperback' as const] }),
     })
-    setForm({ title: '', author: '', year: '', pages: '', description: '' })
+    setForm({ ...empty, isbn: '' })
     setDone(true)
   }
 
@@ -431,8 +441,8 @@ function ManualTab({ onAdd, isbn }: { onAdd: (b: NewBook) => void; isbn?: string
       </label>
       <div className="field-row">
         <label className="field">
-          <span>Year</span>
-          <input className="input" inputMode="numeric" value={form.year} onChange={set('year')} />
+          <span>Published</span>
+          <input className="input" placeholder="2008 or 12.03.2008" value={form.published} onChange={set('published')} />
         </label>
         <label className="field">
           <span>Pages</span>
@@ -440,9 +450,14 @@ function ManualTab({ onAdd, isbn }: { onAdd: (b: NewBook) => void; isbn?: string
         </label>
       </div>
       <label className="field">
+        <span>ISBN</span>
+        <input className="input" inputMode="numeric" value={form.isbn} onChange={set('isbn')} />
+      </label>
+      <label className="field">
         <span>Blurb (shown on the back cover)</span>
         <textarea className="input" rows={3} value={form.description} onChange={set('description')} />
       </label>
+      {problem && <p className="error">{problem}</p>}
       {done && <p className="success">Added to the shelf.</p>}
       <button className="btn" disabled={!form.title.trim()}>
         Add book
