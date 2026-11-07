@@ -361,7 +361,8 @@ export function useLibrary(accountId: string | null = null, onSignedOut?: () => 
 
   // the server's copy, folded into this device's: on first load and when the page comes back into view
   const reconcile = useCallback(
-    (remote: RemoteShelf | null) => {
+    /** returns the books the shelf goes on with */
+    (remote: RemoteShelf | null): Book[] => {
       const before = serverUpdated.current
       serverUpdated.current = remote?.updated ?? null
       const unsynced = flagged(keys.unsynced)
@@ -377,14 +378,17 @@ export function useLibrary(accountId: string | null = null, onSignedOut?: () => 
         migrating.current = merged
         store(keys.unsynced!, '1')
         adopt(merged, arrangement)
+        return merged
       } else if (mine) {
         if (current.books.length || remote) {
           store(keys.unsynced!, '1')
           pushRef.current()
         } else setSync('saved')
+        return current.books
       } else {
         if (remote.updated !== before) adopt(remote.books, remote.arrangement)
         setSync('saved')
+        return remote.updated !== before ? remote.books : current.books
       }
     },
     [accountId, keys, adopt],
@@ -456,6 +460,27 @@ export function useLibrary(accountId: string | null = null, onSignedOut?: () => 
     }
   }, [accountId, keys, reconcile, failed])
 
+  /**
+   * Sync now, from the refresh button (#68): send what's waiting, else pick up
+   * changes from other devices. Resolves to the books the shelf goes on with,
+   * and whether the server could be reached.
+   */
+  const syncNow = useCallback(async (): Promise<{ books: Book[]; ok: boolean }> => {
+    const current = latest.current.books
+    if (!accountId) return { books: current, ok: true }
+    try {
+      if (flagged(keys.unsynced)) {
+        await push()
+        return { books: latest.current.books, ok: !flagged(keys.unsynced) }
+      }
+      const remote = await loadShelf()
+      return { books: flagged(keys.unsynced) ? latest.current.books : reconcile(remote), ok: true }
+    } catch (e) {
+      failed(e)
+      return { books: current, ok: false }
+    }
+  }, [accountId, keys, push, reconcile, failed])
+
   const addBook = useCallback((book: NewBook) => {
     const full: Book = {
       ...book,
@@ -501,7 +526,7 @@ export function useLibrary(accountId: string | null = null, onSignedOut?: () => 
     setArrangement(key)
   }, [])
 
-  return { books, loaded, arrangement, sync, addBook, removeBook, updateBook, mergeBook, reorder, sortBy }
+  return { books, loaded, arrangement, sync, syncNow, addBook, removeBook, updateBook, mergeBook, reorder, sortBy }
 }
 
 const collator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true })
