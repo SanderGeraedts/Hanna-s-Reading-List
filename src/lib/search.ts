@@ -1,5 +1,5 @@
 import type { Book } from './library'
-import { FORMAT_LABELS, STATUS_LABELS, formatOf } from './library'
+import { FORMAT_LABELS, STATUS_LABELS, formatsOf } from './library'
 import { languageName, nativeLanguageName } from './languages'
 import type { SeriesInfo } from './series'
 
@@ -27,7 +27,7 @@ export function searchShelf(books: Book[], query: string, detected?: Map<string,
 
   for (const book of books) {
     const series = book.series ?? detected?.get(book.id)?.name
-    const format = formatOf(book)
+    const formats = formatsOf(book).map((f) => FORMAT_LABELS[f])
     const fields: Array<{ text: string; weight: number; hint?: string }> = [
       { text: book.title, weight: 4 },
       { text: book.originalTitle ?? '', weight: 3, hint: `Was “${book.originalTitle}”` },
@@ -39,7 +39,7 @@ export function searchShelf(books: Book[], query: string, detected?: Map<string,
         weight: 1,
         hint: book.language && languageName(book.language),
       },
-      { text: format ? FORMAT_LABELS[format] : '', weight: 1, hint: format && FORMAT_LABELS[format] },
+      { text: formats.join(' '), weight: 1, hint: formats.join(', ') },
       {
         text: book.lent ? `lent ${book.lent.to}` : '',
         weight: 1,

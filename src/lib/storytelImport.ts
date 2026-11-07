@@ -2,6 +2,7 @@ import { getWorkDetails, searchBooks } from '#/server/openLibrary'
 import type { SearchResult } from '#/server/openLibrary'
 import type { StorytelBook } from '#/server/storytel'
 import type { Book, NewBook } from './library'
+import { formatsOf, withFormats } from './library'
 import { analyzeCover, colorFromString, coverUrlForId, remoteCoverUrl } from './cover'
 import { genresFromSubjects } from './genres'
 import { guessLanguage } from './languages'
@@ -126,6 +127,8 @@ export async function importStorytelBooks(
       cb.updateBook(match.id, {
         status: item.status,
         storytelId: item.storytelId,
+        // first time this book is matched to Storytel: she has it there too
+        ...(!match.storytelId && { ...withFormats([...formatsOf(match), 'storytel']) }),
         ...(item.progress !== undefined && { progress: item.progress }),
       })
       summary.updated++

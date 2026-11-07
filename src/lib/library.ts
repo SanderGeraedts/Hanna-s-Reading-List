@@ -35,7 +35,9 @@ export interface Book {
   seriesIndex?: number
   /** the title as it was added, kept while the title is changed by hand */
   originalTitle?: string
-  /** how Hanna has the book (unset on Storytel imports means Storytel) */
+  /** every way Hanna has the book, e.g. a paperback and on Storytel (see formatsOf) */
+  formats?: BookFormat[]
+  /** @deprecated the single format from before `formats`; still read by formatsOf */
   format?: BookFormat
   /** two-letter language code, e.g. "en", "de" */
   language?: string
@@ -67,9 +69,34 @@ export const FORMAT_LABELS: Record<BookFormat, string> = {
   other: 'Other',
 }
 
-/** How Hanna has the book; Storytel imports count as Storytel until she says otherwise. */
-export function formatOf(book: Book): BookFormat | undefined {
-  return book.format ?? (book.storytelId ? 'storytel' : undefined)
+/** Formats you can hold in your hands; they win when a book is in several groups. */
+export const PHYSICAL_FORMATS: BookFormat[] = ['paperback', 'hardcover', 'library', 'borrowed']
+
+/** Which group wins for a book with several formats: physical first, then the rest. */
+const FORMAT_PRIORITY: BookFormat[] = [
+  ...PHYSICAL_FORMATS,
+  ...(Object.keys(FORMAT_LABELS) as BookFormat[]).filter((f) => !PHYSICAL_FORMATS.includes(f)),
+]
+
+/**
+ * Every way Hanna has the book, in the order of FORMAT_LABELS. Books from
+ * before `formats` use their single `format`; Storytel imports count as
+ * Storytel until she says otherwise.
+ */
+export function formatsOf(book: Book): BookFormat[] {
+  const list = book.formats ?? (book.format ? [book.format] : book.storytelId ? ['storytel' as const] : [])
+  return (Object.keys(FORMAT_LABELS) as BookFormat[]).filter((f) => list.includes(f))
+}
+
+/** The format a book is grouped under: a physical copy wins over e-book, audiobook or Storytel. */
+export function primaryFormat(book: Book): BookFormat | undefined {
+  const list = formatsOf(book)
+  return FORMAT_PRIORITY.find((f) => list.includes(f))
+}
+
+/** The patch that sets a book's formats (and retires the old single field). */
+export function withFormats(formats: BookFormat[]): Pick<Book, 'formats' | 'format'> {
+  return { formats: (Object.keys(FORMAT_LABELS) as BookFormat[]).filter((f) => formats.includes(f)), format: undefined }
 }
 
 export type NewBook = Omit<Book, 'id' | 'addedAt' | 'status'> & {
@@ -502,7 +529,7 @@ export function sortBooks(books: Book[], key: SortKey): Book[] {
       const group = groupOf(key)
       const rank = (b: Book) => {
         const g = group(b)
-        return key === 'format' && g ? String(FORMAT_ORDER.indexOf(g as BookFormat)).padStart(2, '0') : (g ?? '')
+        return key === 'format' && g ? String(FORMAT_PRIORITY.indexOf(g as BookFormat)).padStart(2, '0') : (g ?? '')
       }
       return copy.sort(
         (a, b) =>
@@ -532,13 +559,11 @@ export function sortBooks(books: Book[], key: SortKey): Book[] {
   }
 }
 
-const FORMAT_ORDER = Object.keys(FORMAT_LABELS) as BookFormat[]
-
 /** The group a book falls in when arranged by genre, language or format (undefined: unknown). */
 export function groupOf(key: 'genre' | 'language' | 'format'): (b: Book) => string | undefined {
   if (key === 'genre') return (b) => b.genres?.[0]
   if (key === 'language') return (b) => (b.language ? languageName(b.language) : undefined)
-  return (b) => formatOf(b)
+  return (b) => primaryFormat(b)
 }
 
 /** The divider label for a group when arranged by genre, language or format. */
