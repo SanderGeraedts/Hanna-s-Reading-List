@@ -595,7 +595,7 @@ function Backdrop({
  */
 function rainbowClips(books: Book[]) {
   const reading = books
-    .filter((b) => b.status === 'reading')
+    .filter((b) => b.status === 'reading' || b.status === 'paused')
     .sort((a, b) => (a.addedAt < b.addedAt ? -1 : a.addedAt > b.addedAt ? 1 : a.id.localeCompare(b.id)))
   return new Map(reading.map((b, i) => [b.id, RAINBOW[i % RAINBOW.length]]))
 }

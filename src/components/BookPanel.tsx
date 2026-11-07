@@ -396,7 +396,7 @@ export function BookPanel({
         </select>
       </label>
 
-      {book.status === 'reading' && (
+      {(book.status === 'reading' || book.status === 'paused') && (
         <label className="field">
           <span className="progress-label">
             <span>Progress</span>

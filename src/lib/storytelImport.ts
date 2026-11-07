@@ -1,7 +1,7 @@
 import { getWorkDetails, searchBooks } from '#/server/openLibrary'
 import type { SearchResult } from '#/server/openLibrary'
 import type { StorytelBook } from '#/server/storytel'
-import type { Book, NewBook } from './library'
+import type { Book, NewBook, ReadingStatus } from './library'
 import { formatsOf, statusPatch, withFormats } from './library'
 import { analyzeCover, colorFromString, coverUrlForId, remoteCoverUrl } from './cover'
 import { genresFromSubjects } from './genres'
@@ -107,7 +107,17 @@ async function toNewBook(b: StorytelBook): Promise<NewBook> {
   }
 }
 
-const STATUS_RANK = { want: 0, reading: 1, read: 2 } as const
+const STATUS_RANK: Record<ReadingStatus, number> = { want: 0, paused: 1, reading: 2, read: 3 }
+
+/**
+ * Storytel has no "paused" (#60): a book Hanna paused stays paused until
+ * Storytel says she finished it or she listened on further.
+ */
+function keepPaused(match: Book, item: StorytelBook): StorytelBook {
+  if (match.status !== 'paused' || item.status === 'read') return item
+  const listenedOn = item.progress !== undefined && item.progress > (match.progress ?? 0) + 0.005
+  return listenedOn ? item : { ...item, status: 'paused' }
+}
 
 /** Adds new Storytel books and syncs the reading status of ones already on the shelf. */
 export async function importStorytelBooks(
@@ -118,12 +128,13 @@ export async function importStorytelBooks(
   const summary: ImportSummary = { added: 0, updated: 0, unchanged: 0 }
   const toAdd: StorytelBook[] = []
 
-  for (const item of items) {
+  for (const fromStorytel of items) {
     const match =
-      existing.find((e) => e.storytelId === item.storytelId) ??
+      existing.find((e) => e.storytelId === fromStorytel.storytelId) ??
       // the same book listed twice by Storytel, already merged into one
-      existing.find((e) => e.storytelIds?.includes(item.storytelId)) ??
-      existing.find((e) => !e.storytelId && sameBook(e, item))
+      existing.find((e) => e.storytelIds?.includes(fromStorytel.storytelId)) ??
+      existing.find((e) => !e.storytelId && sameBook(e, fromStorytel))
+    const item = match ? keepPaused(match, fromStorytel) : fromStorytel
     // the listening time comes from Storytel (#48, #51); for a book she only
     // listens to the pages follow it. Quietly: not a change she made.
     if (match && item.durationMs) {

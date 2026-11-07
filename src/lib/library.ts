@@ -6,7 +6,7 @@ import { languageName } from './languages'
 import { isSortKey, type SortKey } from './sortKeys'
 import { mergeBooks } from './merge'
 
-export type ReadingStatus = 'want' | 'reading' | 'read'
+export type ReadingStatus = 'want' | 'reading' | 'paused' | 'read'
 
 export interface Book {
   id: string
@@ -134,6 +134,7 @@ export const SORT_LABELS: Record<SortKey, string> = {
 export const STATUS_LABELS: Record<ReadingStatus, string> = {
   want: 'Want to read',
   reading: 'Reading',
+  paused: 'Paused',
   read: 'Read',
 }
 
@@ -518,7 +519,7 @@ export function hexToHsl(hex: string): [number, number, number] {
   return [h * 60, s, l]
 }
 
-const STATUS_ORDER: Record<ReadingStatus, number> = { reading: 0, want: 1, read: 2 }
+const STATUS_ORDER: Record<ReadingStatus, number> = { reading: 0, paused: 1, want: 2, read: 3 }
 
 export function sortBooks(books: Book[], key: SortKey): Book[] {
   const copy = [...books]

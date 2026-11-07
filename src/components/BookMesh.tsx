@@ -208,7 +208,7 @@ export function BookMesh(props: BookMeshProps) {
       >
         <boxGeometry args={[dims.w, dims.h, dims.t]} />
       </mesh>
-      {book.status === 'reading' && (
+      {(book.status === 'reading' || book.status === 'paused') && (
         <Bookmark dims={dims} progress={book.progress ?? 0} color={props.clipColor ?? RAINBOW[0]} />
       )}
       {book.status === 'read' && <Medal dims={dims} count={timesRead(book)} />}

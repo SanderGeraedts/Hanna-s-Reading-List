@@ -155,7 +155,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
               : activeGenre
                 ? `${shown.length} of ${books.length} books · ${genreChoices.find((g) => g.value === activeGenre)!.label}`
                 : `${books.length} book${books.length === 1 ? '' : 's'} · ` +
-                (['reading', 'want', 'read'] as const)
+                (['reading', 'paused', 'want', 'read'] as const)
                   .filter((s) => counts[s])
                   .map((s) => `${counts[s]} ${STATUS_LABELS[s].toLowerCase()}`)
                   .join(' · ')}
