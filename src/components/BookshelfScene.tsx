@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import type { Book, SortKey } from '#/lib/library'
-import { STATUS_LABELS } from '#/lib/library'
+import { STATUS_LABELS, groupLabel } from '#/lib/library'
 import { FRAME, SHELF, computeLayout, rowFloorY, shelfFitFor } from '#/lib/shelfLayout'
 import type { Separator, ShelfLayout } from '#/lib/shelfLayout'
 import { BookMesh, RAINBOW } from './BookMesh'
@@ -107,7 +107,9 @@ function Scene({
         ? statusNooks(ordered)
         : arrangement === 'series'
           ? seriesDividers(ordered)
-          : new Map<string, Separator>(),
+          : arrangement === 'genre' || arrangement === 'language' || arrangement === 'format'
+            ? groupDividers(ordered, (b) => groupLabel(arrangement, b))
+            : new Map<string, Separator>(),
     [arrangement, ordered],
   )
   const layout = useMemo(() => computeLayout(ordered, fit, separators), [ordered, fit, separators])
@@ -638,4 +640,17 @@ function seriesDividers(books: Book[]) {
     out.set(b.id, { kind: 'divider', label: g.name })
   }
   return out
+}
+
+/** A labelled divider before the first book of each group, when there is more than one group. */
+function groupDividers(books: Book[], label: (b: Book) => string) {
+  const out = new Map<string, Separator>()
+  const seen = new Set<string>()
+  for (const b of books) {
+    const l = label(b)
+    if (seen.has(l)) continue
+    seen.add(l)
+    out.set(b.id, { kind: 'divider', label: l })
+  }
+  return seen.size > 1 ? out : new Map<string, Separator>()
 }

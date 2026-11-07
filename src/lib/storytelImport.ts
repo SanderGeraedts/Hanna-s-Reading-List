@@ -3,6 +3,9 @@ import type { SearchResult } from '#/server/openLibrary'
 import type { StorytelBook } from '#/server/storytel'
 import type { Book, NewBook } from './library'
 import { analyzeCover, colorFromString, coverUrlForId, remoteCoverUrl } from './cover'
+import { genresFromSubjects } from './genres'
+import { guessLanguage } from './languages'
+import { tidyTitle } from './titles'
 
 export interface ImportCallbacks {
   addBook: (book: NewBook) => void
@@ -35,11 +38,13 @@ function sameBook(a: { title: string; authors: string[] }, b: { title: string; a
   return !aa || !ab || aa === ab
 }
 
-/** Best-effort Open Library match, for year, page count, ISBN and blurb. */
-async function findOnOpenLibrary(b: StorytelBook): Promise<SearchResult | undefined> {
+/** Best-effort Open Library match, for year, page count, ISBN, blurb and genres. */
+export async function findOnOpenLibrary(b: { title: string; authors: string[] }): Promise<SearchResult | undefined> {
   try {
+    // edition notes ("(10th Anniversary Recording)", "[Dramatized Adaptation]") make Open Library find nothing
+    const title = (tidyTitle(b.title) ?? b.title).replace(/\s*[([][^)\]]*[)\]]/g, '').split(':')[0]
     const results = await searchBooks({
-      data: { query: `${b.title.split(':')[0]} ${b.authors[0] ?? ''}`.trim() },
+      data: { query: `${title} ${b.authors[0] ?? ''}`.trim() },
     })
     const matches = results.filter((r) => sameBook(b, r))
     return matches.find((r) => r.coverId) ?? matches[0]
@@ -92,6 +97,9 @@ async function toNewBook(b: StorytelBook): Promise<NewBook> {
     status: b.status,
     progress: b.progress,
     storytelId: b.storytelId,
+    language: b.language ?? guessLanguage(b.title) ?? ol?.language,
+    // Storytel's categories first, then Open Library's subjects
+    genres: [...new Set([...genresFromSubjects(b.categories ?? []), ...(details?.genres ?? [])])].slice(0, 3),
   }
 }
 
@@ -141,6 +149,7 @@ export async function importStorytelBooks(
           status: item.status,
           progress: item.progress,
           storytelId: item.storytelId,
+          language: item.language ?? guessLanguage(item.title),
           color: colorFromString(item.title),
         })
         summary.added++

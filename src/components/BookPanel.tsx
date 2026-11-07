@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
-import type { Book, ReadingStatus } from '#/lib/library'
-import { STATUS_LABELS, timesRead } from '#/lib/library'
+import type { Book, BookFormat, ReadingStatus } from '#/lib/library'
+import { FORMAT_LABELS, STATUS_LABELS, formatOf, timesRead } from '#/lib/library'
+import { LANGUAGE_CHOICES, languageName } from '#/lib/languages'
+import { tidyTitle } from '#/lib/titles'
 import type { SeriesInfo } from '#/lib/series'
 import { backText } from './textures'
 
@@ -16,6 +18,8 @@ interface Props {
   onUpdate: (patch: Partial<Book>) => void
   /** series found automatically, shown as a hint when none was entered */
   detectedSeries?: SeriesInfo
+  /** genres to suggest: the standard ones and any used on the shelf */
+  genreOptions: string[]
   onChangeCover: () => void
   onRemove: () => void
   onClose: () => void
@@ -129,6 +133,7 @@ export function BookPanel({
   onProgress,
   onUpdate,
   detectedSeries,
+  genreOptions,
   onChangeCover,
   onRemove,
   onClose,
@@ -140,10 +145,46 @@ export function BookPanel({
   const [seriesName, setSeriesName] = useState(book.series ?? '')
   const [blurb, setBlurb] = useState(backText(book))
   const [seriesNo, setSeriesNo] = useState(book.seriesIndex?.toString() ?? '')
+  /** the title being edited, or null */
+  const [titleDraft, setTitleDraft] = useState<string | null>(null)
+  const cancelTitle = useRef(false)
+  const [lentTo, setLentTo] = useState(book.lent?.to ?? '')
+  const [genreDraft, setGenreDraft] = useState('')
+  const tidy = tidyTitle(book.title)
+  const format = formatOf(book)
+  const languages =
+    book.language && !LANGUAGE_CHOICES.includes(book.language)
+      ? [...LANGUAGE_CHOICES, book.language]
+      : LANGUAGE_CHOICES
+
+  const rename = (title: string) => {
+    const original = book.originalTitle ?? book.title
+    // back to the original: nothing to remember any more
+    onUpdate({ title, originalTitle: title === original ? undefined : original })
+  }
+
+  const addGenre = () => {
+    const typed = genreDraft.trim().replace(/\s+/g, ' ')
+    setGenreDraft('')
+    if (!typed) return
+    // use the existing spelling when there is one, so "fantasy" and "Fantasy" stay one genre
+    const name =
+      genreOptions.find((g) => g.toLowerCase() === typed.toLowerCase()) ??
+      typed.charAt(0).toUpperCase() + typed.slice(1)
+    const current = book.genres ?? []
+    if (!current.some((g) => g.toLowerCase() === name.toLowerCase())) onUpdate({ genres: [...current, name] })
+  }
 
   // what the text fields would save: only the parts that differ from the book
   const pendingPatch = (): Partial<Book> => {
     const patch: Partial<Book> = {}
+    const title = titleDraft?.trim()
+    if (title && title !== book.title && !cancelTitle.current) {
+      const original = book.originalTitle ?? book.title
+      patch.title = title
+      patch.originalTitle = title === original ? undefined : original
+    }
+    if (book.lent && lentTo.trim() !== book.lent.to) patch.lent = { ...book.lent, to: lentTo.trim() }
     const n = Number(seriesNo)
     const index = seriesNo.trim() && Number.isFinite(n) ? n : undefined
     // a number on its own belongs to the series found from the title
@@ -179,8 +220,56 @@ export function BookPanel({
       <div className="sheet-grab" {...sheet.handlers}>
         {sheet.isSheet && <div className="sheet-handle" aria-hidden />}
         <div className="panel-top">
-        <div>
-          <h2>{book.title}</h2>
+        <div className="panel-title">
+          {titleDraft === null ? (
+            <h2>
+              {book.title}
+              <button
+                className="icon-btn rename"
+                onClick={() => {
+                  cancelTitle.current = false
+                  setTitleDraft(book.title)
+                }}
+                aria-label="Rename"
+                title="Rename"
+              >
+                ✎
+              </button>
+            </h2>
+          ) : (
+            <input
+              className="input title-input"
+              autoFocus
+              aria-label="Title"
+              value={titleDraft}
+              onChange={(e) => setTitleDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') e.currentTarget.blur()
+                if (e.key === 'Escape') {
+                  e.stopPropagation()
+                  cancelTitle.current = true
+                  e.currentTarget.blur()
+                }
+              }}
+              onBlur={() => {
+                save()
+                setTitleDraft(null)
+              }}
+            />
+          )}
+          {titleDraft === null && tidy && (
+            <button className="link-btn" onClick={() => rename(tidy)}>
+              Shorten to “{tidy}”
+            </button>
+          )}
+          {titleDraft === null && book.originalTitle && (
+            <p className="muted renamed">
+              Was “{book.originalTitle}” ·{' '}
+              <button className="link-btn" onClick={() => rename(book.originalTitle!)}>
+                Restore
+              </button>
+            </p>
+          )}
           <p className="byline">{book.authors.join(', ') || 'Unknown author'}</p>
           <p className="muted">
             {[book.year, book.pages && `${book.pages} pages`, book.isbn && `ISBN ${book.isbn}`]
@@ -260,6 +349,112 @@ export function BookPanel({
         </div>
       )}
 
+      <div className="field-row">
+        <label className="field">
+          <span>How I have it</span>
+          <select
+            className="input"
+            value={format ?? ''}
+            onChange={(e) => onUpdate({ format: (e.target.value || undefined) as BookFormat | undefined })}
+          >
+            {!format && <option value="">Not set</option>}
+            {Object.entries(FORMAT_LABELS).map(([k, label]) => (
+              <option key={k} value={k}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          <span>Language</span>
+          <select
+            className="input"
+            value={book.language ?? ''}
+            onChange={(e) => onUpdate({ language: e.target.value || undefined })}
+          >
+            <option value="">Not set</option>
+            {languages.map((code) => (
+              <option key={code} value={code}>
+                {languageName(code)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="field">
+        <span>Genres</span>
+        <div className="chips">
+          {(book.genres ?? []).map((g) => (
+            <span className="chip" key={g}>
+              {g}
+              <button aria-label={`Remove ${g}`} onClick={() => onUpdate({ genres: book.genres!.filter((x) => x !== g) })}>
+                ×
+              </button>
+            </span>
+          ))}
+          <input
+            className="input chip-input"
+            list="genre-options"
+            aria-label="Add a genre"
+            placeholder={book.genres?.length ? 'Add…' : book.genres ? 'Add a genre…' : 'Looking up…'}
+            value={genreDraft}
+            onChange={(e) => setGenreDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                addGenre()
+              }
+            }}
+            onBlur={addGenre}
+          />
+          <datalist id="genre-options">
+            {genreOptions
+              .filter((g) => !book.genres?.includes(g))
+              .map((g) => (
+                <option key={g} value={g} />
+              ))}
+          </datalist>
+        </div>
+      </div>
+
+      <div className="field">
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={!!book.lent}
+            onChange={(e) => onUpdate({ lent: e.target.checked ? { to: lentTo.trim(), since: today() } : undefined })}
+          />
+          <span>Lent to a friend</span>
+        </label>
+        {book.lent && (
+          <div className="field-row">
+            <label className="field">
+              <span>To</span>
+              <input
+                className="input"
+                value={lentTo}
+                placeholder="Name"
+                autoFocus={!book.lent.to}
+                onChange={(e) => setLentTo(e.target.value)}
+                onBlur={save}
+              />
+            </label>
+            <label className="field">
+              <span>Since</span>
+              <input
+                className="input"
+                type="date"
+                value={book.lent.since ?? ''}
+                onChange={(e) =>
+                  onUpdate({ lent: { ...book.lent!, to: lentTo.trim(), since: e.target.value || undefined } })
+                }
+              />
+            </label>
+          </div>
+        )}
+      </div>
+
       <div className="field">
         <span>Series</span>
         <div className="series-row">
@@ -313,4 +508,10 @@ export function BookPanel({
       </div>
     </aside>
   )
+}
+
+/** Today as yyyy-mm-dd in local time, the format of a date input. */
+function today() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }

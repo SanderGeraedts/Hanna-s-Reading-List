@@ -15,10 +15,23 @@ import { SignIn } from '#/components/SignIn'
 import { detectSeries } from '#/lib/series'
 import { useStorytelSync } from '#/lib/useStorytelSync'
 import type { Tab } from '#/components/AddBookDialog'
+import { SearchBox } from '#/components/SearchBox'
+import { genreSuggestions } from '#/lib/genres'
+import { useBookDetails } from '#/lib/useBookDetails'
+import type { Book } from '#/lib/library'
 
 export const Route = createFileRoute('/')({ component: Home })
 
 const FACE_ANGLE: Record<Face, number> = { front: 0, spine: Math.PI / 2, back: Math.PI }
+
+/** the book fields each arrangement sorts by */
+const RESORT_ON: Partial<Record<SortKey, Array<keyof Book>>> = {
+  title: ['title'],
+  series: ['series', 'seriesIndex', 'title'],
+  genre: ['genres'],
+  language: ['language'],
+  format: ['format'],
+}
 
 function Home() {
   const session = useSession()
@@ -75,6 +88,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   const selected = books.find((b) => b.id === selectedId) ?? null
   const seriesMap = useMemo(() => detectSeries(books), [books])
   const selectedSeries = selected ? seriesMap.get(selected.id) : undefined
+  const genreOptions = useMemo(() => genreSuggestions(books.flatMap((b) => b.genres ?? [])), [books])
+  useBookDetails(books, loaded, updateBook)
 
   const select = useCallback((id: string | null) => {
     if (id) inspect.current = { rotY: 0, rotX: 0 }
@@ -132,6 +147,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           </p>
         </div>
         <div className="toolbar">
+          <SearchBox books={books} detectedSeries={seriesMap} onPick={select} />
           <label className="sort">
             <span className="muted">Arrange by</span>
             <select
@@ -213,10 +229,11 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           onProgress={(progress) => updateBook(selected.id, { progress })}
           onUpdate={(patch) => {
             updateBook(selected.id, patch)
-            // arranged by series: move the book to its new series straight away
-            if (arrangement === 'series' && ('series' in patch || 'seriesIndex' in patch)) sortBy('series')
+            // move the book to its new place straight away when the change affects the arrangement
+            if (arrangement && RESORT_ON[arrangement]?.some((k) => k in patch)) sortBy(arrangement)
           }}
           detectedSeries={selectedSeries}
+          genreOptions={genreOptions}
           onChangeCover={() => setPickingCover(true)}
           onRemove={() => {
             select(null)

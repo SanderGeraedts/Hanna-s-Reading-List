@@ -104,7 +104,7 @@ export function BookMesh(props: BookMeshProps) {
       fallback: paintFallbackCover(book, dims),
     }),
     // repaint only when something visible changes
-    [book.title, book.authors.join(), book.color, book.status, book.description, book.isbn, book.pages, dims.w, dims.h, dims.t],
+    [book.title, book.authors.join(), book.color, book.status, book.language, book.description, book.isbn, book.pages, dims.w, dims.h, dims.t],
   )
   useEffect(
     () => () => {

@@ -1,4 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
+import { genresFromSubjects } from '#/lib/genres'
+import { toLanguageCode } from '#/lib/languages'
 
 /**
  * Server functions talking to the Open Library API (https://openlibrary.org/developers/api).
@@ -21,15 +23,28 @@ export interface SearchResult {
   pages?: number
   coverId?: number
   isbn?: string
+  /** set when every edition Open Library knows is in one language */
+  language?: string
 }
 
 export interface WorkDetails {
   description?: string
+  genres: string[]
 }
 
 export interface IsbnLookup extends SearchResult {
   description?: string
+  genres: string[]
 }
+
+/** Only an unambiguous answer: a work with editions in several languages says nothing about this copy. */
+function singleLanguage(codes?: string[]) {
+  const langs = new Set((codes ?? []).map(toLanguageCode).filter(Boolean))
+  return langs.size === 1 ? [...langs][0] : undefined
+}
+
+const subjectsOf = (work: { subjects?: unknown } | null) =>
+  Array.isArray(work?.subjects) ? work.subjects.filter((x): x is string => typeof x === 'string') : []
 
 async function getJson<T>(url: string): Promise<T | null> {
   const res = await fetch(url, { headers: HEADERS })
@@ -77,7 +92,7 @@ export const searchBooks = createServerFn({ method: 'GET' })
     url.searchParams.set('limit', '12')
     url.searchParams.set(
       'fields',
-      'key,title,author_name,first_publish_year,number_of_pages_median,cover_i,isbn',
+      'key,title,author_name,first_publish_year,number_of_pages_median,cover_i,isbn,language',
     )
     const json = await getJson<{
       docs: Array<{
@@ -88,6 +103,7 @@ export const searchBooks = createServerFn({ method: 'GET' })
         number_of_pages_median?: number
         cover_i?: number
         isbn?: string[]
+        language?: string[]
       }>
     }>(url.toString())
     return (json?.docs ?? []).map((d) => ({
@@ -98,6 +114,7 @@ export const searchBooks = createServerFn({ method: 'GET' })
       pages: d.number_of_pages_median,
       coverId: d.cover_i,
       isbn: pickIsbn(d.isbn),
+      language: singleLanguage(d.language),
     }))
   })
 
@@ -108,8 +125,8 @@ export const getWorkDetails = createServerFn({ method: 'GET' })
     return { workKey }
   })
   .handler(async ({ data }): Promise<WorkDetails> => {
-    const work = await getJson<{ description?: unknown }>(`${OL}${data.workKey}.json`)
-    return { description: cleanDescription(work?.description) }
+    const work = await getJson<{ description?: unknown; subjects?: unknown }>(`${OL}${data.workKey}.json`)
+    return { description: cleanDescription(work?.description), genres: genresFromSubjects(subjectsOf(work)) }
   })
 
 export const lookupIsbn = createServerFn({ method: 'GET' })
@@ -127,12 +144,14 @@ export const lookupIsbn = createServerFn({ method: 'GET' })
       works?: Array<{ key: string }>
       authors?: Array<{ key: string }>
       description?: unknown
+      languages?: Array<{ key?: string }>
+      subjects?: unknown
     }>(`${OL}/isbn/${data.isbn}.json`)
     if (!edition) return null
 
     const workKey = edition.works?.[0]?.key ?? ''
     const work = workKey
-      ? await getJson<{ description?: unknown; authors?: Array<{ author: { key: string } }> }>(
+      ? await getJson<{ description?: unknown; subjects?: unknown; authors?: Array<{ author: { key: string } }> }>(
           `${OL}${workKey}.json`,
         )
       : null
@@ -160,6 +179,9 @@ export const lookupIsbn = createServerFn({ method: 'GET' })
       coverId: edition.covers?.find((c) => c > 0),
       isbn: data.isbn,
       description: cleanDescription(edition.description) ?? cleanDescription(work?.description),
+      // an edition knows its own language
+      language: toLanguageCode(edition.languages?.[0]?.key),
+      genres: genresFromSubjects([...subjectsOf(edition), ...subjectsOf(work)]),
     }
   })
 

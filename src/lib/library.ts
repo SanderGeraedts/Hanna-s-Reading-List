@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { loadShelf, saveShelf } from '#/server/shelf'
 import { seriesGroups } from './series'
 import { NOT_SIGNED_IN } from './signedOut'
+import { languageName } from './languages'
 
 export type ReadingStatus = 'want' | 'reading' | 'read'
 
@@ -31,19 +32,68 @@ export interface Book {
   /** series name and number, entered by hand (otherwise read from the title) */
   series?: string
   seriesIndex?: number
+  /** the title as it was added, kept while the title is changed by hand */
+  originalTitle?: string
+  /** how Hanna has the book (unset on Storytel imports means Storytel) */
+  format?: BookFormat
+  /** two-letter language code, e.g. "en", "de" */
+  language?: string
+  /** shelf genres; an empty list means "looked them up, found none" */
+  genres?: string[]
+  /** lent to a friend: to whom, and since when (yyyy-mm-dd) */
+  lent?: { to: string; since?: string }
   addedAt: number
+}
+
+export type BookFormat =
+  | 'paperback'
+  | 'hardcover'
+  | 'ebook'
+  | 'audiobook'
+  | 'storytel'
+  | 'library'
+  | 'borrowed'
+  | 'other'
+
+export const FORMAT_LABELS: Record<BookFormat, string> = {
+  paperback: 'Paperback',
+  hardcover: 'Hardcover',
+  ebook: 'E-book',
+  audiobook: 'Audiobook',
+  storytel: 'Storytel',
+  library: 'From the library',
+  borrowed: 'Borrowed',
+  other: 'Other',
+}
+
+/** How Hanna has the book; Storytel imports count as Storytel until she says otherwise. */
+export function formatOf(book: Book): BookFormat | undefined {
+  return book.format ?? (book.storytelId ? 'storytel' : undefined)
 }
 
 export type NewBook = Omit<Book, 'id' | 'addedAt' | 'status'> & {
   status?: ReadingStatus
 }
 
-export type SortKey = 'title' | 'author' | 'series' | 'year' | 'color' | 'added' | 'status'
+export type SortKey =
+  | 'title'
+  | 'author'
+  | 'series'
+  | 'genre'
+  | 'language'
+  | 'format'
+  | 'year'
+  | 'color'
+  | 'added'
+  | 'status'
 
 export const SORT_LABELS: Record<SortKey, string> = {
   title: 'Title',
   author: 'Author',
   series: 'Series',
+  genre: 'Genre',
+  language: 'Language',
+  format: 'How I have it',
   year: 'Year',
   color: 'Colour',
   added: 'Date added',
@@ -429,6 +479,23 @@ export function sortBooks(books: Book[], key: SortKey): Book[] {
         )
       })
     }
+    case 'genre':
+    case 'language':
+    case 'format': {
+      // grouped, the groups in order, unknown last; by author and title within a group
+      const group = groupOf(key)
+      const rank = (b: Book) => {
+        const g = group(b)
+        return key === 'format' && g ? String(FORMAT_ORDER.indexOf(g as BookFormat)).padStart(2, '0') : (g ?? '')
+      }
+      return copy.sort(
+        (a, b) =>
+          Number(group(a) === undefined) - Number(group(b) === undefined) ||
+          collator.compare(rank(a), rank(b)) ||
+          collator.compare(authorSurname(a), authorSurname(b)) ||
+          collator.compare(sortableTitle(a.title), sortableTitle(b.title)),
+      )
+    }
     case 'year':
       return copy.sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999))
     case 'added':
@@ -447,4 +514,20 @@ export function sortBooks(books: Book[], key: SortKey): Book[] {
         return ha - hb
       })
   }
+}
+
+const FORMAT_ORDER = Object.keys(FORMAT_LABELS) as BookFormat[]
+
+/** The group a book falls in when arranged by genre, language or format (undefined: unknown). */
+export function groupOf(key: 'genre' | 'language' | 'format'): (b: Book) => string | undefined {
+  if (key === 'genre') return (b) => b.genres?.[0]
+  if (key === 'language') return (b) => (b.language ? languageName(b.language) : undefined)
+  return (b) => formatOf(b)
+}
+
+/** The divider label for a group when arranged by genre, language or format. */
+export function groupLabel(key: 'genre' | 'language' | 'format', b: Book) {
+  const g = groupOf(key)(b)
+  if (key === 'format') return g ? FORMAT_LABELS[g as BookFormat] : 'Not set'
+  return g ?? (key === 'genre' ? 'No genre' : 'Language not set')
 }

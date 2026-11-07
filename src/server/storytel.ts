@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { deleteCookie, getCookie, setCookie } from '@tanstack/react-start/server'
 import type { ReadingStatus } from '#/lib/library'
 import { asUser, pb, pocketbaseUrl, sessionToken, tokenUserId } from './pocketbase'
+import { toLanguageCode } from '#/lib/languages'
 
 /**
  * Storytel has no public API. This uses the same private endpoints as
@@ -62,6 +63,10 @@ export interface StorytelBook {
   abookCover?: string
   durationMs?: number
   characters?: number
+  /** two-letter code, when Storytel says */
+  language?: string
+  /** Storytel's own categories, when it sends them */
+  categories?: string[]
 }
 
 interface RawFormat {
@@ -78,6 +83,33 @@ interface RawModel {
   state?: string
   authors?: Array<{ name?: string }>
   formats?: RawFormat[]
+  // not documented anywhere; read defensively in case the shelf includes them
+  language?: unknown
+  languages?: unknown
+  category?: unknown
+  categories?: unknown
+  genres?: unknown
+}
+
+const asList = (v: unknown): unknown[] => (Array.isArray(v) ? v : v == null ? [] : [v])
+
+function languageOf(m: RawModel) {
+  for (const v of [...asList(m.language), ...asList(m.languages)]) {
+    const o = v as Record<string, unknown> | null
+    const code = toLanguageCode(typeof v === 'string' ? v : (o?.isoValue ?? o?.code ?? o?.iso ?? o?.languageCode))
+    if (code) return code
+  }
+  return undefined
+}
+
+function categoriesOf(m: RawModel) {
+  return [...asList(m.category), ...asList(m.categories), ...asList(m.genres)]
+    .map((v) => {
+      const o = v as Record<string, unknown> | null
+      const name = typeof v === 'string' ? v : (o?.title ?? o?.name)
+      return typeof name === 'string' ? name : undefined
+    })
+    .filter((n): n is string => !!n)
 }
 
 const STATE_TO_STATUS: Record<string, ReadingStatus> = {
@@ -119,6 +151,8 @@ function mapModel(m: RawModel): StorytelBook | null {
     abookCover: abook?.cover?.url || undefined,
     durationMs: abook?.durationInMilliseconds || undefined,
     characters: ebook?.durationInCharacters || undefined,
+    language: languageOf(m),
+    categories: categoriesOf(m),
   }
 }
 
