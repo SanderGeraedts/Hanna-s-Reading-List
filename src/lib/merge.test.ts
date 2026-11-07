@@ -7,7 +7,7 @@ vi.mock('#/server/openLibrary', () => ({
   getWorkDetails: async () => null,
 }))
 
-const { mergeShelves } = await import('./library')
+const { localDay, mergeShelves } = await import('./library')
 const { likelyDuplicates, mergeBooks } = await import('./merge')
 const { importStorytelBooks } = await import('./storytelImport')
 
@@ -138,6 +138,6 @@ describe('Storytel refresh after merging', () => {
       [merged],
       { updateBook: (id: string, patch: Partial<Book>) => updates.push([id, patch]), addBook: () => {}, onProgress: () => {} },
     )
-    expect(updates).toEqual([['m', { status: 'read', readCount: 1, progress: 1 }]])
+    expect(updates).toEqual([['m', { status: 'read', readCount: 1, finished: [localDay()], progress: 1 }]])
   })
 })

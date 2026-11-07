@@ -3,7 +3,8 @@ import { formatPublished, normalizeIsbn, parsePublished, publishedYear } from '#
 import { formatDuration, hasAudio, lengthPatch, linkOnFormatChange, listenOnly, parseDuration } from '#/lib/listening'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { Book, BookFormat, ReadingStatus } from '#/lib/library'
-import { FORMAT_LABELS, STATUS_LABELS, formatsOf, timesRead, withFormats } from '#/lib/library'
+import { FORMAT_LABELS, STATUS_LABELS, formatsOf, localDay, timesRead, withFormats } from '#/lib/library'
+import { parseQuotes, quotesText } from '#/lib/quotes'
 import { LANGUAGE_CHOICES, languageName } from '#/lib/languages'
 import { tidyTitle } from '#/lib/titles'
 import type { SeriesInfo } from '#/lib/series'
@@ -225,6 +226,9 @@ export function BookPanel({
   const [titleDraft, setTitleDraft] = useState<string | null>(null)
   const cancelTitle = useRef(false)
   const [lentTo, setLentTo] = useState(book.lent?.to ?? '')
+  const [quotesDraft, setQuotesDraft] = useState(quotesText(book.quotes))
+  const finished = book.finished ?? []
+  const setFinished = (days: string[]) => onUpdate({ finished: days.length ? [...days].sort() : undefined })
   const [genreDraft, setGenreDraft] = useState('')
   const tidy = tidyTitle(book.title)
   const formats = formatsOf(book)
@@ -282,6 +286,8 @@ export function BookPanel({
     // leaving it empty (or untouched) keeps the placeholder text
     const description = text && text !== backText({ ...book, description: undefined }) ? text : undefined
     if (description !== book.description) patch.description = description
+    const quotes = parseQuotes(quotesDraft)
+    if (quotesText(quotes) !== quotesText(book.quotes)) patch.quotes = quotes
     return patch
   }
   const save = () => {
@@ -438,6 +444,41 @@ export function BookPanel({
               +
             </button>
           </div>
+        </div>
+      )}
+
+      {(book.status === 'read' || reads > 0) && (
+        <div className="field finished-days" role="group" aria-labelledby="finished-label">
+          <span id="finished-label">Finished on</span>
+          {finished.map((day, i) => (
+            <div className="finished-day" key={`${i}-${day}`}>
+              <input
+                className="input"
+                type="date"
+                defaultValue={day}
+                max={localDay()}
+                aria-label={`Finished on, time ${i + 1}`}
+                onBlur={(e) => {
+                  const v = e.target.value
+                  if (v && v !== day) setFinished(finished.map((d, j) => (j === i ? v : d)))
+                }}
+              />
+              <button
+                className="btn icon small"
+                aria-label="Remove this date"
+                onClick={() => setFinished(finished.filter((_, j) => j !== i))}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          {/* one date per time read */}
+          {finished.length < reads && (
+            <button className="btn small" onClick={() => setFinished([...finished, localDay()])}>
+              + Add a date
+            </button>
+          )}
+          {finished.length === 0 && <small className="muted">For the calendar on the dashboard.</small>}
         </div>
       )}
 
@@ -679,6 +720,22 @@ export function BookPanel({
             if (!blurb.trim()) setBlurb(backText({ ...book, description: undefined }))
           }}
         />
+      </label>
+
+      <label className="field">
+        <span>Favourite quotes</span>
+        <textarea
+          className="input"
+          rows={3}
+          value={quotesDraft}
+          placeholder="A line you loved… Leave an empty line between quotes."
+          aria-describedby="quotes-hint"
+          onChange={(e) => setQuotesDraft(e.target.value)}
+          onBlur={save}
+        />
+        <small id="quotes-hint" className="muted">
+          Shown on the dashboard once the book is read.
+        </small>
       </label>
 
       <MergeSection

@@ -60,6 +60,10 @@ export function mergeBooks(keep: Book, other: Book): Book {
     // combined
     ...withFormats([...formatsOf(keep), ...formatsOf(other)]),
     ...((keep.genres || other.genres) && { genres: genres.slice(0, 5) }),
+    ...((keep.finished || other.finished) && {
+      finished: uniq([...(keep.finished ?? []), ...(other.finished ?? [])]).sort(),
+    }),
+    ...((keep.quotes || other.quotes) && { quotes: uniq([...(keep.quotes ?? []), ...(other.quotes ?? [])]) }),
     storytelId: storytelIds[0],
     ...(storytelIds.length > 1 && { storytelIds: storytelIds.slice(1) }),
     mergedIds: uniq([...(keep.mergedIds ?? []), other.id, ...(other.mergedIds ?? [])]),

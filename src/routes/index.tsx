@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ClientOnly, createFileRoute } from '@tanstack/react-router'
+import { ClientOnly, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { BookshelfScene } from '#/components/BookshelfScene'
 import { AddBookDialog } from '#/components/AddBookDialog'
 import { BookPanel } from '#/components/BookPanel'
@@ -14,6 +14,7 @@ import type { Account } from '#/lib/session'
 import { SignIn } from '#/components/SignIn'
 import { detectSeries } from '#/lib/series'
 import { pickReadNext, readNextChoices } from '#/lib/readNext'
+import { Dashboard } from '#/components/Dashboard'
 import { useStorytelSync } from '#/lib/useStorytelSync'
 import type { Tab } from '#/components/AddBookDialog'
 import { SearchBox } from '#/components/SearchBox'
@@ -22,7 +23,12 @@ import { useBookDetails } from '#/lib/useBookDetails'
 import type { Book } from '#/lib/library'
 import { filterByGenre, genreOptions as shelfGenres, reorderShown } from '#/lib/genreFilter'
 
-export const Route = createFileRoute('/')({ component: Home })
+export const Route = createFileRoute('/')({
+  component: Home,
+  // ?view=dashboard opens the dashboard (#59), so the back button returns to the shelf
+  validateSearch: (search: Record<string, unknown>): { view?: 'dashboard' } =>
+    search.view === 'dashboard' ? { view: 'dashboard' } : {},
+})
 
 const FACE_ANGLE: Record<Face, number> = { front: 0, spine: Math.PI / 2, back: Math.PI }
 
@@ -116,6 +122,25 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     setSelectedId(id)
   }, [])
 
+  // the shelf or the dashboard (#59)
+  const onDashboard = Route.useSearch().view === 'dashboard'
+  const navigate = useNavigate({ from: '/' })
+  const showView = useCallback(
+    (view: 'shelf' | 'dashboard') => {
+      if (view === 'dashboard') select(null)
+      navigate({ search: view === 'dashboard' ? { view } : {} })
+    },
+    [navigate, select],
+  )
+  /** a book picked on the dashboard or in the search: show it on the shelf */
+  const showBook = useCallback(
+    (id: string | null) => {
+      if (id && onDashboard) navigate({ search: {} })
+      select(id)
+    },
+    [navigate, onDashboard, select],
+  )
+
   const showFace = useCallback((face: Face) => {
     const t = inspect.current
     t.rotY = nearestTurn(FACE_ANGLE[face], t.rotY)
@@ -155,7 +180,10 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <h1>Hanna's Reading List</h1>
+          <div className="brand-title">
+            <ViewMenu view={onDashboard ? 'dashboard' : 'shelf'} onView={showView} />
+            <h1>Hanna's Reading List</h1>
+          </div>
           <p className="muted">
             {books.length === 0
               ? 'An empty shelf, waiting for stories'
@@ -169,7 +197,9 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           </p>
         </div>
         <div className="toolbar">
-          <SearchBox books={books} detectedSeries={seriesMap} onPick={select} />
+          <SearchBox books={books} detectedSeries={seriesMap} onPick={showBook} />
+          {!onDashboard && (
+            <>
           <label className="sort">
             <span className="muted">Arrange by</span>
             <select
@@ -221,6 +251,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             <span aria-hidden>🎲</span>
             <span className="hide-mobile"> What next?</span>
           </button>
+            </>
+          )}
           <button
             className={`btn icon refresh${syncState.kind === 'busy' ? ' spinning' : ''}`}
             disabled={syncState.kind === 'busy'}
@@ -262,7 +294,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             </button>
           </div>
         )}
-        {books.length > 1 && !selected && (
+        {onDashboard && <Dashboard books={books} onShowBook={showBook} />}
+        {books.length > 1 && !selected && !onDashboard && (
           <p className="stage-hint">
             <span className="hint-mouse">Click a book to pull it off the shelf · drag to rearrange</span>
             <span className="hint-touch">Tap a book to take it out · swipe to scroll · hold to move</span>
@@ -347,6 +380,46 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
         </div>
       )}
     </div>
+  )
+}
+
+const VIEWS = [
+  { view: 'shelf', icon: '📚', label: 'Bookshelf' },
+  { view: 'dashboard', icon: '📊', label: 'Dashboard' },
+] as const
+
+/** The menu to go between the shelf and the dashboard (#59). */
+function ViewMenu({ view, onView }: { view: 'shelf' | 'dashboard'; onView: (view: 'shelf' | 'dashboard') => void }) {
+  const menu = useRef<HTMLDetailsElement>(null)
+  // close when clicking anywhere else
+  useEffect(() => {
+    const close = (e: PointerEvent) => {
+      if (menu.current?.open && !menu.current.contains(e.target as Node)) menu.current.open = false
+    }
+    document.addEventListener('pointerdown', close)
+    return () => document.removeEventListener('pointerdown', close)
+  }, [])
+  return (
+    <details className="view-menu" ref={menu}>
+      <summary className="btn icon" aria-label="Menu" title="Menu">
+        <span aria-hidden>☰</span>
+      </summary>
+      <nav className="view-menu-list" aria-label="Views">
+        {VIEWS.map((v) => (
+          <button
+            key={v.view}
+            className={v.view === view ? 'active' : ''}
+            aria-current={v.view === view ? 'page' : undefined}
+            onClick={() => {
+              if (menu.current) menu.current.open = false
+              onView(v.view)
+            }}
+          >
+            <span aria-hidden>{v.icon}</span> {v.label}
+          </button>
+        ))}
+      </nav>
+    </details>
   )
 }
 
