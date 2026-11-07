@@ -1,4 +1,5 @@
 import type { Book } from './library'
+import { seriesGroups } from './series'
 
 /** World units: 1 unit ≈ 1 metre. */
 export const SHELF = {
@@ -29,8 +30,12 @@ function hash(s: string) {
   return (h >>> 0) / 4294967295
 }
 
-export function bookDims(book: Book): BookDims {
-  const r = hash(book.id)
+/**
+ * A book's size. The height varies a little from book to book, but books in
+ * the same series (`seriesKey`, see seriesGroups) all get the same height.
+ */
+export function bookDims(book: Book, seriesKey?: string): BookDims {
+  const r = hash(seriesKey ? `series:${seriesKey}` : book.id)
   const h = 0.27 + r * 0.08
   const aspect = Math.min(0.82, Math.max(0.58, book.coverAspect ?? 0.66))
   const pages = book.pages && book.pages > 0 ? book.pages : 280
@@ -167,8 +172,9 @@ export function computeLayout(
       x = 0
     }
   }
+  const series = seriesGroups(books)
   for (const b of books) {
-    const d = bookDims(b)
+    const d = bookDims(b, series.get(b.id)?.key || undefined)
     dims.set(b.id, d)
     const sep = separators.get(b.id)
     if (sep) {
