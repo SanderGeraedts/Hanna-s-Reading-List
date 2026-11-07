@@ -25,8 +25,8 @@ export const Route = createFileRoute('/')({ component: Home })
 
 const FACE_ANGLE: Record<Face, number> = { front: 0, spine: Math.PI / 2, back: Math.PI }
 
-/** the arrangements in the menu: genre is a filter now (#41) */
-const MENU_SORT_KEYS = (Object.keys(SORT_LABELS) as SortKey[]).filter((k) => k !== 'genre')
+/** the arrangements in the menu: genre is a filter now (#41), and colour is gone (#45) */
+const MENU_SORT_KEYS: SortKey[] = (Object.keys(SORT_LABELS) as SortKey[]).filter((k) => k !== 'genre' && k !== 'color')
 
 /** the book fields each arrangement sorts by */
 const RESORT_ON: Partial<Record<SortKey, Array<keyof Book>>> = {
@@ -226,8 +226,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             inspect={inspect}
             onSelect={select}
             onReorder={reorderShelf}
-            // a shelf still arranged by genre from before #41 keeps its order, without the genre nooks
-            arrangement={arrangement === 'genre' ? null : arrangement}
+            // a shelf still arranged by genre or colour from before #41/#45 keeps its order, without those nooks
+            arrangement={arrangement && MENU_SORT_KEYS.includes(arrangement) ? arrangement : null}
             sheet={sheet}
           />
         </ClientOnly>
