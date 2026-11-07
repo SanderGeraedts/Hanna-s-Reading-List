@@ -83,6 +83,8 @@ export interface NookSlot {
   x: number
   floorY: number
   row: number
+  /** every book of this series on the shelf is read (series dividers only) */
+  complete?: boolean
 }
 
 /** A slim labelled marker standing before each series when sorted by series. */
@@ -94,6 +96,8 @@ export type DividerSlot = NookSlot
 export interface Separator {
   kind: 'nook' | 'divider'
   label: string
+  /** a series whose books on the shelf are all read: the divider turns gold */
+  complete?: boolean
 }
 
 export interface ShelfLayout {
@@ -162,8 +166,14 @@ export function computeLayout(
 ): ShelfLayout {
   const dims = new Map<string, BookDims>()
   const placed: Array<{ id: string; row: number; x: number; d: BookDims }> = []
-  const sepPlaced: Array<{ before: string; label: string; row: number; x: number; kind: Separator['kind'] }> =
-    []
+  const sepPlaced: Array<{
+    before: string
+    label: string
+    row: number
+    x: number
+    kind: Separator['kind']
+    complete?: boolean
+  }> = []
   let row = 0
   let x = 0
   const fit = (width: number) => {
@@ -181,7 +191,14 @@ export function computeLayout(
       const { width, gap } = sep.kind === 'nook' ? NOOK : DIVIDER
       // keep the marker on the same shelf as the book it introduces
       fit(width + gap * 2 + d.t)
-      sepPlaced.push({ before: b.id, label: sep.label, kind: sep.kind, row, x: x + gap + width / 2 })
+      sepPlaced.push({
+        before: b.id,
+        label: sep.label,
+        kind: sep.kind,
+        row,
+        x: x + gap + width / 2,
+        ...(sep.complete && { complete: true }),
+      })
       x += width + gap * 2
     }
     fit(d.t)
@@ -226,9 +243,10 @@ export function computeLayout(
   const placedOf = (kind: Separator['kind']) =>
     sepPlaced
       .filter((n) => n.kind === kind)
-      .map(({ before, label, row, x }) => ({
+      .map(({ before, label, row, x, complete }) => ({
         before,
         label,
+        ...(complete && { complete }),
         row,
         x: -innerWidth / 2 + x,
         floorY: rowFloorY(row, rows),
@@ -253,4 +271,26 @@ export function computeLayout(
     caseWidth: innerWidth + SHELF.side * 2,
     caseHeight: rows * SHELF.rowHeight + SHELF.board,
   }
+}
+
+/**
+ * A labelled divider before the first book of each series, and before the
+ * standalone books. A series whose books on the shelf are all read gets a
+ * gold divider (series always have at least two books here).
+ */
+export function seriesDividers(books: Book[]) {
+  const out = new Map<string, Separator>()
+  const groups = seriesGroups(books)
+  // nothing to divide when no series has two books on the shelf
+  if (![...groups.values()].some((g) => g.key)) return out
+  const unread = new Set<string>()
+  for (const b of books) if (b.status !== 'read') unread.add(groups.get(b.id)!.key)
+  const seen = new Set<string>()
+  for (const b of books) {
+    const g = groups.get(b.id)!
+    if (seen.has(g.key)) continue
+    seen.add(g.key)
+    out.set(b.id, { kind: 'divider', label: g.name, ...(g.key && !unread.has(g.key) && { complete: true }) })
+  }
+  return out
 }

@@ -8,7 +8,9 @@ import { toTexture } from './textures'
 /**
  * Series dividers: slim walnut shelf markers, shorter than the books, with an
  * ivory label on the front naming the series that follows (read like a spine)
- * and a small brass knob on top. Origin is the bottom-centre, front towards +z.
+ * and a small brass knob on top. A series Hanna has read completely gets a
+ * gold divider with a star on its label (#18). Origin is the bottom-centre,
+ * front towards +z.
  */
 export function SeriesDividers({ items }: { items: DividerSlot[] }) {
   return (
@@ -34,7 +36,7 @@ function PlacedDivider({ slot }: { slot: DividerSlot }) {
   })
   return (
     <group ref={group} position={[slot.x, slot.floorY, DIVIDER_Z]}>
-      <Divider label={slot.label} />
+      <Divider label={slot.label} complete={!!slot.complete} />
     </group>
   )
 }
@@ -46,29 +48,45 @@ const PLINTH = 0.012 // the foot it stands on
 const KNOB = 0.0085 // radius of the brass knob
 const PLATE = { w: W - 0.007, h: H - PLINTH - 0.022, inset: 0.0006 }
 
-let shared: { wood: THREE.Material; plinth: THREE.Material; brass: THREE.Material } | null = null
-function sharedMaterials() {
-  shared ??= {
-    wood: new THREE.MeshStandardMaterial({ color: '#5b3a24', roughness: 0.55 }),
-    plinth: new THREE.MeshStandardMaterial({ color: '#3f2716', roughness: 0.6 }),
-    brass: new THREE.MeshStandardMaterial({ color: '#d4a64e', metalness: 1, roughness: 0.28 }),
+interface DividerMaterials {
+  wood: THREE.Material
+  plinth: THREE.Material
+  brass: THREE.Material
+}
+let shared: { plain: DividerMaterials; gold: DividerMaterials } | null = null
+function sharedMaterials(complete: boolean) {
+  if (!shared) {
+    const brass = new THREE.MeshStandardMaterial({ color: '#d4a64e', metalness: 1, roughness: 0.28 })
+    shared = {
+      plain: {
+        wood: new THREE.MeshStandardMaterial({ color: '#5b3a24', roughness: 0.55 }),
+        plinth: new THREE.MeshStandardMaterial({ color: '#3f2716', roughness: 0.6 }),
+        brass,
+      },
+      // a finished series: gilded board, so it stands out between the walnut ones
+      gold: {
+        wood: new THREE.MeshStandardMaterial({ color: '#d9ad45', metalness: 0.75, roughness: 0.32 }),
+        plinth: new THREE.MeshStandardMaterial({ color: '#8a6420', metalness: 0.6, roughness: 0.4 }),
+        brass: new THREE.MeshStandardMaterial({ color: '#f3d27a', metalness: 1, roughness: 0.2 }),
+      },
+    }
   }
-  return shared
+  return complete ? shared.gold : shared.plain
 }
 
-function Divider({ label }: { label: string }) {
-  const mats = sharedMaterials()
+function Divider({ label, complete }: { label: string; complete: boolean }) {
+  const mats = sharedMaterials(complete)
   const plate = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        map: labelTexture(label),
+        map: labelTexture(label, complete),
         roughness: 0.45,
         // a little glow so the label stays readable in the shelf's shade
         emissive: '#ffffff',
         emissiveIntensity: 0.12,
-        emissiveMap: labelTexture(label),
+        emissiveMap: labelTexture(label, complete),
       }),
-    [label],
+    [label, complete],
   )
   const bodyH = H - PLINTH
   return (
@@ -102,9 +120,10 @@ function Divider({ label }: { label: string }) {
 
 const labelCache = new Map<string, THREE.Texture>()
 
-/** Ivory label with the name running down it, like the title on a spine. */
-function labelTexture(label: string) {
-  const hit = labelCache.get(label)
+/** Ivory label with the name running down it, like the title on a spine; a star on top when complete. */
+function labelTexture(label: string, complete: boolean) {
+  const cacheKey = `${complete ? '★' : ''}${label}`
+  const hit = labelCache.get(cacheKey)
   if (hit) return hit
   const PX = 6000 // pixels per metre
   const c = document.createElement('canvas')
@@ -121,12 +140,21 @@ function labelTexture(label: string) {
   ctx.fillStyle = '#9a7a45'
   ctx.fillRect(c.width * 0.2, 10, c.width * 0.6, 3)
   ctx.fillRect(c.width * 0.2, c.height - 13, c.width * 0.6, 3)
+  // a finished series: a gold star at the top, the name moved down to make room
+  const starRoom = complete ? Math.round(c.width * 1.05) : 0
+  if (complete) {
+    ctx.fillStyle = '#b8860b'
+    ctx.font = `${Math.round(c.width * 0.78)}px Georgia, "Segoe UI Symbol", serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('★', c.width / 2, 18 + starRoom / 2)
+  }
 
   // the text runs top to bottom, turned like a spine title
   ctx.save()
-  ctx.translate(c.width / 2, c.height / 2)
+  ctx.translate(c.width / 2, c.height / 2 + starRoom / 2)
   ctx.rotate(Math.PI / 2)
-  const room = c.height - 56
+  const room = c.height - 56 - starRoom
   let size = Math.round(c.width * 0.62)
   const font = (s: number) => `italic 600 ${s}px Georgia, "Times New Roman", serif`
   ctx.font = font(size)
@@ -143,6 +171,6 @@ function labelTexture(label: string) {
   ctx.restore()
 
   const t = toTexture(c)
-  labelCache.set(label, t)
+  labelCache.set(cacheKey, t)
   return t
 }

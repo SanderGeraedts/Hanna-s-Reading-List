@@ -5,13 +5,12 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import type { Book, SortKey } from '#/lib/library'
 import { STATUS_LABELS, groupLabel } from '#/lib/library'
-import { FRAME, SHELF, computeLayout, rowFloorY, shelfFitFor } from '#/lib/shelfLayout'
+import { FRAME, SHELF, computeLayout, rowFloorY, seriesDividers, shelfFitFor } from '#/lib/shelfLayout'
 import type { Separator, ShelfLayout } from '#/lib/shelfLayout'
 import { BookMesh, RAINBOW } from './BookMesh'
 import { Decorations } from './Decorations'
 import { BookNooks } from './BookNook'
 import { SeriesDividers } from './SeriesDivider'
-import { seriesGroups } from '#/lib/series'
 import type { InspectTarget } from './BookMesh'
 import { FLOOR_TILE_METRES, floorTexture, wallTexture, woodTexture } from './textures'
 
@@ -622,22 +621,6 @@ function statusNooks(books: Book[]) {
     if (seen.has(b.status)) continue
     if (seen.size > 0) out.set(b.id, { kind: 'nook', label: STATUS_LABELS[b.status] })
     seen.add(b.status)
-  }
-  return out
-}
-
-/** A labelled divider before the first book of each series, and before the standalone books. */
-function seriesDividers(books: Book[]) {
-  const out = new Map<string, Separator>()
-  const groups = seriesGroups(books)
-  // nothing to divide when no series has two books on the shelf
-  if (![...groups.values()].some((g) => g.key)) return out
-  const seen = new Set<string>()
-  for (const b of books) {
-    const g = groups.get(b.id)!
-    if (seen.has(g.key)) continue
-    seen.add(g.key)
-    out.set(b.id, { kind: 'divider', label: g.name })
   }
   return out
 }
