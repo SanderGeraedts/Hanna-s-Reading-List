@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Book } from './library'
-import { bookDims, computeLayout } from './shelfLayout'
+import { FRAME, MAX_INNER_WIDTH, SHELF, bookDims, computeLayout, fitShelf, shelfFitFor } from './shelfLayout'
 import { arrangementSeparators } from './separators'
 
 const book = (id: string, title: string, extra: Partial<Book> = {}): Book => ({
@@ -59,5 +59,46 @@ describe('a gold sign for a series that is all read (#18)', () => {
   it('only counts the books on the shelf, and needs at least two', () => {
     // a single read book is no series, so no nook of its own
     expect(flags([pj(1, read), kc(1, read), kc(2, read)])).toEqual({ Standalone: false, 'Die Kane-Chroniken': true })
+  })
+})
+
+describe('the bookcase follows the screen width (#39)', () => {
+  const many = (count: number) =>
+    Array.from({ length: count }, (_, i) => book(`m${i}`, `Book number ${i}`, { authors: [`Author ${i % 37}`], pages: 320 }))
+  // how far the camera stands back to show the whole case (smaller = bigger books)
+  const distance = (books: Book[], aspect: number, fit: { innerWidth: number; minRows: number }) => {
+    const { caseHeight } = computeLayout(books, fit)
+    return Math.max(((fit.innerWidth + SHELF.side * 2) * FRAME.horizontal) / aspect, caseHeight * FRAME.vertical)
+  }
+
+  it('keeps the usual size for a small shelf', () => {
+    const few = many(12)
+    expect(fitShelf(few, 16 / 9)).toEqual(shelfFitFor(16 / 9))
+  })
+
+  it('widens the case for a full library on a wide screen, so the books are bigger', () => {
+    const lots = many(220)
+    const old = shelfFitFor(16 / 9)
+    const fit = fitShelf(lots, 16 / 9)
+    expect(fit.innerWidth).toBeGreaterThan(old.innerWidth)
+    expect(fit.innerWidth).toBeLessThanOrEqual(MAX_INNER_WIDTH)
+    expect(computeLayout(lots, fit).caseHeight).toBeLessThan(computeLayout(lots, old).caseHeight)
+    expect(distance(lots, 16 / 9, fit)).toBeLessThan(distance(lots, 16 / 9, old) * 0.9)
+  })
+
+  it('grows wider on a wider screen', () => {
+    const lots = many(220)
+    expect(fitShelf(lots, 21 / 9).innerWidth).toBeGreaterThanOrEqual(fitShelf(lots, 4 / 3).innerWidth)
+  })
+
+  it('leaves phones held upright alone', () => {
+    expect(fitShelf(many(220), 9 / 19)).toEqual(shelfFitFor(9 / 19))
+  })
+
+  it('is quick enough to run on every change', () => {
+    const lots = many(400)
+    const t = performance.now()
+    fitShelf(lots, 16 / 9)
+    expect(performance.now() - t).toBeLessThan(250)
   })
 })
