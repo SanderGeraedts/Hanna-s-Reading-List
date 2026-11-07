@@ -7,16 +7,11 @@ import { themeFor } from './nookThemes'
 /**
  * What stands between the groups of books for each arrangement (#17).
  *
- * - A group of at least NOOK_MIN books gets a book nook with a scene that fits
- *   it, its name on the hanging sign.
- * - Smaller groups keep the slim labelled divider in the arrangements that
- *   had one (series, genre, language, how I have it), and nothing elsewhere.
- * - The first group on the shelf never gets a nook (there's nothing to divide
- *   it from), but keeps its divider so the shelf still starts with a label.
- * - Arranged by reading status, every group after the first gets a nook, as
- *   before.
+ * Every group gets a book nook before it, with a scene that fits it and its
+ * name on the hanging sign: the first group too, so the shelf starts with a
+ * label, and small groups too. Hanna only wants the wide nooks, not the slim
+ * dividers (#36). With just one group there's nothing to divide.
  */
-export const NOOK_MIN = 3
 
 interface Group {
   key: string
@@ -114,10 +109,7 @@ export function shelfGroups(books: Book[], arrangement: SortKey): Group[] {
   return out
 }
 
-/** Arrangements that put a labelled divider before every group. */
-const WITH_DIVIDERS = new Set<SortKey>(['series', 'genre', 'language', 'format'])
-
-/** book id -> the nook or divider that stands just before it. */
+/** book id -> the nook that stands just before it. */
 export function arrangementSeparators(books: Book[], arrangement: SortKey | null | undefined): Map<string, Separator> {
   const out = new Map<string, Separator>()
   if (!arrangement) return out
@@ -126,15 +118,9 @@ export function arrangementSeparators(books: Book[], arrangement: SortKey | null
   // sorted by series but no series has two books: nothing to divide
   if (arrangement === 'series' && !groups.some((g) => g.key)) return out
 
-  groups.forEach((g, i) => {
-    const first = g.books[0].id
-    const big = arrangement === 'status' || g.books.length >= NOOK_MIN
-    if (i > 0 && big) {
-      const { theme, variant } = themeFor(g.label, g.books, g.genre)
-      out.set(first, { kind: 'nook', label: g.label, theme, variant, ...(g.complete && { complete: true }) })
-    } else if (WITH_DIVIDERS.has(arrangement)) {
-      out.set(first, { kind: 'divider', label: g.label, ...(g.complete && { complete: true }) })
-    }
-  })
+  for (const g of groups) {
+    const { theme, variant } = themeFor(g.label, g.books, g.genre)
+    out.set(g.books[0].id, { kind: 'nook', label: g.label, theme, variant, ...(g.complete && { complete: true }) })
+  }
   return out
 }

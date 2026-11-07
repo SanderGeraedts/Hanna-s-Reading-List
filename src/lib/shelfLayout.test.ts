@@ -44,7 +44,7 @@ describe('books in a series are the same height (#20)', () => {
   })
 })
 
-describe('a gold divider for a series that is all read (#18)', () => {
+describe('a gold sign for a series that is all read (#18)', () => {
   const read = { status: 'read' as const }
   const pj = (n: number, extra: Partial<Book> = {}) => book(`pj${n}`, `Percy Jackson, Teil ${n}: Band ${n}`, extra)
   const kc = (n: number, extra: Partial<Book> = {}) => book(`kc${n}`, `Die Kane-Chroniken ${n}: Band ${n}`, extra)
@@ -57,7 +57,7 @@ describe('a gold divider for a series that is all read (#18)', () => {
   })
 
   it('only counts the books on the shelf, and needs at least two', () => {
-    // a single read book is no series, so no divider of its own
+    // a single read book is no series, so no nook of its own
     expect(flags([pj(1, read), kc(1, read), kc(2, read)])).toEqual({ Standalone: false, 'Die Kane-Chroniken': true })
   })
 })

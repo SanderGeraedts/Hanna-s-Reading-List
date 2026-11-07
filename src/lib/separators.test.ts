@@ -28,14 +28,14 @@ function markers(shelf: Book[], arrangement: Parameters<typeof arrangementSepara
     .map((s) => [s!.label, s!.kind, s!.kind === 'nook' && s!.theme, s!.complete && 'complete'].filter(Boolean).join(':'))
 }
 
-describe('book nooks for every arrangement (#17)', () => {
-  it('puts a nook before groups of three or more, keeps dividers for small ones', () => {
+describe('book nooks for every arrangement (#17, #36)', () => {
+  it('puts a wide nook before every group, small ones too: no slim dividers (#36)', () => {
     const shelf = [
       ...['A', 'B', 'C'].map((t) => book(`Fantasy ${t}`, { genres: ['Fantasy'] })),
       ...['A', 'B', 'C'].map((t) => book(`Krimi ${t}`, { genres: ['Crime'] })),
       book('Gedicht', { genres: ['Poetry'] }),
     ]
-    expect(markers(shelf, 'genre')).toEqual(['Crime:divider', 'Fantasy:nook:forest', 'Poetry:divider'])
+    expect(markers(shelf, 'genre')).toEqual(['Crime:nook:neon', 'Fantasy:nook:forest', 'Poetry:nook:library'])
   })
 
   it('picks the scene from the books, and gives each group its own version', () => {
@@ -45,10 +45,11 @@ describe('book nooks for every arrangement (#17)', () => {
     expect(themeFor('Group one', []).variant).not.toBe(themeFor('Group two', []).variant)
   })
 
-  it('keeps one nook per reading-status group after the first, whatever its size', () => {
+  it('gives every reading-status group a nook', () => {
     const shelf = [book('a', { status: 'read' }), book('b'), book('c', { status: 'reading' })]
     expect(markers(shelf, 'status').map((m) => m.split(':').slice(0, 2).join(':'))).toEqual([
       // shelf order is Reading, Want to read, Read
+      'Reading:nook',
       'Want to read:nook',
       'Read:nook',
     ])
@@ -60,7 +61,7 @@ describe('book nooks for every arrangement (#17)', () => {
       ['A', 4],
       ['B', 3],
     ])
-    expect(markers(titles, 'title').map((m) => m.split(':').slice(0, 2).join(':'))).toEqual(['B:nook'])
+    expect(markers(titles, 'title').map((m) => m.split(':').slice(0, 2).join(':'))).toEqual(['A:nook', 'B:nook'])
 
     const years = [1994, 1999, 2003, 2008, 2009].map((y) => book(`y${y}`, { year: y }))
     expect(shelfGroups(years, 'year').map((g) => g.label)).toEqual(['1990s', '2000s'])
@@ -72,9 +73,9 @@ describe('book nooks for every arrangement (#17)', () => {
     expect(shelfGroups(colours, 'color').map((g) => g.label)).toEqual(['Reds', 'Blues', 'Black, white & grey'])
   })
 
-  it('never puts a nook before the first group, and keeps its divider', () => {
+  it('starts the shelf with a nook naming the first group', () => {
     const shelf = [...[1, 2, 3].map((i) => book(`A${i}`, { genres: ['Romance'] })), ...[1, 2, 3].map((i) => book(`B${i}`, { genres: ['Thriller'] }))]
-    expect(markers(shelf, 'genre')).toEqual(['Romance:divider', 'Thriller:nook:neon'])
+    expect(markers(shelf, 'genre')).toEqual(['Romance:nook:seaside', 'Thriller:nook:neon'])
   })
 
   it('shows a finished series on its nook too (#18)', () => {
@@ -85,7 +86,7 @@ describe('book nooks for every arrangement (#17)', () => {
       ...[1, 2, 3].map((i) => book(`Percy Jackson, Teil ${i}: Band ${i}`, read)),
     ]
     const ms = markers(shelf, 'series')
-    expect(ms[0]).toBe('Die Kane-Chroniken:divider')
+    expect(ms[0]).toMatch(/^Die Kane-Chroniken:nook:\w+$/)
     expect(ms[1]).toMatch(/^Percy Jackson:nook:\w+:complete$/)
   })
 
