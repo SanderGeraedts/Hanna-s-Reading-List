@@ -485,10 +485,6 @@ textarea.input {
   accent-color: var(--accent);
 }
 
-.progress-label {
-  display: flex;
-  justify-content: space-between;
-}
 .range {
   width: 100%;
   accent-color: var(--accent);
@@ -1844,4 +1840,24 @@ textarea.input {
   .goal-ring {
     width: 6rem;
   }
+}
+
+/* typing the progress: percentage, page or listening time */
+.progress-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+}
+.progress-input {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.progress-input .input {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.85rem;
+  text-align: right;
 }

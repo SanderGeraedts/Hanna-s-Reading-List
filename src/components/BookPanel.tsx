@@ -6,6 +6,14 @@ import type { Book, BookFormat, ReadingStatus } from '#/lib/library'
 import { FORMAT_LABELS, STATUS_LABELS, formatsOf, localDay, timesRead, withFormats } from '#/lib/library'
 import { parseQuotes, quotesText } from '#/lib/quotes'
 import { storytelLink } from '#/lib/storytelLink'
+import {
+  pageText,
+  percentText,
+  progressFromPage,
+  progressFromPercent,
+  progressFromTime,
+  timeText,
+} from '#/lib/progress'
 import { LANGUAGE_CHOICES, languageName } from '#/lib/languages'
 import { tidyTitle } from '#/lib/titles'
 import type { SeriesInfo } from '#/lib/series'
@@ -151,7 +159,8 @@ export function BookPanel({
   onSheet,
 }: Props) {
   const sheet = useSheet(onSheet)
-  const pct = Math.round((book.progress ?? 0) * 100)
+  const progress = book.progress ?? 0
+  const pct = Math.round(progress * 100)
   const reads = timesRead(book)
   const [seriesName, setSeriesName] = useState(book.series ?? '')
   const [blurb, setBlurb] = useState(backText(book))
@@ -411,18 +420,8 @@ export function BookPanel({
       </label>
 
       {(book.status === 'reading' || book.status === 'paused') && (
-        <label className="field">
-          <span className="progress-label">
-            <span>Progress</span>
-            <span>
-              {pct}%
-              {byTime
-                ? ` · ${formatDuration(Math.round((pct / 100) * book.minutes!))} of ${formatDuration(book.minutes!)}`
-                : book.pages
-                  ? ` · page ${Math.round((pct / 100) * book.pages)} of ${book.pages}`
-                  : ''}
-            </span>
-          </span>
+        <div className="field" role="group" aria-labelledby="progress-label">
+          <span id="progress-label">Progress</span>
           <input
             className="range"
             type="range"
@@ -430,9 +429,44 @@ export function BookPanel({
             max={100}
             step={1}
             value={pct}
+            aria-label="Progress"
             onChange={(e) => onProgress(Number(e.target.value) / 100)}
           />
-        </label>
+          {/* or type it: a percentage, a page, or a listening time */}
+          <div className="progress-inputs">
+            <ProgressField
+              label="Percentage"
+              value={percentText(progress)}
+              after="%"
+              inputMode="decimal"
+              width="3.6rem"
+              parse={progressFromPercent}
+              onProgress={onProgress}
+            />
+            {book.pages && !byTime ? (
+              <ProgressField
+                label="Page"
+                before="page"
+                value={pageText(progress, book.pages)}
+                after={`of ${book.pages}`}
+                inputMode="numeric"
+                width="4rem"
+                parse={(t) => progressFromPage(t, book.pages!)}
+                onProgress={onProgress}
+              />
+            ) : null}
+            {audio && book.minutes ? (
+              <ProgressField
+                label="Listening time"
+                value={timeText(progress, book.minutes)}
+                after={`of ${formatDuration(book.minutes)}`}
+                width="6.5rem"
+                parse={(t) => progressFromTime(t, book.minutes!)}
+                onProgress={onProgress}
+              />
+            ) : null}
+          </div>
+        </div>
       )}
 
       {(book.status === 'read' || reads > 0) && (
@@ -774,4 +808,66 @@ export function BookPanel({
 function today() {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/**
+ * One way to type the progress: shows where the book is, and saves what was
+ * typed on Enter or when leaving the field. Escape, or something that isn't a
+ * number, puts it back.
+ */
+function ProgressField({
+  label,
+  value,
+  before,
+  after,
+  inputMode,
+  width,
+  parse,
+  onProgress,
+}: {
+  label: string
+  value: string
+  before?: string
+  after?: string
+  inputMode?: 'numeric' | 'decimal'
+  width: string
+  parse: (text: string) => number | null
+  onProgress: (progress: number) => void
+}) {
+  /** what's being typed, or null while the field shows the book's progress */
+  const [draft, setDraft] = useState<string | null>(null)
+  const cancel = useRef(false)
+  const commit = () => {
+    const p = draft === null || cancel.current ? null : parse(draft)
+    if (p !== null) onProgress(p)
+    cancel.current = false
+    setDraft(null)
+  }
+  return (
+    <label className="progress-input">
+      {before && <span>{before}</span>}
+      <input
+        className="input"
+        style={{ width }}
+        inputMode={inputMode}
+        aria-label={label}
+        value={draft ?? value}
+        onFocus={(e) => {
+          setDraft(value)
+          e.currentTarget.select()
+        }}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur()
+          if (e.key === 'Escape') {
+            e.stopPropagation()
+            cancel.current = true
+            e.currentTarget.blur()
+          }
+        }}
+      />
+      {after && <span>{after}</span>}
+    </label>
+  )
 }
