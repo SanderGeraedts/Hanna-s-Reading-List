@@ -1115,3 +1115,9 @@ textarea.input {
 .pages-field .input {
   max-width: 8rem;
 }
+
+/* ---- genre filter (#41) --------------------------------------------- */
+.genre-filter.active .input {
+  border-color: var(--accent, #c8963e);
+  box-shadow: 0 0 0 1px var(--accent, #c8963e);
+}
