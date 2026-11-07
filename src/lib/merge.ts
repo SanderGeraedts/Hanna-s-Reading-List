@@ -68,6 +68,7 @@ export function mergeBooks(keep: Book, other: Book): Book {
       lovedQuotes: uniq([...(keep.lovedQuotes ?? []), ...(other.lovedQuotes ?? [])]),
     }),
     storytelId: storytelIds[0],
+    googleId: keep.googleId ?? other.googleId,
     ...(storytelIds.length > 1 && { storytelIds: storytelIds.slice(1) }),
     mergedIds: uniq([...(keep.mergedIds ?? []), other.id, ...(other.mergedIds ?? [])]),
     notDuplicates: uniq([...(keep.notDuplicates ?? []), ...(other.notDuplicates ?? [])]).filter(
