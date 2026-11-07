@@ -1,0 +1,88 @@
+# Builds the account server image (PocketBase + this repo's schema), checks
+# that it starts and applies every migration, and publishes it to GHCR.
+# The NAS picks up :stable by itself (Watchtower, see deploy/nas/README.md).
+name: Backend image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - deploy/nas/Dockerfile
+      - deploy/nas/pb_migrations/**
+      - .github/workflows/backend.yml
+  pull_request:
+    paths:
+      - deploy/nas/Dockerfile
+      - deploy/nas/pb_migrations/**
+      - .github/workflows/backend.yml
+  workflow_dispatch:
+
+# one publish at a time, in push order
+concurrency:
+  group: backend-image-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Image name
+        id: name
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "image=ghcr.io/${owner}/reading-list-pocketbase" >> "$GITHUB_OUTPUT"
+          echo "sha=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        run: docker build -t candidate deploy/nas
+
+      # Same command line as compose.yaml, on a fresh database. If a migration
+      # throws, PocketBase exits and this fails before anything is published.
+      - name: Check that it starts and applies the schema
+        run: |
+          docker run -d --name pb -p 8090:8090 candidate \
+            serve --http=0.0.0.0:8090 --dir=/pb_data --migrationsDir=/pb_migrations --automigrate=false
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8090/api/health && break
+            if [ "$(docker inspect -f '{{.State.Running}}' pb)" != "true" ]; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8090/api/health || { docker logs pb; exit 1; }
+
+          docker exec pb pocketbase superuser upsert ci@example.com ci-password-1234567 --dir=/pb_data
+          token=$(curl -fsS -X POST http://127.0.0.1:8090/api/collections/_superusers/auth-with-password \
+            -H 'content-type: application/json' \
+            -d '{"identity":"ci@example.com","password":"ci-password-1234567"}' | jq -r .token)
+          names=$(curl -fsS "http://127.0.0.1:8090/api/collections?perPage=200" -H "authorization: $token" | jq -r '.items[].name')
+          echo "$names"
+          for c in users libraries storytel_logins; do
+            echo "$names" | grep -qx "$c" || { echo "::error::collection $c is missing"; docker logs pb; exit 1; }
+          done
+
+          # signed out, nobody can read shelves
+          status=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/api/collections/libraries/records)
+          body=$(curl -s http://127.0.0.1:8090/api/collections/libraries/records | jq -c .items)
+          [ "$status" = 200 ] && [ "$body" = "[]" ] || { echo "::error::libraries readable while signed out ($status $body)"; exit 1; }
+
+      - name: Stop the check container
+        if: always()
+        run: docker rm -f pb || true
+
+      - name: Publish
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          IMAGE: ${{ steps.name.outputs.image }}
+          SHA_TAG: ${{ steps.name.outputs.sha }}
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker tag candidate "$IMAGE:$SHA_TAG"
+          docker tag candidate "$IMAGE:stable"
+          docker push "$IMAGE:$SHA_TAG"
+          docker push "$IMAGE:stable"
+          echo "Published $IMAGE:stable ($SHA_TAG)" >> "$GITHUB_STEP_SUMMARY"

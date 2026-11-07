@@ -1,0 +1,24 @@
+{
+  "TCP": {
+    "443": { "HTTPS": true },
+    "8443": { "HTTPS": true }
+  },
+  "Web": {
+    "${TS_CERT_DOMAIN}:443": {
+      "Handlers": {
+        "/api/health": { "Proxy": "http://127.0.0.1:8090/api/health" },
+        "/api/collections/users/": { "Proxy": "http://127.0.0.1:8090/api/collections/users" },
+        "/api/collections/libraries/": { "Proxy": "http://127.0.0.1:8090/api/collections/libraries" },
+        "/api/collections/storytel_logins/": { "Proxy": "http://127.0.0.1:8090/api/collections/storytel_logins" }
+      }
+    },
+    "${TS_CERT_DOMAIN}:8443": {
+      "Handlers": {
+        "/": { "Proxy": "http://127.0.0.1:8090" }
+      }
+    }
+  },
+  "AllowFunnel": {
+    "${TS_CERT_DOMAIN}:443": true
+  }
+}
