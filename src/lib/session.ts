@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { getSession, signIn as signInFn, signOut as signOutFn } from '#/server/auth'
+import { getSession, signIn as signInFn, signOut as signOutFn, signUp as signUpFn } from '#/server/auth'
 import type { Account } from '#/server/auth'
 
 export type { Account }
@@ -72,6 +72,12 @@ export function useSession() {
     setState({ kind: 'signed-in', account, offline: false })
   }, [])
 
+  const signUp = useCallback(async (name: string, email: string, password: string) => {
+    const account = await signUpFn({ data: { name, email, password } })
+    rememberAccount(account)
+    setState({ kind: 'signed-in', account, offline: false })
+  }, [])
+
   const signOut = useCallback(async () => {
     await signOutFn()
     rememberAccount(null)
@@ -84,5 +90,5 @@ export function useSession() {
     setState({ kind: 'signed-out' })
   }, [])
 
-  return { state, signIn, signOut, expired, retry: check }
+  return { state, signIn, signUp, signOut, expired, retry: check }
 }

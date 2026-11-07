@@ -36,8 +36,12 @@ services:
       - --http=127.0.0.1:8090
       - --dir=/pb_data
       - --migrationsDir=/pb_migrations
+      - --hooksDir=/pb_hooks
       # the schema comes from this repo's migrations, not from edits in the admin screen
       - --automigrate=false
+    environment:
+      # who may create an account in the app, comma-separated; empty = nobody
+      SIGNUP_EMAILS: hanna@example.com
     volumes:
       - /mnt/POOL/apps/reading-list/pb_data:/pb_data
     labels:

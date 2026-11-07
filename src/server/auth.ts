@@ -80,6 +80,49 @@ export const signIn = createServerFn({ method: 'POST' })
     }
   })
 
+/**
+ * Creates an account and signs in. Only addresses on the NAS allowlist may
+ * sign up (SIGNUP_EMAILS, checked by deploy/nas/pb_hooks/signup.pb.js).
+ */
+export const signUp = createServerFn({ method: 'POST' })
+  .validator((input: { name: string; email: string; password: string }) => {
+    const name = typeof input?.name === 'string' ? input.name.trim() : ''
+    const email = typeof input?.email === 'string' ? input.email.trim() : ''
+    const password = typeof input?.password === 'string' ? input.password : ''
+    if (!email || email.length > 200 || name.length > 100) throw new Error('Enter your name and email.')
+    if (password.length < 8) throw new Error('Choose a password of at least 8 characters.')
+    if (password.length > 200) throw new Error('That password is too long.')
+    return { name, email, password }
+  })
+  .handler(async ({ data }): Promise<Account> => {
+    try {
+      await pb('/api/collections/users/records', {
+        method: 'POST',
+        body: {
+          email: data.email,
+          password: data.password,
+          passwordConfirm: data.password,
+          ...(data.name && { name: data.name }),
+        },
+      })
+    } catch (e) {
+      if (e instanceof PocketBaseError) {
+        if (e.status === 403) throw new Error("This email can't sign up here. Ask Sander to add it.")
+        if (e.status === 429) throw new Error('Too many attempts. Wait a minute and try again.')
+        if (e.status === 400) {
+          throw new Error('That email already has an account, or the password is too short. Try signing in instead.')
+        }
+      }
+      throw e
+    }
+    const r = await pb<AuthResponse>('/api/collections/users/auth-with-password', {
+      method: 'POST',
+      body: { identity: data.email, password: data.password },
+    })
+    setSession(r.token)
+    return toAccount(r.record)
+  })
+
 export const signOut = createServerFn({ method: 'POST' }).handler(async () => {
   clearSession()
   return { ok: true }
