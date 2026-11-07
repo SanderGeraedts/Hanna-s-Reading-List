@@ -19,16 +19,19 @@ import { SearchBox } from '#/components/SearchBox'
 import { genreSuggestions } from '#/lib/genres'
 import { useBookDetails } from '#/lib/useBookDetails'
 import type { Book } from '#/lib/library'
+import { filterByGenre, genreOptions as shelfGenres, reorderShown } from '#/lib/genreFilter'
 
 export const Route = createFileRoute('/')({ component: Home })
 
 const FACE_ANGLE: Record<Face, number> = { front: 0, spine: Math.PI / 2, back: Math.PI }
 
+/** the arrangements in the menu: genre is a filter now (#41) */
+const MENU_SORT_KEYS = (Object.keys(SORT_LABELS) as SortKey[]).filter((k) => k !== 'genre')
+
 /** the book fields each arrangement sorts by */
 const RESORT_ON: Partial<Record<SortKey, Array<keyof Book>>> = {
   title: ['title'],
   series: ['series', 'seriesIndex', 'title'],
-  genre: ['genres'],
   language: ['language'],
   format: ['format', 'formats'],
 }
@@ -91,6 +94,16 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   const genreOptions = useMemo(() => genreSuggestions(books.flatMap((b) => b.genres ?? [])), [books])
   useBookDetails(books, loaded, updateBook)
 
+  // show only one genre (#41); a genre no book has any more falls back to all books
+  const [genre, setGenre] = useState<string | null>(null)
+  const genreChoices = useMemo(() => shelfGenres(books), [books])
+  const activeGenre = genre && genreChoices.some((g) => g.value === genre) ? genre : null
+  const shown = useMemo(() => filterByGenre(books, activeGenre), [books, activeGenre])
+  const reorderShelf = useCallback(
+    (ids: string[]) => reorder(activeGenre ? reorderShown(books.map((b) => b.id), ids) : ids),
+    [reorder, books, activeGenre],
+  )
+
   const select = useCallback((id: string | null) => {
     if (id) inspect.current = { rotY: 0, rotX: 0 }
     setSelectedId(id)
@@ -139,7 +152,9 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           <p className="muted">
             {books.length === 0
               ? 'An empty shelf, waiting for stories'
-              : `${books.length} book${books.length === 1 ? '' : 's'} · ` +
+              : activeGenre
+                ? `${shown.length} of ${books.length} books · ${genreChoices.find((g) => g.value === activeGenre)!.label}`
+                : `${books.length} book${books.length === 1 ? '' : 's'} · ` +
                 (['reading', 'want', 'read'] as const)
                   .filter((s) => counts[s])
                   .map((s) => `${counts[s]} ${STATUS_LABELS[s].toLowerCase()}`)
@@ -159,13 +174,31 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
               }}
             >
               <option value="">Sort…</option>
-              {Object.entries(SORT_LABELS).map(([k, label]) => (
+              {MENU_SORT_KEYS.map((k) => (
                 <option key={k} value={k}>
-                  {label}
+                  {SORT_LABELS[k]}
                 </option>
               ))}
             </select>
           </label>
+          {genreChoices.length > 0 && (
+            <label className={`sort genre-filter${activeGenre ? ' active' : ''}`}>
+              <span className="muted">Genre</span>
+              <select
+                className="input"
+                value={activeGenre ?? ''}
+                onChange={(e) => setGenre(e.target.value || null)}
+                aria-label="Show only one genre"
+              >
+                <option value="">All genres</option>
+                {genreChoices.map((g) => (
+                  <option key={g.value} value={g.value}>
+                    {g.label} ({g.count})
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <button
             className={`btn icon refresh${syncState.kind === 'busy' ? ' spinning' : ''}`}
             disabled={syncState.kind === 'busy'}
@@ -188,12 +221,13 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
       <main className="stage">
         <ClientOnly fallback={<div className="stage-loading">Building the shelf…</div>}>
           <BookshelfScene
-            books={books}
+            books={shown}
             selectedId={selectedId}
             inspect={inspect}
             onSelect={select}
-            onReorder={reorder}
-            arrangement={arrangement}
+            onReorder={reorderShelf}
+            // a shelf still arranged by genre from before #41 keeps its order, without the genre nooks
+            arrangement={arrangement === 'genre' ? null : arrangement}
             sheet={sheet}
           />
         </ClientOnly>
