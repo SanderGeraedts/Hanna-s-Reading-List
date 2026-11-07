@@ -150,3 +150,14 @@ describe('dashboard extras (#66)', () => {
     expect(r.quotes.map((q) => q.text)).toEqual(['Q.'])
   })
 })
+
+describe('reading goals on the server (#66)', async () => {
+  vi.doUnmock('#/server/shelf')
+  const { cleanGoals } = await vi.importActual<typeof import('#/server/shelf')>('#/server/shelf')
+
+  it('keeps only sensible year goals', () => {
+    expect(cleanGoals({ '2026': 50, '2025': 0, x: 3, '2024': 2.5, '2023': 12 })).toEqual({ '2026': 50, '2023': 12 })
+    expect(cleanGoals(null)).toEqual({})
+    expect(cleanGoals('50')).toEqual({})
+  })
+})

@@ -294,7 +294,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             </button>
           </div>
         )}
-        {onDashboard && <Dashboard books={books} onShowBook={showBook} onUpdate={updateBook} />}
+        {onDashboard && <Dashboard books={books} onShowBook={showBook} onUpdate={updateBook} accountId={account?.id ?? null} />}
         {books.length > 1 && !selected && !onDashboard && (
           <p className="stage-hint">
             <span className="hint-mouse">Click a book to pull it off the shelf · drag to rearrange</span>

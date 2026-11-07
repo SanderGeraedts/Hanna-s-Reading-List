@@ -73,3 +73,56 @@ export const saveShelf = createServerFn({ method: 'POST' })
         return { updated: r.updated }
       }),
   )
+
+/**
+ * Reading goals (#66): year → number of books, kept on the same record as the
+ * shelf but saved on their own, so a goal and a shelf save never overwrite
+ * each other.
+ */
+export type Goals = Record<string, number>
+
+export const cleanGoals = (g: unknown): Goals =>
+  Object.fromEntries(
+    Object.entries(g && typeof g === 'object' ? g : {}).filter(
+      ([year, n]) => /^\d{4}$/.test(year) && Number.isInteger(n) && n > 0 && n <= 1000,
+    ),
+  ) as Goals
+
+/** The saved goals, or null when the account has no shelf on the server yet. */
+export const loadGoals = createServerFn({ method: 'GET' }).handler(
+  (): Promise<Goals | null> =>
+    asUser(async (token) => {
+      // only the goals, not the whole shelf
+      const list = await pb<{ items: Array<{ id: string; goals?: unknown }> }>(
+        '/api/collections/libraries/records?perPage=1&skipTotal=1&fields=id,goals',
+        { token },
+      )
+      return list.items[0] ? cleanGoals(list.items[0].goals) : null
+    }),
+)
+
+/** Sets (or with null, clears) the goal for one year. False when there is no shelf on the server yet. */
+export const saveGoal = createServerFn({ method: 'POST' })
+  .validator((input: { year: number; goal: number | null }) => {
+    if (!Number.isInteger(input?.year) || input.year < 1900 || input.year > 3000) throw new Error('Invalid year.')
+    const goal = input.goal === null ? null : Number(input.goal)
+    if (goal !== null && !(Number.isInteger(goal) && goal > 0 && goal <= 1000)) throw new Error('Invalid goal.')
+    return { year: input.year, goal }
+  })
+  .handler(
+    ({ data }): Promise<boolean> =>
+      asUser(async (token) => {
+        const list = await pb<{ items: Array<{ id: string; goals?: unknown }> }>(
+          '/api/collections/libraries/records?perPage=1&skipTotal=1&fields=id,goals',
+          { token },
+        )
+        const record = list.items[0]
+        // the shelf record is made by the first shelf save; don't make an empty one here
+        if (!record) return false
+        const goals = cleanGoals(record.goals)
+        if (data.goal === null) delete goals[String(data.year)]
+        else goals[String(data.year)] = data.goal
+        await pb(`/api/collections/libraries/records/${record.id}`, { method: 'PATCH', token, body: { goals } })
+        return true
+      }),
+  )

@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { loadGoals, saveGoal } from '#/server/shelf'
 import type { Book } from '#/lib/library'
 import { formatDuration } from '#/lib/listening'
 import {
@@ -55,34 +56,70 @@ function BookLine({
 
 // ---- reading goal ----------------------------------------------------------
 
-const GOAL_KEY = (year: number) => `hannas-reading-list:goal:${year}`
+/**
+ * The goal is kept on the account server, so every device shows the same one,
+ * with a copy in this browser for a quick start and for when the server can't
+ * be reached. Without an account it lives in this browser only.
+ */
+const goalKey = (accountId: string | null, year: number) =>
+  `hannas-reading-list:goal:${accountId ?? 'local'}:${year}`
 
-function loadGoal(year: number): number | null {
+function readLocalGoal(key: string): number | null {
   try {
-    const n = Number(localStorage.getItem(GOAL_KEY(year)))
+    const n = Number(localStorage.getItem(key))
     return Number.isInteger(n) && n > 0 ? n : null
   } catch {
     return null
   }
 }
 
-export function GoalCard({ books }: { books: Book[] }) {
+function writeLocalGoal(key: string, goal: number | null) {
+  try {
+    if (goal) localStorage.setItem(key, String(goal))
+    else localStorage.removeItem(key)
+  } catch {
+    /* ignore */
+  }
+}
+
+export function GoalCard({ books, accountId }: { books: Book[]; accountId: string | null }) {
   const now = new Date()
   const year = now.getFullYear()
-  const [goal, setGoal] = useState(() => loadGoal(year))
+  const key = goalKey(accountId, year)
+  const [goal, setGoal] = useState(() => readLocalGoal(key))
   const [draft, setDraft] = useState(goal?.toString() ?? '')
   const [editing, setEditing] = useState(false)
   const done = useMemo(() => periodStats(books, { kind: 'year', year }).books, [books, year])
 
+  // the goal on the server wins; a goal only this browser knows is sent up
+  useEffect(() => {
+    if (!accountId) return
+    let live = true
+    loadGoals()
+      .then((goals) => {
+        if (!live || goals === null) return
+        const remote = goals[String(year)] ?? null
+        const local = readLocalGoal(key)
+        if (remote !== null) {
+          writeLocalGoal(key, remote)
+          setGoal(remote)
+          setDraft(String(remote))
+        } else if (local !== null) {
+          saveGoal({ data: { year, goal: local } }).catch(() => {})
+        }
+      })
+      // offline, or the server doesn't keep goals yet: the copy here will do
+      .catch(() => {})
+    return () => {
+      live = false
+    }
+  }, [accountId, key, year])
+
   const save = () => {
     const n = Number(draft)
     const next = Number.isInteger(n) && n > 0 && n <= 1000 ? n : null
-    try {
-      if (next) localStorage.setItem(GOAL_KEY(year), String(next))
-      else localStorage.removeItem(GOAL_KEY(year))
-    } catch {
-      /* ignore */
-    }
+    writeLocalGoal(key, next)
+    if (accountId) saveGoal({ data: { year, goal: next } }).catch(() => {})
     setGoal(next)
     setEditing(false)
   }

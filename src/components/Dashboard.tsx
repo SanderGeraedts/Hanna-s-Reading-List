@@ -40,6 +40,8 @@ export interface Props {
 
 interface DashboardProps extends Props {
   onUpdate: (id: string, patch: Partial<Book>) => void
+  /** the signed-in account, or null when the shelf lives in this browser only */
+  accountId: string | null
 }
 
 export interface PeriodPick {
@@ -54,7 +56,7 @@ export const toPeriod = ({ kind, year, month }: PeriodPick): Period =>
 export const periodLabel = ({ kind, year, month }: PeriodPick) =>
   kind === 'all' ? 'all time' : kind === 'year' ? `in ${year}` : `in ${monthName(month)} ${year}`
 
-export function Dashboard({ books, onShowBook, onUpdate }: DashboardProps) {
+export function Dashboard({ books, onShowBook, onUpdate, accountId }: DashboardProps) {
   const now = new Date()
   // the period picked under "Books read"; the charts and records follow it
   const [pick, setPick] = useState<PeriodPick>({ kind: 'year', year: now.getFullYear(), month: now.getMonth() + 1 })
@@ -66,7 +68,7 @@ export function Dashboard({ books, onShowBook, onUpdate }: DashboardProps) {
     <div className="dashboard">
       <div className="dashboard-grid">
         <ReadCount books={books} onShowBook={onShowBook} pick={pick} onPick={setPick} />
-        <GoalCard books={books} />
+        <GoalCard books={books} accountId={accountId} />
         <QuoteCard books={books} onUpdate={onUpdate} />
         <ReadNextCard books={books} onShowBook={onShowBook} />
         <CurrentlyReadingCard books={books} onShowBook={onShowBook} />
