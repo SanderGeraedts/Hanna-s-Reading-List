@@ -104,6 +104,8 @@ async function toNewBook(b: StorytelBook): Promise<NewBook> {
   }
 }
 
+const STATUS_RANK = { want: 0, reading: 1, read: 2 } as const
+
 /** Adds new Storytel books and syncs the reading status of ones already on the shelf. */
 export async function importStorytelBooks(
   items: StorytelBook[],
@@ -116,9 +118,22 @@ export async function importStorytelBooks(
   for (const item of items) {
     const match =
       existing.find((e) => e.storytelId === item.storytelId) ??
+      // the same book listed twice by Storytel, already merged into one
+      existing.find((e) => e.storytelIds?.includes(item.storytelId)) ??
       existing.find((e) => !e.storytelId && sameBook(e, item))
     if (!match) {
       toAdd.push(item)
+    } else if (match.storytelId !== item.storytelId && match.storytelIds?.includes(item.storytelId)) {
+      // another edition of a merged book: it may only move the book forward
+      const ahead = STATUS_RANK[item.status] > STATUS_RANK[match.status]
+      const further = item.progress !== undefined && item.progress > (match.progress ?? 0) + 0.005
+      if (ahead || further) {
+        cb.updateBook(match.id, {
+          ...(ahead && { status: item.status }),
+          ...(further && { progress: item.progress }),
+        })
+        summary.updated++
+      } else summary.unchanged++
     } else if (
       match.status !== item.status ||
       match.storytelId !== item.storytelId ||

@@ -1009,3 +1009,51 @@ textarea.input {
 .format-chip[aria-pressed='true']::before {
   content: '✓ ';
 }
+
+/* ---- duplicates: merge two copies of a book ------------------------- */
+.merge {
+  gap: 0.5rem;
+}
+.merge-suggestion,
+.merge-confirm {
+  font-size: 0.85rem;
+  color: var(--text);
+}
+.merge-suggestion p,
+.merge-confirm {
+  margin: 0 0 0.35rem;
+}
+.merge small {
+  color: var(--muted);
+}
+.merge-actions {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.merge-actions .link-btn {
+  margin: 0;
+}
+.merge-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.15rem;
+}
+.merge-results button {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: 0.85rem;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  padding: 0.4rem 0.5rem;
+  cursor: pointer;
+}
+.merge-results button:hover {
+  background: rgba(255, 255, 255, 0.08);
+}

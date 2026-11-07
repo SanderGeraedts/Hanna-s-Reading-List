@@ -4,6 +4,7 @@ import { seriesGroups } from './series'
 import { NOT_SIGNED_IN } from './signedOut'
 import { languageName } from './languages'
 import { isSortKey, type SortKey } from './sortKeys'
+import { mergeBooks } from './merge'
 
 export type ReadingStatus = 'want' | 'reading' | 'read'
 
@@ -18,6 +19,12 @@ export interface Book {
   workKey?: string
   /** Storytel consumable id, set for books imported from Storytel */
   storytelId?: string
+  /** more Storytel ids for the same book, from copies merged into this one */
+  storytelIds?: string[]
+  /** ids of the copies merged into this book, so they don't come back */
+  mergedIds?: string[]
+  /** books Hanna said are not the same book, so they aren't suggested for merging */
+  notDuplicates?: string[]
   /** URL of the front cover (served through our same-origin proxy so WebGL can use it) */
   coverUrl?: string
   /** width / height of the cover image, used to shape the 3D book */
@@ -212,7 +219,9 @@ export function mergeShelves(base: Book[], extra: Book[]) {
   const keys = (b: Book) =>
     [
       `id:${b.id}`,
+      ...(b.mergedIds ?? []).map((id) => `id:${id}`),
       b.storytelId && `st:${b.storytelId}`,
+      ...(b.storytelIds ?? []).map((id) => `st:${id}`),
       b.isbn && `isbn:${b.isbn}`,
       `ta:${norm(b.title)}|${norm(b.authors[0])}`,
     ].filter((k): k is string => !!k)
@@ -442,12 +451,23 @@ export function useLibrary(accountId: string | null = null, onSignedOut?: () => 
     })
   }, [])
 
+  /** Merges `otherId` into `keepId` (see mergeBooks); the merged book stays where `keepId` was. */
+  const mergeBook = useCallback((keepId: string, otherId: string) => {
+    setBooks((prev) => {
+      const keep = prev.find((b) => b.id === keepId)
+      const other = prev.find((b) => b.id === otherId)
+      if (!keep || !other || keep === other) return prev
+      const merged = mergeBooks(keep, other)
+      return prev.filter((b) => b.id !== otherId).map((b) => (b.id === keepId ? merged : b))
+    })
+  }, [])
+
   const sortBy = useCallback((key: SortKey) => {
     setBooks((prev) => sortBooks(prev, key))
     setArrangement(key)
   }, [])
 
-  return { books, loaded, arrangement, sync, addBook, removeBook, updateBook, reorder, sortBy }
+  return { books, loaded, arrangement, sync, addBook, removeBook, updateBook, mergeBook, reorder, sortBy }
 }
 
 const collator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true })
