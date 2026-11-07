@@ -152,6 +152,18 @@ export function BookPanel({
   const [seriesName, setSeriesName] = useState(book.series ?? '')
   const [blurb, setBlurb] = useState(backText(book))
   const [seriesNo, setSeriesNo] = useState(book.seriesIndex?.toString() ?? '')
+  const [pagesDraft, setPagesDraft] = useState(book.pages?.toString() ?? '')
+  /** the page count as typed: a whole number of pages, or empty to clear it */
+  const savePages = () => {
+    const n = Number(pagesDraft)
+    if (!pagesDraft.trim()) {
+      if (book.pages !== undefined) onUpdate({ pages: undefined })
+    } else if (Number.isInteger(n) && n > 0 && n <= 20000) {
+      if (n !== book.pages) onUpdate({ pages: n })
+    } else {
+      setPagesDraft(book.pages?.toString() ?? '')
+    }
+  }
   /** the title being edited, or null */
   const [titleDraft, setTitleDraft] = useState<string | null>(null)
   const cancelTitle = useRef(false)
@@ -488,6 +500,25 @@ export function BookPanel({
           />
         </div>
       </div>
+
+      <label className="field pages-field">
+        <span>Pages</span>
+        <input
+          className="input"
+          inputMode="numeric"
+          value={pagesDraft}
+          placeholder="Unknown"
+          aria-describedby="pages-hint"
+          onChange={(e) => setPagesDraft(e.target.value.replace(/\D/g, ''))}
+          onBlur={savePages}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.currentTarget.blur()
+          }}
+        />
+        <small id="pages-hint" className="muted">
+          As in your copy. Sets how thick the book is on the shelf.
+        </small>
+      </label>
 
       <label className="field">
         <span>Back cover</span>

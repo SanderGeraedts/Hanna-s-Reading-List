@@ -1110,3 +1110,8 @@ textarea.input {
   display: grid;
   gap: 0.1rem;
 }
+
+/* ---- pages: a short number field ------------------------------------- */
+.pages-field .input {
+  max-width: 8rem;
+}
