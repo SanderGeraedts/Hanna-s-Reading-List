@@ -184,16 +184,17 @@ function Nook({
         </mesh>
       </group>}
 
-      {/* hanging sign naming the books that follow */}
-      <group position={[0, H - SHELL, D / 2 - 0.018]}>
+      {/* tall hanging sign naming the books that follow, written top to bottom like a spine (#50);
+          off to the left so the scene stays in view */}
+      <group position={[SIGN.x, H - SHELL, D / 2 - 0.014]}>
         {[-1, 1].map((s) => (
-          <mesh key={s} position={[s * 0.026, -0.009, 0]}>
-            <cylinderGeometry args={[0.0006, 0.0006, 0.018, 4]} />
+          <mesh key={s} position={[s * SIGN.w * 0.3, -SIGN.hang / 2, 0]}>
+            <cylinderGeometry args={[0.0006, 0.0006, SIGN.hang, 4]} />
             <meshStandardMaterial color="#2a2a2a" metalness={0.6} roughness={0.4} />
           </mesh>
         ))}
-        <mesh castShadow position={[0, -0.031, 0]}>
-          <boxGeometry args={[0.078, 0.026, 0.003]} />
+        <mesh castShadow position={[0, -SIGN.hang - SIGN.h / 2, 0]}>
+          <boxGeometry args={[SIGN.w, SIGN.h, 0.003]} />
           <meshStandardMaterial attach="material-0" color="#5a3a22" />
           <meshStandardMaterial attach="material-1" color="#5a3a22" />
           <meshStandardMaterial attach="material-2" color="#5a3a22" />
@@ -235,10 +236,16 @@ function FairyLights({ y, z, sag, colours }: { y: number; z: number; sag: number
   )
 }
 
+/** The hanging sign: tall and narrow, so a long name stays big enough to read (#50). */
+const SIGN = { w: 0.03, h: 0.17, hang: 0.01, x: -W / 2 + SHELL + 0.03 / 2 + 0.006 }
+
 function signTexture(label: string, complete = false) {
+  // drawn lying down, then turned a quarter so the text runs down the sign
+  const long = 816
+  const short = Math.round((long * SIGN.w) / SIGN.h)
   const c = document.createElement('canvas')
-  c.width = 384
-  c.height = 128
+  c.width = long
+  c.height = short
   const ctx = c.getContext('2d')!
   const grad = ctx.createLinearGradient(0, 0, 0, c.height)
   // a finished series gets a gilded sign
@@ -253,11 +260,20 @@ function signTexture(label: string, complete = false) {
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   const text = complete ? `★ ${label}` : label
-  let size = 64
+  let size = Math.round(short * 0.58)
   do {
     ctx.font = `italic 600 ${size}px Georgia, "Segoe UI Symbol", "Times New Roman", serif`
     size -= 2
-  } while (ctx.measureText(text).width > c.width - 56 && size > 18)
+  } while (ctx.measureText(text).width > c.width - 64 && size > 18)
   ctx.fillText(text, c.width / 2, c.height / 2 + 3)
-  return toTexture(c)
+
+  // stand it up: the start of the text at the top, read with the head tilted right, like a spine
+  const up = document.createElement('canvas')
+  up.width = short
+  up.height = long
+  const u = up.getContext('2d')!
+  u.translate(short, 0)
+  u.rotate(Math.PI / 2)
+  u.drawImage(c, 0, 0)
+  return toTexture(up)
 }
