@@ -30,7 +30,7 @@ const RESORT_ON: Partial<Record<SortKey, Array<keyof Book>>> = {
   series: ['series', 'seriesIndex', 'title'],
   genre: ['genres'],
   language: ['language'],
-  format: ['format'],
+  format: ['format', 'formats'],
 }
 
 function Home() {

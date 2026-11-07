@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { Book, BookFormat, ReadingStatus } from '#/lib/library'
-import { FORMAT_LABELS, STATUS_LABELS, formatOf, timesRead } from '#/lib/library'
+import { FORMAT_LABELS, STATUS_LABELS, formatsOf, timesRead, withFormats } from '#/lib/library'
 import { LANGUAGE_CHOICES, languageName } from '#/lib/languages'
 import { tidyTitle } from '#/lib/titles'
 import type { SeriesInfo } from '#/lib/series'
@@ -151,7 +151,9 @@ export function BookPanel({
   const [lentTo, setLentTo] = useState(book.lent?.to ?? '')
   const [genreDraft, setGenreDraft] = useState('')
   const tidy = tidyTitle(book.title)
-  const format = formatOf(book)
+  const formats = formatsOf(book)
+  const toggleFormat = (f: BookFormat) =>
+    onUpdate(withFormats(formats.includes(f) ? formats.filter((x) => x !== f) : [...formats, f]))
   const languages =
     book.language && !LANGUAGE_CHOICES.includes(book.language)
       ? [...LANGUAGE_CHOICES, book.language]
@@ -349,22 +351,24 @@ export function BookPanel({
         </div>
       )}
 
+      <div className="field" role="group" aria-labelledby="formats-label">
+        <span id="formats-label">How I have it</span>
+        <div className="chips format-chips">
+          {(Object.entries(FORMAT_LABELS) as Array<[BookFormat, string]>).map(([k, label]) => (
+            <button
+              key={k}
+              type="button"
+              className="format-chip"
+              aria-pressed={formats.includes(k)}
+              onClick={() => toggleFormat(k)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="field-row">
-        <label className="field">
-          <span>How I have it</span>
-          <select
-            className="input"
-            value={format ?? ''}
-            onChange={(e) => onUpdate({ format: (e.target.value || undefined) as BookFormat | undefined })}
-          >
-            {!format && <option value="">Not set</option>}
-            {Object.entries(FORMAT_LABELS).map(([k, label]) => (
-              <option key={k} value={k}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
         <label className="field">
           <span>Language</span>
           <select

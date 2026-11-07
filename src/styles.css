@@ -986,3 +986,26 @@ textarea.input {
     height: 2.1rem;
   }
 }
+
+/* ---- how I have it: one toggle per format --------------------------- */
+.format-chip {
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.format-chip:hover {
+  color: var(--text);
+}
+.format-chip[aria-pressed='true'] {
+  background: rgba(217, 168, 91, 0.22);
+  border-color: rgba(217, 168, 91, 0.6);
+  color: var(--text);
+}
+.format-chip[aria-pressed='true']::before {
+  content: '✓ ';
+}
