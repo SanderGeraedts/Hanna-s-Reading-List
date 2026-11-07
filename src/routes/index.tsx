@@ -71,10 +71,11 @@ interface ShelfProps {
 }
 
 function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
-  const { books, loaded, arrangement, sync, addBook, removeBook, updateBook, mergeBook, reorder, sortBy } = useLibrary(
-    account?.id ?? null,
-    onExpired,
-  )
+  const { books, loaded, arrangement, sync, syncNow, addBook, removeBook, updateBook, mergeBook, reorder, sortBy } =
+    useLibrary(
+      account?.id ?? null,
+      onExpired,
+    )
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [adding, setAdding] = useState<Tab | null>(null)
   const [pickingCover, setPickingCover] = useState(false)
@@ -94,6 +95,46 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     const t = setTimeout(dismissSync, 5000)
     return () => clearTimeout(t)
   }, [syncState, dismissSync])
+
+  // the refresh button (#68): sync the shelf with the account server, then refresh from Storytel
+  const [syncing, setSyncing] = useState(false)
+  const [notice, setNotice] = useState<{ text: string; ok: boolean } | null>(null)
+  useEffect(() => {
+    if (!notice?.ok) return
+    const t = setTimeout(() => setNotice(null), 3000)
+    return () => clearTimeout(t)
+  }, [notice])
+  const refreshAll = async () => {
+    // no account and no Storytel: nothing to sync with yet
+    if (!account && !storytel.login.saved) return setAdding('storytel')
+    setNotice(null)
+    dismissSync()
+    setSyncing(true)
+    try {
+      const { books: shelf, ok } = await syncNow()
+      if (storytel.login.saved) {
+        // Storytel compares with the shelf just synced, so a book added on another device isn't added twice
+        await storytel.refresh(shelf)
+        if (!ok) setNotice({ text: "The account server can't be reached: changes are kept here.", ok: false })
+      } else {
+        setNotice(
+          ok
+            ? { text: 'Shelf synced.', ok: true }
+            : { text: "The account server can't be reached: changes are kept here.", ok: false },
+        )
+      }
+    } finally {
+      setSyncing(false)
+    }
+  }
+  const busy = syncing || syncState.kind === 'busy'
+  const refreshLabel = account
+    ? storytel.login.saved
+      ? 'Sync the shelf and refresh from Storytel'
+      : 'Sync the shelf'
+    : storytel.login.saved
+      ? 'Refresh from Storytel'
+      : 'Connect Storytel'
 
   const selected = books.find((b) => b.id === selectedId) ?? null
   const seriesMap = useMemo(() => detectSeries(books), [books])
@@ -254,12 +295,11 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             </>
           )}
           <button
-            className={`btn icon refresh${syncState.kind === 'busy' ? ' spinning' : ''}`}
-            disabled={syncState.kind === 'busy'}
-            // not signed in yet: open the Storytel sign-in instead
-            onClick={storytel.login.saved ? storytel.refresh : () => setAdding('storytel')}
-            aria-label="Refresh from Storytel"
-            title="Refresh from Storytel"
+            className={`btn icon refresh${busy ? ' spinning' : ''}`}
+            disabled={busy}
+            onClick={refreshAll}
+            aria-label={refreshLabel}
+            title={refreshLabel}
           >
             <span aria-hidden>↻</span>
           </button>
@@ -350,6 +390,14 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
         />
       )}
 
+      {notice && syncState.kind === 'idle' && (
+        <div className={`toast ${notice.ok ? 'done' : 'error'}`} role="status" aria-live="polite">
+          <span>{notice.text}</span>
+          <button className="icon-btn" onClick={() => setNotice(null)} aria-label="Dismiss">
+            ×
+          </button>
+        </div>
+      )}
       {syncState.kind !== 'idle' && (
         <div className={`toast ${syncState.kind}`} role="status" aria-live="polite">
           {syncState.kind === 'busy' ? (

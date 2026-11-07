@@ -199,3 +199,48 @@ describe('without an account', () => {
     expect(localStorage.getItem(MIGRATED)).toBeNull()
   })
 })
+
+describe('syncing from the refresh button (#68)', () => {
+  it('picks up a change made on another device and hands back those books', async () => {
+    server.record = { books: [fullBook('a')], arrangement: 'title', updated: 't0' }
+    const { result } = signIn()
+    await waitFor(() => expect(result.current.books.map((b) => b.id)).toEqual(['a']))
+    await waitFor(() => expect(result.current.sync).toBe('saved'))
+    // the phone adds a book
+    server.record = { books: [fullBook('a'), fullBook('p')], arrangement: 'title', updated: 't9' }
+    let synced: { books: Book[]; ok: boolean } | undefined
+    await act(async () => {
+      synced = await result.current.syncNow()
+    })
+    expect(synced?.ok).toBe(true)
+    expect(synced?.books.map((b) => b.id)).toEqual(['a', 'p'])
+    await waitFor(() => expect(result.current.books.map((b) => b.id)).toEqual(['a', 'p']))
+  })
+
+  it('sends changes that are waiting, instead of loading', async () => {
+    server.record = { books: [fullBook('a')], arrangement: 'title', updated: 't0' }
+    const { result } = signIn()
+    await waitFor(() => expect(result.current.sync).toBe('saved'))
+    act(() => result.current.updateBook('a', { title: 'Renamed' }))
+    let synced: { books: Book[]; ok: boolean } | undefined
+    await act(async () => {
+      synced = await result.current.syncNow()
+    })
+    expect(synced).toMatchObject({ ok: true })
+    expect(serverBooks()[0].title).toBe('Renamed')
+  })
+
+  it('says so when the server cannot be reached', async () => {
+    server.record = { books: [fullBook('a')], arrangement: 'title', updated: 't0' }
+    const { result } = signIn()
+    await waitFor(() => expect(result.current.sync).toBe('saved'))
+    server.online = false
+    let synced: { books: Book[]; ok: boolean } | undefined
+    await act(async () => {
+      synced = await result.current.syncNow()
+    })
+    expect(synced?.ok).toBe(false)
+    expect(synced?.books.map((b) => b.id)).toEqual(['a'])
+    expect(result.current.sync).toBe('offline')
+  })
+})

@@ -30,11 +30,12 @@ export function useStorytelSync(books: Book[], cb: Omit<ImportCallbacks, 'onProg
       .catch(() => setLogin({ saved: false }))
   }, [])
 
-  const refresh = useCallback(async () => {
+  /** `shelf`: the books to compare with, when they are newer than the last render (#68) */
+  const refresh = useCallback(async (shelf?: Book[]) => {
     setState({ kind: 'busy' })
     try {
       const items = await refreshStorytelLibrary()
-      const s = await importStorytelBooks(items, books, {
+      const s = await importStorytelBooks(items, shelf ?? books, {
         ...cb,
         onProgress: (done, total) => setState({ kind: 'busy', done, total }),
       })
