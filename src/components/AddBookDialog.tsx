@@ -2,9 +2,15 @@ import { guessLanguage } from '#/lib/languages'
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { getWorkDetails, lookupIsbn, searchBooks } from '#/server/openLibrary'
-import type { SearchResult } from '#/server/openLibrary'
+import type { IsbnLookup, SearchResult } from '#/server/openLibrary'
+import { lookupGoogleIsbn, searchGoogleBooks } from '#/server/googleBooks'
+import type { GoogleVolume } from '#/lib/googleVolume'
+import { volumeToBook } from '#/lib/googleImport'
+import { combineResults } from '#/lib/searchResults'
+import type { Found } from '#/lib/searchResults'
+import { GoogleTab } from './GoogleTab'
 import type { Book, NewBook } from '#/lib/library'
-import { analyzeCover, colorFromString, coverUrlForId, coverUrlForIsbn } from '#/lib/cover'
+import { analyzeCover, colorFromString, coverUrlForId, coverUrlForIsbn, remoteCoverUrl } from '#/lib/cover'
 import { forgetStorytelLogin, importStorytelLibrary, storytelLoginStatus } from '#/server/storytel'
 import type { StorytelLogin } from '#/lib/useStorytelSync'
 import { importStorytelBooks } from '#/lib/storytelImport'
@@ -13,7 +19,7 @@ import { sameIsbn } from '#/lib/isbn'
 import { normalizeIsbn, parsePublished, publishedYear } from '#/lib/bookFacts'
 import { BarcodeScanner } from './BarcodeScanner'
 
-export type Tab = 'search' | 'scan' | 'isbn' | 'manual' | 'storytel'
+export type Tab = 'search' | 'scan' | 'isbn' | 'manual' | 'storytel' | 'google'
 
 interface Props {
   existing: Book[]
@@ -26,33 +32,64 @@ interface Props {
   initialTab?: Tab
 }
 
-/** Turns an Open Library result into a book, sampling the cover for spine colour + shape. */
+/**
+ * Turns an Open Library result into a book, sampling the cover for spine colour + shape.
+ * `google`: the same book on Google Books (#67), for a cover and page count Open Library lacks.
+ */
 async function buildBook(
   r: SearchResult & { published?: string },
   details: { description?: string; genres?: string[] } = {},
+  google?: GoogleVolume | null,
 ): Promise<NewBook> {
-  const coverUrl = r.coverId
-    ? coverUrlForId(r.coverId)
-    : r.isbn
-      ? coverUrlForIsbn(r.isbn)
-      : undefined
-  const analysis = coverUrl ? await analyzeCover(coverUrl) : null
+  const candidates = [
+    r.coverId ? coverUrlForId(r.coverId) : r.isbn ? coverUrlForIsbn(r.isbn) : undefined,
+    google?.coverUrl && remoteCoverUrl(google.coverUrl),
+  ].filter((u): u is string => !!u)
+  let coverUrl: string | undefined
+  let analysis: Awaited<ReturnType<typeof analyzeCover>> = null
+  for (const url of candidates) {
+    analysis = await analyzeCover(url)
+    if (analysis) {
+      coverUrl = url
+      break
+    }
+  }
   return {
     title: r.title,
     authors: r.authors,
     year: r.year,
     ...(r.published && { published: r.published }),
-    pages: r.pages,
+    pages: r.pages ?? google?.pages,
     isbn: r.isbn,
     workKey: r.workKey || undefined,
-    description: details.description,
-    genres: details.genres,
-    language: r.language ?? guessLanguage(r.title),
+    ...(google && { googleId: google.googleId }),
+    description: details.description ?? google?.description,
+    genres: details.genres?.length ? details.genres : google?.genres,
+    language: r.language ?? google?.language ?? guessLanguage(r.title),
     coverUrl: analysis ? coverUrl : undefined,
     coverAspect: analysis?.aspect,
     color: analysis?.color ?? colorFromString(r.title),
   }
 }
+
+/** A book found by its ISBN: on Open Library, Google Books (#67) or both. */
+interface IsbnFind {
+  title: string
+  authors: string[]
+  ol?: IsbnLookup
+  google?: GoogleVolume
+}
+
+/** Open Library first; Google Books when it doesn't know the ISBN or has no cover for it. */
+async function findIsbn(isbn: string): Promise<IsbnFind | null> {
+  const ol = await lookupIsbn({ data: { isbn } })
+  const google =
+    !ol || !ol.coverId ? await lookupGoogleIsbn({ data: { isbn } }).catch(() => null) : null
+  if (ol) return { title: ol.title, authors: ol.authors, ol, ...(google && { google }) }
+  return google ? { title: google.title, authors: google.authors, google } : null
+}
+
+const bookFromIsbn = (f: IsbnFind) => (f.ol ? buildBook(f.ol, f.ol, f.google) : volumeToBook(f.google!))
 
 export function AddBookDialog({
   existing,
@@ -100,6 +137,7 @@ export function AddBookDialog({
               ['isbn', 'ISBN'],
               ['manual', 'Manual'],
               ['storytel', 'Storytel'],
+              ['google', 'Google Books'],
             ] as const
           ).map(([key, label]) => (
             <button
@@ -126,6 +164,7 @@ export function AddBookDialog({
         )}
         {tab === 'isbn' && <IsbnTab onAdd={onAdd} />}
         {tab === 'manual' && <ManualTab onAdd={onAdd} isbn={manualIsbn} />}
+        {tab === 'google' && <GoogleTab existing={existing} onAdd={onAdd} onUpdate={onUpdate} />}
         {tab === 'storytel' && (
           <StorytelTab
             existing={existing}
@@ -139,6 +178,10 @@ export function AddBookDialog({
           Book data and covers from{' '}
           <a href="https://openlibrary.org" target="_blank" rel="noreferrer">
             Open Library
+          </a>{' '}
+          and{' '}
+          <a href="https://books.google.com" target="_blank" rel="noreferrer">
+            Google Books
           </a>
           . Spines and back covers are generated from the book's details.
         </p>
@@ -149,7 +192,7 @@ export function AddBookDialog({
 
 function SearchTab({ existing, onAdd }: { existing: Book[]; onAdd: (b: NewBook) => void }) {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<SearchResult[]>([])
+  const [results, setResults] = useState<Found[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [adding, setAdding] = useState<string | null>(null)
@@ -167,8 +210,12 @@ function SearchTab({ existing, onAdd }: { existing: Book[]; onAdd: (b: NewBook) 
       setLoading(true)
       setError(null)
       try {
-        const res = await searchBooks({ data: { query: q } })
-        if (!cancelled) setResults(res)
+        // Google Books is a bonus: without it (no key yet, or over quota) Open Library still answers
+        const [ol, google] = await Promise.all([
+          searchBooks({ data: { query: q } }),
+          searchGoogleBooks({ data: { query: q } }).catch(() => [] as GoogleVolume[]),
+        ])
+        if (!cancelled) setResults(combineResults(ol, google))
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Search failed')
       } finally {
@@ -181,14 +228,21 @@ function SearchTab({ existing, onAdd }: { existing: Book[]; onAdd: (b: NewBook) 
     }
   }, [query])
 
-  const onShelf = new Set(existing.map((b) => b.workKey).filter(Boolean))
+  const onShelf = new Set([
+    ...existing.map((b) => b.workKey).filter(Boolean),
+    ...existing.flatMap((b) => (b.googleId ? [`google:${b.googleId}`] : [])),
+  ])
 
-  async function add(r: SearchResult) {
-    setAdding(r.workKey)
+  async function add(f: Found) {
+    setAdding(f.key)
     try {
-      const details = await getWorkDetails({ data: { workKey: r.workKey } }).catch(() => undefined)
-      onAdd(await buildBook(r, details))
-      setAdded((s) => new Set(s).add(r.workKey))
+      if (f.source === 'ol') {
+        const details = await getWorkDetails({ data: { workKey: f.r.workKey } }).catch(() => undefined)
+        onAdd(await buildBook(f.r, details))
+      } else {
+        onAdd(await volumeToBook(f.v))
+      }
+      setAdded((s) => new Set(s).add(f.key))
     } finally {
       setAdding(null)
     }
@@ -204,36 +258,33 @@ function SearchTab({ existing, onAdd }: { existing: Book[]; onAdd: (b: NewBook) 
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
-      {loading && <p className="muted">Searching Open Library…</p>}
+      {loading && <p className="muted">Searching…</p>}
       {error && <p className="error">{error}</p>}
       {!loading && query.trim().length >= 2 && results.length === 0 && !error && (
         <p className="muted">No books found.</p>
       )}
       <ul className="results">
-        {results.map((r) => {
-          const isAdded = added.has(r.workKey) || onShelf.has(r.workKey)
+        {results.map((f) => {
+          const isAdded = added.has(f.key) || onShelf.has(f.key)
+          const b = f.source === 'ol' ? f.r : f.v
+          const thumb =
+            f.source === 'ol'
+              ? f.r.coverId && coverUrlForId(f.r.coverId, 'M')
+              : f.v.coverUrl && remoteCoverUrl(f.v.coverUrl)
           return (
-            <li key={r.workKey} className="result">
-              <div className="thumb">
-                {r.coverId ? (
-                  <img src={coverUrlForId(r.coverId, 'M')} alt="" loading="lazy" />
-                ) : (
-                  <span>No cover</span>
-                )}
-              </div>
+            <li key={f.key} className="result">
+              <div className="thumb">{thumb ? <img src={thumb} alt="" loading="lazy" /> : <span>No cover</span>}</div>
               <div className="result-text">
-                <strong>{r.title}</strong>
-                <span>{r.authors.join(', ') || 'Unknown author'}</span>
+                <strong>{b.title}</strong>
+                <span>{b.authors.join(', ') || 'Unknown author'}</span>
                 <span className="muted">
-                  {[r.year, r.pages && `${r.pages} pages`].filter(Boolean).join(' · ')}
+                  {[b.year, b.pages && `${b.pages} pages`, f.source === 'google' && 'Google Books']
+                    .filter(Boolean)
+                    .join(' · ')}
                 </span>
               </div>
-              <button
-                className="btn small"
-                disabled={isAdded || adding === r.workKey}
-                onClick={() => add(r)}
-              >
-                {isAdded ? 'On shelf' : adding === r.workKey ? 'Adding…' : 'Add'}
+              <button className="btn small" disabled={isAdded || adding === f.key} onClick={() => add(f)}>
+                {isAdded ? 'On shelf' : adding === f.key ? 'Adding…' : 'Add'}
               </button>
             </li>
           )
@@ -245,7 +296,7 @@ function SearchTab({ existing, onAdd }: { existing: Book[]; onAdd: (b: NewBook) 
 
 type ScanFind =
   | { kind: 'looking'; isbn: string }
-  | { kind: 'found'; isbn: string; result: SearchResult & { description?: string; genres?: string[] } }
+  | { kind: 'found'; isbn: string; result: IsbnFind }
   | { kind: 'unknown'; isbn: string }
   | { kind: 'on-shelf'; isbn: string; book: Book }
   | { kind: 'error'; isbn: string; message: string }
@@ -275,7 +326,7 @@ function ScanTab({
     const n = ++lookups.current
     setFind({ kind: 'looking', isbn })
     try {
-      const result = await lookupIsbn({ data: { isbn } })
+      const result = await findIsbn(isbn)
       if (n !== lookups.current) return
       setFind(result ? { kind: 'found', isbn, result } : { kind: 'unknown', isbn })
     } catch (err) {
@@ -285,10 +336,10 @@ function ScanTab({
     }
   }
 
-  async function add(result: SearchResult & { description?: string; genres?: string[] }) {
+  async function add(result: IsbnFind) {
     setAdding(true)
     try {
-      const book = await buildBook(result, result)
+      const book = await bookFromIsbn(result)
       onAdd({ ...book, formats: ['paperback'] })
       setAdded((a) => [result.title, ...a])
       setFind(null)
@@ -324,7 +375,7 @@ function ScanTab({
       )}
       {find?.kind === 'unknown' && (
         <div className="scan-card">
-          <span>Open Library doesn't know ISBN {find.isbn}.</span>
+          <span>Open Library and Google Books don't know ISBN {find.isbn}.</span>
           <button className="btn" onClick={() => onManual(find.isbn)}>
             Add it by hand
           </button>
@@ -350,13 +401,13 @@ function IsbnTab({ onAdd }: { onAdd: (b: NewBook) => void }) {
     setStatus('loading')
     setError(null)
     try {
-      const found = await lookupIsbn({ data: { isbn } })
+      const found = await findIsbn(isbn)
       if (!found) {
-        setError('Open Library does not know this ISBN. Try the manual tab.')
+        setError('Open Library and Google Books do not know this ISBN. Try the manual tab.')
         setStatus('idle')
         return
       }
-      onAdd(await buildBook(found, found))
+      onAdd(await bookFromIsbn(found))
       setStatus('done')
       setIsbn('')
     } catch (err) {

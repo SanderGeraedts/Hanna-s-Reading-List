@@ -31,7 +31,7 @@ function norm(s: string) {
     .trim()
 }
 
-function sameBook(a: { title: string; authors: string[] }, b: { title: string; authors: string[] }) {
+export function sameBook(a: { title: string; authors: string[] }, b: { title: string; authors: string[] }) {
   const ta = norm(a.title)
   const tb = norm(b.title)
   if (!ta || !tb || !(ta.startsWith(tb) || tb.startsWith(ta))) return false
