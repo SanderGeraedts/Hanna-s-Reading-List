@@ -13,8 +13,12 @@ export interface Book {
   title: string
   authors: string[]
   year?: number
+  /** publication date as far as known: "2008", "2008-03" or "2008-03-12"; `year` follows it (#44) */
+  published?: string
   pages?: number
   isbn?: string
+  /** the ISBN ('' for none) a missing ISBN and publication date were last looked up for (#43, #44) */
+  factsChecked?: string
   /** Open Library work key, e.g. "/works/OL45804W" */
   workKey?: string
   /** Storytel consumable id, set for books imported from Storytel */

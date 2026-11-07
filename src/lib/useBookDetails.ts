@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { getWorkDetails, searchBooks } from '#/server/openLibrary'
+import { getPublishDate, getWorkDetails, searchBooks } from '#/server/openLibrary'
+import { publishedYear } from './bookFacts'
 import type { Book } from './library'
 import { guessLanguage } from './languages'
 import { seriesGroups } from './series'
@@ -40,6 +41,31 @@ async function lookUpGenres(b: Book): Promise<string[]> {
   return []
 }
 
+/**
+ * A missing ISBN and publication date (#43, #44): the ISBN of the Open Library
+ * match, then the date of that edition. A date only comes in when it agrees
+ * with the year the book already has, so the shelf's years don't jump.
+ */
+export async function lookUpFacts(b: Book): Promise<Partial<Book>> {
+  const patch: Partial<Book> = {}
+  let isbn = b.isbn
+  let year = b.year
+  if (!isbn) {
+    const hit = await findOnOpenLibrary(b)
+    if (hit?.isbn) patch.isbn = isbn = hit.isbn
+    if (year === undefined && hit?.year) patch.year = year = hit.year
+  }
+  if (isbn && !b.published) {
+    const { published } = await getPublishDate({ data: { isbn } })
+    if (published && (year === undefined || publishedYear(published) === year)) {
+      patch.published = published
+      patch.year = publishedYear(published)
+    }
+  }
+  patch.factsChecked = isbn ?? ''
+  return patch
+}
+
 /** The genres most books in a group share, at most three. */
 function common(books: Book[]) {
   const count = new Map<string, number>()
@@ -55,7 +81,8 @@ function common(books: Book[]) {
  * Fills in details for books added before they existed: genres (looked up
  * once per book; an empty list means none were found) and a language guessed
  * from the title. Books Open Library doesn't know take the genres of their
- * series, or else of the author's other books. Hanna can change both.
+ * series, or else of the author's other books. Also a missing ISBN and the
+ * publication date (see lookUpFacts). Hanna can change all of them.
  */
 export function useBookDetails(
   books: Book[],
@@ -63,28 +90,37 @@ export function useBookDetails(
   updateBook: (id: string, patch: Partial<Book>) => void,
 ) {
   const tried = useRef(new Set<string>())
+  const seen = useRef(new Set<string>())
   const borrowed = useRef(new Set<string>())
-  const queue = useRef<Book[]>([])
+  const queue = useRef<Array<{ book: Book; genres: boolean; facts: boolean }>>([])
   const running = useRef(0)
 
   useEffect(() => {
     if (!loaded) return
     for (const b of books) {
-      if (tried.current.has(b.id)) continue
-      if (b.language === undefined) {
+      // keyed by the ISBN too: a newly typed ISBN gets its date looked up
+      const key = `${b.id}|${b.isbn ?? ''}`
+      if (tried.current.has(key)) continue
+      const first = !seen.current.has(b.id)
+      tried.current.add(key)
+      seen.current.add(b.id)
+      if (first && b.language === undefined) {
         const language = guessLanguage(b.title)
         if (language) updateBook(b.id, { language })
       }
-      if (b.genres === undefined) queue.current.push(b)
-      tried.current.add(b.id)
+      const genres = first && b.genres === undefined
+      const facts = b.factsChecked !== (b.isbn ?? '') && !(b.isbn && b.published)
+      if (genres || facts) queue.current.push({ book: b, genres, facts })
     }
 
     const work = async () => {
       running.current++
       try {
-        for (let b = queue.current.shift(); b; b = queue.current.shift()) {
+        for (let job = queue.current.shift(); job; job = queue.current.shift()) {
+          const b = job.book
           try {
-            updateBook(b.id, { genres: await lookUpGenres(b) })
+            if (job.genres) updateBook(b.id, { genres: await lookUpGenres(b) })
+            if (job.facts) updateBook(b.id, await lookUpFacts(b))
           } catch {
             /* Open Library unreachable: try again on the next visit */
           }

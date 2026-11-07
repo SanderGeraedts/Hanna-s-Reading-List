@@ -35,6 +35,12 @@ export function mergeBooks(keep: Book, other: Book): Book {
     ...keep,
     // fill in what the kept copy doesn't know
     year: keep.year ?? other.year,
+    // the other copy's date only when it is about the same year
+    published:
+      keep.published ??
+      (other.published && (keep.year === undefined || other.published.startsWith(String(keep.year)))
+        ? other.published
+        : undefined),
     pages: keep.pages ?? other.pages,
     isbn: keep.isbn ?? other.isbn,
     workKey: keep.workKey ?? other.workKey,

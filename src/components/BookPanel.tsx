@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { formatPublished, normalizeIsbn, parsePublished, publishedYear } from '#/lib/bookFacts'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { Book, BookFormat, ReadingStatus } from '#/lib/library'
 import { FORMAT_LABELS, STATUS_LABELS, formatsOf, timesRead, withFormats } from '#/lib/library'
@@ -164,6 +165,36 @@ export function BookPanel({
       setPagesDraft(book.pages?.toString() ?? '')
     }
   }
+  const [isbnDraft, setIsbnDraft] = useState(book.isbn ?? '')
+  const [isbnProblem, setIsbnProblem] = useState(false)
+  /** the ISBN as typed (#43): a valid ISBN-10 or -13, or empty to clear it */
+  const saveIsbn = () => {
+    if (!isbnDraft.trim()) {
+      setIsbnProblem(false)
+      if (book.isbn !== undefined) onUpdate({ isbn: undefined })
+      return
+    }
+    const isbn = normalizeIsbn(isbnDraft)
+    setIsbnProblem(!isbn)
+    if (!isbn) return
+    setIsbnDraft(isbn)
+    if (isbn !== book.isbn) onUpdate({ isbn })
+  }
+  const [publishedDraft, setPublishedDraft] = useState(book.published ? formatPublished(book.published) : '')
+  const [publishedProblem, setPublishedProblem] = useState(false)
+  /** the publication date as typed (#44); the year follows it */
+  const savePublished = () => {
+    if (!publishedDraft.trim()) {
+      setPublishedProblem(false)
+      if (book.published !== undefined) onUpdate({ published: undefined })
+      return
+    }
+    const published = parsePublished(publishedDraft)
+    setPublishedProblem(!published)
+    if (!published) return
+    setPublishedDraft(formatPublished(published))
+    if (published !== book.published) onUpdate({ published, year: publishedYear(published) })
+  }
   /** the title being edited, or null */
   const [titleDraft, setTitleDraft] = useState<string | null>(null)
   const cancelTitle = useRef(false)
@@ -293,7 +324,11 @@ export function BookPanel({
           )}
           <p className="byline">{book.authors.join(', ') || 'Unknown author'}</p>
           <p className="muted">
-            {[book.year, book.pages && `${book.pages} pages`, book.isbn && `ISBN ${book.isbn}`]
+            {[
+              book.published ? formatPublished(book.published) : book.year,
+              book.pages && `${book.pages} pages`,
+              book.isbn && `ISBN ${book.isbn}`,
+            ]
               .filter(Boolean)
               .join(' · ')}
           </p>
@@ -519,6 +554,52 @@ export function BookPanel({
           As in your copy. Sets how thick the book is on the shelf.
         </small>
       </label>
+
+      <div className="field-row facts-row">
+        <label className="field">
+          <span>ISBN</span>
+          <input
+            className="input"
+            inputMode="numeric"
+            value={isbnDraft}
+            placeholder="Unknown"
+            aria-invalid={isbnProblem}
+            aria-describedby="isbn-hint"
+            onChange={(e) => {
+              setIsbnDraft(e.target.value.replace(/[^\dXx\s-]/g, ''))
+              setIsbnProblem(false)
+            }}
+            onBlur={saveIsbn}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur()
+            }}
+          />
+          <small id="isbn-hint" className={isbnProblem ? 'error' : 'muted'}>
+            {isbnProblem ? 'Not a valid ISBN: check the digits.' : 'On the back or the copyright page.'}
+          </small>
+        </label>
+        <label className="field">
+          <span>Published</span>
+          <input
+            className="input"
+            value={publishedDraft}
+            placeholder={book.year ? String(book.year) : 'e.g. 12.03.2008'}
+            aria-invalid={publishedProblem}
+            aria-describedby="published-hint"
+            onChange={(e) => {
+              setPublishedDraft(e.target.value)
+              setPublishedProblem(false)
+            }}
+            onBlur={savePublished}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur()
+            }}
+          />
+          <small id="published-hint" className={publishedProblem ? 'error' : 'muted'}>
+            {publishedProblem ? 'Try 2008, 03.2008 or 12.03.2008.' : 'A year, month or full date.'}
+          </small>
+        </label>
+      </div>
 
       <label className="field">
         <span>Back cover</span>
