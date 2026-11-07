@@ -16,6 +16,8 @@ export interface Book {
   /** publication date as far as known: "2008", "2008-03" or "2008-03-12"; `year` follows it (#44) */
   published?: string
   pages?: number
+  /** listening time of the audiobook, in minutes (#48) */
+  minutes?: number
   isbn?: string
   /** the ISBN ('' for none) a missing ISBN and publication date were last looked up for (#43, #44) */
   factsChecked?: string
