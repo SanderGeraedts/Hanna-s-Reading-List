@@ -61,7 +61,7 @@ interface ShelfProps {
 }
 
 function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
-  const { books, loaded, arrangement, sync, addBook, removeBook, updateBook, reorder, sortBy } = useLibrary(
+  const { books, loaded, arrangement, sync, addBook, removeBook, updateBook, mergeBook, reorder, sortBy } = useLibrary(
     account?.id ?? null,
     onExpired,
   )
@@ -235,6 +235,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           detectedSeries={selectedSeries}
           genreOptions={genreOptions}
           onChangeCover={() => setPickingCover(true)}
+          shelf={books}
+          onMerge={(otherId) => mergeBook(selected.id, otherId)}
           onRemove={() => {
             select(null)
             removeBook(selected.id)

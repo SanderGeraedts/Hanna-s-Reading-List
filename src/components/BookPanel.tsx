@@ -6,6 +6,7 @@ import { LANGUAGE_CHOICES, languageName } from '#/lib/languages'
 import { tidyTitle } from '#/lib/titles'
 import type { SeriesInfo } from '#/lib/series'
 import { backText } from './textures'
+import { MergeSection } from './MergeSection'
 
 export type Face = 'front' | 'spine' | 'back'
 
@@ -21,6 +22,10 @@ interface Props {
   /** genres to suggest: the standard ones and any used on the shelf */
   genreOptions: string[]
   onChangeCover: () => void
+  /** every book on the shelf, to find copies of this one */
+  shelf: Book[]
+  /** merge another copy into this book */
+  onMerge: (otherId: string) => void
   onRemove: () => void
   onClose: () => void
   /** on phones: called with the share of the screen height the sheet covers */
@@ -135,6 +140,8 @@ export function BookPanel({
   detectedSeries,
   genreOptions,
   onChangeCover,
+  shelf,
+  onMerge,
   onRemove,
   onClose,
   onSheet,
@@ -496,6 +503,13 @@ export function BookPanel({
           }}
         />
       </label>
+
+      <MergeSection
+        book={book}
+        shelf={shelf}
+        onMerge={onMerge}
+        onNotDuplicate={(id) => onUpdate({ notDuplicates: [...(book.notDuplicates ?? []), id] })}
+      />
 
       <div className="panel-actions">
         <button className="btn" onClick={onClose}>
