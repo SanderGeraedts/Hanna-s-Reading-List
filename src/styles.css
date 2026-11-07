@@ -403,16 +403,6 @@ textarea.input {
   display: flex;
   gap: 0.25rem;
   border-bottom: 1px solid var(--border);
-  /* six tabs (#67): scroll sideways on a phone instead of squashing */
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.tabs::-webkit-scrollbar {
-  display: none;
-}
-.tabs .tab {
-  flex-shrink: 0;
-  white-space: nowrap;
 }
 .tab {
   font: inherit;

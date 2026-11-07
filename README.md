@@ -42,19 +42,6 @@ The **Storytel** tab in *Add book* signs in with your Storytel email and passwor
 - Accounts that sign in with Google, Apple or Facebook have no Storytel password, so they can't use this.
 - Covers: the Storytel e-book cover if there is one, otherwise an Open Library match, otherwise the square audiobook cover, centre-cropped. Year, page count, ISBN and blurb come from the best Open Library match. When there's no match, the page count is estimated from the book's length.
 
-## Google Books
-
-**Search.** *Add book → Search* also asks Google Books and lists the books Open Library doesn't have (marked *Google Books*). The ISBN and barcode lookups fall back to Google Books when Open Library doesn't know an ISBN or has no cover for it (`src/server/googleBooks.ts`). Google Books refuses requests without a key, so set **`GOOGLE_BOOKS_API_KEY`** in Netlify. Without it, search quietly uses Open Library only.
-
-**Google Play Books import.** The **Google Books** tab imports the *To read*, *Reading now* and *Have read* shelves, plus books bought or uploaded on Google Play (added as e-books). Running it again adds new books and only moves statuses forward. A paused book stays paused until Google says it's read. Matching uses the Google id, the ISBN, or title and author. Sign-in happens in the browser with Google Identity Services, and the short-lived token never reaches this app's servers (`src/lib/googleLibrary.ts`, `src/lib/googleImport.ts`). It needs **`VITE_GOOGLE_CLIENT_ID`** at build time. Without it, the tab says the import isn't set up.
-
-To set both up, in [Google Cloud Console](https://console.cloud.google.com/), with one project for both:
-
-1. **APIs & Services → Library**: turn on the **Books API**.
-2. **APIs & Services → Credentials → Create credentials → API key**. Restrict it to the Books API, then put it in Netlify as `GOOGLE_BOOKS_API_KEY`.
-3. **OAuth consent screen**: External, app name, your email. Add the scope `https://www.googleapis.com/auth/books`. While the app is in *Testing*, add Hanna's Google account under **Test users**.
-4. **Credentials → Create credentials → OAuth client ID → Web application**. Under **Authorised JavaScript origins**, add `https://hannas-reading-list.netlify.app` (and `http://localhost:3000` for local runs). Put the client id in Netlify as `VITE_GOOGLE_CLIENT_ID`, then redeploy, because it's read at build time.
-
 ## Accounts and syncing
 
 With `POCKETBASE_URL` set, the app asks people to sign in and keeps each person's shelf on a [PocketBase](https://pocketbase.io) server running on the home NAS, reached through Tailscale Funnel. Setup steps, the Docker Compose file and the database schema are in [`deploy/nas/`](deploy/nas/README.md).
