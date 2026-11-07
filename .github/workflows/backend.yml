@@ -9,11 +9,13 @@ on:
     paths:
       - deploy/nas/Dockerfile
       - deploy/nas/pb_migrations/**
+      - deploy/nas/pb_hooks/**
       - .github/workflows/backend.yml
   pull_request:
     paths:
       - deploy/nas/Dockerfile
       - deploy/nas/pb_migrations/**
+      - deploy/nas/pb_hooks/**
       - .github/workflows/backend.yml
   workflow_dispatch:
 
@@ -46,8 +48,8 @@ jobs:
       # throws, PocketBase exits and this fails before anything is published.
       - name: Check that it starts and applies the schema
         run: |
-          docker run -d --name pb -p 8090:8090 candidate \
-            serve --http=0.0.0.0:8090 --dir=/pb_data --migrationsDir=/pb_migrations --automigrate=false
+          docker run -d --name pb -p 8090:8090 -e SIGNUP_EMAILS=allowed@example.com candidate \
+            serve --http=0.0.0.0:8090 --dir=/pb_data --migrationsDir=/pb_migrations --hooksDir=/pb_hooks --automigrate=false
           for i in $(seq 1 30); do
             curl -fsS http://127.0.0.1:8090/api/health && break
             if [ "$(docker inspect -f '{{.State.Running}}' pb)" != "true" ]; then break; fi
@@ -69,6 +71,13 @@ jobs:
           status=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/api/collections/libraries/records)
           body=$(curl -s http://127.0.0.1:8090/api/collections/libraries/records | jq -c .items)
           [ "$status" = 200 ] && [ "$body" = "[]" ] || { echo "::error::libraries readable while signed out ($status $body)"; exit 1; }
+
+          # sign-up: only addresses on SIGNUP_EMAILS (pb_hooks/signup.pb.js)
+          signup() {
+            curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:8090/api/collections/users/records               -H 'content-type: application/json'               -d "{\"email\":\"$1\",\"password\":\"signup-test-123\",\"passwordConfirm\":\"signup-test-123\"}"
+          }
+          [ "$(signup stranger@example.com)" = 403 ] || { echo "::error::sign-up open to an address not on the allowlist"; docker logs pb; exit 1; }
+          [ "$(signup allowed@example.com)" = 200 ] || { echo "::error::an allowlisted address could not sign up"; docker logs pb; exit 1; }
 
       - name: Stop the check container
         if: always()

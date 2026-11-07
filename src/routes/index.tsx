@@ -37,8 +37,8 @@ function Home() {
   const session = useSession()
   const { state } = session
   if (state.kind === 'loading') return <div className="stage-loading">Opening the shelf…</div>
-  if (state.kind === 'signed-out') return <SignIn onSignIn={session.signIn} />
-  if (state.kind === 'error') return <SignIn onSignIn={session.signIn} problem={state.message} onRetry={session.retry} />
+  if (state.kind === 'signed-out') return <SignIn onSignIn={session.signIn} onSignUp={session.signUp} />
+  if (state.kind === 'error') return <SignIn onSignIn={session.signIn} onSignUp={session.signUp} problem={state.message} onRetry={session.retry} />
   if (state.kind === 'local') return <Shelf />
   return (
     <Shelf

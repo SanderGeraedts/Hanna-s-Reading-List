@@ -3,27 +3,38 @@ import type { FormEvent } from 'react'
 
 interface Props {
   onSignIn: (email: string, password: string) => Promise<void>
+  /** create an account; only addresses on the server's allowlist can */
+  onSignUp: (name: string, email: string, password: string) => Promise<void>
   /** shown instead of the form when the server can't be reached */
   problem?: string
   onRetry?: () => void
 }
 
-export function SignIn({ onSignIn, problem, onRetry }: Props) {
+export function SignIn({ onSignIn, onSignUp, problem, onRetry }: Props) {
+  const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in')
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const signingUp = mode === 'sign-up'
 
   async function submit(e: FormEvent) {
     e.preventDefault()
     setBusy(true)
     setError(null)
     try {
-      await onSignIn(email, password)
+      if (signingUp) await onSignUp(name, email, password)
+      else await onSignIn(email, password)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Signing in failed.')
+      setError(err instanceof Error ? err.message : signingUp ? 'Creating the account failed.' : 'Signing in failed.')
       setBusy(false)
     }
+  }
+
+  function switchMode() {
+    setMode(signingUp ? 'sign-in' : 'sign-up')
+    setError(null)
   }
 
   return (
@@ -39,13 +50,25 @@ export function SignIn({ onSignIn, problem, onRetry }: Props) {
           </>
         ) : (
           <form onSubmit={submit}>
-            <p className="muted">Sign in to open your shelf.</p>
+            <p className="muted">{signingUp ? 'Create your account.' : 'Sign in to open your shelf.'}</p>
+            {signingUp && (
+              <label className="field">
+                <span>Name</span>
+                <input
+                  className="input"
+                  autoComplete="given-name"
+                  maxLength={100}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </label>
+            )}
             <label className="field">
               <span>Email</span>
               <input
                 className="input"
                 type="email"
-                autoComplete="username"
+                autoComplete={signingUp ? 'email' : 'username'}
                 required
                 autoFocus
                 value={email}
@@ -57,15 +80,20 @@ export function SignIn({ onSignIn, problem, onRetry }: Props) {
               <input
                 className="input"
                 type="password"
-                autoComplete="current-password"
+                autoComplete={signingUp ? 'new-password' : 'current-password'}
+                minLength={signingUp ? 8 : undefined}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+              {signingUp && <small className="muted">At least 8 characters.</small>}
             </label>
             {error && <p className="error">{error}</p>}
             <button className="btn primary" type="submit" disabled={busy}>
-              {busy ? 'Signing in…' : 'Sign in'}
+              {busy ? (signingUp ? 'Creating…' : 'Signing in…') : signingUp ? 'Create account' : 'Sign in'}
+            </button>
+            <button type="button" className="link-btn" onClick={switchMode}>
+              {signingUp ? 'I already have an account' : 'New here? Create an account'}
             </button>
           </form>
         )}

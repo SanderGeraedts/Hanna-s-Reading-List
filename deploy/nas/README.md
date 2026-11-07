@@ -20,7 +20,7 @@ The browser never talks to the NAS. Only the app's server functions on Netlify d
 | `https://reading-list.<tailnet>.ts.net` (port 443, Funnel) | The internet | Only the API paths the app needs: sign-in for `users`, and the `libraries` and `storytel_logins` records. Everything else, including the admin screen and superuser sign-in, returns 404. |
 | `https://reading-list.<tailnet>.ts.net:8443` | Your own Tailscale devices only | All of PocketBase, including the admin screen at `/_/` |
 
-Every record is limited to its owner by PocketBase's rules, and sign-up is closed. You create the accounts.
+Every record is limited to its owner by PocketBase's rules. Only the email addresses you list in `SIGNUP_EMAILS` (on the NAS) can create an account; anyone else gets a 403.
 
 ## Files in this folder
 
@@ -28,6 +28,7 @@ Every record is limited to its owner by PocketBase's rules, and sign-up is close
 | --- | --- |
 | `compose.yaml` | Pasted into TrueNAS when you install the app (step 3) |
 | `serve.json` | `<dataset>/serve.json` on the NAS |
+| `pb_hooks/*.pb.js` | Nowhere by hand. Built into the image; `signup.pb.js` checks new accounts against `SIGNUP_EMAILS`. |
 | `pb_migrations/*.js` | Nowhere by hand. This is the database schema. It's built into the PocketBase image, and PocketBase applies it on start-up. |
 | `Dockerfile` | Built by GitHub Actions (`.github/workflows/backend.yml`) into `ghcr.io/sandergeraedts/reading-list-pocketbase` |
 
@@ -86,6 +87,7 @@ HexOS runs on TrueNAS SCALE. Custom Docker apps are added from the TrueNAS web i
 3. Paste `compose.yaml` and change two things:
    - Replace every `/mnt/POOL/apps/reading-list` with your dataset's real path.
    - Replace `tskey-auth-REPLACE-ME` with the auth key from step 1.
+   - Set `SIGNUP_EMAILS` to the address(es) that may create an account, comma-separated, e.g. Hanna's email. Leave it empty to close sign-up.
 4. Save. All three containers should show as running within a minute.
 5. Open the **watchtower** container's logs. Near the top it should say it's watching 1 container (only those with the enable label). If it says it can't reach the Docker API, check that the `/var/run/docker.sock` line is in the YAML exactly as written.
 
@@ -95,18 +97,27 @@ HexOS runs on TrueNAS SCALE. Custom Docker apps are added from the TrueNAS web i
 2. Optional tidy-up: edit the app in TrueNAS and delete the `TS_AUTHKEY` line. The login is saved in the `tailscale` folder.
 3. Your address is `https://reading-list.<tailnet>.ts.net`, for example `https://reading-list.tail1234.ts.net`. A new Funnel name can take up to ten minutes to work.
 
-## 5. Create the admin login and the accounts
+## 5. Accounts
 
-1. In TrueNAS, open the app, find the **pocketbase** container and open its **Shell**. Run:
+### Hanna signs up herself
+
+1. Make sure her email is in `SIGNUP_EMAILS` on the **pocketbase** container (step 3; to change it later: **Apps → reading-list → Edit**, then save).
+2. Once the app is connected (step 7), she opens the site, chooses **New here? Create an account**, and enters her name, email and a password of at least 8 characters. She's signed in straight away.
+3. Afterwards you can remove her address from `SIGNUP_EMAILS` to close sign-up again. Her account keeps working.
+
+### Admin login (optional, for you)
+
+Only needed to look at the data, change a password or restore a backup.
+
+1. In TrueNAS, open the app, find the **pocketbase** container and open its **Shell** (not the TrueNAS system shell, and not your own PC: `pocketbase` only exists inside that container). Run:
 
    ```sh
    pocketbase superuser upsert you@example.com 'a-long-unique-password' --dir=/pb_data
    ```
 
-   Use your own email and a strong password that you keep in your password manager. This is the admin login, not a reading-list account.
+   Use a strong password that you keep in your password manager.
 
 2. On a device that's signed in to Tailscale, open `https://reading-list.<tailnet>.ts.net:8443/_/` and sign in with that admin login.
-3. Open **Collections → users → New record** and create Hanna's account: her email, a password, and her name. Tick *verified*. Do the same for anyone else who should have a shelf.
 
 There's no "forgot password" email. To reset a password, change it on the user's record in the admin screen.
 
