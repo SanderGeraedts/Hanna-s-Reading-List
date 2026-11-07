@@ -165,6 +165,18 @@ export function timesRead(book: Book) {
   return Math.max(book.readCount ?? 0, book.status === 'read' ? 1 : 0)
 }
 
+/**
+ * A new reading status, keeping count of the times read (#53): starting a
+ * finished book again keeps its count, finishing it again adds one.
+ */
+export function statusPatch(book: Book, status: ReadingStatus): Partial<Book> {
+  if (status === book.status) return {}
+  const reads = timesRead(book)
+  if (status === 'read') return { status, readCount: book.status === 'read' ? reads : reads + 1 }
+  // leaving "read": remember that it was finished
+  return { status, ...(book.status === 'read' && { readCount: reads }) }
+}
+
 function loadBooks(key: string): Book[] {
   try {
     const raw = localStorage.getItem(key)
