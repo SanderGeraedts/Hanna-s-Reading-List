@@ -121,9 +121,16 @@ function keepPaused(match: Book, item: StorytelBook): StorytelBook {
 }
 
 /** The day she was last listening or reading on Storytel, else today. */
-function readDay(item: StorytelBook) {
+function readDay(item: StorytelBook, timeZone?: string) {
   const at = item.progressAt ? new Date(item.progressAt) : null
-  return at && !Number.isNaN(at.getTime()) && at.getTime() <= Date.now() ? localDay(at) : localDay()
+  return localDay(at && !Number.isNaN(at.getTime()) && at.getTime() <= Date.now() ? at : undefined, timeZone)
+}
+
+export interface ImportOptions {
+  /** false: only bring the books already on the shelf up to date (the nightly sync, #77) */
+  addNew?: boolean
+  /** the time zone of the days noted; the browser's own when not given */
+  timeZone?: string
 }
 
 /** Adds new Storytel books and syncs the reading status of ones already on the shelf. */
@@ -131,7 +138,9 @@ export async function importStorytelBooks(
   items: StorytelBook[],
   existing: Book[],
   cb: ImportCallbacks,
+  { addNew = true, timeZone }: ImportOptions = {},
 ): Promise<ImportSummary> {
+  const today = localDay(undefined, timeZone)
   const summary: ImportSummary = { added: 0, updated: 0, unchanged: 0 }
   const toAdd: StorytelBook[] = []
 
@@ -160,8 +169,8 @@ export async function importStorytelBooks(
       const further = item.progress !== undefined && item.progress > (match.progress ?? 0) + 0.005
       if (ahead || further) {
         cb.updateBook(match.id, {
-          ...(ahead && statusPatch(match, item.status)),
-          ...(further && progressPatch(match, item.progress!, readDay(item))),
+          ...(ahead && statusPatch(match, item.status, today)),
+          ...(further && progressPatch(match, item.progress!, readDay(item, timeZone))),
         })
         summary.updated++
       } else summary.unchanged++
@@ -173,12 +182,12 @@ export async function importStorytelBooks(
       cb.updateBook(match.id, {
         // relistening to a finished book and finishing it again counts once more (#53)
         status: item.status,
-        ...statusPatch(match, item.status),
+        ...statusPatch(match, item.status, today),
         storytelId: item.storytelId,
         // first time this book is matched to Storytel: she has it there too
         ...(!match.storytelId && { ...withFormats([...formatsOf(match), 'storytel']) }),
         // what she listened on goes in the reading log (#76)
-        ...(item.progress !== undefined && progressPatch(match, item.progress, readDay(item))),
+        ...(item.progress !== undefined && progressPatch(match, item.progress, readDay(item, timeZone))),
       })
       summary.updated++
     } else {
@@ -186,6 +195,7 @@ export async function importStorytelBooks(
     }
   }
 
+  if (!addNew) return summary
   let done = 0
   cb.onProgress(0, toAdd.length)
   const queue = [...toAdd]
@@ -211,4 +221,30 @@ export async function importStorytelBooks(
   }
   await Promise.all(Array.from({ length: 4 }, worker))
   return summary
+}
+
+/**
+ * The shelf brought up to date with Storytel, without adding books: for the
+ * nightly sync (#77), which runs on the server at 23:00 Amsterdam time. New
+ * Storytel books are added the next time she presses ↻ in the app.
+ */
+export async function syncedShelf(
+  items: StorytelBook[],
+  books: Book[],
+  timeZone: string,
+): Promise<{ books: Book[]; summary: ImportSummary }> {
+  let shelf = books
+  const summary = await importStorytelBooks(
+    items,
+    books,
+    {
+      addBook: () => {},
+      onProgress: () => {},
+      updateBook: (id, patch) => {
+        shelf = shelf.map((b) => (b.id === id ? { ...b, ...patch } : b))
+      },
+    },
+    { addNew: false, timeZone },
+  )
+  return { books: shelf, summary }
 }

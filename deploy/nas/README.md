@@ -17,7 +17,7 @@ The browser never talks to the NAS. Only the app's server functions on Netlify d
 
 | Address | Who can reach it | What it serves |
 | --- | --- | --- |
-| `https://reading-list.<tailnet>.ts.net` (port 443, Funnel) | The internet | Only the API paths the app needs: sign-in for `users`, and the `libraries` and `storytel_logins` records. Everything else, including the admin screen and superuser sign-in, returns 404. |
+| `https://reading-list.<tailnet>.ts.net` (port 443, Funnel) | The internet | Only the API paths the app needs: sign-in for `users`, the `libraries` and `storytel_logins` records, and `/api/nightly/` for the nightly Storytel sync (404 without its secret). Everything else, including the admin screen and superuser sign-in, returns 404. |
 | `https://reading-list.<tailnet>.ts.net:8443` | Your own Tailscale devices only | All of PocketBase, including the admin screen at `/_/` |
 
 Every record is limited to its owner by PocketBase's rules. Only the email addresses you list in `SIGNUP_EMAILS` (on the NAS) can create an account; anyone else gets a 403.
@@ -28,7 +28,7 @@ Every record is limited to its owner by PocketBase's rules. Only the email addre
 | --- | --- |
 | `compose.yaml` | Pasted into TrueNAS when you install the app (step 3) |
 | `serve.json` | `<dataset>/serve.json` on the NAS |
-| `pb_hooks/*.pb.js` | Nowhere by hand. Built into the image; `signup.pb.js` checks new accounts against `SIGNUP_EMAILS`. |
+| `pb_hooks/*.pb.js` | Nowhere by hand. Built into the image; `signup.pb.js` checks new accounts against `SIGNUP_EMAILS`, `nightly.pb.js` serves the nightly Storytel sync. |
 | `pb_migrations/*.js` | Nowhere by hand. This is the database schema. It's built into the PocketBase image, and PocketBase applies it on start-up. |
 | `Dockerfile` | Built by GitHub Actions (`.github/workflows/backend.yml`) into `ghcr.io/sandergeraedts/reading-list-pocketbase` |
 
@@ -159,6 +159,33 @@ The first time someone signs in on a device, the shelf that browser already had 
 Do this on each of Hanna's devices once and all her books end up on one shelf.
 
 A Storytel login remembered on a device also moves into the account on first use, so ↻ then works on every device.
+
+## 9. Nightly Storytel sync (optional)
+
+Every day at 23:00 Amsterdam time the app fetches each remembered Storytel shelf and brings the books already on the shelf up to date: status, progress and the reading log. A day of listening is then noted even when Hanna doesn't open the app. New Storytel books are still added by ↻ in the app.
+
+Nobody is signed in at night, so the app reads and saves the shelves through two routes on PocketBase (`pb_hooks/nightly.pb.js`) that only answer with a shared secret. The Storytel login stays sealed on the NAS; only the app can open it.
+
+1. Make a long random secret, for example in PowerShell:
+
+   ```powershell
+   $bytes = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes); [Convert]::ToBase64String($bytes)
+   ```
+
+2. On the NAS: **Apps → reading-list → Edit**, and set `NIGHTLY_SECRET` on the **pocketbase** container to it. Copy the new `serve.json` to the dataset (it adds `/api/nightly/`), then save, which restarts the app.
+3. On Netlify, set the same secret and redeploy:
+
+   ```powershell
+   npx --yes --dangerously-allow-all-scripts netlify-cli@latest env:set NIGHTLY_SECRET "<the secret>" --context production
+   ```
+
+4. Check it the next morning: on Netlify, **Logs → Functions → nightly-storytel** shows the run at 23:00 (a run an hour earlier or later just says it isn't 23:00 in Amsterdam). It lists how many shelves were synced. To try it straight away, call it by hand:
+
+   ```powershell
+   curl.exe -X POST -H "x-nightly-secret: <the secret>" https://hanna.sanderg.nl/api/nightly-storytel
+   ```
+
+If a device has changes it hasn't sent yet at 23:00, the sync leaves that shelf alone for the night (the device's copy wins). If Storytel stops accepting the saved login, the log says so; signing in to Storytel again in the app fixes it.
 
 ## Day to day
 

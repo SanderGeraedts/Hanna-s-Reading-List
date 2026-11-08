@@ -174,8 +174,12 @@ export type SyncStatus =
   /** too large to send (lots of uploaded covers) */
   | 'too-big'
 
-/** Today, or the given moment, as yyyy-mm-dd in local time. */
-export function localDay(d = new Date()) {
+/**
+ * Today, or the given moment, as yyyy-mm-dd in local time, or in `timeZone`
+ * (for the nightly Storytel sync, which runs on a server in UTC; #77).
+ */
+export function localDay(d = new Date(), timeZone?: string) {
+  if (timeZone) return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
