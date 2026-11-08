@@ -207,36 +207,41 @@ export function goalProgress(done: number, goal: number, year: number, now = new
 // ---- streak ------------------------------------------------------------------------
 
 export interface Streak {
-  /** months in a row with a finished book, up to this month (or last month, while this one is still empty) */
+  /**
+   * days in a row with reading, up to today; while today has none yet it
+   * runs up to yesterday, so it stays alive until the day is over
+   */
   current: number
   best: number
+  /** read today already */
+  today: boolean
 }
 
+/** Whole days since 1970 for a yyyy-mm-dd day, the same everywhere (no time zones or summer time). */
+const dayNumber = (day: string) =>
+  Date.UTC(Number(day.slice(0, 4)), Number(day.slice(5, 7)) - 1, Number(day.slice(8, 10))) / 86_400_000
+
+/**
+ * The daily reading streak (#75). A reading day is a day the progress of a
+ * book moved: by hand, typed into the calendar, or by a Storytel sync. Those
+ * are the days in the reading log (#76).
+ */
 export function readingStreak(books: Book[], now = new Date()): Streak {
-  const months = new Set(allFinishes(books).flatMap((f) => (f.day ? [f.day.slice(0, 7)] : [])))
-  const key = (y: number, m: number) => `${y}-${String(m + 1).padStart(2, '0')}`
-  let y = now.getFullYear()
-  let m = now.getMonth()
-  if (!months.has(key(y, m))) {
-    m--
-    if (m < 0) [y, m] = [y - 1, 11]
-  }
+  const days = new Set<number>()
+  for (const b of books) for (const day of Object.keys(b.readingLog ?? {})) days.add(dayNumber(day))
+  const todayN = dayNumber(ymd(now))
+  const today = days.has(todayN)
   let current = 0
-  while (months.has(key(y, m))) {
-    current++
-    m--
-    if (m < 0) [y, m] = [y - 1, 11]
-  }
+  for (let n = today ? todayN : todayN - 1; days.has(n); n--) current++
   let best = 0
   let run = 0
   let prev: number | null = null
-  for (const k of [...months].sort()) {
-    const n = Number(k.slice(0, 4)) * 12 + Number(k.slice(5, 7))
+  for (const n of [...days].sort((a, b) => a - b)) {
     run = prev !== null && n === prev + 1 ? run + 1 : 1
     best = Math.max(best, run)
     prev = n
   }
-  return { current, best }
+  return { current, best, today }
 }
 
 // ---- on this day ---------------------------------------------------------------------

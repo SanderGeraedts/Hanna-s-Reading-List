@@ -551,15 +551,17 @@ export function StreakCard({ books }: { books: Book[] }) {
     <section className="dash-card" aria-labelledby="streak-title">
       <h2 id="streak-title">Reading streak</h2>
       <p className="big-number">
-        <strong>{s.current}</strong> {s.current === 1 ? 'month' : 'months'} <span className="muted">in a row</span>
+        <strong>{s.current}</strong> {s.current === 1 ? 'day' : 'days'} <span className="muted">in a row</span>
       </p>
       <p className="muted small-text">
         {s.current === 0
-          ? 'Finish a book this month to start a streak.'
+          ? 'Read a little today to start a streak.'
           : s.best > s.current
-            ? `Best so far: ${plural(s.best, 'month')}.`
+            ? `Best so far: ${plural(s.best, 'day')}.`
             : 'Your best streak yet! 🔥'}
+        {s.current > 0 && !s.today && ' Read today to keep it going.'}
       </p>
+      <p className="muted small-text">A day counts when a book’s progress moves: by hand, in the calendar or from Storytel.</p>
     </section>
   )
 }

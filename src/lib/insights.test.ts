@@ -115,11 +115,17 @@ describe('dashboard extras (#66)', () => {
     expect(goalProgress(20, 50, 2026, mid).ahead).toBe(-5)
   })
 
-  it('counts the months in a row with a finished book', () => {
-    const shelf = [read('a', '2026-09-03'), read('b', '2026-10-10'), read('c', '2026-06-01'), read('d', '2026-05-01'), read('e', '2026-04-01')]
-    // November has none yet: the streak runs up to October
-    expect(readingStreak(shelf, NOW)).toEqual({ current: 2, best: 3 })
-    expect(readingStreak([read('a', '2026-08-01')], NOW).current).toBe(0)
+  it('counts the days in a row with reading (#75)', () => {
+    const log = (id: string, ...days: string[]) =>
+      book(id, { status: 'reading', readingLog: Object.fromEntries(days.map((d) => [d, 0.01])) })
+    // NOW is 7 November: nothing yet today, so the streak runs up to the 6th, across the month end
+    const shelf = [log('a', '2026-11-06', '2026-11-05'), log('b', '2026-11-04', '2026-10-01', '2026-09-30', '2026-09-29', '2026-09-28')]
+    expect(readingStreak(shelf, NOW)).toEqual({ current: 3, best: 4, today: false })
+    expect(readingStreak([...shelf, log('c', '2026-11-07')], NOW)).toEqual({ current: 4, best: 4, today: true })
+    // a day missed ends it
+    expect(readingStreak([log('a', '2026-11-05')], NOW).current).toBe(0)
+    // finishing without moving the progress isn't a reading day
+    expect(readingStreak([read('r', '2026-11-06')], NOW).current).toBe(0)
   })
 
   it('finds books finished on this day in earlier years', () => {
