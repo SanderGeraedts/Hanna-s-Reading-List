@@ -4,6 +4,8 @@ import { languageName } from './languages'
 import { listenOnly } from './listening'
 import type { Quote } from './quotes'
 import { quoteChoices } from './quotes'
+import type { DayEntry } from './readingLog'
+import { dayEntries } from './readingLog'
 import { seriesGroups } from './series'
 import type { Period } from './stats'
 import { allFinishes, periodStats } from './stats'
@@ -239,13 +241,17 @@ export function readingStreak(books: Book[], now = new Date()): Streak {
 
 // ---- on this day ---------------------------------------------------------------------
 
-/** Books finished on this day of the year in earlier years, the latest first. */
-export function onThisDay(books: Book[], now = new Date()): Array<{ book: Book; year: number }> {
+/**
+ * What she read, started or finished on this day of the year in earlier
+ * years (#76), the latest first. Finishes from before the reading log count
+ * too: the day she finished a book is a day she read in it.
+ */
+export function onThisDay(books: Book[], now = new Date()): Array<DayEntry & { year: number }> {
   const md = ymd(now).slice(4)
-  return allFinishes(books)
-    .filter((f) => f.day && f.day.slice(4) === md && Number(f.day.slice(0, 4)) < now.getFullYear())
-    .map((f) => ({ book: f.book, year: Number(f.day!.slice(0, 4)) }))
-    .sort((a, b) => b.year - a.year)
+  const out: Array<DayEntry & { year: number }> = []
+  for (const [day, list] of dayEntries(books, (d) => d.slice(4) === md && Number(d.slice(0, 4)) < now.getFullYear()))
+    for (const e of list) out.push({ ...e, year: Number(day.slice(0, 4)) })
+  return out.sort((a, b) => b.year - a.year)
 }
 
 // ---- year in review ----------------------------------------------------------------------

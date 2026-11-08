@@ -20,6 +20,8 @@ import {
 } from '#/lib/insights'
 import type { BreakdownKind } from '#/lib/insights'
 import { periodStats } from '#/lib/stats'
+import { amountText } from '#/lib/readingLog'
+import type { DayEntry } from '#/lib/readingLog'
 import type { Period } from '#/lib/stats'
 import { Cover, monthName } from './Dashboard'
 import type { Props } from './Dashboard'
@@ -30,7 +32,7 @@ type UpdateProps = { books: Book[]; onUpdate: (id: string, patch: Partial<Book>)
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString('en-GB')} ${n === 1 ? one : many}`
 
-function BookLine({
+export function BookLine({
   book,
   onShowBook,
   children,
@@ -566,17 +568,18 @@ export function StreakCard({ books }: { books: Book[] }) {
 
 export function OnThisDayCard({ books, onShowBook }: Props) {
   const found = onThisDay(books)
+  const thisYear = new Date().getFullYear()
   return (
     <section className="dash-card" aria-labelledby="otd-title">
       <h2 id="otd-title">On this day</h2>
       {found.length === 0 ? (
-        <p className="muted">Nothing finished on this day in earlier years.</p>
+        <p className="muted">Nothing read on this day in earlier years.</p>
       ) : (
         <ul className="book-list">
           {found.map((f) => (
             <BookLine key={`${f.book.id}-${f.year}`} book={f.book} onShowBook={onShowBook}>
               <span className="muted small-text">
-                finished in {f.year}, {plural(new Date().getFullYear() - f.year, 'year')} ago
+                {f.year}: you {dayStory(f)}, {plural(thisYear - f.year, 'year')} ago
               </span>
             </BookLine>
           ))}
@@ -584,6 +587,17 @@ export function OnThisDayCard({ books, onShowBook }: Props) {
       )}
     </section>
   )
+}
+
+/** "started it", "read 30 pages", "read 30 pages and finished it". */
+export function dayStory(e: DayEntry): string {
+  const parts = [
+    e.started && 'started it',
+    e.amount && `read ${amountText(e.book, e.amount)}`,
+    e.finished && 'finished it',
+  ].filter((p): p is string => !!p)
+  if (parts.length === 0) return 'read in it'
+  return parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`
 }
 
 // ---- lent out ------------------------------------------------------------------------------------------

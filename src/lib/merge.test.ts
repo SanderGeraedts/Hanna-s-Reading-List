@@ -138,6 +138,6 @@ describe('Storytel refresh after merging', () => {
       [merged],
       { updateBook: (id: string, patch: Partial<Book>) => updates.push([id, patch]), addBook: () => {}, onProgress: () => {} },
     )
-    expect(updates).toEqual([['m', { status: 'read', readCount: 1, finished: [localDay()], progress: 1 }]])
+    expect(updates).toEqual([['m', { status: 'read', readCount: 1, finished: [localDay()], progress: 1, readingLog: { [localDay()]: 0.5 } }]])
   })
 })

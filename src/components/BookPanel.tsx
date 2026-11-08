@@ -241,6 +241,8 @@ export function BookPanel({
   const storytel = storytelLink(book)
   const finished = book.finished ?? []
   const setFinished = (days: string[]) => onUpdate({ finished: days.length ? [...days].sort() : undefined })
+  const started = book.started ?? []
+  const setStarted = (days: string[]) => onUpdate({ started: days.length ? [...days].sort() : undefined })
   const [genreDraft, setGenreDraft] = useState('')
   const tidy = tidyTitle(book.title)
   const formats = formatsOf(book)
@@ -521,6 +523,41 @@ export function BookPanel({
             </button>
           )}
           {finished.length === 0 && <small className="muted">For the calendar on the dashboard.</small>}
+        </div>
+      )}
+
+      {(book.status !== 'want' || started.length > 0) && (
+        <div className="field finished-days" role="group" aria-labelledby="started-label">
+          <span id="started-label">Started on</span>
+          {started.map((day, i) => (
+            <div className="finished-day" key={`${i}-${day}`}>
+              <input
+                className="input"
+                type="date"
+                defaultValue={day}
+                max={localDay()}
+                aria-label={`Started on, time ${i + 1}`}
+                onBlur={(e) => {
+                  const v = e.target.value
+                  if (v && v !== day) setStarted(started.map((d, j) => (j === i ? v : d)))
+                }}
+              />
+              <button
+                className="btn icon small"
+                aria-label="Remove this date"
+                onClick={() => setStarted(started.filter((_, j) => j !== i))}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          {/* one date per time started: the times read, and the time she's reading it now */}
+          {started.length < reads + (book.status === 'read' ? 0 : 1) && (
+            <button className="btn small" onClick={() => setStarted([...started, localDay()])}>
+              + Add a date
+            </button>
+          )}
+          {started.length === 0 && <small className="muted">For “Started in …” on the dashboard.</small>}
         </div>
       )}
 

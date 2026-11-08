@@ -57,6 +57,8 @@ export interface StorytelBook {
   status: ReadingStatus
   /** 0..1, from the most recently updated listening/reading position */
   progress?: number
+  /** when that position was last updated (ISO time), so the reading log has the right day (#76) */
+  progressAt?: string
   /** portrait e-book cover, when the title exists as an e-book */
   ebookCover?: string
   /** square audiobook cover */
@@ -147,6 +149,7 @@ function mapModel(m: RawModel): StorytelBook | null {
     authors: (m.authors ?? []).map((a) => a?.name).filter((n): n is string => !!n),
     status,
     progress,
+    progressAt: (progress !== undefined && latest?.position?.updatedTime) || undefined,
     ebookCover: ebook?.cover?.url || undefined,
     abookCover: abook?.cover?.url || undefined,
     durationMs: abook?.durationInMilliseconds || undefined,

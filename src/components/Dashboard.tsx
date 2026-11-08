@@ -4,6 +4,7 @@ import { formatDuration } from '#/lib/listening'
 import { pickQuote, quoteChoices } from '#/lib/quotes'
 import { toggleLoved } from '#/lib/insights'
 import {
+  BookLine,
   BreakdownCard,
   CurrentlyReadingCard,
   GoalCard,
@@ -16,15 +17,26 @@ import {
   SeriesCard,
   StreakCard,
   YearReviewCard,
+  dayStory,
 } from './DashboardExtras'
 import { pickReadNext, readNextChoices } from '#/lib/readNext'
 import { storytelLink } from '#/lib/storytelLink'
-import { finishedByDay, monthWeeks, periodStats, readingYears } from '#/lib/stats'
+import { monthWeeks, periodStats, readingYears } from '#/lib/stats'
+import {
+  amountDraft,
+  amountFromText,
+  amountUnit,
+  dayAmountPatch,
+  loggableBooks,
+  monthEntries,
+  startedIn,
+} from '#/lib/readingLog'
+import type { AmountUnit } from '#/lib/readingLog'
 import type { Period } from '#/lib/stats'
 
 /**
  * The dashboard (#59): how many books Hanna read, what to read next, a quote
- * from a book she has read, and a calendar of the days she finished them.
+ * from a book she has read, and a calendar of what she read each day (#76).
  * The extras (#66) are in DashboardExtras.
  */
 
@@ -40,7 +52,8 @@ export interface Props {
 }
 
 interface DashboardProps extends Props {
-  onUpdate: (id: string, patch: Partial<Book>) => void
+  /** a change to a book, or a function working it out from the book as it is then */
+  onUpdate: (id: string, patch: Partial<Book> | ((book: Book) => Partial<Book>)) => void
   /** the signed-in account, or null when the shelf lives in this browser only */
   accountId: string | null
 }
@@ -75,7 +88,7 @@ export function Dashboard({ books, onShowBook, onUpdate, accountId }: DashboardP
         <CurrentlyReadingCard books={books} onShowBook={onShowBook} />
         <SeriesCard books={books} onShowBook={onShowBook} />
         <MonthlyChart books={books} year={pick.year} />
-        <Calendar books={books} onShowBook={onShowBook} />
+        <Calendar books={books} onShowBook={onShowBook} onUpdate={onUpdate} />
         <BreakdownCard books={books} period={period} label={periodLabel(pick)} />
         <RecordsCard books={books} period={period} label={periodLabel(pick)} onShowBook={onShowBook} />
         <PileCard books={books} />
@@ -314,17 +327,31 @@ function ReadNextCard({ books, onShowBook }: Props) {
 
 // ---------------------------------------------------------------------------
 
-function Calendar({ books, onShowBook }: Props) {
+/**
+ * The calendar (#59, #76): what Hanna read, started and finished on each day
+ * of a month. Picking a day lets her note how much she read of a book that
+ * day; below are the books she started that month.
+ */
+function Calendar({ books, onShowBook, onUpdate }: Props & Pick<DashboardProps, 'onUpdate'>) {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
-  const byDay = useMemo(() => finishedByDay(books, year, month), [books, year, month])
+  /** the day picked to note what she read, in the month shown */
+  const [picked, setPicked] = useState<number | null>(null)
+  const byDay = useMemo(() => monthEntries(books, year, month), [books, year, month])
+  const started = useMemo(() => startedIn(books, year, month), [books, year, month])
   const weeks = monthWeeks(year, month)
   const isToday = (d: number) => year === now.getFullYear() && month === now.getMonth() + 1 && d === now.getDate()
+  const isFuture = (d: number) => new Date(year, month - 1, d) > now
+  const dayKey = (d: number) => `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+  const show = (y: number, m: number) => {
+    setYear(y)
+    setMonth(m)
+    setPicked(null)
+  }
   const step = (by: number) => {
     const d = new Date(year, month - 1 + by, 1)
-    setYear(d.getFullYear())
-    setMonth(d.getMonth() + 1)
+    show(d.getFullYear(), d.getMonth() + 1)
   }
 
   return (
@@ -337,13 +364,7 @@ function Calendar({ books, onShowBook }: Props) {
           <button className="btn icon small" aria-label="Previous month" onClick={() => step(-1)}>
             ‹
           </button>
-          <button
-            className="btn small"
-            onClick={() => {
-              setYear(now.getFullYear())
-              setMonth(now.getMonth() + 1)
-            }}
-          >
+          <button className="btn small" onClick={() => show(now.getFullYear(), now.getMonth() + 1)}>
             Today
           </button>
           <button className="btn icon small" aria-label="Next month" onClick={() => step(1)}>
@@ -365,28 +386,44 @@ function Calendar({ books, onShowBook }: Props) {
           {weeks.map((week, i) => (
             <tr key={i}>
               {week.map((d, j) => {
-                const finished = d ? (byDay.get(d) ?? []) : []
+                const entries = d ? (byDay.get(d) ?? []) : []
                 return (
                   <td
                     key={j}
-                    className={[!d && 'outside', d && isToday(d) && 'today', finished.length && 'has-books']
+                    className={[
+                      !d && 'outside',
+                      d && isToday(d) && 'today',
+                      entries.length && 'has-books',
+                      d && d === picked && 'picked',
+                    ]
                       .filter(Boolean)
                       .join(' ')}
                   >
                     {d && (
                       <>
-                        <span className="day-number">{d}</span>
-                        {finished.map((b) => (
-                          <button
-                            key={b.id}
-                            className="cover-btn"
-                            title={`Finished ${b.title}`}
-                            aria-label={`${d} ${monthName(month)}: finished ${b.title}`}
-                            onClick={() => onShowBook(b.id)}
-                          >
-                            <Cover book={b} small />
-                          </button>
-                        ))}
+                        <button
+                          className="day-number"
+                          disabled={isFuture(d)}
+                          aria-pressed={d === picked}
+                          aria-label={`${d} ${monthName(month)}: note what you read`}
+                          onClick={() => setPicked(d === picked ? null : d)}
+                        >
+                          {d}
+                        </button>
+                        {entries.map((e) => {
+                          const story = dayStory(e)
+                          return (
+                            <button
+                              key={e.book.id}
+                              className={`cover-btn${e.finished ? ' finished' : e.started ? ' started' : ''}`}
+                              title={`${e.book.title}: you ${story}`}
+                              aria-label={`${d} ${monthName(month)}: ${e.book.title}, you ${story}`}
+                              onClick={() => onShowBook(e.book.id)}
+                            >
+                              <Cover book={e.book} small />
+                            </button>
+                          )
+                        })}
                       </>
                     )}
                   </td>
@@ -396,11 +433,122 @@ function Calendar({ books, onShowBook }: Props) {
           ))}
         </tbody>
       </table>
-      {byDay.size === 0 && (
+      {picked !== null ? (
+        <DayLog
+          books={books}
+          day={dayKey(picked)}
+          label={`${picked} ${monthName(month)}`}
+          onUpdate={onUpdate}
+          onShowBook={onShowBook}
+          onClose={() => setPicked(null)}
+        />
+      ) : (
         <p className="muted hint">
-          No books finished in {monthName(month)} {year}.
+          {byDay.size === 0 && `Nothing read in ${monthName(month)} ${year}. `}
+          Pick a day to note what you read.
         </p>
       )}
+      <div className="started-month">
+        <h3>Started in {monthName(month)}</h3>
+        {started.length === 0 ? (
+          <p className="muted small-text">
+            No books started in {monthName(month)} {year}.
+          </p>
+        ) : (
+          <ul className="book-list">
+            {started.map(({ book, day }) => (
+              <BookLine key={`${book.id}-${day}`} book={book} onShowBook={onShowBook}>
+                <span className="muted small-text">
+                  {Number(day.slice(8, 10))} {monthName(month)}
+                </span>
+              </BookLine>
+            ))}
+          </ul>
+        )}
+      </div>
     </section>
+  )
+}
+
+/** How much she read of each book on one day, to type in or change (#76). */
+function DayLog({
+  books,
+  day,
+  label,
+  onUpdate,
+  onShowBook,
+  onClose,
+}: Props &
+  Pick<DashboardProps, 'onUpdate'> & {
+    day: string
+    label: string
+    onClose: () => void
+  }) {
+  const list = loggableBooks(books, day)
+  return (
+    <div className="day-log" role="group" aria-labelledby="day-log-title">
+      <div className="dash-card-head">
+        <h3 id="day-log-title">Read on {label}</h3>
+        <button className="btn icon small" aria-label="Close" onClick={onClose}>
+          ×
+        </button>
+      </div>
+      {list.length === 0 ? (
+        <p className="muted small-text">No book is being read right now. Set one to “Reading” on the shelf first.</p>
+      ) : (
+        <>
+          <ul className="book-list">
+            {list.map((b) => (
+              <BookLine key={b.id} book={b} onShowBook={onShowBook}>
+                <AmountField
+                  // starts again from the log when it changes elsewhere
+                  key={`${day}-${b.readingLog?.[day] ?? 0}`}
+                  book={b}
+                  amount={b.readingLog?.[day] ?? 0}
+                  onAmount={(amount) => onUpdate(b.id, (now) => dayAmountPatch(now, day, amount))}
+                />
+              </BookLine>
+            ))}
+          </ul>
+          <p className="muted small-text">The progress of a book you’re reading moves along with it.</p>
+        </>
+      )}
+    </div>
+  )
+}
+
+const UNIT_AFTER: Record<AmountUnit, (b: Book) => string> = {
+  pages: (b) => `pages of ${b.pages}`,
+  time: (b) => `of ${formatDuration(b.minutes!)}`,
+  percent: () => '%',
+}
+
+/** How much she read of one book that day, as pages, a listening time or a percentage. */
+function AmountField({ book, amount, onAmount }: { book: Book; amount: number; onAmount: (amount: number) => void }) {
+  const [draft, setDraft] = useState(amountDraft(book, amount))
+  const unit = amountUnit(book)
+  const save = () => {
+    const a = amountFromText(book, draft)
+    if (a === null || Math.abs(a - amount) < 0.00005) setDraft(amountDraft(book, amount))
+    else onAmount(a)
+  }
+  return (
+    <label className="amount-field small-text">
+      <span className="muted">Read</span>
+      <input
+        className="input"
+        value={draft}
+        inputMode={unit === 'time' ? 'text' : unit === 'pages' ? 'numeric' : 'decimal'}
+        placeholder={unit === 'time' ? '0 min' : '0'}
+        style={{ width: unit === 'time' ? '6.5rem' : '3.6rem' }}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={save}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur()
+          if (e.key === 'Escape') setDraft(amountDraft(book, amount))
+        }}
+      />
+      <span className="muted">{UNIT_AFTER[unit](book)}</span>
+    </label>
   )
 }

@@ -63,6 +63,11 @@ export function mergeBooks(keep: Book, other: Book): Book {
     ...((keep.finished || other.finished) && {
       finished: uniq([...(keep.finished ?? []), ...(other.finished ?? [])]).sort(),
     }),
+    ...((keep.started || other.started) && {
+      started: uniq([...(keep.started ?? []), ...(other.started ?? [])]).sort(),
+    }),
+    // a day read in both copies: the larger amount
+    ...((keep.readingLog || other.readingLog) && { readingLog: mergeLogs(keep.readingLog, other.readingLog) }),
     ...((keep.quotes || other.quotes) && { quotes: uniq([...(keep.quotes ?? []), ...(other.quotes ?? [])]) }),
     ...((keep.lovedQuotes || other.lovedQuotes) && {
       lovedQuotes: uniq([...(keep.lovedQuotes ?? []), ...(other.lovedQuotes ?? [])]),
@@ -76,6 +81,12 @@ export function mergeBooks(keep: Book, other: Book): Book {
     addedAt: Math.min(keep.addedAt, other.addedAt),
     id: keep.id,
   }
+}
+
+function mergeLogs(a: Record<string, number> = {}, b: Record<string, number> = {}) {
+  const out = { ...a }
+  for (const [day, n] of Object.entries(b)) out[day] = Math.max(out[day] ?? 0, n)
+  return out
 }
 
 /** Every Storytel id a book stands for. */
