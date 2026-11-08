@@ -7,8 +7,6 @@ import { NOOK_THEMES } from '#/lib/nookThemes'
 import type { NookThemeId } from '#/lib/nookThemes'
 import { toTexture } from './textures'
 import { D, H, IH, IW, SHELL, W, sceneTextures } from './nookPaint'
-import type { MotifId } from '#/lib/nookMotifs'
-import { MOTIFS, paintMotif } from './motifPaint'
 
 /**
  * Book nooks: book-sized boxes that open onto a tiny scene, standing between
@@ -47,7 +45,6 @@ function PlacedNook({ slot }: { slot: NookSlot }) {
         theme={slot.theme ?? 'alley'}
         variant={slot.variant ?? 0}
         complete={!!slot.complete}
-        motif={slot.motif}
       />
     </group>
   )
@@ -58,13 +55,11 @@ function Nook({
   theme: themeId,
   variant,
   complete,
-  motif,
 }: {
   label: string
   theme: NookThemeId
   variant: number
   complete: boolean
-  motif?: MotifId
 }) {
   const theme = NOOK_THEMES[themeId]
   const tex = useMemo(() => sceneTextures(themeId, variant), [themeId, variant])
@@ -189,8 +184,6 @@ function Nook({
         </mesh>
       </group>}
 
-      {motif && <Motif id={motif} />}
-
       {/* tall hanging sign naming the books that follow, written top to bottom like a spine (#50);
           off to the left so the scene stays in view */}
       <group position={[SIGN.x, H - SHELL, D / 2 - 0.014]}>
@@ -210,51 +203,6 @@ function Nook({
           <meshStandardMaterial attach="material-5" color="#5a3a22" />
         </mesh>
       </group>
-    </group>
-  )
-}
-
-const motifTextures = new Map<MotifId, THREE.Texture>()
-
-/** The series' own figure (#56): a painted cut-out standing in the scene, or flying in its sky. */
-function Motif({ id }: { id: MotifId }) {
-  const art = MOTIFS[id]
-  const map = useMemo(() => {
-    let t = motifTextures.get(id)
-    if (!t) {
-      t = toTexture(paintMotif(id))
-      motifTextures.set(id, t)
-    }
-    return t
-  }, [id])
-  const group = useRef<THREE.Group>(null)
-  const size = art.size
-  // right of the sign and near the opening: further in, the side walls hide it
-  // when the nook is seen from an angle
-  const x = Math.min(0.016, IW / 2 - size / 2 - 0.002)
-  const y = art.flies ? SHELL + IH * 0.66 : SHELL + size / 2
-  const z = art.flies ? D * 0.22 : D * 0.3
-  useFrame(({ clock }) => {
-    const g = group.current
-    if (!g || !art.flies) return
-    // drifting slowly on the wind
-    const t = clock.elapsedTime + x * 40
-    g.position.y = y + Math.sin(t * 0.9) * 0.006
-    g.rotation.z = Math.sin(t * 0.6) * 0.06
-  })
-  return (
-    <group ref={group} position={[x, y, z]}>
-      <mesh>
-        <planeGeometry args={[size, size]} />
-        <meshBasicMaterial
-          map={map}
-          transparent
-          depthWrite={false}
-          // shining figures glow; the rest take a little of the scene's dimness
-          color={art.shines ? '#ffffff' : '#e6e0d8'}
-          toneMapped={!art.shines}
-        />
-      </mesh>
     </group>
   )
 }
