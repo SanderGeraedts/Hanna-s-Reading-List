@@ -2,7 +2,8 @@ import { getWorkDetails, searchBooks } from '#/server/openLibrary'
 import type { SearchResult } from '#/server/openLibrary'
 import type { StorytelBook } from '#/server/storytel'
 import type { Book, NewBook, ReadingStatus } from './library'
-import { formatsOf, statusPatch, withFormats } from './library'
+import { formatsOf, localDay, statusPatch, withFormats } from './library'
+import { progressPatch } from './readingLog'
 import { analyzeCover, colorFromString, coverUrlForId, remoteCoverUrl } from './cover'
 import { genresFromSubjects } from './genres'
 import { guessLanguage } from './languages'
@@ -119,6 +120,12 @@ function keepPaused(match: Book, item: StorytelBook): StorytelBook {
   return listenedOn ? item : { ...item, status: 'paused' }
 }
 
+/** The day she was last listening or reading on Storytel, else today. */
+function readDay(item: StorytelBook) {
+  const at = item.progressAt ? new Date(item.progressAt) : null
+  return at && !Number.isNaN(at.getTime()) && at.getTime() <= Date.now() ? localDay(at) : localDay()
+}
+
 /** Adds new Storytel books and syncs the reading status of ones already on the shelf. */
 export async function importStorytelBooks(
   items: StorytelBook[],
@@ -154,7 +161,7 @@ export async function importStorytelBooks(
       if (ahead || further) {
         cb.updateBook(match.id, {
           ...(ahead && statusPatch(match, item.status)),
-          ...(further && { progress: item.progress }),
+          ...(further && progressPatch(match, item.progress!, readDay(item))),
         })
         summary.updated++
       } else summary.unchanged++
@@ -170,7 +177,8 @@ export async function importStorytelBooks(
         storytelId: item.storytelId,
         // first time this book is matched to Storytel: she has it there too
         ...(!match.storytelId && { ...withFormats([...formatsOf(match), 'storytel']) }),
-        ...(item.progress !== undefined && { progress: item.progress }),
+        // what she listened on goes in the reading log (#76)
+        ...(item.progress !== undefined && progressPatch(match, item.progress, readDay(item))),
       })
       summary.updated++
     } else {

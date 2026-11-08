@@ -1455,6 +1455,63 @@ textarea.input {
   width: 1.6rem;
 }
 
+/* the reading log (#76): a day to note what she read, started and finished books */
+.calendar button.day-number {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+.calendar button.day-number:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.calendar td.picked {
+  outline: 2px solid var(--accent);
+}
+.calendar .cover-btn {
+  position: relative;
+}
+.calendar .cover-btn.finished::after,
+.calendar .cover-btn.started::after {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  font-size: 0.55rem;
+  line-height: 1;
+  padding: 1px 2px;
+  border-radius: 3px;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.calendar .cover-btn.finished::after {
+  content: '✓';
+}
+.calendar .cover-btn.started::after {
+  content: '▸';
+}
+.day-log,
+.started-month {
+  margin-top: 0.75rem;
+}
+.day-log h3,
+.started-month h3 {
+  font-size: 0.95rem;
+  margin: 0 0 0.4rem;
+}
+.amount-field {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-top: 0.2rem;
+}
+.amount-field .input {
+  padding: 0.2rem 0.4rem;
+}
+
 /* the book panel's finish dates */
 .finished-day {
   display: flex;

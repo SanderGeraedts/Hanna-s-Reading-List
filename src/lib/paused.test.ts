@@ -57,13 +57,16 @@ describe('paused books (#60)', () => {
 
   it('pick up again when she listens on in Storytel', async () => {
     const onShelf = book({ storytelId: 'st', status: 'paused', progress: 0.4 })
-    expect(await refresh(onShelf, 'reading', 0.6)).toEqual([{ status: 'reading', storytelId: 'st', progress: 0.6 }])
+    expect(await refresh(onShelf, 'reading', 0.6)).toEqual([
+      // what she listened on goes in the reading log (#76)
+      { status: 'reading', storytelId: 'st', progress: 0.6, readingLog: { [localDay()]: 0.2 } },
+    ])
   })
 
   it('are finished when Storytel says so', async () => {
     const onShelf = book({ storytelId: 'st', status: 'paused', progress: 0.4 })
     expect(await refresh(onShelf, 'read', 1)).toEqual([
-      { status: 'read', readCount: 1, finished: [localDay()], storytelId: 'st', progress: 1 },
+      { status: 'read', readCount: 1, finished: [localDay()], storytelId: 'st', progress: 1, readingLog: { [localDay()]: 0.6 } },
     ])
   })
 })

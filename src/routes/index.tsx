@@ -8,6 +8,7 @@ import type { Face } from '#/components/BookPanel'
 import { nearestTurn } from '#/components/BookMesh'
 import type { InspectTarget } from '#/components/BookMesh'
 import { SORT_LABELS, STATUS_LABELS, statusPatch, useLibrary } from '#/lib/library'
+import { progressPatch } from '#/lib/readingLog'
 import type { SortKey, SyncStatus } from '#/lib/library'
 import { useSession } from '#/lib/session'
 import type { Account } from '#/lib/session'
@@ -350,7 +351,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           onFace={showFace}
           // finishing a book counts as a read, finishing it again as one more (#53)
           onStatus={(status) => updateBook(selected.id, statusPatch(selected, status))}
-          onProgress={(progress) => updateBook(selected.id, { progress })}
+          // what she read today goes in the reading log (#76)
+          onProgress={(progress) => updateBook(selected.id, (b) => progressPatch(b, progress))}
           onUpdate={(patch) => {
             updateBook(selected.id, patch)
             // move the book to its new place straight away when the change affects the arrangement

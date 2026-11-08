@@ -48,6 +48,10 @@ export interface Book {
    * books finished before that have none until Hanna fills one in
    */
   finished?: string[]
+  /** the days it was started (yyyy-mm-dd, oldest first), noted from #76 on */
+  started?: string[]
+  /** how much of the book was read on each day: yyyy-mm-dd → share of the book (#76) */
+  readingLog?: Record<string, number>
   /** favourite quotes Hanna noted from the book, shown on the dashboard once it is read */
   quotes?: string[]
   /** quotes (hers or built-in) she gave a heart on the dashboard (#66) */
@@ -183,14 +187,21 @@ export function timesRead(book: Book) {
 /**
  * A new reading status, keeping count of the times read (#53): starting a
  * finished book again keeps its count, finishing it again adds one. Each
- * time it is finished the day is noted, for the dashboard (#59).
+ * time it is finished the day is noted, for the dashboard (#59), and so is
+ * each time it is started (#76).
  */
 export function statusPatch(book: Book, status: ReadingStatus, day = localDay()): Partial<Book> {
   if (status === book.status) return {}
   const reads = timesRead(book)
   if (status === 'read') return { status, readCount: reads + 1, finished: [...(book.finished ?? []), day] }
-  // leaving "read": remember that it was finished
-  return { status, ...(book.status === 'read' && { readCount: reads }) }
+  // picking up a book she wanted to read, or reading a finished one again, starts it (#76)
+  const starts = status !== 'want' && (book.status === 'want' || book.status === 'read')
+  return {
+    status,
+    // leaving "read": remember that it was finished
+    ...(book.status === 'read' && { readCount: reads }),
+    ...(starts && { started: [...(book.started ?? []), day].sort() }),
+  }
 }
 
 function loadBooks(key: string): Book[] {
@@ -496,8 +507,9 @@ export function useLibrary(accountId: string | null = null, onSignedOut?: () => 
     setBooks((prev) => prev.filter((b) => b.id !== id))
   }, [])
 
-  const updateBook = useCallback((id: string, patch: Partial<Book>) => {
-    setBooks((prev) => prev.map((b) => (b.id === id ? { ...b, ...patch } : b)))
+  /** A change to a book; give a function to work it out from the book as it is right then. */
+  const updateBook = useCallback((id: string, patch: Partial<Book> | ((book: Book) => Partial<Book>)) => {
+    setBooks((prev) => prev.map((b) => (b.id === id ? { ...b, ...(typeof patch === 'function' ? patch(b) : patch) } : b)))
   }, [])
 
   const reorder = useCallback((ids: string[]) => {
