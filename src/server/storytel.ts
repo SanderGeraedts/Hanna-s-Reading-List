@@ -173,9 +173,9 @@ function validCredentials(input: unknown): Credentials {
   return { email, password }
 }
 
-class LoginRejected extends Error {}
+export class LoginRejected extends Error {}
 
-async function fetchShelf({ email, password }: Credentials): Promise<StorytelBook[]> {
+export async function fetchShelf({ email, password }: Credentials): Promise<StorytelBook[]> {
   // 1. sign in
   const loginUrl = new URL(LOGIN_URL)
   loginUrl.search = new URLSearchParams({
@@ -265,7 +265,7 @@ async function seal(c: Credentials) {
   return b64url(out)
 }
 
-async function unseal(token: string | undefined): Promise<Credentials | null> {
+export async function unseal(token: string | undefined): Promise<Credentials | null> {
   if (!token) return null
   try {
     const raw = fromB64url(token)

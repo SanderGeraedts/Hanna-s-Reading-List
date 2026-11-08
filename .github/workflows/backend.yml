@@ -48,7 +48,7 @@ jobs:
       # throws, PocketBase exits and this fails before anything is published.
       - name: Check that it starts and applies the schema
         run: |
-          docker run -d --name pb -p 8090:8090 -e SIGNUP_EMAILS=allowed@example.com candidate \
+          docker run -d --name pb -p 8090:8090 -e SIGNUP_EMAILS=allowed@example.com -e NIGHTLY_SECRET=ci-nightly-secret candidate \
             serve --http=0.0.0.0:8090 --dir=/pb_data --migrationsDir=/pb_migrations --hooksDir=/pb_hooks --automigrate=false
           for i in $(seq 1 30); do
             curl -fsS http://127.0.0.1:8090/api/health && break
@@ -78,6 +78,12 @@ jobs:
           }
           [ "$(signup stranger@example.com)" = 403 ] || { echo "::error::sign-up open to an address not on the allowlist"; docker logs pb; exit 1; }
           [ "$(signup allowed@example.com)" = 200 ] || { echo "::error::an allowlisted address could not sign up"; docker logs pb; exit 1; }
+
+          # nightly Storytel sync (pb_hooks/nightly.pb.js): only with the secret
+          nightly() { curl -s -o /dev/null -w '%{http_code}' "$@" http://127.0.0.1:8090/api/nightly/shelves; }
+          [ "$(nightly)" = 404 ] || { echo "::error::nightly shelves open without the secret"; exit 1; }
+          [ "$(nightly -H 'x-nightly-secret: wrong')" = 404 ] || { echo "::error::nightly shelves open with a wrong secret"; exit 1; }
+          [ "$(nightly -H 'x-nightly-secret: ci-nightly-secret')" = 200 ] || { echo "::error::nightly shelves refused the secret"; docker logs pb; exit 1; }
 
       - name: Stop the check container
         if: always()

@@ -39,6 +39,7 @@ The **Storytel** tab in *Add book* signs in with your Storytel email and passwor
 
 - Storytel has **no public API**. The import uses the same private endpoints as the Storytel apps (`www.storytel.com/api/login.action` and `api.storytel.net/libraries/bookshelf`). The approach follows the open-source [storytel-player](https://github.com/debba/storytel-player). Storytel can change these endpoints at any time, and automated access may go against its terms of service.
 - The password goes to this app's server function (`src/server/storytel.ts`). It's never logged or returned to the browser. To let ↻ refresh later, the login is sealed with AES-GCM under `STORYTEL_COOKIE_SECRET` and kept until *Sign out of Storytel*: with the signed-in account when there is an account server, otherwise in an httpOnly cookie on that device.
+- With an account server, the shelf is also synced with Storytel every night at 23:00 Amsterdam time (#77), so the reading log has every day of listening. Setup: `NIGHTLY_SECRET`, see [deploy/nas/README.md](deploy/nas/README.md#9-nightly-storytel-sync-optional).
 - Accounts that sign in with Google, Apple or Facebook have no Storytel password, so they can't use this.
 - Covers: the Storytel e-book cover if there is one, otherwise an Open Library match, otherwise the square audiobook cover, centre-cropped. Year, page count, ISBN and blurb come from the best Open Library match. When there's no match, the page count is estimated from the book's length.
 

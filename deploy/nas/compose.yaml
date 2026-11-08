@@ -42,6 +42,8 @@ services:
     environment:
       # who may create an account in the app, comma-separated; empty = nobody
       SIGNUP_EMAILS: hanna@example.com
+      # the same long random value as NIGHTLY_SECRET on Netlify, for the 23:00 Storytel sync; empty = off
+      NIGHTLY_SECRET: ""
     volumes:
       - /mnt/POOL/apps/reading-list/pb_data:/pb_data
     labels:

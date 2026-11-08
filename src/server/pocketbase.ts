@@ -40,7 +40,12 @@ export class PocketBaseError extends Error {
 
 export async function pb<T>(
   path: string,
-  { method = 'GET', token, body }: { method?: string; token?: string; body?: unknown } = {},
+  {
+    method = 'GET',
+    token,
+    body,
+    headers,
+  }: { method?: string; token?: string; body?: unknown; headers?: Record<string, string> } = {},
 ): Promise<T> {
   const base = pocketbaseUrl()
   if (!base) throw new Error('No account server is set up.')
@@ -51,6 +56,7 @@ export async function pb<T>(
       headers: {
         ...(body !== undefined && { 'content-type': 'application/json' }),
         ...(token && { authorization: token }),
+        ...headers,
       },
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: AbortSignal.timeout(10_000),
