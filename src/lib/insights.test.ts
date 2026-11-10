@@ -7,15 +7,12 @@ const {
   breakdown,
   goalProgress,
   lentOut,
-  lovedQuotes,
   monthlyCounts,
   onThisDay,
   readingStreak,
   records,
   seriesProgress,
-  toggleLoved,
   wantPile,
-  yearReview,
 } = await import('./insights')
 
 const book = (id: string, extra: Partial<Book> = {}): Book => ({
@@ -131,29 +128,6 @@ describe('dashboard extras (#66)', () => {
   it('finds books finished on this day in earlier years', () => {
     const shelf = [read('a', '2024-11-07'), read('b', '2026-11-07'), read('c', '2025-11-08')]
     expect(onThisDay(shelf, NOW).map((f) => [f.book.id, f.year])).toEqual([['a', 2024]])
-  })
-
-  it('keeps loved quotes, from read books only', () => {
-    const r = read('r', '2026-01-01', { quotes: ['One.', 'Two.'] })
-    const loved = { ...r, ...toggleLoved(r, 'Two.') }
-    expect(loved.lovedQuotes).toEqual(['Two.'])
-    expect(lovedQuotes([loved]).map((q) => q.text)).toEqual(['Two.'])
-    expect(toggleLoved(loved, 'Two.')).toEqual({ lovedQuotes: undefined })
-    const unread = book('w', { quotes: ['Spoiler.'], lovedQuotes: ['Spoiler.'] })
-    expect(lovedQuotes([unread])).toEqual([])
-  })
-
-  it('sums up a year', () => {
-    const shelf = [
-      read('a', '2025-03-01', { pages: 300, authors: ['A'], quotes: ['Q.'] }),
-      read('b', '2025-03-20', { pages: 500, authors: ['A'] }),
-      read('c', '2025-07-01', { pages: 100, authors: ['B'] }),
-    ]
-    const r = yearReview(shelf, 2025)
-    expect(r).toMatchObject({ books: 3, pages: 900, busiestMonth: { month: 3, books: 2 } })
-    expect(r.topAuthor).toEqual({ name: 'A', books: 2 })
-    expect(r.longest?.id).toBe('b')
-    expect(r.quotes.map((q) => q.text)).toEqual(['Q.'])
   })
 })
 

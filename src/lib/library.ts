@@ -52,9 +52,9 @@ export interface Book {
   started?: string[]
   /** how much of the book was read on each day: yyyy-mm-dd → share of the book (#76) */
   readingLog?: Record<string, number>
-  /** favourite quotes Hanna noted from the book, shown on the dashboard once it is read */
+  /** favourite quotes she noted; no longer shown (#84), kept so nothing she typed is lost */
   quotes?: string[]
-  /** quotes (hers or built-in) she gave a heart on the dashboard (#66) */
+  /** quotes she gave a heart; no longer shown (#84), kept like `quotes` */
   lovedQuotes?: string[]
   /** series name and number, entered by hand (otherwise read from the title) */
   series?: string

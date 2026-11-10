@@ -4,7 +4,6 @@ import { formatDuration, hasAudio, lengthPatch, linkOnFormatChange, listenOnly, 
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { Book, BookFormat, ReadingStatus } from '#/lib/library'
 import { FORMAT_LABELS, STATUS_LABELS, formatsOf, localDay, timesRead, withFormats } from '#/lib/library'
-import { parseQuotes, quotesText } from '#/lib/quotes'
 import { storytelLink } from '#/lib/storytelLink'
 import {
   pageText,
@@ -236,7 +235,6 @@ export function BookPanel({
   const [titleDraft, setTitleDraft] = useState<string | null>(null)
   const cancelTitle = useRef(false)
   const [lentTo, setLentTo] = useState(book.lent?.to ?? '')
-  const [quotesDraft, setQuotesDraft] = useState(quotesText(book.quotes))
   // opens the Storytel app on a phone (#65)
   const storytel = storytelLink(book)
   const finished = book.finished ?? []
@@ -300,8 +298,6 @@ export function BookPanel({
     // leaving it empty (or untouched) keeps the placeholder text
     const description = text && text !== backText({ ...book, description: undefined }) ? text : undefined
     if (description !== book.description) patch.description = description
-    const quotes = parseQuotes(quotesDraft)
-    if (quotesText(quotes) !== quotesText(book.quotes)) patch.quotes = quotes
     return patch
   }
   const save = () => {
@@ -799,22 +795,6 @@ export function BookPanel({
             if (!blurb.trim()) setBlurb(backText({ ...book, description: undefined }))
           }}
         />
-      </label>
-
-      <label className="field">
-        <span>Favourite quotes</span>
-        <textarea
-          className="input"
-          rows={3}
-          value={quotesDraft}
-          placeholder="A line you loved… Leave an empty line between quotes."
-          aria-describedby="quotes-hint"
-          onChange={(e) => setQuotesDraft(e.target.value)}
-          onBlur={save}
-        />
-        <small id="quotes-hint" className="muted">
-          Shown on the dashboard once the book is read.
-        </small>
       </label>
 
       <MergeSection
