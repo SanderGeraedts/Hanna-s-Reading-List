@@ -22,6 +22,13 @@ export const BLOCKS = {
   onthisday: 'On this day',
   lent: 'Lent out',
   top: 'Top 5',
+  pace: 'Finish by',
+  heatmap: 'A year of reading',
+  authors: 'Favourite authors',
+  spice: 'Spice meter',
+  formats: 'Listening and reading',
+  wrapped: 'Year in review',
+  bingo: 'Book bingo',
 } as const
 
 export type BlockId = keyof typeof BLOCKS
@@ -33,8 +40,8 @@ export interface DashboardLayout {
 
 export const DEFAULT_LAYOUT: DashboardLayout = {
   columns: [
-    ['count', 'reading', 'monthly', 'breakdown', 'records', 'onthisday'],
-    ['goal', 'next', 'top', 'calendar', 'series', 'streak', 'pile', 'lent'],
+    ['count', 'reading', 'pace', 'monthly', 'formats', 'heatmap', 'breakdown', 'records', 'authors', 'onthisday', 'wrapped'],
+    ['goal', 'next', 'top', 'spice', 'calendar', 'bingo', 'series', 'streak', 'pile', 'lent'],
   ],
   hidden: [],
 }
