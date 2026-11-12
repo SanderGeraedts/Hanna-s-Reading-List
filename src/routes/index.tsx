@@ -413,6 +413,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             onShowBook={showBook}
             onUpdate={updateBook}
             onRemove={removeBook}
+            onAdd={addBook}
             accountId={account?.id ?? null}
           />
         )}
