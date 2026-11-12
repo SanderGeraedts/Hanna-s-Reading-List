@@ -392,7 +392,7 @@ export function BookPanel({
       </div>
       </div>
 
-      <div className="segmented" role="group" aria-label="Show side">
+      <div className="side-pick" role="group" aria-label="Show side">
         <button onClick={() => onFace('front')}>Front</button>
         <button onClick={() => onFace('spine')}>Spine</button>
         <button onClick={() => onFace('back')}>Back</button>

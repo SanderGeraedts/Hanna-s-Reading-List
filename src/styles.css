@@ -272,14 +272,16 @@ textarea.input {
   font-family: var(--serif);
   font-style: italic;
 }
-.segmented {
+/* Front / Spine / Back in the book panel: three equal parts. Its own class,
+   because the dashboard's .segmented (further down) is an inline pill. */
+.side-pick {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   border: 1px solid var(--border);
   border-radius: 999px;
   overflow: hidden;
 }
-.segmented button {
+.side-pick button {
   font: inherit;
   font-size: 0.85rem;
   background: transparent;
@@ -288,10 +290,10 @@ textarea.input {
   padding: 0.5rem;
   cursor: pointer;
 }
-.segmented button + button {
+.side-pick button + button {
   border-left: 1px solid var(--border);
 }
-.segmented button:hover {
+.side-pick button:hover {
   background: rgba(255, 255, 255, 0.08);
 }
 .hint {
