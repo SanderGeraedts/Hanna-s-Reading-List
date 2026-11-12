@@ -54,6 +54,8 @@ export function mergeBooks(keep: Book, other: Book): Book {
     language: keep.language ?? other.language,
     lent: keep.lent ?? other.lent,
     edges: keep.edges ?? other.edges,
+    rating: keep.rating ?? other.rating,
+    spice: keep.spice ?? other.spice,
     // furthest along wins
     status,
     ...(progress > 0 && { progress }),

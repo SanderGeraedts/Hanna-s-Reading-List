@@ -16,6 +16,8 @@ export interface Book {
   year?: number
   /** publication date as far as known: "2008", "2008-03" or "2008-03-12"; `year` follows it (#44) */
   published?: string
+  /** not out yet: the day it comes out (yyyy-mm-dd); until then it is not on the shelf (#103) */
+  releaseDate?: string
   pages?: number
   /** listening time of the audiobook, in minutes (#48) */
   minutes?: number
@@ -46,6 +48,10 @@ export interface Book {
   progress?: number
   /** how many times the book has been finished (entered by hand) */
   readCount?: number
+  /** her rating, ½ to 5 stars in halves (#100) */
+  rating?: number
+  /** how spicy (steamy) she found it, 1 to 5 peppers */
+  spice?: number
   /**
    * the days it was finished (yyyy-mm-dd, oldest first), noted from #59 on;
    * books finished before that have none until Hanna fills one in

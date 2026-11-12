@@ -8,6 +8,7 @@ import {
   GoalCard,
   LentCard,
   MonthlyChart,
+  FactCard,
   OnThisDayCard,
   PileCard,
   RecordsCard,
@@ -17,6 +18,11 @@ import {
 } from './DashboardExtras'
 import { pickReadNext, readNextChoices } from '#/lib/readNext'
 import { storytelLink } from '#/lib/storytelLink'
+import { countdownText, releaseDayText } from '#/lib/upcoming'
+import { localDay } from '#/lib/library'
+import { topRated } from '#/lib/ratings'
+import { StarRating } from './StarRating'
+import { inkFor } from './textures'
 import { monthWeeks, periodStats, readingYears } from '#/lib/stats'
 import { amountText, amountUnit, finishedIn, monthEntries, startedIn } from '#/lib/readingLog'
 import type { DayEntry } from '#/lib/readingLog'
@@ -53,6 +59,10 @@ export interface Props {
 interface DashboardProps extends Props {
   /** the signed-in account, or null when the shelf lives in this browser only */
   accountId: string | null
+  /** books not out yet (#103); `books` are the ones on the shelf */
+  upcoming: Book[]
+  onUpdate: (id: string, patch: Partial<Book>) => void
+  onRemove: (id: string) => void
 }
 
 export interface PeriodPick {
@@ -122,7 +132,7 @@ interface Drag {
   drop: Drop | null
 }
 
-export function Dashboard({ books, onShowBook, accountId }: DashboardProps) {
+export function Dashboard({ books, onShowBook, accountId, upcoming, onUpdate, onRemove }: DashboardProps) {
   const now = new Date()
   // the period picked under "Books read"; the charts and records follow it
   const [pick, setPick] = useState<PeriodPick>({ kind: 'year', year: now.getFullYear(), month: now.getMonth() + 1 })
@@ -148,6 +158,9 @@ export function Dashboard({ books, onShowBook, accountId }: DashboardProps) {
     streak: <StreakCard books={books} />,
     onthisday: <OnThisDayCard books={books} onShowBook={onShowBook} />,
     lent: <LentCard books={books} onShowBook={onShowBook} />,
+    upcoming: <UpcomingCard books={upcoming} onUpdate={onUpdate} onRemove={onRemove} />,
+    top: <TopRatedCard books={books} onShowBook={onShowBook} />,
+    fact: <FactCard books={books} />,
   }
 
   const columns: BlockId[][] = narrow ? [singleColumn(layout)] : layout.columns
@@ -320,6 +333,189 @@ export function Cover({ book, small }: { book: Book; small?: boolean }) {
 
 // ---------------------------------------------------------------------------
 
+/** Books she is waiting for (#103), the first to come out first. */
+function UpcomingCard({
+  books,
+  onUpdate,
+  onRemove,
+}: {
+  books: Book[]
+  onUpdate: DashboardProps['onUpdate']
+  onRemove: DashboardProps['onRemove']
+}) {
+  const [editing, setEditing] = useState<string | null>(null)
+  const tomorrow = localDay(new Date(Date.now() + 86_400_000))
+  return (
+    <section className="dash-card upcoming-card" aria-labelledby="upcoming-title">
+      <h2 id="upcoming-title">Upcoming releases</h2>
+      {books.length === 0 ? (
+        <p className="muted small-text">
+          Nothing to wait for. Add a book with <em>Not out yet</em> ticked, and it waits here until the day it comes
+          out.
+        </p>
+      ) : (
+        <ul className="upcoming-list">
+          {books.map((b) => (
+            <li key={b.id}>
+              <Cover book={b} small />
+              <span className="upcoming-info">
+                <strong>{b.title}</strong>
+                {b.authors.length > 0 && <span className="muted small-text">{b.authors.join(', ')}</span>}
+                {editing === b.id ? (
+                  <input
+                    className="input"
+                    type="date"
+                    min={tomorrow}
+                    defaultValue={b.releaseDate}
+                    aria-label={`Release day of ${b.title}`}
+                    autoFocus
+                    onBlur={() => setEditing(null)}
+                    onChange={(e) => {
+                      if (e.target.value >= tomorrow) onUpdate(b.id, { releaseDate: e.target.value })
+                    }}
+                  />
+                ) : (
+                  <button
+                    className="link-btn small-text"
+                    title="Change the release day"
+                    onClick={() => setEditing(b.id)}
+                  >
+                    {releaseDayText(b.releaseDate!)} · {countdownText(b.releaseDate!)}
+                  </button>
+                )}
+              </span>
+              <button
+                className="icon-btn"
+                aria-label={`Remove ${b.title} from upcoming releases`}
+                title="Remove"
+                onClick={() => onRemove(b.id)}
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+/** All time / Year / Month, for the blocks that look at a period. */
+function PeriodTabs({ pick, onPick }: { pick: PeriodPick; onPick: (pick: PeriodPick) => void }) {
+  return (
+    <div className="segmented" role="group" aria-label="Period">
+      {(['month', 'year', 'all'] as const).map((k) => (
+        <button
+          key={k}
+          className={pick.kind === k ? 'active' : ''}
+          aria-pressed={pick.kind === k}
+          onClick={() => onPick({ ...pick, kind: k })}
+        >
+          {k === 'all' ? 'All time' : k === 'year' ? 'Year' : 'Month'}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** Which year, or which month, of the period picked. */
+function PeriodSelect({
+  books,
+  pick,
+  onPick,
+}: {
+  books: Book[]
+  pick: PeriodPick
+  onPick: (pick: PeriodPick) => void
+}) {
+  const { kind, year, month } = pick
+  const setYear = (y: number) => onPick({ ...pick, year: y })
+  const setMonth = (m: number) => onPick({ ...pick, month: m })
+  const years = useMemo(() => readingYears(books), [books])
+  const step = (by: number) => {
+    const d = new Date(year, month - 1 + by, 1)
+    onPick({ ...pick, year: d.getFullYear(), month: d.getMonth() + 1 })
+  }
+  if (kind === 'all') return null
+  return (
+    <div className="period-pick">
+      {kind === 'month' && (
+        <button className="btn icon small" aria-label="Previous month" onClick={() => step(-1)}>
+          ‹
+        </button>
+      )}
+      {kind === 'month' && (
+        <select
+          className="input"
+          value={month}
+          onChange={(e) => setMonth(Number(e.target.value))}
+          aria-label="Month"
+        >
+          {Array.from({ length: 12 }, (_, i) => (
+            <option key={i} value={i + 1}>
+              {monthName(i + 1)}
+            </option>
+          ))}
+        </select>
+      )}
+      <select className="input" value={year} onChange={(e) => setYear(Number(e.target.value))} aria-label="Year">
+        {(years.includes(year) ? years : [...years, year].sort((a, b) => b - a)).map((y) => (
+          <option key={y} value={y}>
+            {y}
+          </option>
+        ))}
+      </select>
+      {kind === 'month' && (
+        <button className="btn icon small" aria-label="Next month" onClick={() => step(1)}>
+          ›
+        </button>
+      )}
+    </div>
+  )
+}
+
+/** Her five favourites (#100): the best-rated books she finished, of all time, a year or a month. */
+function TopRatedCard({ books, onShowBook }: Props) {
+  const now = new Date()
+  const [pick, setPick] = useState<PeriodPick>({ kind: 'all', year: now.getFullYear(), month: now.getMonth() + 1 })
+  const top = useMemo(() => topRated(books, toPeriod(pick)), [books, pick])
+  return (
+    <section className="dash-card top-card" aria-labelledby="top-title">
+      <div className="dash-card-head">
+        <h2 id="top-title">Top 5</h2>
+        <PeriodTabs pick={pick} onPick={setPick} />
+      </div>
+      <PeriodSelect books={books} pick={pick} onPick={setPick} />
+      {top.length === 0 ? (
+        <p className="muted small-text">
+          No rated books {periodLabel(pick) === 'all time' ? 'yet' : periodLabel(pick)}. Give a finished book stars to
+          see your favourites here.
+        </p>
+      ) : (
+        <ol className="top-list">
+          {top.map((b, i) => (
+            <li key={b.id}>
+              <span className="top-place">{i + 1}</span>
+              <button className="cover-btn" aria-label={b.title} onClick={() => onShowBook(b.id)}>
+                <Cover book={b} small />
+              </button>
+              <span className="top-info">
+                <button className="link-btn" onClick={() => onShowBook(b.id)}>
+                  {b.title}
+                </button>
+                <span className="top-ratings">
+                  <StarRating value={b.rating} size="small" />
+                  {b.spice ? <StarRating kind="spice" value={b.spice} size="small" /> : null}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  )
+}
+
 function ReadCount({
   books,
   onShowBook,
@@ -327,66 +523,17 @@ function ReadCount({
   onPick,
 }: Props & { pick: PeriodPick; onPick: (pick: PeriodPick) => void }) {
   const { kind, year, month } = pick
-  const setKind = (k: Period['kind']) => onPick({ ...pick, kind: k })
-  const setYear = (y: number) => onPick({ ...pick, year: y })
-  const setMonth = (m: number) => onPick({ ...pick, month: m })
-  const years = useMemo(() => readingYears(books), [books])
   const stats = useMemo(() => periodStats(books, toPeriod({ kind, year, month })), [books, kind, year, month])
-
   const label = periodLabel(pick)
-  const step = (by: number) => {
-    const d = new Date(year, month - 1 + by, 1)
-    onPick({ ...pick, year: d.getFullYear(), month: d.getMonth() + 1 })
-  }
 
   return (
     <section className="dash-card count-card" aria-labelledby="count-title">
       <div className="dash-card-head">
         <h2 id="count-title">Books read</h2>
-        <div className="segmented" role="group" aria-label="Period">
-          {(['month', 'year', 'all'] as const).map((k) => (
-            <button key={k} className={kind === k ? 'active' : ''} aria-pressed={kind === k} onClick={() => setKind(k)}>
-              {k === 'all' ? 'All time' : k === 'year' ? 'Year' : 'Month'}
-            </button>
-          ))}
-        </div>
+        <PeriodTabs pick={pick} onPick={onPick} />
       </div>
 
-      {kind !== 'all' && (
-        <div className="period-pick">
-          {kind === 'month' && (
-            <button className="btn icon small" aria-label="Previous month" onClick={() => step(-1)}>
-              ‹
-            </button>
-          )}
-          {kind === 'month' && (
-            <select
-              className="input"
-              value={month}
-              onChange={(e) => setMonth(Number(e.target.value))}
-              aria-label="Month"
-            >
-              {Array.from({ length: 12 }, (_, i) => (
-                <option key={i} value={i + 1}>
-                  {monthName(i + 1)}
-                </option>
-              ))}
-            </select>
-          )}
-          <select className="input" value={year} onChange={(e) => setYear(Number(e.target.value))} aria-label="Year">
-            {(years.includes(year) ? years : [...years, year].sort((a, b) => b - a)).map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
-          {kind === 'month' && (
-            <button className="btn icon small" aria-label="Next month" onClick={() => step(1)}>
-              ›
-            </button>
-          )}
-        </div>
-      )}
+      <PeriodSelect books={books} pick={pick} onPick={onPick} />
 
       <p className="big-number" aria-live="polite">
         <strong>{stats.books}</strong> {stats.books === 1 ? 'book' : 'books'} <span className="muted">{label}</span>
@@ -479,6 +626,9 @@ function ReadNextCard({ books, onShowBook }: Props) {
  * finished on each day of a month. Tapping a day (anywhere in it) shows that
  * day; below are the books started and finished that month.
  */
+/** class for a book finished or started on a calendar day */
+const mark = (e: DayEntry) => (e.finished ? ' finished' : e.started ? ' started' : '')
+
 function Calendar({ books, onShowBook }: Props) {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
@@ -558,14 +708,25 @@ function Calendar({ books, onShowBook }: Props) {
                         onClick={() => setPicked(d === picked ? null : d)}
                       >
                         <span className="day-number">{d}</span>
-                        {entries.map((e) => (
-                          <span
-                            key={e.book.id}
-                            className={`day-cover${e.finished ? ' finished' : e.started ? ' started' : ''}`}
-                          >
-                            <Cover book={e.book} small />
+                        {/* one book shows its cover; more stand side by side as spines,
+                            so a day keeps the same size however much was read (#102) */}
+                        {entries.length === 1 ? (
+                          <span className={`day-cover${mark(entries[0])}`}>
+                            <Cover book={entries[0].book} small />
                           </span>
-                        ))}
+                        ) : entries.length > 1 ? (
+                          <span className={`day-spines${entries.length <= 3 ? ' roomy' : ''}`} aria-hidden>
+                            {entries.map((e) => (
+                              <span
+                                key={e.book.id}
+                                className={`day-spine${mark(e)}`}
+                                style={{ background: e.book.color, color: inkFor(e.book.color) }}
+                              >
+                                <span className="day-spine-title">{e.book.title}</span>
+                              </span>
+                            ))}
+                          </span>
+                        ) : null}
                       </button>
                     )}
                   </td>
