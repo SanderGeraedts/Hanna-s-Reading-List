@@ -2273,3 +2273,205 @@ textarea.input {
 .btn.ghost {
   background: transparent;
 }
+
+/* ---- more for the dashboard: pace, heatmap, spice, formats, year in review, bingo ---- */
+.goal-to-go {
+  font-size: 0.9rem;
+  margin-bottom: 0.2rem !important;
+}
+.pace-when {
+  font-family: var(--serif);
+  font-size: 1rem;
+  color: var(--accent);
+}
+.year-select {
+  width: auto;
+}
+
+/* heatmap: scrolls sideways inside the card on a narrow screen, starting at today */
+.heatmap-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  padding-bottom: 0.2rem;
+}
+.heatmap {
+  display: block;
+}
+.heatmap .axis {
+  fill: var(--muted);
+  font-size: 9px;
+}
+.heat {
+  fill: rgba(255, 255, 255, 0.06);
+}
+.heat.l1 {
+  fill: rgba(217, 168, 91, 0.3);
+}
+.heat.l2 {
+  fill: rgba(217, 168, 91, 0.52);
+}
+.heat.l3 {
+  fill: rgba(217, 168, 91, 0.76);
+}
+.heat.l4 {
+  fill: var(--accent);
+}
+.heatmap rect.heat:hover {
+  stroke: var(--text);
+  stroke-width: 1;
+}
+.heat-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  justify-content: space-between;
+  align-items: center;
+}
+.heat-scale {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+}
+.heat-scale svg {
+  display: block;
+}
+
+/* spice meter */
+.spice-meter {
+  display: grid;
+  gap: 0.4rem;
+}
+.spice-track {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.spice-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #e9b85f, #e07a62 60%, #c9423a);
+}
+
+/* listening and reading: two small charts, each with its own scale */
+.formats-charts {
+  display: grid;
+  gap: 0.25rem;
+}
+.formats-label {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  margin: 0.3rem 0 0 !important;
+}
+.formats-label .key {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.formats-label .key.listen {
+  background: #8fb8c9;
+}
+.bar-chart.listen .bar {
+  fill: #8fb8c9;
+}
+
+/* year in review */
+.wrapped-card {
+  background:
+    radial-gradient(ellipse at top right, rgba(217, 168, 91, 0.22), transparent 60%),
+    radial-gradient(ellipse at bottom left, rgba(201, 66, 58, 0.14), transparent 55%),
+    var(--surface);
+  border-color: rgba(217, 168, 91, 0.4);
+}
+.wrapped-numbers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+}
+.wrapped-numbers p {
+  display: grid;
+}
+.wrapped-numbers strong {
+  font-family: var(--serif);
+  font-size: 2rem;
+  line-height: 1.1;
+  color: var(--accent);
+}
+.wrapped-numbers span {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.wrapped-top {
+  display: flex;
+  gap: 0.9rem;
+  align-items: center;
+}
+.wrapped-top .dash-cover {
+  width: 3.5rem;
+}
+
+/* book bingo */
+.bingo {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+.bingo-square {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  aspect-ratio: 1;
+  min-width: 0;
+  padding: 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+  overflow: hidden;
+}
+.bingo-square:hover {
+  border-color: rgba(217, 168, 91, 0.5);
+}
+.bingo-square.on {
+  color: var(--text);
+  background: rgba(217, 168, 91, 0.18);
+  border-color: rgba(217, 168, 91, 0.6);
+}
+.bingo-square.auto {
+  cursor: default;
+}
+.bingo-label {
+  overflow-wrap: anywhere;
+}
+.bingo-tick {
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--accent);
+}
+.bingo-cover .dash-cover.small {
+  width: 1.4rem;
+}
+
+@media (max-width: 720px) {
+  .bingo {
+    gap: 0.3rem;
+  }
+  .bingo-square {
+    font-size: 0.65rem;
+    padding: 0.2rem;
+  }
+  .wrapped-numbers strong {
+    font-size: 1.6rem;
+  }
+}

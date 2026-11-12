@@ -17,6 +17,7 @@ import {
   StreakCard,
   dayStory,
 } from './DashboardExtras'
+import { AuthorsCard, BingoCard, FormatsCard, HeatmapCard, PaceCard, SpiceCard, WrappedCard } from './DashboardMore'
 import { pickReadNext, readNextChoices } from '#/lib/readNext'
 import { storytelLink } from '#/lib/storytelLink'
 import { countdownText, releaseDayText } from '#/lib/upcoming'
@@ -165,6 +166,13 @@ export function Dashboard({ books, onShowBook, accountId, upcoming, onUpdate, on
     top: <TopRatedCard books={books} onShowBook={onShowBook} />,
     recommend: <RecommendCard books={books} accountId={accountId} onAdd={onAdd} />,
     fact: <FactCard books={books} />,
+    pace: <PaceCard books={books} onShowBook={onShowBook} />,
+    heatmap: <HeatmapCard books={books} />,
+    authors: <AuthorsCard books={books} />,
+    spice: <SpiceCard books={books} onShowBook={onShowBook} />,
+    formats: <FormatsCard books={books} />,
+    wrapped: <WrappedCard books={books} onShowBook={onShowBook} />,
+    bingo: <BingoCard books={books} accountId={accountId} />,
   }
 
   const columns: BlockId[][] = narrow ? [singleColumn(layout)] : layout.columns
@@ -405,7 +413,7 @@ function UpcomingCard({
 }
 
 /** All time / Year / Month, for the blocks that look at a period. */
-function PeriodTabs({ pick, onPick }: { pick: PeriodPick; onPick: (pick: PeriodPick) => void }) {
+export function PeriodTabs({ pick, onPick }: { pick: PeriodPick; onPick: (pick: PeriodPick) => void }) {
   return (
     <div className="segmented" role="group" aria-label="Period">
       {(['month', 'year', 'all'] as const).map((k) => (
@@ -423,7 +431,7 @@ function PeriodTabs({ pick, onPick }: { pick: PeriodPick; onPick: (pick: PeriodP
 }
 
 /** Which year, or which month, of the period picked. */
-function PeriodSelect({
+export function PeriodSelect({
   books,
   pick,
   onPick,
