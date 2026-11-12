@@ -8,6 +8,7 @@ import {
   GoalCard,
   LentCard,
   MonthlyChart,
+  FactCard,
   OnThisDayCard,
   PileCard,
   RecordsCard,
@@ -148,6 +149,7 @@ export function Dashboard({ books, onShowBook, accountId }: DashboardProps) {
     streak: <StreakCard books={books} />,
     onthisday: <OnThisDayCard books={books} onShowBook={onShowBook} />,
     lent: <LentCard books={books} onShowBook={onShowBook} />,
+    fact: <FactCard books={books} />,
   }
 
   const columns: BlockId[][] = narrow ? [singleColumn(layout)] : layout.columns
