@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Book } from '#/lib/library'
 import { ratingText, spiceText } from '#/lib/ratings'
 import { StarRating } from './StarRating'
@@ -9,9 +9,16 @@ interface Props {
   onClose: () => void
 }
 
-/** Asked when Hanna marks a book as read (#100): how many stars? */
+/**
+ * Asked when Hanna marks a book as read (#100): how many stars? A re-read
+ * keeps its rating; the pop-up shows it and asks whether it is still the same.
+ */
 export function RatingDialog({ book, onUpdate, onClose }: Props) {
   const dialog = useRef<HTMLDialogElement>(null)
+  // what it had before this read, so a re-read can keep it in one tap
+  const [before] = useState(() => ({ rating: book.rating, spice: book.spice }))
+  const reread = !!(before.rating || before.spice)
+  const changed = book.rating !== before.rating || book.spice !== before.spice
   useEffect(() => {
     dialog.current?.showModal()
     dialog.current?.querySelector<HTMLElement>('[role="slider"]')?.focus()
@@ -29,15 +36,21 @@ export function RatingDialog({ book, onUpdate, onClose }: Props) {
     >
       <div className="dialog-body">
         <header className="dialog-header">
-          <h2>You finished it!</h2>
+          <h2>{reread ? 'You read it again!' : 'You finished it!'}</h2>
           <button className="icon-btn" onClick={close} aria-label="Close">
             ×
           </button>
         </header>
         {book.coverUrl && <img className="rating-cover" src={book.coverUrl} alt="" />}
-        <p>
-          How did you like <em>{book.title}</em>?
-        </p>
+        {reread ? (
+          <p>
+            Still the same for <em>{book.title}</em>? Tap the stars or peppers to change them.
+          </p>
+        ) : (
+          <p>
+            How did you like <em>{book.title}</em>?
+          </p>
+        )}
         <StarRating
           value={book.rating}
           onChange={(rating) => onUpdate({ rating })}
@@ -59,8 +72,19 @@ export function RatingDialog({ book, onUpdate, onClose }: Props) {
           {spiceText(book.spice)}
         </p>
         <div className="dialog-actions">
+          {reread && changed && (
+            <button
+              className="btn"
+              onClick={() => {
+                onUpdate({ rating: before.rating, spice: before.spice })
+                close()
+              }}
+            >
+              Keep the old one
+            </button>
+          )}
           <button className="btn" onClick={close}>
-            {book.rating || book.spice ? 'Done' : 'Not now'}
+            {reread ? (changed ? 'Done' : 'Still the same') : book.rating || book.spice ? 'Done' : 'Not now'}
           </button>
         </div>
       </div>
