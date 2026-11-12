@@ -21,7 +21,9 @@ export const BLOCKS = {
   streak: 'Reading streak',
   onthisday: 'On this day',
   lent: 'Lent out',
+  upcoming: 'Upcoming releases',
   top: 'Top 5',
+  fact: 'Book fact',
   pace: 'Finish by',
   heatmap: 'A year of reading',
   authors: 'Favourite authors',
@@ -40,8 +42,8 @@ export interface DashboardLayout {
 
 export const DEFAULT_LAYOUT: DashboardLayout = {
   columns: [
-    ['count', 'reading', 'pace', 'monthly', 'formats', 'heatmap', 'breakdown', 'records', 'authors', 'onthisday', 'wrapped'],
-    ['goal', 'next', 'top', 'spice', 'calendar', 'bingo', 'series', 'streak', 'pile', 'lent'],
+    ['count', 'reading', 'pace', 'monthly', 'formats', 'heatmap', 'breakdown', 'records', 'authors', 'onthisday', 'fact', 'wrapped'],
+    ['goal', 'upcoming', 'next', 'top', 'spice', 'calendar', 'bingo', 'series', 'streak', 'pile', 'lent'],
   ],
   hidden: [],
 }

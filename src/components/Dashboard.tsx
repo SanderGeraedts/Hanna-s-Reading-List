@@ -8,6 +8,7 @@ import {
   GoalCard,
   LentCard,
   MonthlyChart,
+  FactCard,
   OnThisDayCard,
   PileCard,
   RecordsCard,
@@ -18,8 +19,11 @@ import {
 import { AuthorsCard, BingoCard, FormatsCard, HeatmapCard, PaceCard, SpiceCard, WrappedCard } from './DashboardMore'
 import { pickReadNext, readNextChoices } from '#/lib/readNext'
 import { storytelLink } from '#/lib/storytelLink'
+import { countdownText, releaseDayText } from '#/lib/upcoming'
+import { localDay } from '#/lib/library'
 import { topRated } from '#/lib/ratings'
 import { StarRating } from './StarRating'
+import { inkFor } from './textures'
 import { monthWeeks, periodStats, readingYears } from '#/lib/stats'
 import { amountText, amountUnit, finishedIn, monthEntries, startedIn } from '#/lib/readingLog'
 import type { DayEntry } from '#/lib/readingLog'
@@ -56,6 +60,10 @@ export interface Props {
 interface DashboardProps extends Props {
   /** the signed-in account, or null when the shelf lives in this browser only */
   accountId: string | null
+  /** books not out yet (#103); `books` are the ones on the shelf */
+  upcoming: Book[]
+  onUpdate: (id: string, patch: Partial<Book>) => void
+  onRemove: (id: string) => void
 }
 
 export interface PeriodPick {
@@ -125,7 +133,7 @@ interface Drag {
   drop: Drop | null
 }
 
-export function Dashboard({ books, onShowBook, accountId }: DashboardProps) {
+export function Dashboard({ books, onShowBook, accountId, upcoming, onUpdate, onRemove }: DashboardProps) {
   const now = new Date()
   // the period picked under "Books read"; the charts and records follow it
   const [pick, setPick] = useState<PeriodPick>({ kind: 'year', year: now.getFullYear(), month: now.getMonth() + 1 })
@@ -151,7 +159,9 @@ export function Dashboard({ books, onShowBook, accountId }: DashboardProps) {
     streak: <StreakCard books={books} />,
     onthisday: <OnThisDayCard books={books} onShowBook={onShowBook} />,
     lent: <LentCard books={books} onShowBook={onShowBook} />,
+    upcoming: <UpcomingCard books={upcoming} onUpdate={onUpdate} onRemove={onRemove} />,
     top: <TopRatedCard books={books} onShowBook={onShowBook} />,
+    fact: <FactCard books={books} />,
     pace: <PaceCard books={books} onShowBook={onShowBook} />,
     heatmap: <HeatmapCard books={books} />,
     authors: <AuthorsCard books={books} />,
@@ -330,6 +340,73 @@ export function Cover({ book, small }: { book: Book; small?: boolean }) {
 }
 
 // ---------------------------------------------------------------------------
+
+/** Books she is waiting for (#103), the first to come out first. */
+function UpcomingCard({
+  books,
+  onUpdate,
+  onRemove,
+}: {
+  books: Book[]
+  onUpdate: DashboardProps['onUpdate']
+  onRemove: DashboardProps['onRemove']
+}) {
+  const [editing, setEditing] = useState<string | null>(null)
+  const tomorrow = localDay(new Date(Date.now() + 86_400_000))
+  return (
+    <section className="dash-card upcoming-card" aria-labelledby="upcoming-title">
+      <h2 id="upcoming-title">Upcoming releases</h2>
+      {books.length === 0 ? (
+        <p className="muted small-text">
+          Nothing to wait for. Add a book with <em>Not out yet</em> ticked, and it waits here until the day it comes
+          out.
+        </p>
+      ) : (
+        <ul className="upcoming-list">
+          {books.map((b) => (
+            <li key={b.id}>
+              <Cover book={b} small />
+              <span className="upcoming-info">
+                <strong>{b.title}</strong>
+                {b.authors.length > 0 && <span className="muted small-text">{b.authors.join(', ')}</span>}
+                {editing === b.id ? (
+                  <input
+                    className="input"
+                    type="date"
+                    min={tomorrow}
+                    defaultValue={b.releaseDate}
+                    aria-label={`Release day of ${b.title}`}
+                    autoFocus
+                    onBlur={() => setEditing(null)}
+                    onChange={(e) => {
+                      if (e.target.value >= tomorrow) onUpdate(b.id, { releaseDate: e.target.value })
+                    }}
+                  />
+                ) : (
+                  <button
+                    className="link-btn small-text"
+                    title="Change the release day"
+                    onClick={() => setEditing(b.id)}
+                  >
+                    {releaseDayText(b.releaseDate!)} · {countdownText(b.releaseDate!)}
+                  </button>
+                )}
+              </span>
+              <button
+                className="icon-btn"
+                aria-label={`Remove ${b.title} from upcoming releases`}
+                title="Remove"
+                onClick={() => onRemove(b.id)}
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
 
 /** All time / Year / Month, for the blocks that look at a period. */
 export function PeriodTabs({ pick, onPick }: { pick: PeriodPick; onPick: (pick: PeriodPick) => void }) {
@@ -557,6 +634,9 @@ function ReadNextCard({ books, onShowBook }: Props) {
  * finished on each day of a month. Tapping a day (anywhere in it) shows that
  * day; below are the books started and finished that month.
  */
+/** class for a book finished or started on a calendar day */
+const mark = (e: DayEntry) => (e.finished ? ' finished' : e.started ? ' started' : '')
+
 function Calendar({ books, onShowBook }: Props) {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
@@ -636,14 +716,25 @@ function Calendar({ books, onShowBook }: Props) {
                         onClick={() => setPicked(d === picked ? null : d)}
                       >
                         <span className="day-number">{d}</span>
-                        {entries.map((e) => (
-                          <span
-                            key={e.book.id}
-                            className={`day-cover${e.finished ? ' finished' : e.started ? ' started' : ''}`}
-                          >
-                            <Cover book={e.book} small />
+                        {/* one book shows its cover; more stand side by side as spines,
+                            so a day keeps the same size however much was read (#102) */}
+                        {entries.length === 1 ? (
+                          <span className={`day-cover${mark(entries[0])}`}>
+                            <Cover book={entries[0].book} small />
                           </span>
-                        ))}
+                        ) : entries.length > 1 ? (
+                          <span className={`day-spines${entries.length <= 3 ? ' roomy' : ''}`} aria-hidden>
+                            {entries.map((e) => (
+                              <span
+                                key={e.book.id}
+                                className={`day-spine${mark(e)}`}
+                                style={{ background: e.book.color, color: inkFor(e.book.color) }}
+                              >
+                                <span className="day-spine-title">{e.book.title}</span>
+                              </span>
+                            ))}
+                          </span>
+                        ) : null}
                       </button>
                     )}
                   </td>

@@ -6,7 +6,8 @@ import type { ThreeEvent } from '@react-three/fiber'
 import type { Book } from '#/lib/library'
 import { timesRead } from '#/lib/library'
 import type { BookDims, Slot } from '#/lib/shelfLayout'
-import { METALS, medalFaceTexture, medalLayout, medalTier, pageTextures, paintBack, paintFallbackCover, paintSpine } from './textures'
+import { METALS, medalFaceTexture, medalLayout, medalTier, pageTextures, paintBack, paintEdges, paintFallbackCover, paintSpine } from './textures'
+import { cleanEdges } from '#/lib/edges'
 
 export interface InspectTarget {
   rotY: number
@@ -115,21 +116,40 @@ export function BookMesh(props: BookMeshProps) {
     [painted],
   )
 
+  // her own page edges (#98), or the plain paper every book shares
+  const edgesKey = JSON.stringify(cleanEdges(book.edges) ?? null)
+  const edges = useMemo(() => {
+    const e = cleanEdges(JSON.parse(edgesKey))
+    return e ? paintEdges(e, dims, book.id) : null
+  }, [edgesKey, dims, book.id])
+  useEffect(
+    () => () => {
+      edges?.fore.dispose()
+      edges?.topBottom.dispose()
+    },
+    [edges],
+  )
+
   const materials = useMemo(() => {
-    const pages = pageTextures()
+    const pages = edges ?? pageTextures()
     const paper = { roughness: 0.95, metalness: 0 }
     const coverMat = { roughness: 0.55, metalness: 0.02 }
     // BoxGeometry face order: +x, -x, +y, -y, +z, -z
     // local frame: front cover +z, spine -x, fore-edge +x
+    // Each face also carries its picture as an emissive map. On the shelf that
+    // glow is off; taken out to look at, it takes over from the lighting, so
+    // the book shows its own colours from every side with no shading (#99).
+    const face = (map: THREE.Texture, look: typeof paper) =>
+      new THREE.MeshStandardMaterial({ map, emissiveMap: map, emissive: 0xffffff, emissiveIntensity: 0, ...look })
     return [
-      new THREE.MeshStandardMaterial({ map: pages.fore, ...paper }),
-      new THREE.MeshStandardMaterial({ map: painted.spine, ...coverMat }),
-      new THREE.MeshStandardMaterial({ map: pages.topBottom, ...paper }),
-      new THREE.MeshStandardMaterial({ map: pages.topBottom, ...paper }),
-      new THREE.MeshStandardMaterial({ map: cover ?? painted.fallback, ...coverMat }),
-      new THREE.MeshStandardMaterial({ map: painted.back, ...coverMat }),
+      face(pages.fore, paper),
+      face(painted.spine, coverMat),
+      face(pages.topBottom, paper),
+      face(pages.topBottom, paper),
+      face(cover ?? painted.fallback, coverMat),
+      face(painted.back, coverMat),
     ]
-  }, [painted, cover])
+  }, [painted, cover, edges])
   useEffect(() => () => materials.forEach((m) => m.dispose()), [materials])
 
   // ---- animation --------------------------------------------------------
@@ -188,13 +208,22 @@ export function BookMesh(props: BookMeshProps) {
       THREE.MathUtils.lerp(SPINE_OUT, a.rotY, fly),
       -0.12 * a.dragAmt,
     )
+
+    // fade from lit to evenly lit as the book flies out (and back as it returns)
+    if (Math.abs(materials[0].emissiveIntensity - fly) > 0.001) {
+      for (const m of materials) {
+        m.emissiveIntensity = fly
+        m.color.setScalar(1 - fly)
+      }
+    }
   })
 
   return (
     <group ref={group} position={[slot.x, slot.y, slot.z]} rotation={[0, SPINE_OUT, 0]}>
       <mesh
-        castShadow
-        // taken out to look at, the book is lit evenly: no shadow from the bookcase on it
+        // taken out to look at, the book is lit evenly: no shadow on it, and it
+        // throws none onto the bookcase while it turns
+        castShadow={!selected}
         receiveShadow={!selected}
         material={materials}
         onPointerDown={(e) => props.onPointerDown(e, book.id)}

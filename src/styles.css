@@ -272,14 +272,16 @@ textarea.input {
   font-family: var(--serif);
   font-style: italic;
 }
-.segmented {
+/* Front / Spine / Back in the book panel: three equal parts. Its own class,
+   because the dashboard's .segmented (further down) is an inline pill. */
+.side-pick {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   border: 1px solid var(--border);
   border-radius: 999px;
   overflow: hidden;
 }
-.segmented button {
+.side-pick button {
   font: inherit;
   font-size: 0.85rem;
   background: transparent;
@@ -288,10 +290,10 @@ textarea.input {
   padding: 0.5rem;
   cursor: pointer;
 }
-.segmented button + button {
+.side-pick button + button {
   border-left: 1px solid var(--border);
 }
-.segmented button:hover {
+.side-pick button:hover {
   background: rgba(255, 255, 255, 0.08);
 }
 .hint {
@@ -1576,7 +1578,12 @@ textarea.input {
 .calendar .day-cell {
   display: block;
   width: 100%;
-  min-height: 3.6rem;
+  /* every day the same size: the height of a day with one cover (#102) */
+  height: 4.4rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   padding: 0.25rem;
   border: 0;
   border-radius: 6px;
@@ -1618,6 +1625,62 @@ textarea.input {
 }
 .calendar .day-cover.started::after {
   content: '▸';
+}
+/* more than one book on a day: spines side by side, title only (#102) */
+.calendar .day-spines {
+  display: flex;
+  gap: 1px;
+  flex: 1 1 0;
+  min-height: 0;
+  align-self: stretch;
+}
+.calendar .day-spine {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 1.1rem;
+  border-radius: 2px;
+  box-shadow: inset 1px 0 rgba(255, 255, 255, 0.18), inset -1px 0 rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  padding: 2px 0 4px;
+}
+.calendar .day-spine-title {
+  writing-mode: vertical-rl;
+  max-height: 100%;
+  font-size: 0.55rem;
+  font-weight: 600;
+  line-height: 1;
+  text-align: start;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* two or three books: wider spines, and the title may take two lines */
+.calendar .day-spines.roomy .day-spine {
+  max-width: 1.7rem;
+}
+.calendar .day-spines.roomy .day-spine-title {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.1;
+  max-width: 2.3em;
+}
+/* finished or started that day: a gold band at the foot of the spine */
+.calendar .day-spine.finished::after,
+.calendar .day-spine.started::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--accent);
+}
+.calendar .day-spine.started::after {
+  height: 2px;
+  opacity: 0.6;
 }
 .day-facts {
   display: flex;
@@ -1663,8 +1726,11 @@ textarea.input {
     padding: 1rem;
   }
   .calendar .day-cell {
-    min-height: 3rem;
+    height: 3.4rem;
     padding: 0.15rem;
+  }
+  .calendar .day-spine-title {
+    font-size: 0.48rem;
   }
   .calendar .dash-cover.small {
     width: 1.2rem;
@@ -1780,6 +1846,14 @@ textarea.input {
   flex-direction: column;
   align-items: flex-start;
   min-width: 0;
+}
+
+/* the book fact (#101) */
+.fact-text {
+  font-family: var(--serif);
+  font-size: 1rem;
+  line-height: 1.5;
+  margin: 0.25rem 0 0.5rem;
 }
 
 /* ---- dashboard extras (#66) ------------------------------------------- */
@@ -2093,6 +2167,82 @@ textarea.input {
   padding: 0.35rem 0.5rem;
   font-size: 0.85rem;
   text-align: right;
+}
+
+/* ---- upcoming releases (#103) ----------------------------------------- */
+.not-out {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+  margin: 0.25rem 0 0.75rem;
+}
+.not-out .check {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  cursor: pointer;
+}
+.not-out-date {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+.not-out-date .input {
+  width: auto;
+}
+.not-out p {
+  flex-basis: 100%;
+  margin: 0;
+}
+.upcoming-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+.upcoming-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.upcoming-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+}
+.upcoming-info .input {
+  width: auto;
+}
+
+/* ---- page edges (#98) -------------------------------------------------- */
+.edges-actions,
+.edges-pick,
+.edges-ai {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+.edges-pick .input {
+  width: auto;
+  flex: 1 1 8rem;
+}
+.edges-ai .input {
+  flex: 1 1 10rem;
+}
+.edges-field .swatch {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
 }
 
 /* ---- more for the dashboard: pace, heatmap, spice, formats, year in review, bingo ---- */
