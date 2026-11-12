@@ -4,7 +4,6 @@ import type { ChangeEvent, FormEvent } from 'react'
 import { getWorkDetails, lookupIsbn, searchBooks } from '#/server/openLibrary'
 import type { SearchResult } from '#/server/openLibrary'
 import type { Book, NewBook } from '#/lib/library'
-import { localDay } from '#/lib/library'
 import { analyzeCover, colorFromString, coverUrlForId, coverUrlForIsbn } from '#/lib/cover'
 import { forgetStorytelLogin, importStorytelLibrary, storytelLoginStatus } from '#/server/storytel'
 import type { StorytelLogin } from '#/lib/useStorytelSync'
@@ -68,12 +67,6 @@ export function AddBookDialog({
   /** an ISBN Open Library didn't know, carried over to the manual tab */
   const [manualIsbn, setManualIsbn] = useState<string | undefined>()
   const dialog = useRef<HTMLDialogElement>(null)
-  /** not out yet (#103): the day it comes out; the book waits on the dashboard until then */
-  const [notOut, setNotOut] = useState(false)
-  const [releaseDate, setReleaseDate] = useState('')
-  const tomorrow = localDay(new Date(Date.now() + 86_400_000))
-  const release = notOut && releaseDate >= tomorrow ? releaseDate : undefined
-  const add = (book: NewBook) => onAdd(release ? { ...book, status: 'want', releaseDate: release } : book)
 
   useEffect(() => {
     const d = dialog.current
@@ -120,47 +113,19 @@ export function AddBookDialog({
             </button>
           ))}
         </div>
-        {tab !== 'storytel' && (
-          <div className="not-out">
-            <label className="check">
-              <input type="checkbox" checked={notOut} onChange={(e) => setNotOut(e.target.checked)} />
-              Not out yet
-            </label>
-            {notOut && (
-              <label className="not-out-date">
-                comes out on
-                <input
-                  className="input"
-                  type="date"
-                  min={tomorrow}
-                  value={releaseDate}
-                  onChange={(e) => setReleaseDate(e.target.value)}
-                  aria-label="Release day"
-                />
-              </label>
-            )}
-            {notOut && (
-              <p className="muted small-text">
-                {release
-                  ? 'It goes in Upcoming releases on the dashboard, and onto the shelf on that day.'
-                  : 'Pick the day it comes out.'}
-              </p>
-            )}
-          </div>
-        )}
-        {tab === 'search' && <SearchTab existing={existing} onAdd={add} />}
+        {tab === 'search' && <SearchTab existing={existing} onAdd={onAdd} />}
         {tab === 'scan' && (
           <ScanTab
             existing={existing}
-            onAdd={add}
+            onAdd={onAdd}
             onManual={(isbn) => {
               setManualIsbn(isbn)
               setTab('manual')
             }}
           />
         )}
-        {tab === 'isbn' && <IsbnTab onAdd={add} />}
-        {tab === 'manual' && <ManualTab onAdd={add} isbn={manualIsbn} />}
+        {tab === 'isbn' && <IsbnTab onAdd={onAdd} />}
+        {tab === 'manual' && <ManualTab onAdd={onAdd} isbn={manualIsbn} />}
         {tab === 'storytel' && (
           <StorytelTab
             existing={existing}
@@ -478,6 +443,7 @@ function ManualTab({ onAdd, isbn }: { onAdd: (b: NewBook) => void; isbn?: string
         <label className="field">
           <span>Published</span>
           <input className="input" placeholder="2008 or 12.03.2008" value={form.published} onChange={set('published')} />
+          <small className="muted">A day still to come puts it in Upcoming releases.</small>
         </label>
         <label className="field">
           <span>Pages</span>

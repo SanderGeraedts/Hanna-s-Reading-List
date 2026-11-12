@@ -61,3 +61,20 @@ export function releaseDayText(day: string) {
   const [y, m, d] = day.split('-').map(Number)
   return new Date(y, m - 1, d).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
 }
+
+/** The first day a publication date can mean: "2027" → 2027-01-01, "2027-03" → 2027-03-01. */
+export function publishedDay(published?: string): string | undefined {
+  if (!published) return undefined
+  const [y, m = '01', d = '01'] = published.split('-')
+  return cleanReleaseDate(`${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`)
+}
+
+/**
+ * The release day that follows from a book's publication date (no tick box
+ * needed): when it is still to come, the book is upcoming until that day. A
+ * year on its own counts from 1 January of that year.
+ */
+export function releaseFromPublished(b: Pick<Book, 'published' | 'year'>, today = localDay()): string | undefined {
+  const day = publishedDay(b.published) ?? (b.year && b.year > Number(today.slice(0, 4)) ? `${b.year}-01-01` : undefined)
+  return day && day > today ? day : undefined
+}

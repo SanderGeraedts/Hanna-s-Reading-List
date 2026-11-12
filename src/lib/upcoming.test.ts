@@ -55,3 +55,20 @@ describe('upcoming releases (#103)', () => {
     expect(cleanReleaseDate(20261201)).toBeUndefined()
   })
 })
+
+describe('upcoming from the publication date (no tick box)', async () => {
+  const { publishedDay, releaseFromPublished } = await import('./upcoming')
+  it('reads the first day a date can mean', () => {
+    expect(publishedDay('2027')).toBe('2027-01-01')
+    expect(publishedDay('2027-03')).toBe('2027-03-01')
+    expect(publishedDay('2027-03-12')).toBe('2027-03-12')
+    expect(publishedDay(undefined)).toBeUndefined()
+  })
+  it('is upcoming only when that day is still to come', () => {
+    expect(releaseFromPublished({ published: '2026-12-01' }, today)).toBe('2026-12-01')
+    expect(releaseFromPublished({ published: '2026-11-12' }, today)).toBeUndefined()
+    expect(releaseFromPublished({ published: '2008' }, today)).toBeUndefined()
+    expect(releaseFromPublished({ year: 2027 }, today)).toBe('2027-01-01')
+    expect(releaseFromPublished({ year: 2026 }, today)).toBeUndefined()
+  })
+})
