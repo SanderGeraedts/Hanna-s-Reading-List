@@ -2,8 +2,8 @@ import Anthropic from '@anthropic-ai/sdk'
 import { NOT_SIGNED_IN, asUser, pb, pocketbaseUrl } from './pocketbase'
 
 /**
- * The app's few AI features (page edges #98, recommendations, completing a
- * series) ask Claude one question each and get JSON back in a fixed shape.
+ * The app's AI features (recommendations, completing a series) ask Claude
+ * one question each and get JSON back in a fixed shape.
  * They need ANTHROPIC_API_KEY on the server and a signed-in account, so
  * nobody else can spend the API credit.
  */

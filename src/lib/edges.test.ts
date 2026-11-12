@@ -20,12 +20,6 @@ describe('page edges (#98)', () => {
     expect(cleanEdges({ pattern: 'dots', colors: ['#000001', '#000002', '#000003', '#000004'] })?.colors).toHaveLength(3)
   })
 
-  it('keeps what she asked the AI for', () => {
-    expect(cleanEdges({ pattern: 'moons', colors: ['#000000', '#ffffff'], prompt: '  moons at night ' })?.prompt).toBe(
-      'moons at night',
-    )
-  })
-
   it('from the cover: its colour, with gold on a dark cover', () => {
     expect(edgesFromCover({ color: '#101820' })).toEqual({ pattern: 'sprayed', colors: ['#101820', '#d8b25a'] })
     expect(edgesFromCover({ color: '#e0662a' }).colors[0]).toBe('#e0662a')

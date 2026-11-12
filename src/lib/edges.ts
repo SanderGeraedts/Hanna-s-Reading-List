@@ -27,14 +27,12 @@ export interface PageEdges {
   pattern: EdgePattern
   /** the base colour, the pattern's colour, and an optional third */
   colors: [string, string] | [string, string, string]
-  /** what she asked the AI for, when it came from there */
-  prompt?: string
 }
 
 const HEX = /^#[0-9a-f]{6}$/i
 const isPattern = (p: unknown): p is EdgePattern => typeof p === 'string' && Object.hasOwn(EDGE_PATTERNS, p)
 
-/** Page edges made safe, from the shelf or from the AI: undefined when not usable. */
+/** Page edges made safe: undefined when not usable. */
 export function cleanEdges(raw: unknown): PageEdges | undefined {
   const r = raw as Partial<PageEdges> | null
   if (!r || typeof r !== 'object' || !isPattern(r.pattern)) return undefined
@@ -44,8 +42,7 @@ export function cleanEdges(raw: unknown): PageEdges | undefined {
     .slice(0, 3)
   if (colors.length === 0) return undefined
   if (colors.length === 1) colors.push(colors[0])
-  const prompt = typeof r.prompt === 'string' && r.prompt.trim() ? r.prompt.trim().slice(0, 200) : undefined
-  return { pattern: r.pattern, colors: colors as PageEdges['colors'], ...(prompt && { prompt }) }
+  return { pattern: r.pattern, colors: colors as PageEdges['colors'] }
 }
 
 function parseHex(hex: string): [number, number, number] {

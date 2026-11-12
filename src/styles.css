@@ -2196,8 +2196,7 @@ textarea.input {
 
 /* ---- page edges (#98) -------------------------------------------------- */
 .edges-actions,
-.edges-pick,
-.edges-ai {
+.edges-pick {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
@@ -2206,9 +2205,6 @@ textarea.input {
 .edges-pick .input {
   width: auto;
   flex: 1 1 8rem;
-}
-.edges-ai .input {
-  flex: 1 1 10rem;
 }
 .edges-field .swatch {
   width: 2rem;
