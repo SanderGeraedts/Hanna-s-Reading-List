@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { Book } from '#/lib/library'
+import type { Book, NewBook } from '#/lib/library'
+import { RecommendCard } from './RecommendCard'
 import { formatDuration } from '#/lib/listening'
 import {
   BookLine,
@@ -63,6 +64,8 @@ interface DashboardProps extends Props {
   upcoming: Book[]
   onUpdate: (id: string, patch: Partial<Book>) => void
   onRemove: (id: string) => void
+  /** put a recommended book on the shelf */
+  onAdd: (book: NewBook) => void
 }
 
 export interface PeriodPick {
@@ -132,7 +135,7 @@ interface Drag {
   drop: Drop | null
 }
 
-export function Dashboard({ books, onShowBook, accountId, upcoming, onUpdate, onRemove }: DashboardProps) {
+export function Dashboard({ books, onShowBook, accountId, upcoming, onUpdate, onRemove, onAdd }: DashboardProps) {
   const now = new Date()
   // the period picked under "Books read"; the charts and records follow it
   const [pick, setPick] = useState<PeriodPick>({ kind: 'year', year: now.getFullYear(), month: now.getMonth() + 1 })
@@ -160,6 +163,7 @@ export function Dashboard({ books, onShowBook, accountId, upcoming, onUpdate, on
     lent: <LentCard books={books} onShowBook={onShowBook} />,
     upcoming: <UpcomingCard books={upcoming} onUpdate={onUpdate} onRemove={onRemove} />,
     top: <TopRatedCard books={books} onShowBook={onShowBook} />,
+    recommend: <RecommendCard books={books} accountId={accountId} onAdd={onAdd} />,
     fact: <FactCard books={books} />,
   }
 

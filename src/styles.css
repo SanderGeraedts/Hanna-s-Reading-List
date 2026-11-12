@@ -2244,3 +2244,32 @@ textarea.input {
   background: none;
   cursor: pointer;
 }
+
+/* ---- recommended for you ----------------------------------------------- */
+.recommend-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+.recommend-list li {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+}
+.recommend-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.recommend-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+}
+.btn.ghost {
+  background: transparent;
+}

@@ -23,6 +23,7 @@ export const BLOCKS = {
   lent: 'Lent out',
   upcoming: 'Upcoming releases',
   top: 'Top 5',
+  recommend: 'Recommended for you',
   fact: 'Book fact',
 } as const
 
@@ -36,7 +37,7 @@ export interface DashboardLayout {
 export const DEFAULT_LAYOUT: DashboardLayout = {
   columns: [
     ['count', 'reading', 'monthly', 'breakdown', 'records', 'onthisday', 'fact'],
-    ['goal', 'upcoming', 'next', 'top', 'calendar', 'series', 'streak', 'pile', 'lent'],
+    ['goal', 'upcoming', 'next', 'recommend', 'top', 'calendar', 'series', 'streak', 'pile', 'lent'],
   ],
   hidden: [],
 }
