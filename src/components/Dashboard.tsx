@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Book, NewBook } from '#/lib/library'
 import { RecommendCard } from './RecommendCard'
+import { CompleteSeriesCard } from './CompleteSeriesCard'
 import { formatDuration } from '#/lib/listening'
 import {
   BookLine,
@@ -165,6 +166,7 @@ export function Dashboard({ books, onShowBook, accountId, upcoming, onUpdate, on
     upcoming: <UpcomingCard books={upcoming} onUpdate={onUpdate} onRemove={onRemove} />,
     top: <TopRatedCard books={books} onShowBook={onShowBook} />,
     recommend: <RecommendCard books={books} accountId={accountId} onAdd={onAdd} />,
+    complete: <CompleteSeriesCard books={books} upcoming={upcoming} onAdd={onAdd} />,
     fact: <FactCard books={books} />,
     pace: <PaceCard books={books} onShowBook={onShowBook} />,
     heatmap: <HeatmapCard books={books} />,

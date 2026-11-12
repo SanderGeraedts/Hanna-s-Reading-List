@@ -24,6 +24,7 @@ export const BLOCKS = {
   upcoming: 'Upcoming releases',
   top: 'Top 5',
   recommend: 'Recommended for you',
+  complete: 'Complete your series',
   fact: 'Book fact',
   pace: 'Finish by',
   heatmap: 'A year of reading',
@@ -44,7 +45,7 @@ export interface DashboardLayout {
 export const DEFAULT_LAYOUT: DashboardLayout = {
   columns: [
     ['count', 'reading', 'pace', 'monthly', 'formats', 'heatmap', 'breakdown', 'records', 'authors', 'onthisday', 'fact', 'wrapped'],
-    ['goal', 'upcoming', 'next', 'recommend', 'top', 'spice', 'calendar', 'bingo', 'series', 'streak', 'pile', 'lent'],
+    ['goal', 'upcoming', 'next', 'recommend', 'top', 'spice', 'calendar', 'bingo', 'series', 'complete', 'streak', 'pile', 'lent'],
   ],
   hidden: [],
 }
