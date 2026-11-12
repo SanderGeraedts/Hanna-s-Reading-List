@@ -362,8 +362,8 @@ function UpcomingCard({
       <h2 id="upcoming-title">Upcoming releases</h2>
       {books.length === 0 ? (
         <p className="muted small-text">
-          Nothing to wait for. Add a book with <em>Not out yet</em> ticked, and it waits here until the day it comes
-          out.
+          Nothing to wait for. Add a book with a publication date still to come, and it waits here until the day it
+          comes out.
         </p>
       ) : (
         <ul className="upcoming-list">
@@ -383,7 +383,7 @@ function UpcomingCard({
                     autoFocus
                     onBlur={() => setEditing(null)}
                     onChange={(e) => {
-                      if (e.target.value >= tomorrow) onUpdate(b.id, { releaseDate: e.target.value })
+                      if (e.target.value >= tomorrow) onUpdate(b.id, { releaseDate: e.target.value, published: e.target.value })
                     }}
                   />
                 ) : (
