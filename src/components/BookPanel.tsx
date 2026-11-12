@@ -16,6 +16,8 @@ import {
 import { LANGUAGE_CHOICES, languageName } from '#/lib/languages'
 import { tidyTitle } from '#/lib/titles'
 import type { SeriesInfo } from '#/lib/series'
+import { StarRating } from './StarRating'
+import { ratingText, spiceText } from '#/lib/ratings'
 import { backText } from './textures'
 import { MergeSection } from './MergeSection'
 
@@ -392,7 +394,7 @@ export function BookPanel({
       </div>
       </div>
 
-      <div className="segmented" role="group" aria-label="Show side">
+      <div className="side-pick" role="group" aria-label="Show side">
         <button onClick={() => onFace('front')}>Front</button>
         <button onClick={() => onFace('spine')}>Spine</button>
         <button onClick={() => onFace('back')}>Back</button>
@@ -463,6 +465,26 @@ export function BookPanel({
                 onProgress={onProgress}
               />
             ) : null}
+          </div>
+        </div>
+      )}
+
+      {(book.status === 'read' || reads > 0) && (
+        <div className="field">
+          <span>Rating</span>
+          <div className="rating-field">
+            <StarRating value={book.rating} onChange={(rating) => onUpdate({ rating })} size="large" />
+            <span className="muted small-text">{ratingText(book.rating)}</span>
+          </div>
+        </div>
+      )}
+
+      {(book.status === 'read' || reads > 0) && (
+        <div className="field">
+          <span>Spice</span>
+          <div className="rating-field">
+            <StarRating kind="spice" value={book.spice} onChange={(spice) => onUpdate({ spice })} size="large" />
+            <span className="muted small-text">{spiceText(book.spice)}</span>
           </div>
         </div>
       )}

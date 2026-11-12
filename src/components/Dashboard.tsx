@@ -8,6 +8,7 @@ import {
   GoalCard,
   LentCard,
   MonthlyChart,
+  FactCard,
   OnThisDayCard,
   PileCard,
   RecordsCard,
@@ -19,6 +20,9 @@ import { pickReadNext, readNextChoices } from '#/lib/readNext'
 import { storytelLink } from '#/lib/storytelLink'
 import { countdownText, releaseDayText } from '#/lib/upcoming'
 import { localDay } from '#/lib/library'
+import { topRated } from '#/lib/ratings'
+import { StarRating } from './StarRating'
+import { inkFor } from './textures'
 import { monthWeeks, periodStats, readingYears } from '#/lib/stats'
 import { amountText, amountUnit, finishedIn, monthEntries, startedIn } from '#/lib/readingLog'
 import type { DayEntry } from '#/lib/readingLog'
@@ -155,6 +159,8 @@ export function Dashboard({ books, onShowBook, accountId, upcoming, onUpdate, on
     onthisday: <OnThisDayCard books={books} onShowBook={onShowBook} />,
     lent: <LentCard books={books} onShowBook={onShowBook} />,
     upcoming: <UpcomingCard books={upcoming} onUpdate={onUpdate} onRemove={onRemove} />,
+    top: <TopRatedCard books={books} onShowBook={onShowBook} />,
+    fact: <FactCard books={books} />,
   }
 
   const columns: BlockId[][] = narrow ? [singleColumn(layout)] : layout.columns
@@ -394,6 +400,122 @@ function UpcomingCard({
   )
 }
 
+/** All time / Year / Month, for the blocks that look at a period. */
+function PeriodTabs({ pick, onPick }: { pick: PeriodPick; onPick: (pick: PeriodPick) => void }) {
+  return (
+    <div className="segmented" role="group" aria-label="Period">
+      {(['month', 'year', 'all'] as const).map((k) => (
+        <button
+          key={k}
+          className={pick.kind === k ? 'active' : ''}
+          aria-pressed={pick.kind === k}
+          onClick={() => onPick({ ...pick, kind: k })}
+        >
+          {k === 'all' ? 'All time' : k === 'year' ? 'Year' : 'Month'}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** Which year, or which month, of the period picked. */
+function PeriodSelect({
+  books,
+  pick,
+  onPick,
+}: {
+  books: Book[]
+  pick: PeriodPick
+  onPick: (pick: PeriodPick) => void
+}) {
+  const { kind, year, month } = pick
+  const setYear = (y: number) => onPick({ ...pick, year: y })
+  const setMonth = (m: number) => onPick({ ...pick, month: m })
+  const years = useMemo(() => readingYears(books), [books])
+  const step = (by: number) => {
+    const d = new Date(year, month - 1 + by, 1)
+    onPick({ ...pick, year: d.getFullYear(), month: d.getMonth() + 1 })
+  }
+  if (kind === 'all') return null
+  return (
+    <div className="period-pick">
+      {kind === 'month' && (
+        <button className="btn icon small" aria-label="Previous month" onClick={() => step(-1)}>
+          ‹
+        </button>
+      )}
+      {kind === 'month' && (
+        <select
+          className="input"
+          value={month}
+          onChange={(e) => setMonth(Number(e.target.value))}
+          aria-label="Month"
+        >
+          {Array.from({ length: 12 }, (_, i) => (
+            <option key={i} value={i + 1}>
+              {monthName(i + 1)}
+            </option>
+          ))}
+        </select>
+      )}
+      <select className="input" value={year} onChange={(e) => setYear(Number(e.target.value))} aria-label="Year">
+        {(years.includes(year) ? years : [...years, year].sort((a, b) => b - a)).map((y) => (
+          <option key={y} value={y}>
+            {y}
+          </option>
+        ))}
+      </select>
+      {kind === 'month' && (
+        <button className="btn icon small" aria-label="Next month" onClick={() => step(1)}>
+          ›
+        </button>
+      )}
+    </div>
+  )
+}
+
+/** Her five favourites (#100): the best-rated books she finished, of all time, a year or a month. */
+function TopRatedCard({ books, onShowBook }: Props) {
+  const now = new Date()
+  const [pick, setPick] = useState<PeriodPick>({ kind: 'all', year: now.getFullYear(), month: now.getMonth() + 1 })
+  const top = useMemo(() => topRated(books, toPeriod(pick)), [books, pick])
+  return (
+    <section className="dash-card top-card" aria-labelledby="top-title">
+      <div className="dash-card-head">
+        <h2 id="top-title">Top 5</h2>
+        <PeriodTabs pick={pick} onPick={setPick} />
+      </div>
+      <PeriodSelect books={books} pick={pick} onPick={setPick} />
+      {top.length === 0 ? (
+        <p className="muted small-text">
+          No rated books {periodLabel(pick) === 'all time' ? 'yet' : periodLabel(pick)}. Give a finished book stars to
+          see your favourites here.
+        </p>
+      ) : (
+        <ol className="top-list">
+          {top.map((b, i) => (
+            <li key={b.id}>
+              <span className="top-place">{i + 1}</span>
+              <button className="cover-btn" aria-label={b.title} onClick={() => onShowBook(b.id)}>
+                <Cover book={b} small />
+              </button>
+              <span className="top-info">
+                <button className="link-btn" onClick={() => onShowBook(b.id)}>
+                  {b.title}
+                </button>
+                <span className="top-ratings">
+                  <StarRating value={b.rating} size="small" />
+                  {b.spice ? <StarRating kind="spice" value={b.spice} size="small" /> : null}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  )
+}
+
 function ReadCount({
   books,
   onShowBook,
@@ -401,66 +523,17 @@ function ReadCount({
   onPick,
 }: Props & { pick: PeriodPick; onPick: (pick: PeriodPick) => void }) {
   const { kind, year, month } = pick
-  const setKind = (k: Period['kind']) => onPick({ ...pick, kind: k })
-  const setYear = (y: number) => onPick({ ...pick, year: y })
-  const setMonth = (m: number) => onPick({ ...pick, month: m })
-  const years = useMemo(() => readingYears(books), [books])
   const stats = useMemo(() => periodStats(books, toPeriod({ kind, year, month })), [books, kind, year, month])
-
   const label = periodLabel(pick)
-  const step = (by: number) => {
-    const d = new Date(year, month - 1 + by, 1)
-    onPick({ ...pick, year: d.getFullYear(), month: d.getMonth() + 1 })
-  }
 
   return (
     <section className="dash-card count-card" aria-labelledby="count-title">
       <div className="dash-card-head">
         <h2 id="count-title">Books read</h2>
-        <div className="segmented" role="group" aria-label="Period">
-          {(['month', 'year', 'all'] as const).map((k) => (
-            <button key={k} className={kind === k ? 'active' : ''} aria-pressed={kind === k} onClick={() => setKind(k)}>
-              {k === 'all' ? 'All time' : k === 'year' ? 'Year' : 'Month'}
-            </button>
-          ))}
-        </div>
+        <PeriodTabs pick={pick} onPick={onPick} />
       </div>
 
-      {kind !== 'all' && (
-        <div className="period-pick">
-          {kind === 'month' && (
-            <button className="btn icon small" aria-label="Previous month" onClick={() => step(-1)}>
-              ‹
-            </button>
-          )}
-          {kind === 'month' && (
-            <select
-              className="input"
-              value={month}
-              onChange={(e) => setMonth(Number(e.target.value))}
-              aria-label="Month"
-            >
-              {Array.from({ length: 12 }, (_, i) => (
-                <option key={i} value={i + 1}>
-                  {monthName(i + 1)}
-                </option>
-              ))}
-            </select>
-          )}
-          <select className="input" value={year} onChange={(e) => setYear(Number(e.target.value))} aria-label="Year">
-            {(years.includes(year) ? years : [...years, year].sort((a, b) => b - a)).map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
-          {kind === 'month' && (
-            <button className="btn icon small" aria-label="Next month" onClick={() => step(1)}>
-              ›
-            </button>
-          )}
-        </div>
-      )}
+      <PeriodSelect books={books} pick={pick} onPick={onPick} />
 
       <p className="big-number" aria-live="polite">
         <strong>{stats.books}</strong> {stats.books === 1 ? 'book' : 'books'} <span className="muted">{label}</span>
@@ -553,6 +626,9 @@ function ReadNextCard({ books, onShowBook }: Props) {
  * finished on each day of a month. Tapping a day (anywhere in it) shows that
  * day; below are the books started and finished that month.
  */
+/** class for a book finished or started on a calendar day */
+const mark = (e: DayEntry) => (e.finished ? ' finished' : e.started ? ' started' : '')
+
 function Calendar({ books, onShowBook }: Props) {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
@@ -632,14 +708,25 @@ function Calendar({ books, onShowBook }: Props) {
                         onClick={() => setPicked(d === picked ? null : d)}
                       >
                         <span className="day-number">{d}</span>
-                        {entries.map((e) => (
-                          <span
-                            key={e.book.id}
-                            className={`day-cover${e.finished ? ' finished' : e.started ? ' started' : ''}`}
-                          >
-                            <Cover book={e.book} small />
+                        {/* one book shows its cover; more stand side by side as spines,
+                            so a day keeps the same size however much was read (#102) */}
+                        {entries.length === 1 ? (
+                          <span className={`day-cover${mark(entries[0])}`}>
+                            <Cover book={entries[0].book} small />
                           </span>
-                        ))}
+                        ) : entries.length > 1 ? (
+                          <span className={`day-spines${entries.length <= 3 ? ' roomy' : ''}`} aria-hidden>
+                            {entries.map((e) => (
+                              <span
+                                key={e.book.id}
+                                className={`day-spine${mark(e)}`}
+                                style={{ background: e.book.color, color: inkFor(e.book.color) }}
+                              >
+                                <span className="day-spine-title">{e.book.title}</span>
+                              </span>
+                            ))}
+                          </span>
+                        ) : null}
                       </button>
                     )}
                   </td>

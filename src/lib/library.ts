@@ -45,6 +45,10 @@ export interface Book {
   progress?: number
   /** how many times the book has been finished (entered by hand) */
   readCount?: number
+  /** her rating, ½ to 5 stars in halves (#100) */
+  rating?: number
+  /** how spicy (steamy) she found it, 1 to 5 peppers */
+  spice?: number
   /**
    * the days it was finished (yyyy-mm-dd, oldest first), noted from #59 on;
    * books finished before that have none until Hanna fills one in
