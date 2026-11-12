@@ -44,4 +44,26 @@ describe('dailyFact (#101)', () => {
   it('has no fact twice', () => {
     expect(new Set(FACTS).size).toBe(FACTS.length)
   })
+
+  it('has no near-duplicate facts (same first six words)', () => {
+    const words = (f: string) =>
+      f
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}\s]/gu, '')
+        .split(/\s+/)
+        .filter(Boolean)
+    const seen = new Map<string, string>()
+    const doubles: string[][] = []
+    for (const fact of FACTS) {
+      const key = words(fact).slice(0, 6).join(' ')
+      const other = seen.get(key)
+      if (other) doubles.push([other, fact])
+      seen.set(key, fact)
+    }
+    expect(doubles).toEqual([])
+  })
+
+  it('has enough facts to last over a year of reading days', () => {
+    expect(FACTS.length).toBeGreaterThanOrEqual(350)
+  })
 })
