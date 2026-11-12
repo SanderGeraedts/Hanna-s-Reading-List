@@ -105,6 +105,8 @@ async function toNewBook(b: StorytelBook): Promise<NewBook> {
     language: b.language ?? guessLanguage(b.title) ?? ol?.language,
     // Storytel's categories first, then Open Library's subjects
     genres: [...new Set([...genresFromSubjects(b.categories ?? []), ...(details?.genres ?? [])])].slice(0, 3),
+    // not out yet: it waits in Upcoming releases (#103)
+    ...(b.releaseDate && b.releaseDate > localDay() && { releaseDate: b.releaseDate }),
   }
 }
 
@@ -214,6 +216,7 @@ export async function importStorytelBooks(
           storytelId: item.storytelId,
           language: item.language ?? guessLanguage(item.title),
           color: colorFromString(item.title),
+          ...(item.releaseDate && item.releaseDate > today && { releaseDate: item.releaseDate }),
         })
         summary.added++
       }

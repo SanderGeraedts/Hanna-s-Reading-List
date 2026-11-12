@@ -2168,3 +2168,54 @@ textarea.input {
   font-size: 0.85rem;
   text-align: right;
 }
+
+/* ---- upcoming releases (#103) ----------------------------------------- */
+.not-out {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+  margin: 0.25rem 0 0.75rem;
+}
+.not-out .check {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  cursor: pointer;
+}
+.not-out-date {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+.not-out-date .input {
+  width: auto;
+}
+.not-out p {
+  flex-basis: 100%;
+  margin: 0;
+}
+.upcoming-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+.upcoming-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.upcoming-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+}
+.upcoming-info .input {
+  width: auto;
+}
+
