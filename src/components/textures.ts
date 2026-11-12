@@ -40,7 +40,8 @@ export function shade(hex: string, amount: number) {
   return `#${f(r)}${f(g)}${f(b)}`
 }
 
-function inkFor(bg: string) {
+/** Dark or light text, whichever reads on `bg`. */
+export function inkFor(bg: string) {
   const [r, g, b] = parseHex(bg)
   const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255
   return lum > 0.6 ? '#1d1a16' : '#f6efe1'

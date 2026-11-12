@@ -17,6 +17,7 @@ import {
 } from './DashboardExtras'
 import { pickReadNext, readNextChoices } from '#/lib/readNext'
 import { storytelLink } from '#/lib/storytelLink'
+import { inkFor } from './textures'
 import { monthWeeks, periodStats, readingYears } from '#/lib/stats'
 import { amountText, amountUnit, finishedIn, monthEntries, startedIn } from '#/lib/readingLog'
 import type { DayEntry } from '#/lib/readingLog'
@@ -479,6 +480,9 @@ function ReadNextCard({ books, onShowBook }: Props) {
  * finished on each day of a month. Tapping a day (anywhere in it) shows that
  * day; below are the books started and finished that month.
  */
+/** class for a book finished or started on a calendar day */
+const mark = (e: DayEntry) => (e.finished ? ' finished' : e.started ? ' started' : '')
+
 function Calendar({ books, onShowBook }: Props) {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
@@ -558,14 +562,25 @@ function Calendar({ books, onShowBook }: Props) {
                         onClick={() => setPicked(d === picked ? null : d)}
                       >
                         <span className="day-number">{d}</span>
-                        {entries.map((e) => (
-                          <span
-                            key={e.book.id}
-                            className={`day-cover${e.finished ? ' finished' : e.started ? ' started' : ''}`}
-                          >
-                            <Cover book={e.book} small />
+                        {/* one book shows its cover; more stand side by side as spines,
+                            so a day keeps the same size however much was read (#102) */}
+                        {entries.length === 1 ? (
+                          <span className={`day-cover${mark(entries[0])}`}>
+                            <Cover book={entries[0].book} small />
                           </span>
-                        ))}
+                        ) : entries.length > 1 ? (
+                          <span className={`day-spines${entries.length <= 3 ? ' roomy' : ''}`} aria-hidden>
+                            {entries.map((e) => (
+                              <span
+                                key={e.book.id}
+                                className={`day-spine${mark(e)}`}
+                                style={{ background: e.book.color, color: inkFor(e.book.color) }}
+                              >
+                                <span className="day-spine-title">{e.book.title}</span>
+                              </span>
+                            ))}
+                          </span>
+                        ) : null}
                       </button>
                     )}
                   </td>
