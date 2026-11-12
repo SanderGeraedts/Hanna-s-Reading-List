@@ -6,7 +6,6 @@ vi.mock('#/server/shelf', () => ({ loadShelf: async () => null, saveShelf: async
 const { statusPatch } = await import('./library')
 const { mergeBooks } = await import('./merge')
 const { finishedByDay, monthWeeks, periodStats, readingYears } = await import('./stats')
-const { parseQuotes, pickQuote, quoteChoices } = await import('./quotes')
 
 const book = (id: string, extra: Partial<Book> = {}): Book => ({
   id,
@@ -76,41 +75,5 @@ describe('books read in a period (#59)', () => {
     expect(weeks[0]).toEqual([null, null, null, null, null, null, 1])
     expect(weeks.at(-1)!.filter((d) => d !== null).at(-1)).toBe(30)
     expect(weeks.every((w) => w.length === 7)).toBe(true)
-  })
-})
-
-describe('quotes (#59)', () => {
-  it('come only from books she has read', () => {
-    const shelf = [
-      book('r', { status: 'read', quotes: ['Mine.'] }),
-      book('w', { quotes: ['Spoiler!'] }),
-      book('hp7', { title: 'Harry Potter und die Heiligtümer des Todes' }),
-    ]
-    expect(quoteChoices(shelf).map((q) => q.text)).toEqual(['Mine.'])
-  })
-
-  it('her own quotes come before the built-in ones', () => {
-    const own = book('hp1', { title: 'Harry Potter und der Stein der Weisen', status: 'read', quotes: ['Mine.'] })
-    expect(quoteChoices([own]).map((q) => q.text)).toEqual(['Mine.'])
-  })
-
-  it('a read book without quotes of her own can get a known one, from that very book', () => {
-    const hp1 = book('hp1', { title: 'Harry Potter und der Stein der Weisen', status: 'read' })
-    const hp7 = book('hp7', { title: 'Harry Potter und die Heiligtümer des Todes' })
-    const quotes = quoteChoices([hp1, hp7])
-    expect(quotes).toHaveLength(1)
-    expect(quotes[0].text).toMatch(/dwell on dreams/)
-    expect(quoteChoices([book('d', { title: 'Dune Messiah', status: 'read' })])).toEqual([])
-    expect(quoteChoices([book('d', { title: 'Dune (Dune Chronicles, #1)', status: 'read' })])).toHaveLength(1)
-  })
-
-  it('shows another quote than last time', () => {
-    const choices = quoteChoices([book('r', { status: 'read', quotes: ['One.', 'Two.'] })])
-    expect(pickQuote(choices, 'One.', () => 0)?.text).toBe('Two.')
-  })
-
-  it('are typed with an empty line between them', () => {
-    expect(parseQuotes('First line\nstill first\n\n  Second  \n\n\n')).toEqual(['First line\nstill first', 'Second'])
-    expect(parseQuotes('   ')).toBeUndefined()
   })
 })

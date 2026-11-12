@@ -63,6 +63,18 @@ describe('paused books (#60)', () => {
     ])
   })
 
+  it('pick up again after only a few minutes of listening, whatever Storytel calls it (#91)', async () => {
+    const onShelf = book({ storytelId: 'st', status: 'paused', progress: 0.4, minutes: 1000 })
+    // 4 minutes of a 1000-minute book
+    const [update] = await refresh(onShelf, 'want', 0.404)
+    expect(update).toMatchObject({ status: 'reading', progress: 0.404 })
+  })
+
+  it('pick up again when she moves the progress on herself (#91)', async () => {
+    const { progressPatch } = await import('./readingLog')
+    expect(progressPatch(book({ status: 'paused', progress: 0.4 }), 0.5)).toMatchObject({ status: 'reading' })
+  })
+
   it('are finished when Storytel says so', async () => {
     const onShelf = book({ storytelId: 'st', status: 'paused', progress: 0.4 })
     expect(await refresh(onShelf, 'read', 1)).toEqual([

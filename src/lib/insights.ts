@@ -2,8 +2,6 @@ import type { Book } from './library'
 import { FORMAT_LABELS, formatsOf, timesRead } from './library'
 import { languageName } from './languages'
 import { listenOnly } from './listening'
-import type { Quote } from './quotes'
-import { quoteChoices } from './quotes'
 import type { DayEntry } from './readingLog'
 import { dayEntries } from './readingLog'
 import { seriesGroups } from './series'
@@ -259,50 +257,3 @@ export function onThisDay(books: Book[], now = new Date()): Array<DayEntry & { y
   return out.sort((a, b) => b.year - a.year)
 }
 
-// ---- year in review ----------------------------------------------------------------------
-
-export interface YearReview {
-  year: number
-  books: number
-  pages: number
-  minutes: number
-  topAuthor?: { name: string; books: number }
-  longest?: Book
-  /** 1-based month with the most finished books */
-  busiestMonth?: { month: number; books: number }
-  /** loved quotes, else any quotes, from books finished that year */
-  quotes: Quote[]
-}
-
-export function yearReview(books: Book[], year: number): YearReview {
-  const period: Period = { kind: 'year', year }
-  const stats = periodStats(books, period)
-  const rec = records(books, period)
-  const monthly = monthlyCounts(books, year)
-  const most = Math.max(...monthly)
-  const ids = new Set(stats.list.map((b) => b.id))
-  const quotes = quoteChoices(books).filter((q) => ids.has(q.book.id))
-  const loved = quotes.filter((q) => q.book.lovedQuotes?.includes(q.text))
-  return {
-    year,
-    books: stats.books,
-    pages: stats.pages,
-    minutes: stats.minutes,
-    topAuthor: rec.topAuthor,
-    longest: rec.longest,
-    ...(most > 0 && { busiestMonth: { month: monthly.indexOf(most) + 1, books: most } }),
-    quotes: (loved.length ? loved : quotes).slice(0, 3),
-  }
-}
-
-// ---- loved quotes ---------------------------------------------------------------------------
-
-/** Quotes she gave a heart, from books she has read. */
-export const lovedQuotes = (books: Book[]) => quoteChoices(books).filter((q) => q.book.lovedQuotes?.includes(q.text))
-
-/** The change to a book for loving a quote, or no longer loving it. */
-export function toggleLoved(book: Book, text: string): Partial<Book> {
-  const loved = book.lovedQuotes ?? []
-  const next = loved.includes(text) ? loved.filter((t) => t !== text) : [...loved, text]
-  return { lovedQuotes: next.length ? next : undefined }
-}
