@@ -85,6 +85,23 @@ jobs:
           [ "$(nightly -H 'x-nightly-secret: wrong')" = 404 ] || { echo "::error::nightly shelves open with a wrong secret"; exit 1; }
           [ "$(nightly -H 'x-nightly-secret: ci-nightly-secret')" = 200 ] || { echo "::error::nightly shelves refused the secret"; docker logs pb; exit 1; }
 
+          # shelf history (pb_hooks/history.pb.js): a save that drops books keeps the shelf as it was
+          user=$(curl -fsS -X POST http://127.0.0.1:8090/api/collections/users/auth-with-password \
+            -H 'content-type: application/json' -d '{"identity":"allowed@example.com","password":"signup-test-123"}')
+          utoken=$(echo "$user" | jq -r .token); uid=$(echo "$user" | jq -r .record.id)
+          lib=$(curl -fsS -X POST http://127.0.0.1:8090/api/collections/libraries/records -H "authorization: $utoken" \
+            -H 'content-type: application/json' \
+            -d "{\"owner\":\"$uid\",\"books\":[{\"id\":\"a\",\"title\":\"A\"},{\"id\":\"b\",\"title\":\"B\"}]}" | jq -r .id)
+          curl -fsS -o /dev/null -X PATCH "http://127.0.0.1:8090/api/collections/libraries/records/$lib" -H "authorization: $utoken" \
+            -H 'content-type: application/json' -d '{"books":[{"id":"a","title":"A"}]}'
+          versions=$(curl -fsS "http://127.0.0.1:8090/api/collections/library_versions/records" -H "authorization: $token")
+          echo "$versions" | jq -e '.totalItems == 1 and .items[0].book_count == 2 and .items[0].dropped == 1' >/dev/null \
+            || { echo "::error::no shelf version kept ($versions)"; docker logs pb; exit 1; }
+          # people can't read (or change) the history themselves
+          [ "$(curl -s "http://127.0.0.1:8090/api/collections/library_versions/records" -H "authorization: $utoken" | jq '.items | length')" = 0 ] \
+            || [ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8090/api/collections/library_versions/records" -H "authorization: $utoken")" = 403 ] \
+            || { echo "::error::library_versions readable by a user"; exit 1; }
+
       - name: Stop the check container
         if: always()
         run: docker rm -f pb || true

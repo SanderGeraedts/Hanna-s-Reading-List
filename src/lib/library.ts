@@ -72,6 +72,11 @@ export interface Book {
   /** lent to a friend: to whom, and since when (yyyy-mm-dd) */
   lent?: { to: string; since?: string }
   addedAt: number
+  /**
+   * When the book last changed (ms). When two copies of a shelf meet, the
+   * newer edit of a book wins (see shelfMerge.ts); without it, the server's.
+   */
+  editedAt?: number
 }
 
 export type BookFormat =
@@ -125,7 +130,7 @@ export function withFormats(formats: BookFormat[]): Pick<Book, 'formats' | 'form
   return { formats: (Object.keys(FORMAT_LABELS) as BookFormat[]).filter((f) => formats.includes(f)), format: undefined }
 }
 
-export type NewBook = Omit<Book, 'id' | 'addedAt' | 'status'> & {
+export type NewBook = Omit<Book, 'id' | 'addedAt' | 'editedAt' | 'status'> & {
   status?: ReadingStatus
 }
 
@@ -257,8 +262,41 @@ function storageKeys(accountId: string | null) {
         arrangement: `${ARRANGEMENT_KEY}:${accountId}`,
         /** set while this device has changes the server hasn't got yet */
         unsynced: `${STORAGE_KEY}:${accountId}:unsynced`,
+        /** the server version this device's copy is based on (its `updated`) */
+        synced: `${STORAGE_KEY}:${accountId}:synced`,
+        /** books removed on this device that the server hasn't been told about */
+        removed: `${STORAGE_KEY}:${accountId}:removed`,
       }
-    : { books: STORAGE_KEY, arrangement: ARRANGEMENT_KEY, unsynced: null }
+    : { books: STORAGE_KEY, arrangement: ARRANGEMENT_KEY, unsynced: null, synced: null, removed: null }
+}
+
+function read(key: string | null) {
+  try {
+    return key ? localStorage.getItem(key) : null
+  } catch {
+    return null
+  }
+}
+
+function readIds(key: string | null): string[] {
+  try {
+    const ids = JSON.parse(read(key) ?? '[]')
+    return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+/** Notes books removed on this device, so the server removes them too and keeps everything else. */
+function noteRemoved(key: string | null, ids: string[]) {
+  if (!key || !ids.length) return
+  store(key, JSON.stringify([...new Set([...readIds(key), ...ids])]))
+}
+
+function forgetRemoved(key: string | null, ids: string[]) {
+  if (!key || !ids.length) return
+  const left = readIds(key).filter((id) => !ids.includes(id))
+  store(key, left.length ? JSON.stringify(left) : null)
 }
 
 const norm = (s: string | undefined) => (s ?? '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '')
@@ -344,6 +382,9 @@ export function useLibrary(accountId: string | null = null, onSignedOut?: () => 
     }
     const { books, arrangement } = latest.current
     const withPreAccount = migrationSent.current
+    // the server merges this into its copy: books it has that aren't sent stay, unless removed here
+    const removed = readIds(keys.removed)
+    const base = read(keys.synced)
     if (JSON.stringify(books).length > SYNC_LIMIT) {
       setSync('too-big')
       return
@@ -351,14 +392,18 @@ export function useLibrary(accountId: string | null = null, onSignedOut?: () => 
     saving.current = true
     setSync('saving')
     try {
-      const r = await saveShelf({ data: { books, arrangement } })
+      const r = await saveShelf({ data: { books, arrangement, base, removed } })
       serverUpdated.current = r.updated
+      store(keys.synced!, r.updated)
+      forgetRemoved(keys.removed, removed)
       if (withPreAccount) {
         migrationSent.current = false
         store(MIGRATED_KEY, JSON.stringify({ account: accountId, at: r.updated }))
       }
       if (!saveAgain.current) {
         store(keys.unsynced!, null)
+        // the server kept books or edits this device didn't have: show the shelf as saved
+        if (r.books) adopt(r.books, latest.current.arrangement)
         setSync('saved')
       }
     } catch (e) {
@@ -371,7 +416,7 @@ export function useLibrary(accountId: string | null = null, onSignedOut?: () => 
         pushRef.current()
       }
     }
-  }, [accountId, keys, failed])
+  }, [accountId, keys, failed, adopt])
   pushRef.current = push
 
   // the server's copy, folded into this device's: on first load and when the page comes back into view
@@ -384,7 +429,13 @@ export function useLibrary(accountId: string | null = null, onSignedOut?: () => 
       const current = latest.current
       // this device's copy wins when the server has none or this device has unsent changes
       const mine = !remote || unsynced
-      const pre = preAccountShelf(accountId)
+      let pre = preAccountShelf(accountId)
+      if (pre.length && remote?.books.length) {
+        // the account already has a shelf: a shelf this browser had without an account
+        // (say, test data on a developer's machine) is not mixed into it. It stays as it is.
+        store(MIGRATED_KEY, JSON.stringify({ account: accountId, skipped: true, at: remote.updated }))
+        pre = []
+      }
       if (pre.length) {
         // bring along the shelf this browser had before accounts; it stays marked as
         // waiting (and stays on the device) until the server has confirmed it has it
@@ -402,6 +453,7 @@ export function useLibrary(accountId: string | null = null, onSignedOut?: () => 
         return current.books
       } else {
         if (remote.updated !== before) adopt(remote.books, remote.arrangement)
+        store(keys.synced!, remote.updated)
         setSync('saved')
         return remote.updated !== before ? remote.books : current.books
       }
@@ -411,8 +463,10 @@ export function useLibrary(accountId: string | null = null, onSignedOut?: () => 
 
   // first load: this device's copy straight away (with the pre-account shelf), then the server's
   useEffect(() => {
+    // this device's copy of the account; on a device that never had one, the shelf from before accounts
+    const own = loadBooks(keys.books)
     adopt(
-      mergeShelves(loadBooks(keys.books), preAccountShelf(accountId)),
+      own.length || !accountId ? own : preAccountShelf(accountId),
       loadArrangement(keys.arrangement) ?? (accountId ? loadArrangement(ARRANGEMENT_KEY) : null),
     )
     setLoaded(true)
@@ -502,18 +556,25 @@ export function useLibrary(accountId: string | null = null, onSignedOut?: () => 
       status: book.status ?? 'want',
       id: crypto.randomUUID(),
       addedAt: Date.now(),
+      editedAt: Date.now(),
     }
     setBooks((prev) => [...prev, full])
     return full
   }, [])
 
-  const removeBook = useCallback((id: string) => {
-    setBooks((prev) => prev.filter((b) => b.id !== id))
-  }, [])
+  const removeBook = useCallback(
+    (id: string) => {
+      noteRemoved(keys.removed, [id])
+      setBooks((prev) => prev.filter((b) => b.id !== id))
+    },
+    [keys],
+  )
 
   /** A change to a book; give a function to work it out from the book as it is right then. */
   const updateBook = useCallback((id: string, patch: Partial<Book> | ((book: Book) => Partial<Book>)) => {
-    setBooks((prev) => prev.map((b) => (b.id === id ? { ...b, ...(typeof patch === 'function' ? patch(b) : patch) } : b)))
+    setBooks((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, ...(typeof patch === 'function' ? patch(b) : patch), editedAt: Date.now() } : b)),
+    )
   }, [])
 
   const reorder = useCallback((ids: string[]) => {
@@ -527,15 +588,20 @@ export function useLibrary(accountId: string | null = null, onSignedOut?: () => 
   }, [])
 
   /** Merges `otherId` into `keepId` (see mergeBooks); the merged book stays where `keepId` was. */
-  const mergeBook = useCallback((keepId: string, otherId: string) => {
-    setBooks((prev) => {
-      const keep = prev.find((b) => b.id === keepId)
-      const other = prev.find((b) => b.id === otherId)
-      if (!keep || !other || keep === other) return prev
-      const merged = mergeBooks(keep, other)
-      return prev.filter((b) => b.id !== otherId).map((b) => (b.id === keepId ? merged : b))
-    })
-  }, [])
+  const mergeBook = useCallback(
+    (keepId: string, otherId: string) => {
+      if (keepId === otherId) return
+      noteRemoved(keys.removed, [otherId])
+      setBooks((prev) => {
+        const keep = prev.find((b) => b.id === keepId)
+        const other = prev.find((b) => b.id === otherId)
+        if (!keep || !other || keep === other) return prev
+        const merged = { ...mergeBooks(keep, other), editedAt: Date.now() }
+        return prev.filter((b) => b.id !== otherId).map((b) => (b.id === keepId ? merged : b))
+      })
+    },
+    [keys],
+  )
 
   const sortBy = useCallback((key: SortKey) => {
     setBooks((prev) => sortBooks(prev, key))

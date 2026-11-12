@@ -241,7 +241,8 @@ export async function syncedShelf(
       addBook: () => {},
       onProgress: () => {},
       updateBook: (id, patch) => {
-        shelf = shelf.map((b) => (b.id === id ? { ...b, ...patch } : b))
+        // stamped like an edit in the app, so a stale device can't undo it (shelfMerge.ts)
+        shelf = shelf.map((b) => (b.id === id ? { ...b, ...patch, editedAt: Date.now() } : b))
       },
     },
     { addNew: false, timeZone },

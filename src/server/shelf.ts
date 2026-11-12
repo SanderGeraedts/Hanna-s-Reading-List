@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import type { Book } from '#/lib/library'
+import { mergeIntoServer } from '#/lib/shelfMerge'
 import { isSortKey, type SortKey } from '#/lib/sortKeys'
 import { asUser, pb, tokenUserId } from './pocketbase'
 
@@ -45,20 +46,44 @@ export const loadShelf = createServerFn({ method: 'GET' }).handler(
     }),
 )
 
+export interface SaveResult {
+  updated: string
+  /**
+   * Set when the server kept books the device didn't send, or kept its own
+   * newer copy of a book: the shelf as saved, for the device to take over.
+   */
+  books?: Book[]
+}
+
+/**
+ * Saves the shelf, folded into what the server has (see shelfMerge.ts): a save
+ * can add and change books, but only removes the ones listed in `removed`.
+ * Devices still running an older version send no `base`, so their saves are
+ * always merged and can't drop anything.
+ */
 export const saveShelf = createServerFn({ method: 'POST' })
-  .validator((input: { books: Book[]; arrangement: SortKey | null }) => {
-    if (!Array.isArray(input?.books) || input.books.length > 20_000) throw new Error('Invalid shelf.')
-    if (!input.books.every((b) => b && typeof b.id === 'string' && typeof b.title === 'string')) {
-      throw new Error('Invalid shelf.')
-    }
-    const arrangement = isSortKey(input.arrangement) ? input.arrangement : null
-    return { books: input.books, arrangement }
-  })
+  .validator(
+    (input: { books: Book[]; arrangement: SortKey | null; base?: string | null; removed?: string[] }) => {
+      if (!Array.isArray(input?.books) || input.books.length > 20_000) throw new Error('Invalid shelf.')
+      if (!input.books.every((b) => b && typeof b.id === 'string' && typeof b.title === 'string')) {
+        throw new Error('Invalid shelf.')
+      }
+      const removed = Array.isArray(input.removed) ? input.removed.filter((id) => typeof id === 'string') : []
+      if (removed.length > 20_000) throw new Error('Invalid shelf.')
+      const arrangement = isSortKey(input.arrangement) ? input.arrangement : null
+      const base = typeof input.base === 'string' ? input.base : null
+      return { books: input.books, arrangement, base, removed }
+    },
+  )
   .handler(
-    ({ data }): Promise<{ updated: string }> =>
+    ({ data }): Promise<SaveResult> =>
       asUser(async (token) => {
-        const body = { books: data.books, arrangement: data.arrangement ?? '' }
         const existing = await findRecord(token)
+        const merged = mergeIntoServer(
+          existing && { books: Array.isArray(existing.books) ? existing.books : [], updated: existing.updated },
+          data,
+        )
+        const body = { books: merged.books, arrangement: data.arrangement ?? '' }
         const r = existing
           ? await pb<ShelfRecord>(`/api/collections/libraries/records/${existing.id}`, {
               method: 'PATCH',
@@ -70,7 +95,7 @@ export const saveShelf = createServerFn({ method: 'POST' })
               token,
               body: { ...body, owner: tokenUserId(token) },
             })
-        return { updated: r.updated }
+        return merged.changed ? { updated: r.updated, books: merged.books } : { updated: r.updated }
       }),
   )
 
