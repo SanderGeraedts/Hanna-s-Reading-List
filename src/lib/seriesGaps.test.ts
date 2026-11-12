@@ -3,7 +3,7 @@ import type { Book } from './library'
 
 vi.mock('#/server/shelf', () => ({ loadShelf: async () => null, saveShelf: async () => ({ updated: 't' }) }))
 
-const { cleanSeriesBooks, missingNumbers, notOnShelf, seriesOnShelf } = await import('./seriesGaps')
+const { missingNumbers, moreByAuthor, seriesOnShelf } = await import('./seriesGaps')
 
 const book = (id: string, extra: Partial<Book> = {}): Book => ({
   id,
@@ -36,22 +36,28 @@ describe('completing a series', () => {
     expect(s[1]).toMatchObject({ numbers: [1], missing: [], author: 'Rebecca Yarros' })
   })
 
-  it('offers only the books she does not have, by number or by title', () => {
+  it('offers the author’s other books she does not have, the series-looking ones first', () => {
     const books = [
-      book('a', { title: 'Fourth Wing', series: 'The Empyrean', seriesIndex: 1 }),
-      book('b', { title: 'Iron Flame (The Empyrean, #2)' }),
+      book('a', { title: 'A Court of Thorns and Roses', series: 'A Court of Thorns and Roses', seriesIndex: 1 }),
+      book('b', { title: 'A Court of Mist and Fury', series: 'A Court of Thorns and Roses', seriesIndex: 2 }),
     ]
     const [s] = seriesOnShelf(books)
-    const list = cleanSeriesBooks([
-      { number: 1, title: 'Fourth Wing', year: 2023, releaseDate: '' },
-      { number: 2, title: 'Iron Flame', year: 2023, releaseDate: '' },
-      { number: 3, title: 'Onyx Storm', year: 2025, releaseDate: '' },
-      { number: 4, title: 'Book Four', year: 2027, releaseDate: '2027-05-01' },
-      { title: '', number: 5 },
-    ])
-    expect(notOnShelf(list, s, books)).toEqual([
-      { number: 3, title: 'Onyx Storm', year: 2025 },
-      { number: 4, title: 'Book Four', year: 2027, releaseDate: '2027-05-01' },
+    const r = (title: string, year: number) => ({ workKey: `/works/${title}`, title, authors: ['Sarah J. Maas'], year, coverId: 1 })
+    const out = moreByAuthor(
+      [
+        r('House of Earth and Blood', 2020),
+        r('A Court of Silver Flames', 2021),
+        r('A Court of Mist and Fury', 2016),
+        r('Throne of Glass / Crown of Midnight / Heir of Fire', 2019),
+        r('A Court of Frost and Starlight', 2018),
+      ],
+      s,
+      books,
+    )
+    expect(out.map((x) => x.title)).toEqual([
+      'A Court of Silver Flames',
+      'A Court of Frost and Starlight',
+      'House of Earth and Blood',
     ])
   })
 })

@@ -2472,6 +2472,16 @@ textarea.input {
   display: grid;
   gap: 0.35rem;
 }
+.complete-book {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  min-width: 0;
+}
+.dashboard .dash-cover.tiny {
+  width: 1.1rem;
+  flex: none;
+}
 .complete-missing li {
   display: flex;
   justify-content: space-between;

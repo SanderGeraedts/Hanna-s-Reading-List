@@ -1,13 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { Book, NewBook } from '#/lib/library'
-import { localDay } from '#/lib/library'
-import { notOnShelf, seriesOnShelf } from '#/lib/seriesGaps'
-import type { SeriesBook, SeriesOnShelf } from '#/lib/seriesGaps'
-import { findOnOpenLibrary } from '#/lib/storytelImport'
-import { colorFromString } from '#/lib/cover'
-import { releaseDayText } from '#/lib/upcoming'
-import { getWorkDetails } from '#/server/openLibrary'
-import { findSeriesBooks, seriesBooksAvailable } from '#/server/seriesBooks'
+import { moreByAuthor, seriesOnShelf } from '#/lib/seriesGaps'
+import type { SeriesOnShelf } from '#/lib/seriesGaps'
+import { coverUrlForId } from '#/lib/cover'
+import { browseBooks, getWorkDetails } from '#/server/openLibrary'
+import type { SearchResult } from '#/server/openLibrary'
 import { buildBook } from './AddBookDialog'
 
 interface Props {
@@ -18,30 +15,19 @@ interface Props {
   onAdd: (book: NewBook) => void
 }
 
-let available: Promise<boolean> | null = null
-
 const numberText = (n: number) => String(n).replace('.5', '½')
 const list = (ns: number[]) => ns.map(numberText).join(', ')
 
 /**
  * Complete your series: for every series on the shelf, which books are
- * missing. Gaps show straight away; "Find the rest" looks up the whole
- * series, so the books after her last one, and ones not out yet, can be
- * added in a tap. A book not out yet goes to Upcoming releases (#103).
+ * missing. Gaps in the numbers show straight away. "Find the rest" lists the
+ * author's other books from Open Library, those that look like the series
+ * first, so she can add the ones that belong in a tap. A book with a
+ * publication date still to come goes to Upcoming releases.
  */
 export function CompleteSeriesCard({ books, upcoming, onAdd }: Props) {
   const series = useMemo(() => seriesOnShelf(books), [books])
-  const [ai, setAi] = useState(false)
   const [all, setAll] = useState(false)
-  useEffect(() => {
-    available ??= seriesBooksAvailable().catch(() => false)
-    let live = true
-    available.then((ok) => live && setAi(ok))
-    return () => {
-      live = false
-    }
-  }, [])
-
   const shown = all ? series : series.slice(0, 6)
   return (
     <section className="dash-card complete-card" aria-labelledby="complete-title">
@@ -49,7 +35,7 @@ export function CompleteSeriesCard({ books, upcoming, onAdd }: Props) {
       {series.length === 0 && <p className="muted small-text">No series on the shelf yet.</p>}
       <ul className="complete-list">
         {shown.map((s) => (
-          <SeriesLine key={s.key} s={s} ai={ai} shelf={[...books, ...upcoming]} onAdd={onAdd} />
+          <SeriesLine key={s.key} s={s} shelf={[...books, ...upcoming]} onAdd={onAdd} />
         ))}
       </ul>
       {series.length > 6 && (
@@ -61,8 +47,8 @@ export function CompleteSeriesCard({ books, upcoming, onAdd }: Props) {
   )
 }
 
-function SeriesLine({ s, ai, shelf, onAdd }: { s: SeriesOnShelf; ai: boolean; shelf: Book[]; onAdd: Props['onAdd'] }) {
-  const [found, setFound] = useState<SeriesBook[] | null>(null)
+function SeriesLine({ s, shelf, onAdd }: { s: SeriesOnShelf; shelf: Book[]; onAdd: Props['onAdd'] }) {
+  const [found, setFound] = useState<SearchResult[] | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [added, setAdded] = useState<Set<string>>(new Set())
@@ -71,36 +57,20 @@ function SeriesLine({ s, ai, shelf, onAdd }: { s: SeriesOnShelf; ai: boolean; sh
     setBusy(true)
     setError(null)
     try {
-      const have = s.books.map((b) => b.title)
-      setFound(await findSeriesBooks({ data: { series: s.name, author: s.author, have } }))
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'That did not work. Try again.')
+      setFound(moreByAuthor(await browseBooks({ data: { author: s.author } }), s, shelf))
+    } catch {
+      setError('Open Library could not be reached. Try again.')
     } finally {
       setBusy(false)
     }
   }
 
-  const missing = found ? notOnShelf(found, s, shelf).filter((b) => !added.has(b.title)) : []
-  const add = async (b: SeriesBook) => {
-    setAdded((prev) => new Set(prev).add(b.title))
-    const author = s.author ? [s.author] : []
-    const today = localDay()
-    const extra: Partial<NewBook> = {
-      series: s.name,
-      ...(b.number !== undefined && { seriesIndex: b.number }),
-      status: 'want',
-      ...(b.releaseDate && b.releaseDate > today && { releaseDate: b.releaseDate }),
-    }
-    const match = await findOnOpenLibrary({ title: b.title, authors: author })
-    if (match) {
-      const details = match.workKey
-        ? await getWorkDetails({ data: { workKey: match.workKey } }).catch(() => undefined)
-        : undefined
-      onAdd({ ...(await buildBook(match, details)), ...extra })
-    } else {
-      onAdd({ title: b.title, authors: author, year: b.year, color: colorFromString(b.title), ...extra })
-    }
+  const add = async (r: SearchResult) => {
+    setAdded((prev) => new Set(prev).add(r.workKey))
+    const details = r.workKey ? await getWorkDetails({ data: { workKey: r.workKey } }).catch(() => undefined) : undefined
+    onAdd({ ...(await buildBook(r, details)), series: s.name, status: 'want' })
   }
+  const left = (found ?? []).filter((r) => !added.has(r.workKey))
 
   return (
     <li>
@@ -120,43 +90,34 @@ function SeriesLine({ s, ai, shelf, onAdd }: { s: SeriesOnShelf; ai: boolean; sh
         ) : (
           <span className="muted">Numbers not known</span>
         )}
-        {ai && found === null && (
+        {s.author && found === null && (
           <button className="link-btn find-rest" onClick={find} disabled={busy}>
             {busy ? 'Looking…' : 'Find the rest'}
           </button>
         )}
       </p>
       {error && <p className="error small-text">{error}</p>}
-      {found && missing.length === 0 && (
-        <p className="muted small-text">{found.length ? 'Complete! 🎉 You have every book.' : "Couldn't find this series."}</p>
-      )}
-      {missing.length > 0 && (
-        <ul className="complete-missing">
-          {missing.map((b) => (
-            <li key={`${b.number}-${b.title}`}>
-              <span>
-                {b.number !== undefined && <span className="muted">{numberText(b.number)}. </span>}
-                {b.title}
-                {b.releaseDate ? (
-                  <span className="muted small-text"> · out {releaseDayText(b.releaseDate)}</span>
-                ) : b.year ? (
-                  <span className="muted small-text"> · {b.year}</span>
-                ) : null}
-              </span>
-              <button className="btn small" onClick={() => add(b)}>
-                {b.releaseDate ? '+ Upcoming' : '+ Add'}
-              </button>
-            </li>
-          ))}
-          {missing.length > 1 && (
-            <li>
-              <span />
-              <button className="btn small" onClick={() => missing.forEach(add)}>
-                Add all {missing.length}
-              </button>
-            </li>
-          )}
-        </ul>
+      {found && left.length === 0 && <p className="muted small-text">No other books by {s.author} found.</p>}
+      {left.length > 0 && (
+        <>
+          <p className="muted small-text">More by {s.author}: add the ones that belong to this series.</p>
+          <ul className="complete-missing">
+            {left.map((r) => (
+              <li key={r.workKey}>
+                <span className="complete-book">
+                  {r.coverId && <img className="dash-cover tiny" src={coverUrlForId(r.coverId, 'S')} alt="" loading="lazy" />}
+                  <span>
+                    {r.title}
+                    {r.year ? <span className="muted small-text"> · {r.year}</span> : null}
+                  </span>
+                </span>
+                <button className="btn small" onClick={() => add(r)}>
+                  + Add
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </li>
   )
