@@ -1737,6 +1737,115 @@ textarea.input {
   }
 }
 
+/* ---- star ratings (#100) ---------------------------------------------- */
+.stars {
+  display: inline-flex;
+  font-size: 1rem;
+  line-height: 1;
+  user-select: none;
+}
+.stars.small {
+  font-size: 0.85rem;
+}
+.stars.large {
+  font-size: 1.9rem;
+}
+.stars.editable {
+  cursor: pointer;
+  touch-action: none;
+  border-radius: 6px;
+}
+.stars.editable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.stars-row {
+  display: inline-flex;
+}
+.star {
+  position: relative;
+  display: inline-block;
+}
+.star-empty {
+  color: rgba(255, 255, 255, 0.18);
+}
+.star-full {
+  position: absolute;
+  inset: 0 auto 0 0;
+  overflow: hidden;
+  color: var(--accent);
+}
+/* the spice level: peppers in colour when on, faded grey when off */
+.stars.spice .star-empty {
+  color: inherit;
+  filter: grayscale(1);
+  opacity: 0.25;
+}
+.stars.spice .star-full {
+  color: inherit;
+}
+.stars.spice .star {
+  margin-right: 0.08em;
+}
+.rating-question {
+  margin: 0.6rem 0 0;
+}
+.top-ratings {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.rating-field {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.rating-dialog .dialog-body {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+.rating-dialog .dialog-header {
+  align-self: stretch;
+}
+.rating-cover {
+  width: 5rem;
+  border-radius: 4px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+.dialog-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+.top-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.top-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.top-place {
+  width: 1.2rem;
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--accent);
+  text-align: center;
+}
+.top-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
 /* the book fact (#101) */
 .fact-text {
   font-family: var(--serif);
