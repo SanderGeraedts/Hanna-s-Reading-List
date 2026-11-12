@@ -6,7 +6,6 @@ import {
   breakdown,
   goalProgress,
   lentOut,
-  lovedQuotes,
   monthlyCounts,
   onThisDay,
   paused,
@@ -14,9 +13,7 @@ import {
   readingStreak,
   records,
   seriesProgress,
-  toggleLoved,
   wantPile,
-  yearReview,
 } from '#/lib/insights'
 import type { BreakdownKind } from '#/lib/insights'
 import { periodStats } from '#/lib/stats'
@@ -27,8 +24,6 @@ import { Cover, monthName } from './Dashboard'
 import type { Props } from './Dashboard'
 
 /** The dashboard extras (#66). */
-
-type UpdateProps = { books: Book[]; onUpdate: (id: string, patch: Partial<Book>) => void }
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString('en-GB')} ${n === 1 ? one : many}`
 
@@ -561,7 +556,6 @@ export function StreakCard({ books }: { books: Book[] }) {
             : 'Your best streak yet! 🔥'}
         {s.current > 0 && !s.today && ' Read today to keep it going.'}
       </p>
-      <p className="muted small-text">A day counts when a book’s progress moves: by hand, in the calendar or from Storytel.</p>
     </section>
   )
 }
@@ -620,104 +614,6 @@ export function LentCard({ books, onShowBook }: Props) {
                 {l.days !== undefined && (l.days === 0 ? ', since today' : `, for ${plural(l.days, 'day')}`)}
               </span>
             </BookLine>
-          ))}
-        </ul>
-      )}
-    </section>
-  )
-}
-
-// ---- year in review --------------------------------------------------------------------------------------
-
-export function YearReviewCard({ books, year, onShowBook }: Props & { year: number }) {
-  const r = yearReview(books, year)
-  return (
-    <section className="dash-card review-card" aria-labelledby="review-title">
-      <h2 id="review-title">{year} in review</h2>
-      {r.books === 0 ? (
-        <p className="muted">No books with a “Finished on” date in {year}.</p>
-      ) : (
-        <>
-          <ul className="review-stats">
-            <li>
-              <strong>{r.books}</strong> {r.books === 1 ? 'book' : 'books'}
-            </li>
-            {r.pages > 0 && (
-              <li>
-                <strong>{r.pages.toLocaleString('en-GB')}</strong> pages
-              </li>
-            )}
-            {r.minutes > 0 && (
-              <li>
-                <strong>{formatDuration(r.minutes)}</strong> listened
-              </li>
-            )}
-          </ul>
-          <dl className="records">
-            {r.topAuthor && (
-              <div>
-                <dt>Top author</dt>
-                <dd>
-                  {r.topAuthor.name} <span className="muted">{plural(r.topAuthor.books, 'book')}</span>
-                </dd>
-              </div>
-            )}
-            {r.longest && (
-              <div>
-                <dt>Longest book</dt>
-                <dd>
-                  <button className="link-btn" onClick={() => onShowBook(r.longest!.id)}>
-                    {r.longest.title}
-                  </button>
-                </dd>
-              </div>
-            )}
-            {r.busiestMonth && (
-              <div>
-                <dt>Busiest month</dt>
-                <dd>
-                  {monthName(r.busiestMonth.month)}{' '}
-                  <span className="muted">{plural(r.busiestMonth.books, 'book')}</span>
-                </dd>
-              </div>
-            )}
-          </dl>
-          {r.quotes.map((q) => (
-            <blockquote key={`${q.book.id}-${q.text}`} className="small-quote">
-              {q.text} <cite className="muted">· {q.book.title}</cite>
-            </blockquote>
-          ))}
-        </>
-      )}
-    </section>
-  )
-}
-
-// ---- loved quotes ---------------------------------------------------------------------------------------------
-
-export function LovedQuotesCard({ books, onUpdate }: UpdateProps) {
-  const loved = lovedQuotes(books)
-  return (
-    <section className="dash-card loved-card" aria-labelledby="loved-title">
-      <h2 id="loved-title">Loved quotes</h2>
-      {loved.length === 0 ? (
-        <p className="muted">Tap the ♡ on a quote to keep it here.</p>
-      ) : (
-        <ul className="loved-list">
-          {loved.map((q) => (
-            <li key={`${q.book.id}-${q.text}`}>
-              <blockquote className="small-quote">
-                {q.text} <cite className="muted">· {q.book.title}</cite>
-              </blockquote>
-              <button
-                className="love-btn loved"
-                aria-label="Take the heart away"
-                title="Take the heart away"
-                onClick={() => onUpdate(q.book.id, toggleLoved(q.book, q.text))}
-              >
-                ♥
-              </button>
-            </li>
           ))}
         </ul>
       )}

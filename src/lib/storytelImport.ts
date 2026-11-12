@@ -112,12 +112,12 @@ const STATUS_RANK: Record<ReadingStatus, number> = { want: 0, paused: 1, reading
 
 /**
  * Storytel has no "paused" (#60): a book Hanna paused stays paused until
- * Storytel says she finished it or she listened on further.
+ * Storytel says she finished it or she listened on, even a few minutes (#91).
  */
 function keepPaused(match: Book, item: StorytelBook): StorytelBook {
   if (match.status !== 'paused' || item.status === 'read') return item
-  const listenedOn = item.progress !== undefined && item.progress > (match.progress ?? 0) + 0.005
-  return listenedOn ? item : { ...item, status: 'paused' }
+  const listenedOn = item.progress !== undefined && item.progress > (match.progress ?? 0) + 0.00005
+  return { ...item, status: listenedOn ? 'reading' : 'paused' }
 }
 
 /** The day she was last listening or reading on Storytel, else today. */
@@ -169,8 +169,8 @@ export async function importStorytelBooks(
       const further = item.progress !== undefined && item.progress > (match.progress ?? 0) + 0.005
       if (ahead || further) {
         cb.updateBook(match.id, {
-          ...(ahead && statusPatch(match, item.status, today)),
           ...(further && progressPatch(match, item.progress!, readDay(item, timeZone))),
+          ...(ahead && statusPatch(match, item.status, today)),
         })
         summary.updated++
       } else summary.unchanged++
@@ -180,14 +180,15 @@ export async function importStorytelBooks(
       (item.progress !== undefined && Math.abs((match.progress ?? 0) - item.progress) > 0.005)
     ) {
       cb.updateBook(match.id, {
-        // relistening to a finished book and finishing it again counts once more (#53)
+        // what she listened on goes in the reading log (#76)
+        ...(item.progress !== undefined && progressPatch(match, item.progress, readDay(item, timeZone))),
+        // relistening to a finished book and finishing it again counts once more (#53);
+        // after the progress, so Storytel's status wins over picking up a paused book (#91)
         status: item.status,
         ...statusPatch(match, item.status, today),
         storytelId: item.storytelId,
         // first time this book is matched to Storytel: she has it there too
         ...(!match.storytelId && { ...withFormats([...formatsOf(match), 'storytel']) }),
-        // what she listened on goes in the reading log (#76)
-        ...(item.progress !== undefined && progressPatch(match, item.progress, readDay(item, timeZone))),
       })
       summary.updated++
     } else {
@@ -241,7 +242,8 @@ export async function syncedShelf(
       addBook: () => {},
       onProgress: () => {},
       updateBook: (id, patch) => {
-        shelf = shelf.map((b) => (b.id === id ? { ...b, ...patch } : b))
+        // stamped like an edit in the app, so a stale device can't undo it (shelfMerge.ts)
+        shelf = shelf.map((b) => (b.id === id ? { ...b, ...patch, editedAt: Date.now() } : b))
       },
     },
     { addNew: false, timeZone },

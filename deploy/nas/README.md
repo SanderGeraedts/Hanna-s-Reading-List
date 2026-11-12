@@ -154,9 +154,7 @@ Until `POCKETBASE_URL` is set, the site works as before: no sign-in, and each br
 
 ## 8. First sign-in
 
-The first time someone signs in on a device, the shelf that browser already had is merged into their account. Books the account already has (same Storytel id, ISBN, or title and author) are skipped, so nothing is duplicated. The old copy stays in that browser's storage as a backup (`hannas-reading-list:v1`).
-
-Do this on each of Hanna's devices once and all her books end up on one shelf.
+The first time someone signs in on a device, the shelf that browser had before accounts moves into their account, but only if the account has no shelf yet. An account that already has books is left as it is, so a test shelf on a developer's machine never ends up in someone's account. The old copy stays in that browser's storage as a backup (`hannas-reading-list:v1`).
 
 A Storytel login remembered on a device also moves into the account on first use, so ↻ then works on every device.
 
@@ -191,7 +189,7 @@ If a device has changes it hasn't sent yet at 23:00, the sync leaves that shelf 
 
 **If the NAS or the internet is down:** people who are already signed in keep working from their device's copy of the shelf. The account button shows a red dot, and changes are sent when the server is back. Nobody can sign in for the first time on a new device until it's back.
 
-**Two devices at once:** each change saves the whole shelf, and the newest save wins. A device picks up changes from others whenever the page comes back into view. With a few people that's fine.
+**Two devices at once:** each change sends the whole shelf, and the server merges it into its copy: books are only removed when a device removed them on purpose, and when two devices changed the same book, the later edit wins. A device picks up changes from others whenever the page comes back into view.
 
 **Size limit:** uploaded covers are stored inside the shelf. If a shelf grows past about 5 MB, which is a lot of uploaded covers, it stops syncing and the account menu says so.
 
@@ -201,6 +199,14 @@ If a device has changes it hasn't sent yet at 23:00, the sync leaves that shelf 
 2. **PocketBase backups:** in the admin screen (`:8443/_/`), open **Settings → Backups** and turn on automatic backups. These are consistent copies of the database, which is safer than a snapshot taken mid-write. They're stored in `pb_data/backups`, so the snapshots include them. For a copy off the NAS, point the backups at S3-compatible storage there, or use a TrueNAS Cloud Sync task.
 
 To restore, use **Settings → Backups → Restore** in the admin screen, or roll back the dataset snapshot while the app is stopped.
+
+### Restoring a shelf
+
+Restoring a whole backup also undoes everyone else's changes. To put back one person's shelf, use its history instead: before a shelf changes, PocketBase keeps the previous version in **library_versions** (`pb_hooks/history.pb.js`): at most one per 10 minutes, always one when a save drops books, the newest 100 per person. Only the admin screen can see them.
+
+1. In the admin screen (`:8443/_/`), open **library_versions** and filter on the person (`owner = "<user id>"`). `book_count` and `dropped` show which version still had everything.
+2. Open that version and copy its `books` (and `arrangement`).
+3. Open **libraries**, the record with the same `owner`, paste them in and save. The person's devices pick it up when the app comes back into view. (This save is itself kept as a version first, so it can be undone too.)
 
 ## Updating
 

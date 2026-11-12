@@ -1214,6 +1214,65 @@ textarea.input {
   }
 }
 
+/* on a phone the shelf's tools are in the ☰ menu, and the bar has two rows (#88) */
+.mobile-only {
+  display: none;
+}
+.menu-tools {
+  gap: 0.15rem;
+  margin-top: 0.3rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--border);
+}
+.menu-field {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+}
+.topbar .view-menu-list .input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  border-color: var(--border);
+  color-scheme: dark;
+}
+.view-menu-list button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+@media (max-width: 720px) {
+  .desktop-only {
+    display: none !important;
+  }
+  .mobile-only {
+    display: grid;
+  }
+  .topbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    row-gap: 0.35rem;
+  }
+  .topbar .brand {
+    display: contents;
+  }
+  .topbar .brand > * {
+    pointer-events: auto;
+  }
+  .topbar .brand-title {
+    grid-column: 1 / -1;
+  }
+  .topbar .brand > .muted {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .topbar .toolbar {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}
+
 /* ---- dashboard (#59) ------------------------------------------------- */
 .dashboard {
   position: absolute;
@@ -1230,6 +1289,101 @@ textarea.input {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.25rem;
   align-items: start;
+}
+/* each column stacks its blocks tightly: the same small gap everywhere (#87) */
+.dash-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+.dash-block {
+  position: relative;
+  min-width: 0;
+}
+.dash-block > .dash-card {
+  height: auto;
+}
+
+/* arranging the blocks (#85) */
+.dashboard-bar {
+  max-width: 68rem;
+  margin: 0 auto 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+.dashboard-bar.arranging {
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--surface-solid);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  position: sticky;
+  top: 5rem;
+  z-index: 3;
+}
+.dashboard-bar p {
+  margin: 0;
+}
+.dashboard-bar-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.hidden-blocks {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+.dashboard-empty {
+  text-align: center;
+}
+.dashboard-grid.arranging .dash-block > .dash-card {
+  pointer-events: none;
+  outline: 1px dashed rgba(217, 168, 91, 0.45);
+  outline-offset: -1px;
+}
+.block-tools {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 2;
+  display: flex;
+  gap: 0.3rem;
+}
+.block-tools .btn {
+  background: var(--surface-solid);
+}
+.block-handle {
+  cursor: grab;
+  touch-action: none;
+}
+.dash-block.moving {
+  z-index: 10;
+  opacity: 0.9;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+  border-radius: var(--radius);
+}
+.dash-block.moving .block-handle {
+  cursor: grabbing;
+}
+.dash-block.drop-before::before,
+.drop-end {
+  content: '';
+  display: block;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.dash-block.drop-before::before {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(-0.625rem - 1.5px);
 }
 .dash-card {
   display: grid;
@@ -1356,38 +1510,6 @@ textarea.input {
   align-self: center;
 }
 
-.quote-card {
-  align-self: stretch;
-  align-content: center;
-}
-.quote-card figure {
-  margin: 0;
-  display: grid;
-  gap: 0.75rem;
-}
-.quote-card blockquote {
-  margin: 0;
-  font-family: var(--serif);
-  font-style: italic;
-  font-size: clamp(1.1rem, 2.2vw, 1.4rem);
-  line-height: 1.45;
-}
-.quote-card blockquote::before {
-  content: '“';
-  display: block;
-  font-size: 3rem;
-  line-height: 0.6;
-  color: var(--accent);
-  font-style: normal;
-}
-.quote-card figcaption {
-  font-size: 0.85rem;
-}
-.quote-card cite {
-  font-style: normal;
-  font-weight: 600;
-}
-
 .next-book {
   display: flex;
   gap: 1rem;
@@ -1425,8 +1547,7 @@ textarea.input {
 }
 .calendar td {
   vertical-align: top;
-  height: 3.6rem;
-  padding: 0.25rem;
+  padding: 0;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.04);
 }
@@ -1449,35 +1570,41 @@ textarea.input {
   color: var(--accent);
   font-weight: 600;
 }
-.calendar .cover-btn {
-  display: inline-block;
-  margin: 0 2px 2px 0;
-}
 .calendar .dash-cover.small {
   width: 1.6rem;
 }
 
-/* the reading log (#76): a day to note what she read, started and finished books */
-.calendar button.day-number {
-  padding: 0;
+/* a day of the calendar: the whole cell opens it (#82, #89) */
+.calendar .day-cell {
+  display: block;
+  width: 100%;
+  min-height: 3.6rem;
+  padding: 0.25rem;
   border: 0;
+  border-radius: 6px;
   background: none;
+  color: inherit;
   font: inherit;
-  font-size: 0.7rem;
+  text-align: left;
   cursor: pointer;
 }
-.calendar button.day-number:disabled {
+.calendar .day-cell:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+}
+.calendar .day-cell:disabled {
   cursor: default;
   opacity: 0.6;
 }
 .calendar td.picked {
   outline: 2px solid var(--accent);
 }
-.calendar .cover-btn {
+.calendar .day-cover {
   position: relative;
+  display: inline-block;
+  margin: 0 2px 2px 0;
 }
-.calendar .cover-btn.finished::after,
-.calendar .cover-btn.started::after {
+.calendar .day-cover.finished::after,
+.calendar .day-cover.started::after {
   position: absolute;
   right: -3px;
   bottom: -3px;
@@ -1488,32 +1615,33 @@ textarea.input {
   background: var(--accent);
   color: var(--accent-ink);
 }
-.calendar .cover-btn.finished::after {
+.calendar .day-cover.finished::after {
   content: '✓';
 }
-.calendar .cover-btn.started::after {
+.calendar .day-cover.started::after {
   content: '▸';
 }
+.day-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.6rem;
+  align-items: center;
+}
+.day-tag {
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(217, 168, 91, 0.18);
+  color: var(--accent);
+}
 .day-log,
-.started-month {
+.month-list {
   margin-top: 0.75rem;
 }
 .day-log h3,
-.started-month h3 {
+.month-list h3 {
   font-size: 0.95rem;
   margin: 0 0 0.4rem;
 }
-.amount-field {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  flex-wrap: wrap;
-  margin-top: 0.2rem;
-}
-.amount-field .input {
-  padding: 0.2rem 0.4rem;
-}
-
 /* the book panel's finish dates */
 .finished-day {
   display: flex;
@@ -1528,13 +1656,16 @@ textarea.input {
 }
 @media (max-width: 720px) {
   .dashboard {
-    padding: 4.25rem 0.75rem 1.5rem;
+    padding: 5.25rem 0.75rem 1.5rem;
+  }
+  .dashboard-bar.arranging {
+    top: 4.75rem;
   }
   .dash-card {
     padding: 1rem;
   }
-  .calendar td {
-    height: 3rem;
+  .calendar .day-cell {
+    min-height: 3rem;
     padding: 0.15rem;
   }
   .calendar .dash-cover.small {
@@ -1823,72 +1954,6 @@ textarea.input {
 .records dd {
   margin: 0;
   min-width: 0;
-}
-
-/* year in review, quotes */
-.review-card {
-  grid-column: 1 / -1;
-  background: linear-gradient(135deg, rgba(217, 168, 91, 0.16), var(--surface) 60%);
-}
-.review-stats {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1.5rem;
-  font-family: var(--serif);
-}
-.review-stats strong {
-  font-size: 1.8rem;
-  color: var(--accent);
-}
-.small-quote {
-  margin: 0;
-  font-family: var(--serif);
-  font-style: italic;
-  line-height: 1.45;
-}
-.small-quote cite {
-  font-style: normal;
-  font-family: var(--sans);
-  font-size: 0.8rem;
-}
-.quote-card figure {
-  position: relative;
-}
-.love-btn {
-  justify-self: start;
-  padding: 0.1rem 0.4rem;
-  border: 0;
-  background: none;
-  color: var(--muted);
-  font-size: 1.4rem;
-  line-height: 1;
-  cursor: pointer;
-  transition: transform 0.15s;
-}
-.love-btn:hover {
-  transform: scale(1.15);
-}
-.love-btn.loved {
-  color: #e2737e;
-}
-.loved-card {
-  grid-column: 1 / -1;
-}
-.loved-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.8rem;
-}
-.loved-list li {
-  display: flex;
-  gap: 0.5rem;
-  align-items: start;
-  justify-content: space-between;
 }
 
 @media (max-width: 720px) {

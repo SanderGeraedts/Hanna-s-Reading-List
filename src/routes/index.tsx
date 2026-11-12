@@ -218,12 +218,75 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     return acc
   }, {})
 
+  const pickNext = () => select(pickReadNext(readNext, selectedId)?.id ?? null)
+  const sortSelect = (done?: () => void) => (
+    <select
+      className="input"
+      value=""
+      disabled={books.length < 2}
+      onChange={(e) => {
+        if (e.target.value) sortBy(e.target.value as SortKey)
+        done?.()
+      }}
+    >
+      <option value="">Sort…</option>
+      {MENU_SORT_KEYS.map((k) => (
+        <option key={k} value={k}>
+          {SORT_LABELS[k]}
+        </option>
+      ))}
+    </select>
+  )
+  const genreSelect = (done?: () => void) => (
+    <select
+      className="input"
+      value={activeGenre ?? ''}
+      onChange={(e) => {
+        setGenre(e.target.value || null)
+        done?.()
+      }}
+      aria-label="Show only one genre"
+    >
+      <option value="">All genres</option>
+      {genreChoices.map((g) => (
+        <option key={g.value} value={g.value}>
+          {g.label} ({g.count})
+        </option>
+      ))}
+    </select>
+  )
+
   return (
     <div className="app">
       <header className="topbar">
         <div className="brand">
           <div className="brand-title">
-            <ViewMenu view={onDashboard ? 'dashboard' : 'shelf'} onView={showView} />
+            <ViewMenu view={onDashboard ? 'dashboard' : 'shelf'} onView={showView}>
+              {!onDashboard &&
+                ((close) => (
+                  <div className="menu-tools mobile-only">
+                    <label className="menu-field">
+                      <span className="muted">Arrange by</span>
+                      {sortSelect(close)}
+                    </label>
+                    {genreChoices.length > 0 && (
+                      <label className="menu-field">
+                        <span className="muted">Genre</span>
+                        {genreSelect(close)}
+                      </label>
+                    )}
+                    <button
+                      disabled={readNext.length === 0}
+                      onClick={() => {
+                        close()
+                        pickNext()
+                      }}
+                    >
+                      <span aria-hidden>🎲</span> What next?
+                    </button>
+                  </div>
+                ))}
+            </ViewMenu>
             <h1>Hanna's Reading List</h1>
           </div>
           <p className="muted">
@@ -241,58 +304,32 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
         <div className="toolbar">
           <SearchBox books={books} detectedSeries={seriesMap} onPick={showBook} />
           {!onDashboard && (
+            // on a phone these are in the ☰ menu instead (#88)
             <>
-          <label className="sort">
-            <span className="muted">Arrange by</span>
-            <select
-              className="input"
-              value=""
-              disabled={books.length < 2}
-              onChange={(e) => {
-                if (e.target.value) sortBy(e.target.value as SortKey)
-              }}
-            >
-              <option value="">Sort…</option>
-              {MENU_SORT_KEYS.map((k) => (
-                <option key={k} value={k}>
-                  {SORT_LABELS[k]}
-                </option>
-              ))}
-            </select>
-          </label>
-          {genreChoices.length > 0 && (
-            <label className={`sort genre-filter${activeGenre ? ' active' : ''}`}>
-              <span className="muted">Genre</span>
-              <select
-                className="input"
-                value={activeGenre ?? ''}
-                onChange={(e) => setGenre(e.target.value || null)}
-                aria-label="Show only one genre"
+              <label className="sort desktop-only">
+                <span className="muted">Arrange by</span>
+                {sortSelect()}
+              </label>
+              {genreChoices.length > 0 && (
+                <label className={`sort genre-filter desktop-only${activeGenre ? ' active' : ''}`}>
+                  <span className="muted">Genre</span>
+                  {genreSelect()}
+                </label>
+              )}
+              <button
+                className="btn read-next desktop-only"
+                aria-label="What to read next"
+                disabled={readNext.length === 0}
+                // pressing again shows another one
+                onClick={pickNext}
+                title={
+                  readNext.length
+                    ? 'Pick a book to read next: no re-reads, and only the next book of a series'
+                    : 'Nothing to read next: no unread books waiting on the shelf'
+                }
               >
-                <option value="">All genres</option>
-                {genreChoices.map((g) => (
-                  <option key={g.value} value={g.value}>
-                    {g.label} ({g.count})
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          <button
-            className="btn read-next"
-            aria-label="What to read next"
-            disabled={readNext.length === 0}
-            // pressing again shows another one
-            onClick={() => select(pickReadNext(readNext, selectedId)?.id ?? null)}
-            title={
-              readNext.length
-                ? 'Pick a book to read next: no re-reads, and only the next book of a series'
-                : 'Nothing to read next: no unread books waiting on the shelf'
-            }
-          >
-            <span aria-hidden>🎲</span>
-            <span className="hide-mobile"> What next?</span>
-          </button>
+                <span aria-hidden>🎲</span> What next?
+              </button>
             </>
           )}
           <button
@@ -335,7 +372,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             </button>
           </div>
         )}
-        {onDashboard && <Dashboard books={books} onShowBook={showBook} onUpdate={updateBook} accountId={account?.id ?? null} />}
+        {onDashboard && <Dashboard books={books} onShowBook={showBook} accountId={account?.id ?? null} />}
         {books.length > 1 && !selected && !onDashboard && (
           <p className="stage-hint">
             <span className="hint-mouse">Click a book to pull it off the shelf · drag to rearrange</span>
@@ -439,7 +476,16 @@ const VIEWS = [
 ] as const
 
 /** The menu to go between the shelf and the dashboard (#59). */
-function ViewMenu({ view, onView }: { view: 'shelf' | 'dashboard'; onView: (view: 'shelf' | 'dashboard') => void }) {
+function ViewMenu({
+  view,
+  onView,
+  children,
+}: {
+  view: 'shelf' | 'dashboard'
+  onView: (view: 'shelf' | 'dashboard') => void
+  /** more in the menu, e.g. the shelf's tools on a phone (#88); `close` closes the menu */
+  children?: false | ((close: () => void) => React.ReactNode)
+}) {
   const menu = useRef<HTMLDetailsElement>(null)
   // close when clicking anywhere else
   useEffect(() => {
@@ -468,6 +514,7 @@ function ViewMenu({ view, onView }: { view: 'shelf' | 'dashboard'; onView: (view
             <span aria-hidden>{v.icon}</span> {v.label}
           </button>
         ))}
+        {children && children(() => menu.current && (menu.current.open = false))}
       </nav>
     </details>
   )

@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Book } from './library'
+import type { IncomingShelf, ServerShelf } from './shelfMerge'
 
 /**
  * The account sync and the move of a pre-account shelf into the account,
@@ -20,15 +21,18 @@ vi.mock('#/server/shelf', () => ({
     if (!server.online) throw new Error('The reading-list server cannot be reached right now.')
     return server.record && structuredClone(server.record)
   },
-  saveShelf: async ({ data }: { data: { books: unknown[]; arrangement: string | null } }) => {
+  // folds the save into the server's copy, as src/server/shelf.ts does
+  saveShelf: async ({ data }: { data: IncomingShelf & { arrangement: string | null } }) => {
     if (!server.online) throw new Error('The reading-list server cannot be reached right now.')
     if (server.failSaves > 0) {
       server.failSaves--
       throw new Error('Request failed (500)')
     }
     server.saves++
-    server.record = { ...structuredClone(data), updated: `t${++server.tick}` }
-    return { updated: server.record.updated }
+    const { mergeIntoServer } = await import('./shelfMerge')
+    const merged = mergeIntoServer(server.record && (structuredClone(server.record) as ServerShelf), structuredClone(data))
+    server.record = { books: merged.books, arrangement: data.arrangement, updated: `t${++server.tick}` }
+    return merged.changed ? { updated: server.record.updated, books: structuredClone(merged.books) } : { updated: server.record.updated }
   },
 }))
 
@@ -99,13 +103,16 @@ describe('moving the pre-account shelf into the account', () => {
     expect(JSON.parse(localStorage.getItem(OLD)!)).toEqual(oldShelf)
   })
 
-  it('adds the books to a shelf another device already saved, without duplicates', async () => {
-    const sameAsB = fullBook('x', { storytelId: 'st-1', title: 'Book b', status: 'read' })
-    server.record = { books: [sameAsB, laptopOnly()], arrangement: 'title', updated: 't0' }
+  it('is not mixed into an account that already has a shelf (e.g. test data on a dev machine)', async () => {
+    server.record = { books: [laptopOnly()], arrangement: 'title', updated: 't0' }
     seedOldBrowser()
-    signIn()
+    const { result } = signIn()
     await waitFor(migrated)
-    expect(serverBooks().map((b) => b.id)).toEqual(['x', 'y', 'a', 'c'])
+    await waitFor(() => expect(result.current.books.map((b) => b.id)).toEqual(['y']))
+    expect(serverBooks().map((b) => b.id)).toEqual(['y'])
+    expect(server.saves).toBe(0)
+    // the browser's own shelf is left alone
+    expect(JSON.parse(localStorage.getItem(OLD)!)).toEqual(oldShelf)
   })
 
   it('keeps waiting when the server is unreachable at first sign-in, and finishes later', async () => {
@@ -122,8 +129,9 @@ describe('moving the pre-account shelf into the account', () => {
 
     const again = signIn()
     await waitFor(migrated)
-    expect(serverBooks().map((b) => b.id).sort()).toEqual(['a', 'b', 'c', 'y'])
-    expect(again.result.current.books).toHaveLength(4)
+    // the account had a shelf by then: that one is used, the old browser shelf stays out of it
+    await waitFor(() => expect(again.result.current.books.map((b) => b.id)).toEqual(['y']))
+    expect(serverBooks().map((b) => b.id)).toEqual(['y'])
   })
 
   it('finishes when the page comes back into view after being offline', async () => {
@@ -242,5 +250,67 @@ describe('syncing from the refresh button (#68)', () => {
     expect(synced?.ok).toBe(false)
     expect(synced?.books.map((b) => b.id)).toEqual(['a'])
     expect(result.current.sync).toBe('offline')
+  })
+})
+
+/** A device's own copy of the account shelf, as an earlier visit left it. */
+function seedDevice(books: Book[], { unsynced = true, synced, removed }: { unsynced?: boolean; synced?: string; removed?: string[] } = {}) {
+  localStorage.setItem(`${OLD}:${ACCOUNT}`, JSON.stringify(books))
+  localStorage.setItem(MIGRATED, '{}')
+  if (unsynced) localStorage.setItem(`${OLD}:${ACCOUNT}:unsynced`, '1')
+  if (synced) localStorage.setItem(`${OLD}:${ACCOUNT}:synced`, synced)
+  if (removed) localStorage.setItem(`${OLD}:${ACCOUNT}:removed`, JSON.stringify(removed))
+}
+
+describe('a device can never wipe the shelf', () => {
+  const hannas = () => [fullBook('a'), fullBook('b', { status: 'read' }), fullBook('c')]
+
+  it('keeps every saved book when a device with other (test) data and unsent changes signs in', async () => {
+    server.record = { books: hannas(), arrangement: 'status', updated: 't0' }
+    seedDevice([fullBook('test1', { title: 'Test book', authors: ['Tester'], isbn: '9780000000999' })])
+    const { result } = signIn()
+    await waitFor(() => expect(result.current.sync).toBe('saved'))
+    expect(serverBooks().map((b) => b.id).sort()).toEqual(['a', 'b', 'c', 'test1'])
+    expect(serverBooks().find((b) => b.id === 'b')).toEqual(hannas()[1])
+    // and the device shows the shelf as saved
+    await waitFor(() => expect(result.current.books.map((b) => b.id).sort()).toEqual(['a', 'b', 'c', 'test1']))
+  })
+
+  it("doesn't undo newer edits with an outdated copy", async () => {
+    server.record = { books: [fullBook('a', { title: 'New', editedAt: 200 })], arrangement: null, updated: 't5' }
+    seedDevice([fullBook('a', { title: 'Old', editedAt: 100 })], { synced: 't0' })
+    const { result } = signIn()
+    await waitFor(() => expect(result.current.sync).toBe('saved'))
+    expect(serverBooks()[0].title).toBe('New')
+    await waitFor(() => expect(result.current.books[0].title).toBe('New'))
+  })
+
+  it("keeps this device's edit when it is the newer one", async () => {
+    server.record = { books: [fullBook('a', { title: 'Theirs', editedAt: 200 })], arrangement: null, updated: 't5' }
+    seedDevice([fullBook('a', { title: 'Mine', editedAt: 300 })], { synced: 't0' })
+    signIn()
+    await waitFor(() => expect(serverBooks()[0]?.title).toBe('Mine'))
+  })
+
+  it('still removes a book removed while offline', async () => {
+    server.record = { books: [fullBook('a'), fullBook('b')], arrangement: null, updated: 't0' }
+    seedDevice([fullBook('a')], { synced: 't0', removed: ['b'] })
+    const { result } = signIn()
+    await waitFor(() => expect(result.current.sync).toBe('saved'))
+    expect(serverBooks().map((b) => b.id)).toEqual(['a'])
+    expect(localStorage.getItem(`${OLD}:${ACCOUNT}:removed`)).toBeNull()
+  })
+
+  it('removes and merges books for real, and keeps what another device added meanwhile', async () => {
+    server.record = { books: hannas(), arrangement: null, updated: 't0' }
+    const { result } = signIn()
+    await waitFor(() => expect(result.current.books).toHaveLength(3))
+    await waitFor(() => expect(result.current.sync).toBe('saved'))
+    // the phone adds a book while this device isn't looking
+    server.record = { ...server.record!, books: [...serverBooks(), fullBook('p')], updated: 't7' }
+    act(() => result.current.removeBook('a'))
+    act(() => result.current.mergeBook('b', 'c'))
+    await waitFor(() => expect(serverBooks().map((b) => b.id)).toEqual(['b', 'p']), { timeout: 4000 })
+    await waitFor(() => expect(result.current.books.map((b) => b.id)).toEqual(['b', 'p']))
   })
 })
