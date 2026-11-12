@@ -69,6 +69,8 @@ export interface StorytelBook {
   language?: string
   /** Storytel's own categories, when it sends them */
   categories?: string[]
+  /** the day it comes out, for a book that isn't out yet (#103) */
+  releaseDate?: string
 }
 
 interface RawFormat {
@@ -77,6 +79,9 @@ interface RawFormat {
   durationInMilliseconds?: number
   durationInCharacters?: number
   position?: { position?: number; updatedTime?: string }
+  // not documented; read defensively (#103)
+  releaseDate?: unknown
+  isReleased?: unknown
 }
 
 interface RawModel {
@@ -91,6 +96,7 @@ interface RawModel {
   category?: unknown
   categories?: unknown
   genres?: unknown
+  releaseDate?: unknown
 }
 
 const asList = (v: unknown): unknown[] => (Array.isArray(v) ? v : v == null ? [] : [v])
@@ -112,6 +118,20 @@ function categoriesOf(m: RawModel) {
       return typeof name === 'string' ? name : undefined
     })
     .filter((n): n is string => !!n)
+}
+
+/**
+ * The release day of a book Storytel lists before it is out (#103): the
+ * earliest of its formats' release days, only when that is still to come.
+ */
+function releaseDateOf(m: RawModel, formats: RawFormat[]) {
+  const days = [m.releaseDate, ...formats.map((f) => f.releaseDate)]
+    .map((v) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : undefined))
+    .filter((d): d is string => !!d)
+    .sort()
+  const today = new Date().toISOString().slice(0, 10)
+  const unreleased = formats.length > 0 && formats.every((f) => f.isReleased === false)
+  return days[0] && (days[0] > today || unreleased) ? days[0] : undefined
 }
 
 const STATE_TO_STATUS: Record<string, ReadingStatus> = {
@@ -156,6 +176,7 @@ function mapModel(m: RawModel): StorytelBook | null {
     characters: ebook?.durationInCharacters || undefined,
     language: languageOf(m),
     categories: categoriesOf(m),
+    releaseDate: releaseDateOf(m, formats),
   }
 }
 

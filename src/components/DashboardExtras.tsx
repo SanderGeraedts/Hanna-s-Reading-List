@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { loadGoals, saveGoal } from '#/server/shelf'
 import type { Book } from '#/lib/library'
+import { dailyFact } from '#/lib/facts'
 import { formatDuration } from '#/lib/listening'
 import {
   breakdown,
@@ -555,6 +556,21 @@ export function StreakCard({ books }: { books: Book[] }) {
             ? `Best so far: ${plural(s.best, 'day')}.`
             : 'Your best streak yet! 🔥'}
         {s.current > 0 && !s.today && ' Read today to keep it going.'}
+      </p>
+    </section>
+  )
+}
+
+// ---- book fact (#101) --------------------------------------------------------------------------------
+
+export function FactCard({ books }: { books: Book[] }) {
+  const { fact, today } = dailyFact(books)
+  return (
+    <section className="dash-card fact-card" aria-labelledby="fact-title">
+      <h2 id="fact-title">Book fact</h2>
+      <p className="fact-text">{fact}</p>
+      <p className="muted small-text">
+        {today ? 'A new fact comes with your next reading day.' : 'Read today for a new fact.'}
       </p>
     </section>
   )

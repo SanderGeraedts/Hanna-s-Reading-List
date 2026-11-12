@@ -1,3 +1,4 @@
+import type { PageEdges } from './edges'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { loadShelf, saveShelf, type RemoteShelf } from '#/server/shelf'
 import { seriesGroups } from './series'
@@ -15,6 +16,8 @@ export interface Book {
   year?: number
   /** publication date as far as known: "2008", "2008-03" or "2008-03-12"; `year` follows it (#44) */
   published?: string
+  /** not out yet: the day it comes out (yyyy-mm-dd); until then it is not on the shelf (#103) */
+  releaseDate?: string
   pages?: number
   /** listening time of the audiobook, in minutes (#48) */
   minutes?: number
@@ -36,6 +39,8 @@ export interface Book {
   /** width / height of the cover image, used to shape the 3D book */
   coverAspect?: number
   description?: string
+  /** coloured or patterned page edges (#98); none: plain paper */
+  edges?: PageEdges
   /** Dominant colour used for the spine and back cover */
   color: string
   status: ReadingStatus

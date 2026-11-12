@@ -21,8 +21,10 @@ export const BLOCKS = {
   streak: 'Reading streak',
   onthisday: 'On this day',
   lent: 'Lent out',
+  upcoming: 'Upcoming releases',
   top: 'Top 5',
   recommend: 'Recommended for you',
+  fact: 'Book fact',
 } as const
 
 export type BlockId = keyof typeof BLOCKS
@@ -34,8 +36,8 @@ export interface DashboardLayout {
 
 export const DEFAULT_LAYOUT: DashboardLayout = {
   columns: [
-    ['count', 'reading', 'monthly', 'breakdown', 'records', 'onthisday'],
-    ['goal', 'next', 'recommend', 'top', 'calendar', 'series', 'streak', 'pile', 'lent'],
+    ['count', 'reading', 'monthly', 'breakdown', 'records', 'onthisday', 'fact'],
+    ['goal', 'upcoming', 'next', 'recommend', 'top', 'calendar', 'series', 'streak', 'pile', 'lent'],
   ],
   hidden: [],
 }
