@@ -15,6 +15,7 @@ import {
   seriesProgress,
   wantPile,
 } from '#/lib/insights'
+import { goalPace, goalPaceText } from '#/lib/insightsMore'
 import type { BreakdownKind } from '#/lib/insights'
 import { periodStats } from '#/lib/stats'
 import { amountText } from '#/lib/readingLog'
@@ -164,10 +165,11 @@ export function GoalCard({ books, accountId }: { books: Book[]; accountId: strin
     done >= goal
       ? 'Goal reached! 🎉'
       : p.ahead > 0
-        ? `${plural(p.ahead, 'book')} ahead of schedule`
+        ? `You're ${plural(p.ahead, 'book')} ahead of schedule`
         : p.ahead < 0
-          ? `${plural(-p.ahead, 'book')} behind schedule`
+          ? `You're ${plural(-p.ahead, 'book')} behind schedule`
           : 'Right on schedule'
+  const toGo = goalPaceText(goalPace(done, goal, year, now))
 
   return (
     <section className="dash-card goal-card" aria-labelledby="goal-title">
@@ -197,9 +199,8 @@ export function GoalCard({ books, accountId }: { books: Book[]; accountId: strin
         </svg>
         <div>
           <p className="goal-pace">{pace}</p>
-          <p className="muted">
-            {done < goal && `${plural(goal - done, 'book')} to go · `}by now {Math.floor(p.expected)} at an even pace
-          </p>
+          {toGo && <p className="goal-to-go">{toGo}</p>}
+          <p className="muted small-text">By now {Math.floor(p.expected)} at an even pace</p>
         </div>
       </div>
     </section>
