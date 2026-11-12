@@ -15,6 +15,8 @@ export interface Book {
   year?: number
   /** publication date as far as known: "2008", "2008-03" or "2008-03-12"; `year` follows it (#44) */
   published?: string
+  /** not out yet: the day it comes out (yyyy-mm-dd); until then it is not on the shelf (#103) */
+  releaseDate?: string
   pages?: number
   /** listening time of the audiobook, in minutes (#48) */
   minutes?: number

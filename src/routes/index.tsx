@@ -7,7 +7,8 @@ import { CoverPicker } from '#/components/CoverPicker'
 import type { Face } from '#/components/BookPanel'
 import { nearestTurn } from '#/components/BookMesh'
 import type { InspectTarget } from '#/components/BookMesh'
-import { SORT_LABELS, STATUS_LABELS, statusPatch, useLibrary } from '#/lib/library'
+import { SORT_LABELS, STATUS_LABELS, localDay, statusPatch, useLibrary } from '#/lib/library'
+import { isUpcoming, releasePatch, releasedBooks, upcomingBooks } from '#/lib/upcoming'
 import { progressPatch } from '#/lib/readingLog'
 import type { SortKey, SyncStatus } from '#/lib/library'
 import { useSession } from '#/lib/session'
@@ -72,11 +73,26 @@ interface ShelfProps {
 }
 
 function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
-  const { books, loaded, arrangement, sync, syncNow, addBook, removeBook, updateBook, mergeBook, reorder, sortBy } =
-    useLibrary(
+  const {
+    books: allBooks,
+    loaded,
+    arrangement,
+    sync,
+    syncNow,
+    addBook,
+    removeBook,
+    updateBook,
+    mergeBook,
+    reorder,
+    sortBy,
+  } = useLibrary(
       account?.id ?? null,
       onExpired,
     )
+  // books not out yet wait on the dashboard, not on the shelf (#103)
+  const today = localDay()
+  const books = useMemo(() => allBooks.filter((b) => !isUpcoming(b, today)), [allBooks, today])
+  const upcoming = useMemo(() => upcomingBooks(allBooks, today), [allBooks, today])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [adding, setAdding] = useState<Tab | null>(null)
   const [pickingCover, setPickingCover] = useState(false)
@@ -87,7 +103,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     sheet.current = share
   }, [])
   const syncCallbacks = useMemo(() => ({ addBook, updateBook }), [addBook, updateBook])
-  const storytel = useStorytelSync(books, syncCallbacks)
+  const storytel = useStorytelSync(allBooks, syncCallbacks)
   const { state: syncState, dismiss: dismissSync } = storytel
 
   // the result message fades by itself
@@ -141,7 +157,22 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   const seriesMap = useMemo(() => detectSeries(books), [books])
   const selectedSeries = selected ? seriesMap.get(selected.id) : undefined
   const genreOptions = useMemo(() => genreSuggestions(books.flatMap((b) => b.genres ?? [])), [books])
-  useBookDetails(books, loaded, updateBook)
+  useBookDetails(allBooks, loaded, updateBook)
+
+  // release day (#103): the book leaves Upcoming releases and goes onto the shelf
+  useEffect(() => {
+    if (!loaded) return
+    const out = releasedBooks(allBooks, today)
+    if (!out.length) return
+    for (const b of out) updateBook(b.id, releasePatch(b))
+    setNotice({
+      text:
+        out.length === 1
+          ? `${out[0].title} is out! It's on your shelf now.`
+          : `${out.length} books are out! They're on your shelf now.`,
+      ok: true,
+    })
+  }, [loaded, allBooks, today, updateBook])
 
   // show only one genre (#41); a genre no book has any more falls back to all books
   const [genre, setGenre] = useState<string | null>(null)
@@ -372,7 +403,16 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             </button>
           </div>
         )}
-        {onDashboard && <Dashboard books={books} onShowBook={showBook} accountId={account?.id ?? null} />}
+        {onDashboard && (
+          <Dashboard
+            books={books}
+            upcoming={upcoming}
+            onShowBook={showBook}
+            onUpdate={updateBook}
+            onRemove={removeBook}
+            accountId={account?.id ?? null}
+          />
+        )}
         {books.length > 1 && !selected && !onDashboard && (
           <p className="stage-hint">
             <span className="hint-mouse">Click a book to pull it off the shelf · drag to rearrange</span>
@@ -419,7 +459,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
 
       {adding && (
         <AddBookDialog
-          existing={books}
+          existing={allBooks}
           onAdd={addBook}
           onUpdate={updateBook}
           onClose={() => setAdding(null)}
