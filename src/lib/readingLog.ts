@@ -1,13 +1,13 @@
 import type { Book } from './library'
-import { localDay } from './library'
-import { formatDuration, listenOnly, parseDuration } from './listening'
-import { percentText, progressFromPercent } from './progress'
+import { localDay, statusPatch } from './library'
+import { formatDuration, listenOnly } from './listening'
+import { percentText } from './progress'
 
 /**
  * The reading log (#76): how much of a book Hanna read on each day, and the
  * days she started it. Every change of progress notes what it moved on for
- * that day, whether she moved it by hand or Storytel did; in the dashboard
- * calendar she can also type in how much she read on a day.
+ * that day, whether she moved it by hand or Storytel did. The dashboard
+ * calendar shows it (#89).
  */
 
 const clamp = (n: number) => Math.min(1, Math.max(0, n))
@@ -31,20 +31,11 @@ export function progressPatch(book: Book, progress: number, day = localDay()): P
   const p = round(clamp(progress))
   const moved = p - (book.progress ?? 0)
   if (Math.abs(moved) <= EPS) return book.progress === p ? {} : { progress: p }
-  return { progress: p, ...logPatch(book, day, (book.readingLog?.[day] ?? 0) + moved) }
-}
-
-/**
- * The change for setting how much of a book she read on `day`, from the
- * calendar. A book she is reading moves on (or back) by the difference.
- */
-export function dayAmountPatch(book: Book, day: string, amount: number): Partial<Book> {
-  const a = clamp(amount)
-  const before = book.readingLog?.[day] ?? 0
-  const moves = book.status === 'reading' || book.status === 'paused'
   return {
-    ...logPatch(book, day, a),
-    ...(moves && { progress: round(clamp((book.progress ?? 0) + a - before)) }),
+    progress: p,
+    ...logPatch(book, day, (book.readingLog?.[day] ?? 0) + moved),
+    // reading on in a paused book picks it up again (#91)
+    ...(book.status === 'paused' && moved > 0 && statusPatch(book, 'reading', day)),
   }
 }
 
@@ -68,31 +59,6 @@ export function amountText(book: Book, amount: number): string {
       return formatDuration(Math.max(1, Math.round(amount * book.minutes!)))
     case 'percent':
       return `${percentText(amount)}%`
-  }
-}
-
-/** What to put in the field for an amount: "30", "1 h 20 min" or "12". */
-export function amountDraft(book: Book, amount: number): string {
-  if (!amount) return ''
-  const unit = amountUnit(book)
-  if (unit === 'pages') return String(Math.round(amount * book.pages!))
-  if (unit === 'time') return formatDuration(Math.round(amount * book.minutes!))
-  return percentText(amount)
-}
-
-/** The share of the book in what she typed (pages, a time, or a percentage); 0 for nothing, null when it isn't one. */
-export function amountFromText(book: Book, text: string): number | null {
-  const s = text.trim()
-  if (!s || /^0+([.,]0*)?\s*%?$/.test(s)) return 0
-  switch (amountUnit(book)) {
-    case 'pages':
-      return /^\d+$/.test(s) ? clamp(Number(s) / book.pages!) : null
-    case 'time': {
-      const m = parseDuration(s)
-      return m === null ? null : clamp(m / book.minutes!)
-    }
-    case 'percent':
-      return progressFromPercent(s)
   }
 }
 
@@ -143,14 +109,10 @@ export function startedIn(books: Book[], year: number, month: number): Array<{ b
     .sort((a, b) => a.day.localeCompare(b.day))
 }
 
-/** The books she could have read on a day: the ones she is reading, and any already noted that day. */
-export function loggableBooks(books: Book[], day: string): Book[] {
-  return books.filter(
-    (b) =>
-      b.status === 'reading' ||
-      b.status === 'paused' ||
-      b.readingLog?.[day] !== undefined ||
-      b.started?.includes(day) ||
-      b.finished?.includes(day),
-  )
+/** The books finished in a month, the first finished first (#92). */
+export function finishedIn(books: Book[], year: number, month: number): Array<{ book: Book; day: string }> {
+  const prefix = monthPrefix(year, month)
+  return books
+    .flatMap((book) => (book.finished ?? []).filter((d) => d.startsWith(prefix)).map((day) => ({ book, day })))
+    .sort((a, b) => a.day.localeCompare(b.day))
 }

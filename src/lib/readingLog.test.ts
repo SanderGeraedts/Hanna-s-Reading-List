@@ -7,10 +7,8 @@ const { statusPatch } = await import('./library')
 const { mergeBooks } = await import('./merge')
 const { onThisDay } = await import('./insights')
 const {
-  amountFromText,
   amountText,
-  dayAmountPatch,
-  loggableBooks,
+  finishedIn,
   monthEntries,
   progressPatch,
   startedIn,
@@ -47,26 +45,10 @@ describe('reading log (#76)', () => {
     expect(b.progress).toBe(0)
   })
 
-  it('sets a day from the calendar and moves the progress by the difference', () => {
-    let b = book('a', { progress: 0.5, pages: 100, readingLog: { '2026-11-05': 0.1 } })
-    b = apply(b, dayAmountPatch(b, '2026-11-05', amountFromText(b, '30')!))
-    expect(b.readingLog).toEqual({ '2026-11-05': 0.3 })
-    expect(b.progress).toBe(0.7)
-    b = apply(b, dayAmountPatch(b, '2026-11-05', amountFromText(b, '')!))
-    expect(b.readingLog).toBeUndefined()
-    expect(b.progress).toBe(0.4)
-    // a finished book keeps its progress
-    const done = book('b', { status: 'read', progress: 0.9 })
-    expect(dayAmountPatch(done, '2026-11-05', 0.1)).toEqual({ readingLog: { '2026-11-05': 0.1 } })
-  })
-
-  it('reads amounts as pages, listening time or a percentage', () => {
-    expect(amountFromText(book('p', { pages: 300 }), '30')).toBe(0.1)
-    expect(amountFromText(book('p', { pages: 300 }), 'lots')).toBeNull()
+  it('shows amounts as pages, listening time or a percentage', () => {
     const listen = book('t', { minutes: 600, formats: ['storytel'] })
-    expect(amountFromText(listen, '1 h')).toBe(0.1)
     expect(amountText(listen, 0.1)).toBe('1 h')
-    expect(amountFromText(book('x'), '12,5%')).toBe(0.125)
+    expect(amountText(book('x'), 0.125)).toBe('12.5%')
   })
 
   it('notes the day a book is started, not when it is picked up again after a pause', () => {
@@ -90,8 +72,17 @@ describe('reading log (#76)', () => {
     ])
     expect(startedIn(shelf, 2026, 11).map((s) => s.book.id)).toEqual(['a'])
     expect(startedIn(shelf, 2026, 10).map((s) => s.book.id)).toEqual(['b'])
-    expect(loggableBooks(shelf, '2026-11-03').map((b) => b.id)).toEqual(['a', 'b'])
-    expect(loggableBooks(shelf, '2026-11-04').map((b) => b.id)).toEqual(['a'])
+    expect(finishedIn(shelf, 2026, 11).map((s) => [s.book.id, s.day])).toEqual([['b', '2026-11-03']])
+    expect(finishedIn(shelf, 2026, 10)).toEqual([])
+  })
+
+  it('picks a paused book up again when its progress moves on (#91)', () => {
+    const p = book('p', { status: 'paused', progress: 0.2 })
+    expect(progressPatch(p, 0.25, '2026-11-10')).toMatchObject({ status: 'reading', progress: 0.25 })
+    // moving it back is a correction, not reading
+    expect(progressPatch(p, 0.15, '2026-11-10').status).toBeUndefined()
+    // picking a paused book up again is not a new start
+    expect(progressPatch(p, 0.25, '2026-11-10').started).toBeUndefined()
   })
 
   it('remembers what was read on this day in earlier years', () => {
