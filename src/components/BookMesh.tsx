@@ -6,7 +6,8 @@ import type { ThreeEvent } from '@react-three/fiber'
 import type { Book } from '#/lib/library'
 import { timesRead } from '#/lib/library'
 import type { BookDims, Slot } from '#/lib/shelfLayout'
-import { METALS, medalFaceTexture, medalLayout, medalTier, pageTextures, paintBack, paintFallbackCover, paintSpine } from './textures'
+import { METALS, medalFaceTexture, medalLayout, medalTier, pageTextures, paintBack, paintEdges, paintFallbackCover, paintSpine } from './textures'
+import { cleanEdges } from '#/lib/edges'
 
 export interface InspectTarget {
   rotY: number
@@ -115,8 +116,22 @@ export function BookMesh(props: BookMeshProps) {
     [painted],
   )
 
+  // her own page edges (#98), or the plain paper every book shares
+  const edgesKey = JSON.stringify(cleanEdges(book.edges) ?? null)
+  const edges = useMemo(() => {
+    const e = cleanEdges(JSON.parse(edgesKey))
+    return e ? paintEdges(e, dims, book.id) : null
+  }, [edgesKey, dims, book.id])
+  useEffect(
+    () => () => {
+      edges?.fore.dispose()
+      edges?.topBottom.dispose()
+    },
+    [edges],
+  )
+
   const materials = useMemo(() => {
-    const pages = pageTextures()
+    const pages = edges ?? pageTextures()
     const paper = { roughness: 0.95, metalness: 0 }
     const coverMat = { roughness: 0.55, metalness: 0.02 }
     // BoxGeometry face order: +x, -x, +y, -y, +z, -z
@@ -134,7 +149,7 @@ export function BookMesh(props: BookMeshProps) {
       face(cover ?? painted.fallback, coverMat),
       face(painted.back, coverMat),
     ]
-  }, [painted, cover])
+  }, [painted, cover, edges])
   useEffect(() => () => materials.forEach((m) => m.dispose()), [materials])
 
   // ---- animation --------------------------------------------------------

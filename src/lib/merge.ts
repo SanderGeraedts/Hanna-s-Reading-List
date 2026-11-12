@@ -53,6 +53,7 @@ export function mergeBooks(keep: Book, other: Book): Book {
     seriesIndex: keep.series ? keep.seriesIndex : (other.seriesIndex ?? keep.seriesIndex),
     language: keep.language ?? other.language,
     lent: keep.lent ?? other.lent,
+    edges: keep.edges ?? other.edges,
     // furthest along wins
     status,
     ...(progress > 0 && { progress }),

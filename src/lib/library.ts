@@ -1,3 +1,4 @@
+import type { PageEdges } from './edges'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { loadShelf, saveShelf, type RemoteShelf } from '#/server/shelf'
 import { seriesGroups } from './series'
@@ -36,6 +37,8 @@ export interface Book {
   /** width / height of the cover image, used to shape the 3D book */
   coverAspect?: number
   description?: string
+  /** coloured or patterned page edges (#98); none: plain paper */
+  edges?: PageEdges
   /** Dominant colour used for the spine and back cover */
   color: string
   status: ReadingStatus

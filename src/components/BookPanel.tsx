@@ -18,6 +18,7 @@ import { tidyTitle } from '#/lib/titles'
 import type { SeriesInfo } from '#/lib/series'
 import { backText } from './textures'
 import { MergeSection } from './MergeSection'
+import { EdgesField } from './EdgesField'
 
 export type Face = 'front' | 'spine' | 'back'
 
@@ -401,6 +402,8 @@ export function BookPanel({
       <button className="btn change-cover" onClick={onChangeCover}>
         Change cover…
       </button>
+
+      <EdgesField book={book} onChange={(edges) => onUpdate({ edges })} />
 
       <label className="field">
         <span>Status</span>
