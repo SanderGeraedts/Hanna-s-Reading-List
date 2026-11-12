@@ -1,8 +1,7 @@
-import Anthropic from '@anthropic-ai/sdk'
 import { createServerFn } from '@tanstack/react-start'
 import { EDGE_PATTERNS, cleanEdges } from '#/lib/edges'
 import type { PageEdges } from '#/lib/edges'
-import { NOT_SIGNED_IN, asUser, pb, pocketbaseUrl } from './pocketbase'
+import { aiConfigured, askClaude } from './claude'
 
 /**
  * Page edges from a description (#98): Hanna types what she'd like ("gold
@@ -13,8 +12,6 @@ import { NOT_SIGNED_IN, asUser, pb, pocketbaseUrl } from './pocketbase'
  * Needs ANTHROPIC_API_KEY on the server, and a signed-in account, so nobody
  * else can spend the API credit.
  */
-
-const MODEL = 'claude-opus-5-5'
 
 const SCHEMA = {
   type: 'object',
@@ -49,9 +46,7 @@ export interface EdgeRequest {
   color: string
 }
 
-export const aiEdgesAvailable = createServerFn({ method: 'GET' }).handler(
-  async () => !!process.env.ANTHROPIC_API_KEY?.trim() && !!pocketbaseUrl(),
-)
+export const aiEdgesAvailable = createServerFn({ method: 'GET' }).handler(async () => aiConfigured())
 
 export const designEdges = createServerFn({ method: 'POST' })
   .validator((input: EdgeRequest) => {
@@ -65,41 +60,15 @@ export const designEdges = createServerFn({ method: 'POST' })
     }
   })
   .handler(async ({ data }): Promise<PageEdges> => {
-    if (!process.env.ANTHROPIC_API_KEY?.trim()) throw new Error('The AI designer is not set up yet.')
-    if (!pocketbaseUrl()) throw new Error(NOT_SIGNED_IN)
-    // a real, signed-in account (PocketBase checks the token)
-    await asUser((token) => pb('/api/collections/users/auth-refresh', { method: 'POST', token }))
-
-    const client = new Anthropic()
-    let response: Anthropic.Beta.BetaMessage
-    try {
-      response = await client.beta.messages.create({
-        model: MODEL,
-        max_tokens: 2000,
-        betas: ['server-side-fallback-2026-07-01'],
-        fallbacks: 'default',
-        output_config: { effort: 'low', format: { type: 'json_schema', schema: SCHEMA } },
-        system: SYSTEM,
-        messages: [
-          {
-            role: 'user',
-            content: `Book: ${data.title}${data.authors.length ? ` by ${data.authors.join(', ')}` : ''}\nCover colour: ${data.color}\nRequest: ${data.prompt}`,
-          },
-        ],
-      })
-    } catch (e) {
-      if (e instanceof Anthropic.RateLimitError) throw new Error('The AI designer is busy. Try again in a minute.')
-      if (e instanceof Anthropic.APIError) throw new Error('The AI designer could not be reached.')
-      throw e
-    }
-    if (response.stop_reason === 'refusal') throw new Error('The AI designer could not make that one. Try other words.')
-    const text = response.content.find((b) => b.type === 'text')
-    let parsed: unknown
-    try {
-      parsed = text && text.type === 'text' ? JSON.parse(text.text) : undefined
-    } catch {
-      parsed = undefined
-    }
+    const parsed = await askClaude({
+      system: SYSTEM,
+      prompt: `Book: ${data.title}${data.authors.length ? ` by ${data.authors.join(', ')}` : ''}
+Cover colour: ${data.color}
+Request: ${data.prompt}`,
+      schema: SCHEMA,
+      maxTokens: 2000,
+      failed: 'The AI designer could not make that one. Try other words.',
+    })
     const edges = cleanEdges({ ...(parsed as object), prompt: data.prompt })
     if (!edges) throw new Error('The AI designer gave an answer we could not use. Try again.')
     return edges

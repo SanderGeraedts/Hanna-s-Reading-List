@@ -21,6 +21,7 @@ import { ratingText, spiceText } from '#/lib/ratings'
 import { backText } from './textures'
 import { MergeSection } from './MergeSection'
 import { EdgesField } from './EdgesField'
+import { findBackText } from '#/lib/findBackText'
 
 export type Face = 'front' | 'spine' | 'back'
 
@@ -821,6 +822,15 @@ export function BookPanel({
           }}
         />
       </label>
+      {!book.description && (
+        <FindBackText
+          book={book}
+          onFound={(description) => {
+            setBlurb(description)
+            onUpdate({ description })
+          }}
+        />
+      )}
 
       <MergeSection
         book={book}
@@ -911,5 +921,24 @@ function ProgressField({
       />
       {after && <span>{after}</span>}
     </label>
+  )
+}
+
+/** For a book without back text: look it up on Open Library. */
+function FindBackText({ book, onFound }: { book: Book; onFound: (description: string) => void }) {
+  const [state, setState] = useState<'idle' | 'busy' | 'none'>('idle')
+  const find = async () => {
+    setState('busy')
+    const found = await findBackText(book).catch(() => undefined)
+    if (found) onFound(found)
+    else setState('none')
+  }
+  return (
+    <div className="find-back-text">
+      <button className="btn small" onClick={find} disabled={state === 'busy'}>
+        {state === 'busy' ? 'Looking…' : 'Find back text'}
+      </button>
+      {state === 'none' && <small className="muted">No back text found for this book. You can type it in above.</small>}
+    </div>
   )
 }
