@@ -27,7 +27,7 @@ interface Props {
 }
 
 /** Turns an Open Library result into a book, sampling the cover for spine colour + shape. */
-async function buildBook(
+export async function buildBook(
   r: SearchResult & { published?: string },
   details: { description?: string; genres?: string[] } = {},
 ): Promise<NewBook> {

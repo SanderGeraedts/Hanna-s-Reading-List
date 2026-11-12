@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { Book } from '#/lib/library'
+import type { Book, NewBook } from '#/lib/library'
+import { RecommendCard } from './RecommendCard'
 import { formatDuration } from '#/lib/listening'
 import {
   BookLine,
@@ -55,6 +56,8 @@ export interface Props {
 interface DashboardProps extends Props {
   /** the signed-in account, or null when the shelf lives in this browser only */
   accountId: string | null
+  /** put a recommended book on the shelf */
+  onAdd: (book: NewBook) => void
 }
 
 export interface PeriodPick {
@@ -124,7 +127,7 @@ interface Drag {
   drop: Drop | null
 }
 
-export function Dashboard({ books, onShowBook, accountId }: DashboardProps) {
+export function Dashboard({ books, onShowBook, accountId, onAdd }: DashboardProps) {
   const now = new Date()
   // the period picked under "Books read"; the charts and records follow it
   const [pick, setPick] = useState<PeriodPick>({ kind: 'year', year: now.getFullYear(), month: now.getMonth() + 1 })
@@ -151,6 +154,7 @@ export function Dashboard({ books, onShowBook, accountId }: DashboardProps) {
     onthisday: <OnThisDayCard books={books} onShowBook={onShowBook} />,
     lent: <LentCard books={books} onShowBook={onShowBook} />,
     top: <TopRatedCard books={books} onShowBook={onShowBook} />,
+    recommend: <RecommendCard books={books} accountId={accountId} onAdd={onAdd} />,
   }
 
   const columns: BlockId[][] = narrow ? [singleColumn(layout)] : layout.columns
