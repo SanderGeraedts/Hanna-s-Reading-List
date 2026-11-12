@@ -20,6 +20,7 @@ import { StarRating } from './StarRating'
 import { ratingText, spiceText } from '#/lib/ratings'
 import { backText } from './textures'
 import { MergeSection } from './MergeSection'
+import { EdgesField } from './EdgesField'
 
 export type Face = 'front' | 'spine' | 'back'
 
@@ -403,6 +404,8 @@ export function BookPanel({
       <button className="btn change-cover" onClick={onChangeCover}>
         Change cover…
       </button>
+
+      <EdgesField book={book} onChange={(edges) => onUpdate({ edges })} />
 
       <label className="field">
         <span>Status</span>

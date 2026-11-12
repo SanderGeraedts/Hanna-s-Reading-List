@@ -2219,3 +2219,28 @@ textarea.input {
   width: auto;
 }
 
+/* ---- page edges (#98) -------------------------------------------------- */
+.edges-actions,
+.edges-pick,
+.edges-ai {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+.edges-pick .input {
+  width: auto;
+  flex: 1 1 8rem;
+}
+.edges-ai .input {
+  flex: 1 1 10rem;
+}
+.edges-field .swatch {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+}

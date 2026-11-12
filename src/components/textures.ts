@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import type { Book } from '#/lib/library'
 import type { BookDims } from '#/lib/shelfLayout'
 import { formatDuration, listenOnly } from '#/lib/listening'
+import type { PageEdges } from '#/lib/edges'
 
 /**
  * Procedural textures. No public API provides spine or back-cover images,
@@ -664,4 +665,214 @@ export function backText(book: Book) {
     book.description?.trim() ||
     `A book on Hanna's reading list${book.year ? `, first published in ${book.year}` : ''}.`
   )
+}
+
+// ---------------------------------------------------------------------------
+// Coloured and patterned page edges (#98)
+// ---------------------------------------------------------------------------
+
+/** pixels per metre of book: a motif of a few millimetres stays crisp */
+const EDGE_PX_PER_M = 2400
+
+/** A small seeded random, so a book's marble or scatter looks the same every time. */
+function seeded(seed: string) {
+  let h = 1779033703 ^ seed.length
+  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 3432918353)
+  return () => {
+    h = Math.imul(h ^ (h >>> 16), 2246822507)
+    h = Math.imul(h ^ (h >>> 13), 3266489909)
+    return ((h ^= h >>> 16) >>> 0) / 4294967296
+  }
+}
+
+function star(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
+  ctx.beginPath()
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5
+    const rr = i % 2 ? r * 0.45 : r
+    ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr)
+  }
+  ctx.closePath()
+  ctx.fill()
+}
+
+function heart(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
+  ctx.beginPath()
+  ctx.moveTo(x, y + r * 0.9)
+  ctx.bezierCurveTo(x - r * 1.4, y - r * 0.1, x - r * 0.6, y - r * 1.1, x, y - r * 0.35)
+  ctx.bezierCurveTo(x + r * 0.6, y - r * 1.1, x + r * 1.4, y - r * 0.1, x, y + r * 0.9)
+  ctx.fill()
+}
+
+function flower(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, centre: string) {
+  for (let i = 0; i < 5; i++) {
+    const a = (i * 2 * Math.PI) / 5
+    ctx.beginPath()
+    ctx.ellipse(x + Math.cos(a) * r * 0.5, y + Math.sin(a) * r * 0.5, r * 0.45, r * 0.3, a, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  const keep = ctx.fillStyle
+  ctx.fillStyle = centre
+  ctx.beginPath()
+  ctx.arc(x, y, r * 0.22, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = keep
+}
+
+function leaf(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, angle: number) {
+  ctx.beginPath()
+  ctx.ellipse(x, y, r, r * 0.42, angle, 0, Math.PI * 2)
+  ctx.fill()
+}
+
+function moon(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, base: string) {
+  ctx.beginPath()
+  ctx.arc(x, y, r, 0, Math.PI * 2)
+  ctx.fill()
+  const keep = ctx.fillStyle
+  ctx.fillStyle = base
+  ctx.beginPath()
+  ctx.arc(x + r * 0.45, y - r * 0.2, r * 0.85, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = keep
+}
+
+/** Paints a pattern over the whole canvas. `unit` is the motif spacing in pixels. */
+function paintEdgePattern(ctx: CanvasRenderingContext2D, W: number, H: number, edges: PageEdges, rnd: () => number) {
+  const [base, motif, third = motif] = edges.colors
+  const unit = Math.max(8, 0.006 * EDGE_PX_PER_M)
+  ctx.fillStyle = base
+  ctx.fillRect(0, 0, W, H)
+  // a scatter of motifs on an offset grid, the odd ones in the third colour
+  const grid = (draw: (x: number, y: number, i: number) => void, spacing = unit) => {
+    let i = 0
+    for (let row = 0, y = spacing / 2; y < H + spacing; y += spacing * 0.87, row++) {
+      for (let x = (row % 2) * (spacing / 2); x < W + spacing; x += spacing) {
+        ctx.fillStyle = i % 3 === 2 ? third : motif
+        draw(x + (rnd() - 0.5) * spacing * 0.15, y + (rnd() - 0.5) * spacing * 0.15, i++)
+      }
+    }
+  }
+  switch (edges.pattern) {
+    case 'sprayed': {
+      // a soft second colour along the borders, like real sprayed edges
+      ctx.globalAlpha = 0.35
+      ctx.strokeStyle = motif
+      ctx.lineWidth = Math.max(2, Math.min(W, H) * 0.12)
+      ctx.strokeRect(0, 0, W, H)
+      ctx.globalAlpha = 1
+      break
+    }
+    case 'gradient': {
+      const g = ctx.createLinearGradient(0, 0, 0, H)
+      g.addColorStop(0, base)
+      g.addColorStop(0.5, motif)
+      g.addColorStop(1, third === motif ? base : third)
+      ctx.fillStyle = g
+      ctx.fillRect(0, 0, W, H)
+      break
+    }
+    case 'stripes': {
+      ctx.save()
+      ctx.translate(W / 2, H / 2)
+      ctx.rotate(-Math.PI / 4)
+      const d = Math.hypot(W, H)
+      for (let i = 0, x = -d; x < d; x += unit, i++) {
+        ctx.fillStyle = i % 2 ? motif : third
+        if (i % 2 || third !== motif) ctx.fillRect(x, -d, unit / 2, 2 * d)
+      }
+      ctx.restore()
+      break
+    }
+    case 'dots':
+      grid((x, y) => {
+        ctx.beginPath()
+        ctx.arc(x, y, unit * 0.18, 0, Math.PI * 2)
+        ctx.fill()
+      })
+      break
+    case 'stars':
+      grid((x, y) => star(ctx, x, y, unit * 0.3))
+      break
+    case 'hearts':
+      grid((x, y) => heart(ctx, x, y, unit * 0.28))
+      break
+    case 'flowers':
+      grid((x, y) => flower(ctx, x, y, unit * 0.42, third === motif ? base : third), unit * 1.2)
+      break
+    case 'leaves':
+      grid((x, y) => leaf(ctx, x, y, unit * 0.32, rnd() * Math.PI))
+      break
+    case 'moons':
+      grid((x, y) => moon(ctx, x, y, unit * 0.26, base), unit * 1.1)
+      break
+    case 'waves': {
+      ctx.lineWidth = Math.max(1.5, unit * 0.12)
+      for (let i = 0, y = unit / 2; y < H + unit; y += unit / 2, i++) {
+        ctx.strokeStyle = i % 2 ? third : motif
+        ctx.beginPath()
+        for (let x = 0; x <= W; x += 2) ctx.lineTo(x, y + Math.sin((x / unit) * Math.PI * 2) * unit * 0.15)
+        ctx.stroke()
+      }
+      break
+    }
+    case 'diamonds':
+      grid((x, y) => {
+        ctx.beginPath()
+        ctx.moveTo(x, y - unit * 0.32)
+        ctx.lineTo(x + unit * 0.22, y)
+        ctx.lineTo(x, y + unit * 0.32)
+        ctx.lineTo(x - unit * 0.22, y)
+        ctx.closePath()
+        ctx.fill()
+      })
+      break
+    case 'marble': {
+      for (let i = 0; i < 40; i++) {
+        ctx.strokeStyle = i % 3 === 2 ? third : motif
+        ctx.globalAlpha = 0.25 + rnd() * 0.5
+        ctx.lineWidth = 0.6 + rnd() * unit * 0.25
+        let x = rnd() * W
+        let y = rnd() * H
+        ctx.beginPath()
+        ctx.moveTo(x, y)
+        for (let s = 0; s < 30; s++) {
+          x += (rnd() - 0.5) * unit
+          y += (rnd() - 0.3) * unit
+          ctx.lineTo(x, y)
+        }
+        ctx.stroke()
+      }
+      ctx.globalAlpha = 1
+      break
+    }
+  }
+}
+
+/** The page lines over the colour, so it still reads as a block of pages. */
+function overlayPageLines(ctx: CanvasRenderingContext2D, W: number, H: number, vertical: boolean, rnd: () => number) {
+  const n = vertical ? W : H
+  for (let i = 0; i < n; i += 2) {
+    ctx.fillStyle = `rgba(60, 45, 30, ${0.04 + rnd() * 0.08})`
+    if (vertical) ctx.fillRect(i, 0, 1, H)
+    else ctx.fillRect(0, i, W, 1)
+  }
+}
+
+/**
+ * A book's own page-edge textures: the fore edge (thickness × height) and
+ * the top and bottom (width × thickness), sized to the book so motifs keep
+ * their shape.
+ */
+export function paintEdges(edges: PageEdges, dims: BookDims, seed: string) {
+  const px = (m: number) => Math.min(1024, Math.max(16, m * EDGE_PX_PER_M))
+  const make = (W: number, H: number, vertical: boolean) => {
+    const c = canvas(W, H)
+    const ctx = c.getContext('2d')!
+    const rnd = seeded(`${seed}:${vertical}`)
+    paintEdgePattern(ctx, c.width, c.height, edges, rnd)
+    overlayPageLines(ctx, c.width, c.height, vertical, rnd)
+    return toTexture(c)
+  }
+  return { fore: make(px(dims.t), px(dims.h), true), topBottom: make(px(dims.w), px(dims.t), false) }
 }
