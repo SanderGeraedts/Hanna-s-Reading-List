@@ -4,6 +4,7 @@ import { BookshelfScene } from '#/components/BookshelfScene'
 import { AddBookDialog } from '#/components/AddBookDialog'
 import { BookPanel } from '#/components/BookPanel'
 import { CoverPicker } from '#/components/CoverPicker'
+import { RatingDialog } from '#/components/RatingDialog'
 import type { Face } from '#/components/BookPanel'
 import { nearestTurn } from '#/components/BookMesh'
 import type { InspectTarget } from '#/components/BookMesh'
@@ -80,6 +81,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [adding, setAdding] = useState<Tab | null>(null)
   const [pickingCover, setPickingCover] = useState(false)
+  /** the book just marked as read, to ask for a rating (#100) */
+  const [ratingFor, setRatingFor] = useState<string | null>(null)
   const inspect = useRef<InspectTarget>({ rotY: 0, rotX: 0 })
   // share of the screen the details sheet covers on phones; the scene keeps the book above it
   const sheet = useRef(0.45)
@@ -387,7 +390,10 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           book={selected}
           onFace={showFace}
           // finishing a book counts as a read, finishing it again as one more (#53)
-          onStatus={(status) => updateBook(selected.id, statusPatch(selected, status))}
+          onStatus={(status) => {
+            updateBook(selected.id, statusPatch(selected, status))
+            if (status === 'read' && selected.status !== 'read') setRatingFor(selected.id)
+          }}
           // what she read today goes in the reading log (#76)
           onProgress={(progress) => updateBook(selected.id, (b) => progressPatch(b, progress))}
           onUpdate={(patch) => {
@@ -416,6 +422,17 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           onClose={() => setPickingCover(false)}
         />
       )}
+
+      {(() => {
+        const book = ratingFor ? books.find((b) => b.id === ratingFor) : undefined
+        return book ? (
+          <RatingDialog
+            book={book}
+            onUpdate={(patch) => updateBook(book.id, patch)}
+            onClose={() => setRatingFor(null)}
+          />
+        ) : null
+      })()}
 
       {adding && (
         <AddBookDialog
