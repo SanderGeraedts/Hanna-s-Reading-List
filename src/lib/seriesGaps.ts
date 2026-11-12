@@ -1,13 +1,13 @@
 import type { Book } from './library'
 import { detectSeries } from './series'
-import { titleKey } from './recommend'
-import { cleanReleaseDate } from './upcoming'
+import type { SearchResult } from '#/server/openLibrary'
+import { titleKey, worthSuggesting } from './recommend'
 
 /**
  * Completing a series: which books of each series on the shelf are missing.
  * Gaps in the numbers are found on the shelf itself (she has 1, 2 and 4, so
- * 3 is missing); the books after the last one she has, and books not out
- * yet, come from asking which books the series has (server/seriesBooks.ts).
+ * 3 is missing); for the books after her last one, Open Library lists the
+ * author's other books for her to pick from.
  */
 
 export interface SeriesOnShelf {
@@ -20,15 +20,6 @@ export interface SeriesOnShelf {
   numbers: number[]
   /** whole numbers below the highest she has that are not on the shelf */
   missing: number[]
-}
-
-export interface SeriesBook {
-  /** place in the series; may be a half for a novella (1.5) */
-  number?: number
-  title: string
-  year?: number
-  /** when it isn't out yet: the day it comes out */
-  releaseDate?: string
 }
 
 const keyOf = (name: string) => name.toLowerCase().replace(/[\s…]+/g, ' ').trim()
@@ -68,24 +59,30 @@ export function seriesOnShelf(books: Book[]): SeriesOnShelf[] {
   )
 }
 
-/** The books of a series as the AI listed them, made safe. */
-export function cleanSeriesBooks(raw: unknown): SeriesBook[] {
-  const out: SeriesBook[] = []
-  for (const r of Array.isArray(raw) ? raw.slice(0, 60) : []) {
-    const b = r as Partial<SeriesBook> | null
-    const title = typeof b?.title === 'string' ? b.title.trim().slice(0, 200) : ''
-    if (!title) continue
-    const number = typeof b?.number === 'number' && b.number >= 0 && b.number < 1000 ? b.number : undefined
-    const year = typeof b?.year === 'number' && b.year > 1000 && b.year < 3000 ? Math.round(b.year) : undefined
-    const releaseDate = cleanReleaseDate(b?.releaseDate)
-    out.push({ title, ...(number !== undefined && { number }), ...(year && { year }), ...(releaseDate && { releaseDate }) })
-  }
+/**
+ * Books by the series' author she doesn't have, from Open Library's list of
+ * that author's books: those whose title shares a word with the series
+ * name first (often the books of that series), then the rest, newest first.
+ * Open Library doesn't know series order, so she picks the ones that belong.
+ */
+export function moreByAuthor(results: SearchResult[], series: SeriesOnShelf, shelf: Book[]): SearchResult[] {
+  const have = new Set(shelf.map((b) => titleKey(b.title)))
+  const words = new Set(
+    titleKey(series.name)
+      .split(' ')
+      .filter((w) => w.length > 3 && !['series', 'saga', 'chronicles', 'trilogy'].includes(w)),
+  )
+  const seen = new Set<string>()
+  const out = results.filter((r) => {
+    const key = titleKey(r.title)
+    if (!key || have.has(key) || seen.has(key) || !worthSuggesting({ ...r, coverId: r.coverId ?? 1 })) return false
+    seen.add(key)
+    return true
+  })
+  const inSeries = (r: SearchResult) => titleKey(r.title).split(' ').some((w) => words.has(w))
   return out
-}
-
-/** The books of the series she doesn't have: not by number, and not by title. */
-export function notOnShelf(list: SeriesBook[], series: SeriesOnShelf, allBooks: Book[] = series.books): SeriesBook[] {
-  const have = new Set(series.numbers)
-  const titles = new Set(allBooks.map((b) => titleKey(b.title)))
-  return list.filter((b) => !(b.number !== undefined && have.has(b.number)) && !titles.has(titleKey(b.title)))
+    .map((r, i) => ({ r, i, hit: inSeries(r) }))
+    .sort((a, b) => Number(b.hit) - Number(a.hit) || a.i - b.i)
+    .map(({ r }) => r)
+    .slice(0, 12)
 }

@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Book, NewBook } from '#/lib/library'
-import { bookLine, shelfSummary, titleKey } from '#/lib/recommend'
-import type { Suggestion } from '#/lib/recommend'
+import { authorReason, bookLine, combineSuggestions, tasteOf, titleKey } from '#/lib/recommend'
+import type { Source, Suggestion } from '#/lib/recommend'
 import { findOnOpenLibrary } from '#/lib/storytelImport'
 import { coverUrlForId, colorFromString } from '#/lib/cover'
-import { getWorkDetails } from '#/server/openLibrary'
+import { browseBooks, getWorkDetails } from '#/server/openLibrary'
 import type { SearchResult } from '#/server/openLibrary'
-import { recommendBooks, recommendationsAvailable } from '#/server/recommend'
 import { buildBook } from './AddBookDialog'
 
 interface Props {
@@ -32,30 +31,17 @@ function save(k: string, value: unknown) {
   }
 }
 
-let available: Promise<boolean> | null = null
-
 /**
- * Recommended for you: new books picked from what her shelf says she loves
- * (her best-rated books, favourite authors and genres). One tap puts one on
- * the shelf as want-to-read; "Not for me" makes sure it isn't suggested again.
- * The last suggestions are kept on this device, so opening the dashboard
- * doesn't ask again every time.
+ * Recommended for you: newer books by her favourite authors and new books in
+ * her favourite genres, from Open Library. One tap puts one on the shelf as
+ * want-to-read; "Not for me" makes sure it isn't suggested again. The last
+ * suggestions are kept on this device.
  */
 export function RecommendCard({ books, accountId, onAdd }: Props) {
-  const [ready, setReady] = useState<boolean | null>(null)
   const [items, setItems] = useState<Suggestion[]>(() => load(key('recommended', accountId), []))
   const [notForMe, setNotForMe] = useState<string[]>(() => load(key('not-for-me', accountId), []))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    available ??= recommendationsAvailable().catch(() => false)
-    let live = true
-    available.then((ok) => live && setReady(ok))
-    return () => {
-      live = false
-    }
-  }, [])
 
   // a suggestion she has since put on the shelf drops off
   const onShelf = useMemo(() => new Set(books.map((b) => titleKey(b.title))), [books])
@@ -69,7 +55,27 @@ export function RecommendCard({ books, accountId, onAdd }: Props) {
     setBusy(true)
     setError(null)
     try {
-      keep(await recommendBooks({ data: shelfSummary(books, notForMe) }))
+      const taste = tasteOf(books)
+      if (!taste.authors.length && !taste.genres.length) {
+        setError('Finish and rate a few books first, so there is something to go on.')
+        return
+      }
+      const thisYear = new Date().getFullYear()
+      const sources: Source[] = await Promise.all([
+        ...taste.authors.map(async (a) => ({
+          why: authorReason(a),
+          results: await browseBooks({ data: { author: a.name } }).catch(() => []),
+        })),
+        ...taste.genres.map(async (g) => ({
+          why: `New in ${g}`,
+          results: await browseBooks({ data: { subject: g } }).catch(() => []),
+          since: thisYear - 1,
+        })),
+      ])
+      const exclude = [...books.map((b) => bookLine(b.title, b.authors[0])), ...notForMe]
+      const picked = combineSuggestions(sources, exclude)
+      if (!picked.length) setError('Nothing new found just now. Try again later.')
+      keep(picked)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'That did not work. Try again.')
     } finally {
@@ -83,30 +89,18 @@ export function RecommendCard({ books, accountId, onAdd }: Props) {
     keep(items.filter((i) => i !== s))
   }
 
-  if (ready === false) {
-    return (
-      <section className="dash-card" aria-labelledby="recommend-title">
-        <h2 id="recommend-title">Recommended for you</h2>
-        <p className="muted small-text">
-          Book suggestions need a signed-in account and the AI to be set up on the server.
-        </p>
-      </section>
-    )
-  }
-
   return (
     <section className="dash-card recommend-card" aria-labelledby="recommend-title">
       <div className="dash-card-head">
         <h2 id="recommend-title">Recommended for you</h2>
-        <button className="btn small" onClick={suggest} disabled={busy || ready === null}>
-          {busy ? 'Thinking…' : shown.length ? 'New suggestions' : 'Suggest books'}
+        <button className="btn small" onClick={suggest} disabled={busy}>
+          {busy ? 'Looking…' : shown.length ? 'New suggestions' : 'Suggest books'}
         </button>
       </div>
       {error && <p className="error small-text">{error}</p>}
       {shown.length === 0 && !busy && (
         <p className="muted small-text">
-          New books picked for you from your best-rated reads, favourite authors and genres. Rate a few books for
-          better picks.
+          New books by your favourite authors and in your favourite genres. Rate a few books for better picks.
         </p>
       )}
       <ul className="recommend-list">
@@ -120,15 +114,16 @@ export function RecommendCard({ books, accountId, onAdd }: Props) {
 
 function SuggestionLine({ s, onAdd, onDismiss }: { s: Suggestion; onAdd: Props['onAdd']; onDismiss: () => void }) {
   // its Open Library match, for the cover and the details when she adds it
-  const [match, setMatch] = useState<SearchResult | null | undefined>(undefined)
+  const [match, setMatch] = useState<SearchResult | null | undefined>(s.result)
   const [adding, setAdding] = useState(false)
   useEffect(() => {
+    if (s.result) return
     let live = true
     findOnOpenLibrary({ title: s.title, authors: s.author ? [s.author] : [] }).then((r) => live && setMatch(r ?? null))
     return () => {
       live = false
     }
-  }, [s.title, s.author])
+  }, [s.title, s.author, s.result])
 
   const add = async () => {
     setAdding(true)

@@ -82,6 +82,51 @@ function cleanDescription(raw: unknown): string | undefined {
   )
 }
 
+const SEARCH_FIELDS = 'key,title,author_name,first_publish_year,number_of_pages_median,cover_i,isbn,language'
+
+interface SearchDoc {
+  key: string
+  title: string
+  author_name?: string[]
+  first_publish_year?: number
+  number_of_pages_median?: number
+  cover_i?: number
+  isbn?: string[]
+  language?: string[]
+}
+
+const toResult = (d: SearchDoc): SearchResult => ({
+  workKey: d.key,
+  title: d.title,
+  authors: d.author_name?.slice(0, 3) ?? [],
+  year: d.first_publish_year,
+  pages: d.number_of_pages_median,
+  coverId: d.cover_i,
+  isbn: pickIsbn(d.isbn),
+  language: singleLanguage(d.language),
+})
+
+/**
+ * Books by one author, or about one subject (a genre), newest first: for
+ * the reading suggestions and for finding the rest of a series.
+ */
+export const browseBooks = createServerFn({ method: 'GET' })
+  .validator((input: { author?: string; subject?: string }) => ({
+    author: String(input?.author ?? '').trim().slice(0, 100),
+    subject: String(input?.subject ?? '').trim().toLowerCase().slice(0, 60),
+  }))
+  .handler(async ({ data }): Promise<SearchResult[]> => {
+    if (!data.author && !data.subject) return []
+    const url = new URL('/search.json', OL)
+    if (data.author) url.searchParams.set('author', data.author)
+    if (data.subject) url.searchParams.set('subject', data.subject)
+    url.searchParams.set('sort', 'new')
+    url.searchParams.set('limit', '40')
+    url.searchParams.set('fields', SEARCH_FIELDS)
+    const json = await getJson<{ docs: SearchDoc[] }>(url.toString())
+    return (json?.docs ?? []).map(toResult)
+  })
+
 export const searchBooks = createServerFn({ method: 'GET' })
   .validator((input: { query: string }) => ({
     query: String(input?.query ?? '')
@@ -93,32 +138,9 @@ export const searchBooks = createServerFn({ method: 'GET' })
     const url = new URL('/search.json', OL)
     url.searchParams.set('q', data.query)
     url.searchParams.set('limit', '12')
-    url.searchParams.set(
-      'fields',
-      'key,title,author_name,first_publish_year,number_of_pages_median,cover_i,isbn,language',
-    )
-    const json = await getJson<{
-      docs: Array<{
-        key: string
-        title: string
-        author_name?: string[]
-        first_publish_year?: number
-        number_of_pages_median?: number
-        cover_i?: number
-        isbn?: string[]
-        language?: string[]
-      }>
-    }>(url.toString())
-    return (json?.docs ?? []).map((d) => ({
-      workKey: d.key,
-      title: d.title,
-      authors: d.author_name?.slice(0, 3) ?? [],
-      year: d.first_publish_year,
-      pages: d.number_of_pages_median,
-      coverId: d.cover_i,
-      isbn: pickIsbn(d.isbn),
-      language: singleLanguage(d.language),
-    }))
+    url.searchParams.set('fields', SEARCH_FIELDS)
+    const json = await getJson<{ docs: SearchDoc[] }>(url.toString())
+    return (json?.docs ?? []).map(toResult)
   })
 
 export const getWorkDetails = createServerFn({ method: 'GET' })

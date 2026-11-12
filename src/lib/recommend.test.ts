@@ -3,7 +3,7 @@ import type { Book } from './library'
 
 vi.mock('#/server/shelf', () => ({ loadShelf: async () => null, saveShelf: async () => ({ updated: 't' }) }))
 
-const { cleanSuggestions, shelfSummary, titleKey } = await import('./recommend')
+const { authorReason, combineSuggestions, tasteOf, titleKey, worthSuggesting } = await import('./recommend')
 
 const book = (id: string, extra: Partial<Book> = {}): Book => ({
   id,
@@ -14,44 +14,57 @@ const book = (id: string, extra: Partial<Book> = {}): Book => ({
   addedAt: 0,
   ...extra,
 })
+const r = (title: string, author: string, year: number) => ({
+  workKey: `/works/${title}`,
+  title,
+  authors: [author],
+  year,
+  coverId: 1 as number | undefined,
+})
 
-describe('recommendations', () => {
+describe('reading suggestions (no AI)', () => {
   it('compares titles without articles, subtitles or accents', () => {
     expect(titleKey('The Night Circus')).toBe(titleKey('Night Circus: A Novel'))
     expect(titleKey('Café')).toBe('cafe')
   })
 
-  it('sums up her taste: best rated first, authors and genres of finished books', () => {
-    const s = shelfSummary(
-      [
-        book('a', { status: 'read', rating: 5, spice: 3, authors: ['Maas'], genres: ['Fantasy'] }),
-        book('b', { status: 'read', rating: 2, authors: ['Other'], genres: ['Crime'] }),
-        book('c', { status: 'read', rating: 4.5, authors: ['Maas'], genres: ['Fantasy', 'Romance'] }),
-        book('d', { status: 'want', authors: ['Unread'] }),
-      ],
-      ['Nope — Somebody'],
-    )
-    expect(s.favourites.map((f) => f.title)).toEqual(['Book a', 'Book c', 'Book b'])
-    expect(s.favourites[0]).toMatchObject({ rating: 5, spice: 3 })
-    expect(s.authors[0]).toBe('Maas')
-    expect(s.authors).not.toContain('Unread')
-    expect(s.genres[0]).toBe('Fantasy')
-    expect(s.shelf).toContain('Book d — Unread')
-    expect(s.notForMe).toEqual(['Nope — Somebody'])
+  it('her taste: authors she rates best and reads most, genres of finished books', () => {
+    const t = tasteOf([
+      book('a', { status: 'read', rating: 5, authors: ['Maas'], genres: ['Fantasy'] }),
+      book('b', { status: 'read', rating: 4, authors: ['Maas'], genres: ['Fantasy', 'Romance'] }),
+      book('c', { status: 'read', rating: 2, authors: ['Other'], genres: ['Crime'] }),
+      book('d', { status: 'want', authors: ['Unread'], genres: ['Horror'] }),
+    ])
+    expect(t.authors).toEqual([
+      { name: 'Maas', rating: 4.5 },
+      { name: 'Other', rating: 2 },
+    ])
+    expect(t.genres[0]).toBe('Fantasy')
+    expect(t.genres).not.toContain('Horror')
+    expect(authorReason(t.authors[0])).toBe('More by Maas, whose books you rate ★4½')
   })
 
-  it('never suggests a book she has or turned down, nor one twice', () => {
-    const out = cleanSuggestions(
+  it('skips box sets, books without a cover and other scripts', () => {
+    expect(worthSuggesting(r('House of Flame and Shadow', 'Maas', 2024))).toBe(true)
+    expect(worthSuggesting(r('Book One / Book Two / Book Three', 'Maas', 2024))).toBe(false)
+    expect(worthSuggesting(r('The Box Set', 'Maas', 2024))).toBe(false)
+    expect(worthSuggesting({ ...r('No cover', 'Maas', 2024), coverId: undefined })).toBe(false)
+    expect(worthSuggesting(r('暁のヨナ 47', 'X', 2027))).toBe(false)
+  })
+
+  it('takes from each list in turn, never a book she has or turned down, new genre books only', () => {
+    const out = combineSuggestions(
       [
-        { title: 'The Book A', author: 'X', year: 2024, why: 'Because.' },
-        { title: 'Fresh', author: 'Y', year: 2025, why: 'New.' },
-        { title: 'Fresh: Special Edition', author: 'Y', why: 'Again.' },
-        { title: 'Nope', author: 'Somebody', why: 'No.' },
-        { title: '', author: 'Z', why: 'Empty.' },
-        'junk',
+        { why: 'More by Maas', results: [r('On The Shelf', 'Maas', 2025), r('A', 'Maas', 2025), r('B', 'Maas', 2024)] },
+        {
+          why: 'New in Fantasy',
+          results: [r('Old Fantasy', 'Y', 1999), r('C', 'Y', 2026), r('Nope', 'Z', 2026), r('A', 'Maas', 2025)],
+          since: 2025,
+        },
       ],
-      ['Book A — X', 'Nope — Somebody'],
+      ['On The Shelf — Maas', 'Nope — Z'],
+      4,
     )
-    expect(out).toEqual([{ title: 'Fresh', author: 'Y', year: 2025, why: 'New.' }])
+    expect(out.map((s) => `${s.title}: ${s.why}`)).toEqual(['A: More by Maas', 'C: New in Fantasy', 'B: More by Maas'])
   })
 })
