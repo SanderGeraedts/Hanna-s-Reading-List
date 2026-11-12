@@ -25,7 +25,6 @@ import { countdownText, releaseDayText } from '#/lib/upcoming'
 import { localDay } from '#/lib/library'
 import { topRated } from '#/lib/ratings'
 import { StarRating } from './StarRating'
-import { inkFor } from './textures'
 import { monthWeeks, periodStats, readingYears } from '#/lib/stats'
 import { amountText, amountUnit, finishedIn, monthEntries, startedIn } from '#/lib/readingLog'
 import type { DayEntry } from '#/lib/readingLog'
@@ -640,13 +639,30 @@ function ReadNextCard({ books, onShowBook }: Props) {
  * finished on each day of a month. Tapping a day (anywhere in it) shows that
  * day; below are the books started and finished that month.
  */
-/** class for a book finished or started on a calendar day */
-const mark = (e: DayEntry) => (e.finished ? ' finished' : e.started ? ' started' : '')
+/** class for a book finished, started or read on (continued) on a calendar day */
+const mark = (e: DayEntry) =>
+  e.finished ? ' finished' : e.started ? ' started' : e.amount !== undefined ? ' continued' : ''
+
+/** at most this many covers in a day's pile; more show as "+2" */
+const PILE = 6
+
+/**
+ * A day's books as a pile of covers, one layer per book (#102): the top one
+ * changes each time the dashboard opens (`shuffle`), the rest lie under it.
+ */
+function dayPile(entries: DayEntry[], day: number, shuffle: number) {
+  const top = (shuffle + day) % entries.length
+  // the top book last, so it is drawn on top
+  const order = [...entries.slice(top + 1), ...entries.slice(0, top), entries[top]]
+  return order.slice(-PILE)
+}
 
 function Calendar({ books, onShowBook }: Props) {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
+  /** which book is on top of each day's pile; new each time the dashboard opens */
+  const [shuffle] = useState(() => Math.floor(Math.random() * 1000))
   /** the day picked, in the month shown */
   const [picked, setPicked] = useState<number | null>(null)
   const byDay = useMemo(() => monthEntries(books, year, month), [books, year, month])
@@ -722,24 +738,31 @@ function Calendar({ books, onShowBook }: Props) {
                         onClick={() => setPicked(d === picked ? null : d)}
                       >
                         <span className="day-number">{d}</span>
-                        {/* one book shows its cover; more stand side by side as spines,
-                            so a day keeps the same size however much was read (#102) */}
+                        {/* one book shows its cover; more lie in a pile that grows with each
+                            book, so a day keeps the same size however much was read (#102) */}
                         {entries.length === 1 ? (
                           <span className={`day-cover${mark(entries[0])}`}>
                             <Cover book={entries[0].book} small />
                           </span>
                         ) : entries.length > 1 ? (
-                          <span className={`day-spines${entries.length <= 3 ? ' roomy' : ''}`} aria-hidden>
-                            {entries.map((e) => (
-                              <span
-                                key={e.book.id}
-                                className={`day-spine${mark(e)}`}
-                                style={{ background: e.book.color, color: inkFor(e.book.color) }}
-                              >
-                                <span className="day-spine-title">{e.book.title}</span>
+                          (() => {
+                            const pile = dayPile(entries, d, shuffle)
+                            const top = pile[pile.length - 1]
+                            return (
+                              <span className={`day-cover day-pile${mark(top)}`} aria-hidden>
+                                {pile.map((e, i) => (
+                                  <span
+                                    key={e.book.id}
+                                    className={i === pile.length - 1 ? 'pile-sheet pile-top' : 'pile-sheet'}
+                                    style={{ '--layer': pile.length - 1 - i } as React.CSSProperties}
+                                  >
+                                    <Cover book={e.book} small />
+                                  </span>
+                                ))}
+                                {entries.length > PILE && <span className="pile-more">+{entries.length - PILE}</span>}
                               </span>
-                            ))}
-                          </span>
+                            )
+                          })()
                         ) : null}
                       </button>
                     )}

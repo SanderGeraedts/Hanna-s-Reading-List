@@ -1626,61 +1626,55 @@ textarea.input {
 .calendar .day-cover.started::after {
   content: '▸';
 }
-/* more than one book on a day: spines side by side, title only (#102) */
-.calendar .day-spines {
-  display: flex;
-  gap: 1px;
-  flex: 1 1 0;
-  min-height: 0;
-  align-self: stretch;
-}
-.calendar .day-spine {
-  position: relative;
-  flex: 1 1 0;
-  min-width: 0;
-  max-width: 1.1rem;
-  border-radius: 2px;
-  box-shadow: inset 1px 0 rgba(255, 255, 255, 0.18), inset -1px 0 rgba(0, 0, 0, 0.25);
-  overflow: hidden;
-  display: flex;
-  justify-content: center;
-  padding: 2px 0 4px;
-}
-.calendar .day-spine-title {
-  writing-mode: vertical-rl;
-  max-height: 100%;
+/* read on that day, without starting or finishing it */
+.calendar .day-cover.continued::after {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
   font-size: 0.55rem;
-  font-weight: 600;
   line-height: 1;
-  text-align: start;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  padding: 1px 2px;
+  border-radius: 3px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  content: '…';
 }
-/* two or three books: wider spines, and the title may take two lines */
-.calendar .day-spines.roomy .day-spine {
-  max-width: 1.7rem;
+/* more than one book on a day: a pile of covers, one layer per book (#102).
+   --layer counts down from the bottom sheet (highest) to the top one (0). */
+.calendar .day-pile {
+  margin-left: 5px;
 }
-.calendar .day-spines.roomy .day-spine-title {
-  white-space: normal;
-  overflow-wrap: anywhere;
-  line-height: 1.1;
-  max-width: 2.3em;
+.calendar .pile-sheet {
+  display: block;
+  line-height: 0;
 }
-/* finished or started that day: a gold band at the foot of the spine */
-.calendar .day-spine.finished::after,
-.calendar .day-spine.started::after {
-  content: '';
+.calendar .pile-sheet:not(.pile-top) {
   position: absolute;
   left: 0;
-  right: 0;
-  bottom: 0;
-  height: 3px;
-  background: var(--accent);
+  top: 0;
+  transform-origin: 50% 90%;
+  /* each layer further out than the one above it: the pile grows with every book */
+  transform: translateX(calc(var(--layer) * -1.5px)) rotate(calc(var(--layer) * -4deg));
 }
-.calendar .day-spine.started::after {
-  height: 2px;
-  opacity: 0.6;
+.calendar .pile-sheet:nth-child(even):not(.pile-top) {
+  transform: translateX(calc(var(--layer) * 1.5px)) rotate(calc(var(--layer) * 4deg));
+}
+.calendar .pile-sheet .dash-cover {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+.calendar .pile-top {
+  position: relative;
+}
+.calendar .pile-more {
+  position: absolute;
+  left: -4px;
+  top: -4px;
+  font-size: 0.5rem;
+  line-height: 1;
+  padding: 1px 3px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.7);
+  color: var(--text);
 }
 .day-facts {
   display: flex;
@@ -1728,9 +1722,6 @@ textarea.input {
   .calendar .day-cell {
     height: 3.4rem;
     padding: 0.15rem;
-  }
-  .calendar .day-spine-title {
-    font-size: 0.48rem;
   }
   .calendar .dash-cover.small {
     width: 1.2rem;
@@ -2496,4 +2487,8 @@ textarea.input {
   gap: 0.5rem;
   align-items: center;
   margin-top: -0.4rem;
+}
+
+.calendar .day-pile::after {
+  z-index: 1;
 }
