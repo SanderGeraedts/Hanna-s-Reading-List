@@ -1737,6 +1737,14 @@ textarea.input {
   }
 }
 
+/* the book fact (#101) */
+.fact-text {
+  font-family: var(--serif);
+  font-size: 1rem;
+  line-height: 1.5;
+  margin: 0.25rem 0 0.5rem;
+}
+
 /* ---- dashboard extras (#66) ------------------------------------------- */
 .small-text {
   font-size: 0.8rem;
