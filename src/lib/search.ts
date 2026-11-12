@@ -17,8 +17,9 @@ const fold = (s: string) =>
 
 /**
  * Books matching every word of the query, in any of: title (also the original
- * one), author, series, genre, language, how she has it, who it's lent to and
- * reading status. Title matches come first.
+ * one), author, series, genre, language, how she has it, who it's lent to,
+ * reading status and the back text (what the book is about). Title matches
+ * come first; a match only in the back text shows the words around it.
  */
 export function searchShelf(books: Book[], query: string, detected?: Map<string, SeriesInfo>): SearchHit[] {
   const terms = fold(query).split(/\s+/).filter(Boolean)
@@ -28,7 +29,7 @@ export function searchShelf(books: Book[], query: string, detected?: Map<string,
   for (const book of books) {
     const series = book.series ?? detected?.get(book.id)?.name
     const formats = formatsOf(book).map((f) => FORMAT_LABELS[f])
-    const fields: Array<{ text: string; weight: number; hint?: string }> = [
+    const fields: Array<{ text: string; weight: number; hint?: string; hintFor?: (term: string) => string }> = [
       { text: book.title, weight: 4 },
       { text: book.originalTitle ?? '', weight: 3, hint: `Was “${book.originalTitle}”` },
       { text: book.authors.join(' '), weight: 3 },
@@ -46,6 +47,7 @@ export function searchShelf(books: Book[], query: string, detected?: Map<string,
         hint: book.lent && `Lent to ${book.lent.to || 'a friend'}`,
       },
       { text: STATUS_LABELS[book.status], weight: 1, hint: STATUS_LABELS[book.status] },
+      { text: book.description ?? '', weight: 0.5, hintFor: (term) => snippet(book.description ?? '', term) },
     ]
     const folded = fields.map((f) => fold(f.text))
     let score = 0
@@ -60,11 +62,23 @@ export function searchShelf(books: Book[], query: string, detected?: Map<string,
         score += w
       })
       if (best === -1) return false
-      if (fields[best].weight < 3 && !hint) hint = fields[best].hint
+      if (fields[best].weight < 3 && !hint) hint = fields[best].hintFor?.(term) ?? fields[best].hint
       return true
     })
     if (ok) hits.push({ book, hint, score })
   }
 
   return hits.sort((a, b) => b.score - a.score || a.book.title.localeCompare(b.book.title))
+}
+
+/** A few words of `text` around the first place `term` is found: "…a dragon rider who…". */
+export function snippet(text: string, term: string, around = 32) {
+  const at = fold(text).indexOf(term)
+  if (at < 0) return ''
+  let start = Math.max(0, at - around)
+  let end = Math.min(text.length, at + term.length + around)
+  // whole words only
+  if (start > 0) start = text.indexOf(' ', start) + 1 || start
+  if (end < text.length) end = text.lastIndexOf(' ', end) > at ? text.lastIndexOf(' ', end) : end
+  return `${start > 0 ? '…' : ''}${text.slice(start, end).replace(/\s+/g, ' ').trim()}${end < text.length ? '…' : ''}`
 }

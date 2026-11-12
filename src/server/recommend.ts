@@ -1,8 +1,7 @@
-import Anthropic from '@anthropic-ai/sdk'
 import { createServerFn } from '@tanstack/react-start'
 import type { ShelfSummary, Suggestion } from '#/lib/recommend'
 import { cleanSuggestions } from '#/lib/recommend'
-import { NOT_SIGNED_IN, asUser, pb, pocketbaseUrl } from './pocketbase'
+import { aiConfigured, askClaude } from './claude'
 
 /**
  * Reading recommendations: new books for Hanna, picked by Claude from what
@@ -11,8 +10,6 @@ import { NOT_SIGNED_IN, asUser, pb, pocketbaseUrl } from './pocketbase'
  *
  * Needs ANTHROPIC_API_KEY on the server and a signed-in account.
  */
-
-const MODEL = 'claude-opus-5-5'
 
 const SCHEMA = {
   type: 'object',
@@ -43,9 +40,7 @@ Never recommend a book on her shelf or on her "not for me" list, and at most one
 Use the exact title and author name as published in English (or the original language if she reads it).
 For "why", write one short, warm sentence to her (in English), naming a book of hers it is like when you can.`
 
-export const recommendationsAvailable = createServerFn({ method: 'GET' }).handler(
-  async () => !!process.env.ANTHROPIC_API_KEY?.trim() && !!pocketbaseUrl(),
-)
+export const recommendationsAvailable = createServerFn({ method: 'GET' }).handler(async () => aiConfigured())
 
 const list = (v: unknown, max: number) => (Array.isArray(v) ? v.slice(0, max) : [])
 
@@ -63,11 +58,6 @@ export const recommendBooks = createServerFn({ method: 'POST' })
     notForMe: list(input?.notForMe, 200).map((t) => String(t).slice(0, 200)),
   }))
   .handler(async ({ data }): Promise<Suggestion[]> => {
-    if (!process.env.ANTHROPIC_API_KEY?.trim()) throw new Error('Recommendations are not set up yet.')
-    if (!pocketbaseUrl()) throw new Error(NOT_SIGNED_IN)
-    // a real, signed-in account (PocketBase checks the token)
-    await asUser((token) => pb('/api/collections/users/auth-refresh', { method: 'POST', token }))
-
     const favourites = data.favourites
       .map(
         (f) =>
@@ -85,30 +75,12 @@ ${data.shelf.join('\n')}
 Not for her (do not recommend):
 ${data.notForMe.join('\n') || '(none)'}`
 
-    const client = new Anthropic()
-    let response: Anthropic.Beta.BetaMessage
-    try {
-      response = await client.beta.messages.create({
-        model: MODEL,
-        max_tokens: 4000,
-        betas: ['server-side-fallback-2026-07-01'],
-        fallbacks: 'default',
-        output_config: { effort: 'medium', format: { type: 'json_schema', schema: SCHEMA } },
-        system: SYSTEM,
-        messages: [{ role: 'user', content: prompt }],
-      })
-    } catch (e) {
-      if (e instanceof Anthropic.RateLimitError) throw new Error('Too many requests just now. Try again in a minute.')
-      if (e instanceof Anthropic.APIError) throw new Error('Recommendations could not be fetched.')
-      throw e
-    }
-    if (response.stop_reason === 'refusal') throw new Error('No recommendations this time. Try again.')
-    const text = response.content.find((b) => b.type === 'text')
-    let parsed: unknown
-    try {
-      parsed = text && text.type === 'text' ? JSON.parse(text.text) : undefined
-    } catch {
-      parsed = undefined
-    }
+    const parsed = await askClaude({
+      system: SYSTEM,
+      prompt,
+      schema: SCHEMA,
+      effort: 'medium',
+      failed: 'Recommendations could not be fetched. Try again.',
+    })
     return cleanSuggestions((parsed as { books?: unknown } | undefined)?.books, [...data.shelf, ...data.notForMe])
   })
