@@ -48,6 +48,7 @@ function PlacedNook({ slot }: { slot: NookSlot }) {
         variant={slot.variant ?? 0}
         complete={!!slot.complete}
         medal={slot.medal}
+        sleep={!!slot.sleep}
       />
     </group>
   )
@@ -59,6 +60,7 @@ function Nook({
   variant,
   complete,
   medal,
+  sleep,
 }: {
   label: string
   theme: NookThemeId
@@ -66,10 +68,12 @@ function Nook({
   complete: boolean
   /** a finished series: how many times every book has been read */
   medal?: number
+  /** the whole series is a sleep read: a moon on the sign */
+  sleep: boolean
 }) {
   const theme = NOOK_THEMES[themeId]
   const tex = useMemo(() => sceneTextures(themeId, variant), [themeId, variant])
-  const sign = useMemo(() => signTexture(label, complete), [label, complete])
+  const sign = useMemo(() => signTexture(label, complete, sleep), [label, complete, sleep])
   useEffect(() => () => sign.dispose(), [sign])
   // daylight scenes don't glow; night scenes light up their windows
   const glow = theme.sky === 'day' ? 0.15 : 1.4
@@ -286,7 +290,7 @@ function FairyLights({ y, z, sag, colours }: { y: number; z: number; sag: number
 /** The hanging sign: tall and narrow, so a long name stays big enough to read (#50). */
 const SIGN = { w: 0.03, h: 0.17, hang: 0.01, x: -W / 2 + SHELL + 0.03 / 2 + 0.006 }
 
-function signTexture(label: string, complete = false) {
+function signTexture(label: string, complete = false, sleep = false) {
   // drawn lying down, then turned a quarter so the text runs down the sign
   const long = 816
   const short = Math.round((long * SIGN.w) / SIGN.h)
@@ -306,7 +310,7 @@ function signTexture(label: string, complete = false) {
   ctx.fillStyle = complete ? '#3a2614' : '#f6e7c4'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  const text = complete ? `★ ${label}` : label
+  const text = `${complete ? '★ ' : ''}${sleep ? '🌙 ' : ''}${label}`
   let size = Math.round(short * 0.58)
   do {
     ctx.font = `italic 600 ${size}px Georgia, "Segoe UI Symbol", "Times New Roman", serif`

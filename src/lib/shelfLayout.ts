@@ -90,6 +90,8 @@ export interface NookSlot {
   complete?: boolean
   /** a finished series: how many times every book has been read; the nook wears a medal for it */
   medal?: number
+  /** the whole series is a sleep read: a moon on the sign */
+  sleep?: boolean
   /** nooks: the scene inside, and this group's own version of it */
   theme?: NookThemeId
   variant?: number
@@ -108,6 +110,8 @@ export interface Separator {
   complete?: boolean
   /** a finished series: how many times every book has been read, for its medal */
   medal?: number
+  /** the whole series is a sleep read */
+  sleep?: boolean
   /** nooks: the scene inside, and this group's own version of it */
   theme?: NookThemeId
   variant?: number
@@ -187,6 +191,7 @@ export function computeLayout(
     kind: Separator['kind']
     complete?: boolean
     medal?: number
+    sleep?: boolean
     theme?: NookThemeId
     variant?: number
   }> = []
@@ -215,6 +220,7 @@ export function computeLayout(
         x: x + gap + width / 2,
         ...(sep.complete && { complete: true }),
         ...(sep.medal && { medal: sep.medal }),
+        ...(sep.sleep && { sleep: true }),
         ...(sep.theme && { theme: sep.theme, variant: sep.variant }),
       })
       x += width + gap * 2
@@ -261,11 +267,12 @@ export function computeLayout(
   const placedOf = (kind: Separator['kind']) =>
     sepPlaced
       .filter((n) => n.kind === kind)
-      .map(({ before, label, row, x, complete, medal, theme, variant }) => ({
+      .map(({ before, label, row, x, complete, medal, sleep, theme, variant }) => ({
         before,
         label,
         ...(complete && { complete }),
         ...(medal && { medal }),
+        ...(sleep && { sleep }),
         ...(theme && { theme, variant }),
         row,
         x: -innerWidth / 2 + x,

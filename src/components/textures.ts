@@ -129,7 +129,7 @@ export function medalLayout(dims: BookDims) {
   return { r, fromBottom, top: fromBottom + ribbon + r * 0.28 }
 }
 
-export function paintSpine(book: Book, dims: BookDims) {
+export function paintSpine(book: Book, dims: BookDims, sleep = false) {
   const H = Math.min(1024, Math.round(dims.h * PX_PER_UNIT * 1.3))
   const W = Math.max(40, Math.round((H * dims.t) / dims.h))
   const c = canvas(W, H)
@@ -168,7 +168,11 @@ export function paintSpine(book: Book, dims: BookDims) {
     ctx.restore()
   }
 
-  // text runs top-to-bottom (English convention)
+  // a sleep read: a small crescent moon under the top bands, above the title
+  if (sleep) paintMoon(ctx, W / 2, H * 0.085, Math.min(W * 0.26, H * 0.016))
+
+  // text runs top-to-bottom (English convention); on a sleep read it starts below the moon
+  const textStart = sleep ? H * 0.115 : H * 0.1
   ctx.save()
   ctx.translate(W / 2, 0)
   ctx.rotate(Math.PI / 2)
@@ -177,12 +181,12 @@ export function paintSpine(book: Book, dims: BookDims) {
   const maxFont = W * 0.5
   // on finished books the text stops short of the medal and its ribbon
   const textEnd = read ? H * (1 - medalLayout(dims).top / dims.h) - H * 0.02 : H * 0.87
-  const authorSpace = Math.min(H * 0.22, (textEnd - H * 0.1) * 0.3)
-  const titleSpace = Math.min(H * 0.56, textEnd - H * 0.1 - authorSpace - H * 0.03)
+  const authorSpace = Math.min(H * 0.22, (textEnd - textStart) * 0.3)
+  const titleSpace = Math.min(H * 0.56, textEnd - textStart - authorSpace - H * 0.03)
   const titleSize = fitFont(ctx, book.title, titleSpace, Math.round(maxFont), 10)
   ctx.font = `600 ${titleSize}px ${SERIF}`
   ctx.textAlign = 'left'
-  ctx.fillText(ellipsize(ctx, book.title, titleSpace), H * 0.1, 0)
+  ctx.fillText(ellipsize(ctx, book.title, titleSpace), textStart, 0)
 
   const author = (book.authors[0]?.split(' ').slice(-1)[0] ?? '').toUpperCase()
   if (author) {
@@ -197,6 +201,33 @@ export function paintSpine(book: Book, dims: BookDims) {
   grain(ctx, W, H, 0.05)
   if (read) paintMedalRibbon(ctx, W, H, dims)
   return toTexture(c)
+}
+
+/** A small crescent moon, pale gold with a dark rim so it shows on light and dark spines. */
+function paintMoon(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+  ctx.save()
+  const crescent = () => {
+    ctx.beginPath()
+    ctx.arc(cx, cy, r, 0, Math.PI * 2)
+    ctx.clip()
+    // everything in the circle except a second circle shifted up and right
+    ctx.beginPath()
+    ctx.rect(cx - r, cy - r, r * 2, r * 2)
+    ctx.arc(cx + r * 0.5, cy - r * 0.3, r * 0.82, 0, Math.PI * 2)
+  }
+  // a dark rim first, a little bigger, then the moon itself
+  ctx.save()
+  ctx.translate(cx, cy)
+  ctx.scale(1.25, 1.25)
+  ctx.translate(-cx, -cy)
+  crescent()
+  ctx.fillStyle = 'rgba(20, 16, 10, 0.55)'
+  ctx.fill('evenodd')
+  ctx.restore()
+  crescent()
+  ctx.fillStyle = '#f5df8c'
+  ctx.fill('evenodd')
+  ctx.restore()
 }
 
 /** Medal ribbon: a tapered striped band running up from the medal to a gold clasp. */
