@@ -351,7 +351,7 @@ function Bookmark({
 const MEDAL_DEPTH = 0.0018
 
 const medalMaterials = new Map<string, { face: THREE.MeshStandardMaterial; rim: THREE.MeshStandardMaterial }>()
-function getMedalMaterials(count: number) {
+export function getMedalMaterials(count: number) {
   // shared by every medal with the same metal and number, never disposed
   const tier = medalTier(count)
   const key = `${tier}:${count}`

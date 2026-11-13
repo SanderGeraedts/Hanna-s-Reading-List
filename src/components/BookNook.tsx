@@ -5,7 +5,8 @@ import { NOOK, SHELF } from '#/lib/shelfLayout'
 import type { NookSlot } from '#/lib/shelfLayout'
 import { NOOK_THEMES } from '#/lib/nookThemes'
 import type { NookThemeId } from '#/lib/nookThemes'
-import { toTexture } from './textures'
+import { METALS, medalTier, toTexture } from './textures'
+import { getMedalMaterials } from './BookMesh'
 import { D, H, IH, IW, SHELL, W, sceneTextures } from './nookPaint'
 
 /**
@@ -13,7 +14,8 @@ import { D, H, IH, IW, SHELL, W, sceneTextures } from './nookPaint'
  * groups of books. Each group gets a scene that fits it (a lamplit alley, an
  * enchanted forest, a beach at sunset, a castle, …; see nookThemes) and its
  * own version of it. A hanging sign names the group that follows, gold with a
- * star for a series that's been read. Origin is the bottom-centre, opening
+ * star for a series that's been read, with a medal hanging under it: bronze,
+ * silver or gold for reading every book once, twice, three times. Origin is the bottom-centre, opening
  * towards the viewer (+z).
  */
 export function BookNooks({ items }: { items: NookSlot[] }) {
@@ -45,6 +47,7 @@ function PlacedNook({ slot }: { slot: NookSlot }) {
         theme={slot.theme ?? 'alley'}
         variant={slot.variant ?? 0}
         complete={!!slot.complete}
+        medal={slot.medal}
       />
     </group>
   )
@@ -55,11 +58,14 @@ function Nook({
   theme: themeId,
   variant,
   complete,
+  medal,
 }: {
   label: string
   theme: NookThemeId
   variant: number
   complete: boolean
+  /** a finished series: how many times every book has been read */
+  medal?: number
 }) {
   const theme = NOOK_THEMES[themeId]
   const tex = useMemo(() => sceneTextures(themeId, variant), [themeId, variant])
@@ -201,6 +207,47 @@ function Nook({
           <meshStandardMaterial attach="material-3" color="#5a3a22" />
           <meshStandardMaterial attach="material-4" map={sign} roughness={0.7} />
           <meshStandardMaterial attach="material-5" color="#5a3a22" />
+        </mesh>
+        {!!medal && <SignMedal count={medal} top={-SIGN.hang - SIGN.h} />}
+      </group>
+    </group>
+  )
+}
+
+/** The medal of a finished series, hanging on a short ribbon from the bottom of its sign. */
+const SIGN_MEDAL = { r: 0.012, ribbon: 0.014, depth: 0.0018 }
+function SignMedal({ count, top }: { count: number; top: number }) {
+  const mats = getMedalMaterials(count)
+  const metal = METALS[medalTier(count)]
+  const y = top - SIGN_MEDAL.ribbon - SIGN_MEDAL.r * 0.6
+  return (
+    <group>
+      {/* the ribbon: two tails, like the ones on the books' spines */}
+      {[-1, 1].map((s) => (
+        <mesh key={s} position={[s * SIGN_MEDAL.r * 0.35, top - SIGN_MEDAL.ribbon / 2, 0.0005]} rotation={[0, 0, s * 0.12]}>
+          <boxGeometry args={[SIGN_MEDAL.r * 0.6, SIGN_MEDAL.ribbon, 0.0006]} />
+          <meshStandardMaterial color="#2f4fb5" roughness={0.8} />
+        </mesh>
+      ))}
+      {/* white centre with a red pinstripe, as on the books' ribbons */}
+      <mesh position={[0, top - SIGN_MEDAL.ribbon / 2, 0.0009]}>
+        <boxGeometry args={[SIGN_MEDAL.r * 0.3, SIGN_MEDAL.ribbon, 0.0002]} />
+        <meshStandardMaterial color="#f4f1e8" roughness={0.8} />
+      </mesh>
+      <mesh position={[0, top - SIGN_MEDAL.ribbon / 2, 0.001]}>
+        <boxGeometry args={[SIGN_MEDAL.r * 0.08, SIGN_MEDAL.ribbon, 0.0002]} />
+        <meshStandardMaterial color="#d23a3a" roughness={0.8} />
+      </mesh>
+      <group position={[0, y, 0.0012]}>
+        <mesh castShadow material={mats.rim} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[SIGN_MEDAL.r, SIGN_MEDAL.r, SIGN_MEDAL.depth, 40, 1, true]} />
+        </mesh>
+        <mesh material={mats.face} position={[0, 0, SIGN_MEDAL.depth / 2]}>
+          <circleGeometry args={[SIGN_MEDAL.r, 40]} />
+        </mesh>
+        <mesh position={[0, 0, -SIGN_MEDAL.depth / 2]} rotation={[0, Math.PI, 0]}>
+          <circleGeometry args={[SIGN_MEDAL.r, 40]} />
+          <meshStandardMaterial color={metal.dark} metalness={0.6} roughness={0.4} />
         </mesh>
       </group>
     </group>
