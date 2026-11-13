@@ -1,7 +1,7 @@
 import type { Book } from './library'
 import { localDay, timesRead } from './library'
 import { hasAudio, listenOnly, thicknessPages } from './listening'
-import { cleanRating, cleanSpice, topRated } from './ratings'
+import { cleanRating, cleanSpice, spiceScore, topRated } from './ratings'
 import { amountUnit } from './readingLog'
 import { breakdown, monthlyCounts, seriesProgress } from './insights'
 import type { Period } from './stats'
@@ -211,9 +211,9 @@ export function favouriteAuthors(books: Book[], n = 5): AuthorStat[] {
 // ---- spice meter -----------------------------------------------------------------
 
 export interface SpiceStats {
-  /** average spice of the books with a spice level, or undefined for none */
+  /** average spice of the books with spice scored (No spice is 0), or undefined for none */
   average?: number
-  /** books with a spice level */
+  /** books with spice scored, No spice included */
   rated: number
   /** books read in the period */
   read: number
@@ -223,9 +223,11 @@ export interface SpiceStats {
 
 export function spiceStats(books: Book[], period: Period, n = 3): SpiceStats {
   const list = periodStats(books, period).list // latest finish first
-  const spiced = list.filter((b) => cleanSpice(b.spice))
-  const sum = spiced.reduce((s, b) => s + cleanSpice(b.spice)!, 0)
+  // No spice counts as 0; books not scored yet are left out
+  const spiced = list.filter((b) => spiceScore(b.spice) !== undefined)
+  const sum = spiced.reduce((s, b) => s + spiceScore(b.spice)!, 0)
   const spiciest = spiced
+    .filter((b) => cleanSpice(b.spice))
     .map((b, i) => ({ b, i }))
     .sort(
       (x, y) =>

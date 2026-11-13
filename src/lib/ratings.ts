@@ -18,8 +18,19 @@ export function cleanRating(n: unknown, step = 0.5): number | undefined {
 /** The spice level (how steamy a book is): 1 to 5 peppers, whole ones only. */
 export const cleanSpice = (n: unknown) => cleanRating(n, 1)
 
+/**
+ * "No spice": 0, set on purpose with the No spice button. A book without a
+ * spice level (undefined) just hasn't been scored yet. Clearing the peppers
+ * never stored 0, so no older book reads as No spice by itself.
+ */
+export const NO_SPICE = 0
+
+/** The spice score: 0 for No spice, 1 to 5 peppers, or undefined when not scored. */
+export const spiceScore = (n: unknown) => (n === NO_SPICE ? NO_SPICE : cleanSpice(n))
+
 export function spiceText(s: number | undefined) {
-  if (!s) return 'No spice level'
+  if (s === NO_SPICE) return 'No spice'
+  if (!s) return 'Spice not scored'
   return `Spice ${s} of ${MAX_STARS}`
 }
 

@@ -233,7 +233,7 @@ export function SpiceCard({ books, onShowBook }: Props) {
         <p className="muted small-text">
           {s.read === 0
             ? `Nothing read ${label} yet.`
-            : 'Give finished books a spice level (🌶️ in the book panel) to see how hot your reading runs.'}
+            : 'Give finished books a spice level (🌶️ or No spice in the book panel) to see how hot your reading runs.'}
         </p>
       ) : (
         <>
@@ -253,7 +253,7 @@ export function SpiceCard({ books, onShowBook }: Props) {
             </span>
           </div>
           <p className="muted small-text">
-            Average of {plural(s.rated, 'book')} with a spice level, read {label}
+            Average of {plural(s.rated, 'book')} with spice scored, read {label}
           </p>
           <ul className="book-list">
             {s.spiciest.map((b) => (
