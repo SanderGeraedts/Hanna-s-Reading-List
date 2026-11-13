@@ -67,7 +67,7 @@ Never point a local dev server at the production `POCKETBASE_URL` (see #96).
 
 ## Working on it with Claude
 
-`CLAUDE.md` is the project guide for Claude Code. Hanna has her own Claude instance, which follows [`docs/hanna-guardrails.md`](docs/hanna-guardrails.md): she can build features on her own, and anything that would need Sander (the NAS, secrets, paid or signed-up services, the shelf sync) is explained first and opened as a draft PR labelled `needs-sander`. Feature requests go through the `feature-chat` skill (`.claude/skills/feature-chat/`). `.github/CODEOWNERS` lists the paths only Sander may approve.
+`CLAUDE.md` is the project guide for Claude Code. Hanna has her own Claude instance, which follows [`docs/hanna-guardrails.md`](docs/hanna-guardrails.md): she can build features on her own, and anything that would need Sander (the NAS, secrets, paid or signed-up services, the shelf sync) is explained first and opened as a draft PR labelled `needs-sander`. Feature requests go through the `feature-chat` skill (`.claude/skills/feature-chat/`). `.github/CODEOWNERS` lists the paths only Sander may approve. Setting up her PC: [`docs/hanna-setup.md`](docs/hanna-setup.md).
 
 ## How it fits together
 
