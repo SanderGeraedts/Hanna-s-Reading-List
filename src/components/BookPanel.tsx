@@ -608,21 +608,6 @@ export function BookPanel({
         </div>
       </div>
 
-      <div className="field">
-        <span>Sleep read</span>
-        <div className="chips">
-          <button
-            type="button"
-            className="format-chip"
-            aria-pressed={!!book.sleepRead}
-            onClick={() => onUpdate({ sleepRead: book.sleepRead ? undefined : true })}
-          >
-            🌙 Sleep read
-          </button>
-        </div>
-        <small className="muted">A book you read to fall asleep: no rating question when you finish it.</small>
-      </div>
-
       <div className="field-row">
         <label className="field">
           <span>Language</span>
@@ -712,6 +697,18 @@ export function BookPanel({
             </label>
           </div>
         )}
+      </div>
+
+      <div className="field">
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={!!book.sleepRead}
+            onChange={(e) => onUpdate({ sleepRead: e.target.checked || undefined })}
+          />
+          <span>🌙 Sleep read</span>
+        </label>
+        {book.sleepRead && <small className="muted">No rating question when you finish it.</small>}
       </div>
 
       <div className="field">
