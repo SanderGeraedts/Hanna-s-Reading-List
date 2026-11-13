@@ -28,10 +28,10 @@
     "@types/react-dom": "^19.2.0",
     "@types/three": "^0.187.0",
     "@vitejs/plugin-react": "^6.0.1",
-    "happy-dom": "^18.0.1",
+    "happy-dom": "^21.0.4",
     "typescript": "^6.0.2",
     "vite": "^8.0.0",
-    "vitest": "^3.2.4"
+    "vitest": "^5.1.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
