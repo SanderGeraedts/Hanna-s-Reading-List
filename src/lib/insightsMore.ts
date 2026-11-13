@@ -1,7 +1,7 @@
 import type { Book } from './library'
 import { localDay, timesRead } from './library'
 import { hasAudio, listenOnly, thicknessPages } from './listening'
-import { cleanRating, cleanSpice, spiceScore, topRated } from './ratings'
+import { cleanRating, cleanSpice, topRated } from './ratings'
 import { amountUnit } from './readingLog'
 import { breakdown, monthlyCounts, seriesProgress } from './insights'
 import type { Period } from './stats'
@@ -223,7 +223,8 @@ export interface SpiceStats {
 
 export function spiceStats(books: Book[], period: Period, n = 3): SpiceStats {
   const list = periodStats(books, period).list // latest finish first
-  // No spice counts as 0; books not scored yet are left out
+  // No spice (0) counts as 0; books not scored yet are left out
+  const spiceScore = (n: unknown) => (n === 0 ? 0 : cleanSpice(n))
   const spiced = list.filter((b) => spiceScore(b.spice) !== undefined)
   const sum = spiced.reduce((s, b) => s + spiceScore(b.spice)!, 0)
   const spiciest = spiced
