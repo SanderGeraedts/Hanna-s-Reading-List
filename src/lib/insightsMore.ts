@@ -238,33 +238,6 @@ export function spiceStats(books: Book[], period: Period, n = 3): SpiceStats {
   return { ...(spiced.length && { average: sum / spiced.length }), rated: spiced.length, read: list.length, spiciest }
 }
 
-// ---- listening vs reading -----------------------------------------------------------
-
-export interface MonthAmounts {
-  pages: number
-  minutes: number
-}
-
-/**
- * Pages read and minutes listened in each month of a year (index 0 =
- * January), from the reading log: a day's share of a book she listens to is
- * listening time, of any other book pages.
- */
-export function monthlyFormats(books: Book[], year: number): MonthAmounts[] {
-  const out = Array.from({ length: 12 }, () => ({ pages: 0, minutes: 0 }))
-  for (const b of books) {
-    const unit = amountUnit(b)
-    if (unit === 'percent') continue
-    for (const [day, amount] of Object.entries(b.readingLog ?? {})) {
-      if (!day.startsWith(`${year}-`) || !(amount > 0)) continue
-      const m = out[Number(day.slice(5, 7)) - 1]
-      if (unit === 'time') m.minutes += amount * b.minutes!
-      else m.pages += amount * b.pages!
-    }
-  }
-  return out.map((m) => ({ pages: Math.round(m.pages), minutes: Math.round(m.minutes) }))
-}
-
 // ---- year in review ----------------------------------------------------------------
 
 export interface YearReview {

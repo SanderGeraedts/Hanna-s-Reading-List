@@ -11,18 +11,17 @@ import {
   favouriteAuthors,
   finishEstimates,
   heatmap,
-  monthlyFormats,
   reviewYear,
   spiceStats,
   yearReview,
 } from '#/lib/insightsMore'
-import type { HeatDay, MonthAmounts } from '#/lib/insightsMore'
+import type { HeatDay } from '#/lib/insightsMore'
 import { StarRating } from './StarRating'
 import { BookLine } from './DashboardExtras'
 import { Cover, PeriodSelect, PeriodTabs, monthName, periodLabel, toPeriod } from './Dashboard'
 import type { PeriodPick, Props } from './Dashboard'
 
-/** More for the dashboard: pace, heatmap, authors, spice, formats, year in review and bingo. */
+/** More for the dashboard: pace, heatmap, authors, spice, year in review and bingo. */
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString('en-GB')} ${n === 1 ? one : many}`
 
@@ -265,151 +264,6 @@ export function SpiceCard({ books, onShowBook }: Props) {
           </ul>
         </>
       )}
-    </section>
-  )
-}
-
-// ---- listening vs reading -----------------------------------------------------------
-
-/** One measure per month: a small chart of its own, so pages and hours each have their own scale. */
-function MonthBars({
-  values,
-  label,
-  unit,
-  hover,
-  onHover,
-  className,
-}: {
-  values: number[]
-  label: string
-  unit: (n: number) => string
-  hover: number | null
-  onHover: (i: number | null) => void
-  className?: string
-}) {
-  const max = Math.max(...values)
-  const W = 360
-  const H = 92
-  const left = 4
-  const bottom = 16
-  const plotH = H - bottom - 14
-  const slot = (W - left - 4) / 12
-  const barW = slot - 2
-  const base = 14 + plotH
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className={`bar-chart ${className ?? ''}`} role="img" aria-label={label}>
-      <line className="grid" x1={left} x2={W - 4} y1={base} y2={base} />
-      {values.map((n, i) => {
-        const x = left + i * slot + 1
-        const h = max > 0 ? (n / max) * plotH : 0
-        const r = Math.min(4, h / 2, barW / 2)
-        return (
-          <g key={i}>
-            {n > 0 && (
-              <path
-                className={`bar${hover === i ? ' active' : ''}`}
-                d={`M${x},${base} V${base - h + r} Q${x},${base - h} ${x + r},${base - h} H${x + barW - r} Q${x + barW},${base - h} ${x + barW},${base - h + r} V${base} Z`}
-              />
-            )}
-            {n === max && n > 0 && (
-              <text className="bar-label" x={x + barW / 2} y={base - h - 4} textAnchor="middle">
-                {unit(n)}
-              </text>
-            )}
-            <text className="axis" x={x + barW / 2} y={H - 4} textAnchor="middle">
-              {monthName(i + 1, 'short').slice(0, 1)}
-            </text>
-            <rect
-              x={left + i * slot}
-              y={0}
-              width={slot}
-              height={H}
-              fill="transparent"
-              onPointerEnter={() => onHover(i)}
-              onPointerLeave={() => onHover(null)}
-            />
-          </g>
-        )
-      })}
-    </svg>
-  )
-}
-
-export function FormatsCard({ books }: { books: Book[] }) {
-  const [year, setYear] = useState(() => new Date().getFullYear())
-  const months: MonthAmounts[] = useMemo(() => monthlyFormats(books, year), [books, year])
-  const [hover, setHover] = useState<number | null>(null)
-  const pages = months.map((m) => m.pages)
-  const minutes = months.map((m) => m.minutes)
-  const totalPages = pages.reduce((a, b) => a + b, 0)
-  const totalMinutes = minutes.reduce((a, b) => a + b, 0)
-  const tip =
-    hover !== null && (
-      <div className="chart-tip" style={{ left: `${((4 + (hover + 0.5) * (352 / 12)) / 360) * 100}%` }} role="status">
-        <strong>{monthName(hover + 1)}</strong>
-        <span>{plural(pages[hover], 'page')} read</span>
-        <span>{minutes[hover] ? formatDuration(minutes[hover]) : 'nothing'} listened</span>
-      </div>
-    )
-  return (
-    <section className="dash-card" aria-labelledby="formats-title">
-      <div className="dash-card-head">
-        <h2 id="formats-title">Listening and reading</h2>
-        <YearSelect books={books} year={year} onYear={setYear} />
-      </div>
-      {totalPages + totalMinutes === 0 ? (
-        <p className="muted small-text">
-          Nothing in the reading log for {year}. Each time a book moves on, by hand or from Storytel, it counts here.
-        </p>
-      ) : (
-        <div className="chart-wrap formats-charts">
-          {tip}
-          <p className="small-text formats-label">
-            <span className="key pages" aria-hidden /> Pages read{' '}
-            <span className="muted">· {totalPages.toLocaleString('en-GB')}</span>
-          </p>
-          <MonthBars
-            values={pages}
-            label={`Pages read each month in ${year}`}
-            unit={(n) => n.toLocaleString('en-GB')}
-            hover={hover}
-            onHover={setHover}
-          />
-          <p className="small-text formats-label">
-            <span className="key listen" aria-hidden /> Hours listened{' '}
-            <span className="muted">· {formatDuration(totalMinutes)}</span>
-          </p>
-          <MonthBars
-            values={minutes}
-            label={`Hours listened each month in ${year}`}
-            unit={hours}
-            hover={hover}
-            onHover={setHover}
-            className="listen"
-          />
-        </div>
-      )}
-      <details className="table-view">
-        <summary className="muted small-text">Show as a table</summary>
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Month</th>
-              <th scope="col">Pages</th>
-              <th scope="col">Listened</th>
-            </tr>
-          </thead>
-          <tbody>
-            {months.map((m, i) => (
-              <tr key={i}>
-                <th scope="row">{monthName(i + 1)}</th>
-                <td>{m.pages.toLocaleString('en-GB')}</td>
-                <td>{m.minutes ? formatDuration(m.minutes) : '–'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </details>
     </section>
   )
 }

@@ -8,10 +8,9 @@ import { RatingDialog } from '#/components/RatingDialog'
 import type { Face } from '#/components/BookPanel'
 import { nearestTurn } from '#/components/BookMesh'
 import type { InspectTarget } from '#/components/BookMesh'
-import { SORT_LABELS, STATUS_LABELS, localDay, statusPatch, useLibrary } from '#/lib/library'
-import { isUpcoming, releaseFromPublished, releasePatch, releasedBooks, upcomingBooks } from '#/lib/upcoming'
+import { SORT_LABELS, STATUS_LABELS, statusPatch, useLibrary } from '#/lib/library'
 import { progressPatch } from '#/lib/readingLog'
-import type { NewBook, SortKey, SyncStatus } from '#/lib/library'
+import type { SortKey, SyncStatus } from '#/lib/library'
 import { useSession } from '#/lib/session'
 import type { Account } from '#/lib/session'
 import { SignIn } from '#/components/SignIn'
@@ -90,10 +89,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
       account?.id ?? null,
       onExpired,
     )
-  // books not out yet wait on the dashboard, not on the shelf (#103)
-  const today = localDay()
-  const books = useMemo(() => allBooks.filter((b) => !isUpcoming(b, today)), [allBooks, today])
-  const upcoming = useMemo(() => upcomingBooks(allBooks, today), [allBooks, today])
+  // books not out yet are on the shelf too, as want-to-read
+  const books = allBooks
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [adding, setAdding] = useState<Tab | null>(null)
   const [pickingCover, setPickingCover] = useState(false)
@@ -106,14 +103,6 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     sheet.current = share
   }, [])
   const syncCallbacks = useMemo(() => ({ addBook, updateBook }), [addBook, updateBook])
-  // a book published on a day still to come waits in Upcoming releases (#103)
-  const addByHand = useCallback(
-    (book: NewBook) => {
-      const releaseDate = releaseFromPublished(book)
-      return addBook(releaseDate ? { ...book, status: 'want', releaseDate } : book)
-    },
-    [addBook],
-  )
   const storytel = useStorytelSync(allBooks, syncCallbacks)
   const { state: syncState, dismiss: dismissSync } = storytel
 
@@ -169,21 +158,6 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   const selectedSeries = selected ? seriesMap.get(selected.id) : undefined
   const genreOptions = useMemo(() => genreSuggestions(books.flatMap((b) => b.genres ?? [])), [books])
   useBookDetails(allBooks, loaded, updateBook)
-
-  // release day (#103): the book leaves Upcoming releases and goes onto the shelf
-  useEffect(() => {
-    if (!loaded) return
-    const out = releasedBooks(allBooks, today)
-    if (!out.length) return
-    for (const b of out) updateBook(b.id, releasePatch(b))
-    setNotice({
-      text:
-        out.length === 1
-          ? `${out[0].title} is out! It's on your shelf now.`
-          : `${out.length} books are out! They're on your shelf now.`,
-      ok: true,
-    })
-  }, [loaded, allBooks, today, updateBook])
 
   // show only one genre (#41); a genre no book has any more falls back to all books
   const [genre, setGenre] = useState<string | null>(null)
@@ -417,11 +391,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
         {onDashboard && (
           <Dashboard
             books={books}
-            upcoming={upcoming}
             onShowBook={showBook}
-            onUpdate={updateBook}
-            onRemove={removeBook}
-            onAdd={addByHand}
             accountId={account?.id ?? null}
           />
         )}
@@ -446,10 +416,6 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           // what she read today goes in the reading log (#76)
           onProgress={(progress) => updateBook(selected.id, (b) => progressPatch(b, progress))}
           onUpdate={(patch) => {
-            // a publication date still to come makes it an upcoming release; one that has come puts it back (#103)
-            if ('published' in patch || 'year' in patch) {
-              patch = { ...patch, releaseDate: releaseFromPublished({ ...selected, ...patch }) }
-            }
             updateBook(selected.id, patch)
             // move the book to its new place straight away when the change affects the arrangement
             if (arrangement && RESORT_ON[arrangement]?.some((k) => k in patch)) sortBy(arrangement)
@@ -490,7 +456,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
       {adding && (
         <AddBookDialog
           existing={allBooks}
-          onAdd={addByHand}
+          onAdd={addBook}
           onUpdate={updateBook}
           onClose={() => setAdding(null)}
           storytelLogin={storytel.login}

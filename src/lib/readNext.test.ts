@@ -50,6 +50,11 @@ describe('what to read next (#58)', () => {
     expect(readNextChoices([percy(1, { status: 'read' }), percy(2, { status: 'read' })])).toEqual([])
   })
 
+  it('leaves out books that are not out yet', () => {
+    const shelf = [book('out', { published: '2020' }), book('soon', { published: '2099-01-01' }), book('ry', { releaseDate: '2099-05-01' })]
+    expect(ids(readNextChoices(shelf, '2026-11-13'))).toEqual(['out'])
+  })
+
   it('picks another book when pressed again', () => {
     const choices = [book('a'), book('b')]
     expect(pickReadNext(choices, 'a', () => 0)?.id).toBe('b')
