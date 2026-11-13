@@ -4,6 +4,7 @@ import { formatDuration } from '#/lib/listening'
 import { amountText } from '#/lib/readingLog'
 import { cleanSpice, ratingText } from '#/lib/ratings'
 import { readingYears } from '#/lib/stats'
+import { medalLine, yearMedals } from '#/lib/medals'
 import {
   BINGO_IDS,
   bingo,
@@ -273,6 +274,14 @@ export function SpiceCard({ books, onShowBook }: Props) {
 export function WrappedCard({ books, onShowBook }: Props) {
   const [year, setYear] = useState(() => reviewYear())
   const r = useMemo(() => yearReview(books, year), [books, year])
+  // medals won this year: a book's for each finish, a series' when its last book needed is finished
+  const medals = useMemo(() => {
+    const m = yearMedals(books, year)
+    return [
+      ['Medals', medalLine(m.books)],
+      ['Series medals', medalLine(m.series)],
+    ].filter(([, line]) => line)
+  }, [books, year])
   const bookBtn = (b: Book) => (
     <button className="link-btn" onClick={() => onShowBook(b.id)}>
       {b.title}
@@ -331,6 +340,16 @@ export function WrappedCard({ books, onShowBook }: Props) {
           {facts.length > 0 && (
             <dl className="records">
               {facts.map(([k, v]) => (
+                <div key={k}>
+                  <dt>{k}</dt>
+                  <dd>{v}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {medals.length > 0 && (
+            <dl className="records">
+              {medals.map(([k, v]) => (
                 <div key={k}>
                   <dt>{k}</dt>
                   <dd>{v}</dd>

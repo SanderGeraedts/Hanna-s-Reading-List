@@ -1,6 +1,7 @@
 import type { Book, SortKey } from './library'
 import { STATUS_LABELS, groupLabel, hexToHsl } from './library'
 import { seriesGroups } from './series'
+import { seriesReads } from './medals'
 import type { Separator } from './shelfLayout'
 import { themeFor } from './nookThemes'
 
@@ -19,6 +20,8 @@ interface Group {
   books: Book[]
   /** series only: every book of it on the shelf is read */
   complete?: boolean
+  /** series only, when complete: how many times every book has been read, for the nook's medal */
+  medal?: number
   /** genre only: the genre itself, to pick the scene */
   genre?: string
 }
@@ -104,7 +107,12 @@ export function shelfGroups(books: Book[], arrangement: SortKey): Group[] {
   }
   const out = [...groups.values()]
   if (arrangement === 'series') {
-    for (const g of out) if (g.key && g.books.every((b) => b.status === 'read')) g.complete = true
+    for (const g of out)
+      if (g.key && g.books.every((b) => b.status === 'read')) {
+        g.complete = true
+        const reads = seriesReads(g.books)
+        if (reads > 0) g.medal = reads
+      }
   }
   return out
 }
@@ -120,7 +128,14 @@ export function arrangementSeparators(books: Book[], arrangement: SortKey | null
 
   for (const g of groups) {
     const { theme, variant } = themeFor(g.label, g.books, g.genre)
-    out.set(g.books[0].id, { kind: 'nook', label: g.label, theme, variant, ...(g.complete && { complete: true }) })
+    out.set(g.books[0].id, {
+      kind: 'nook',
+      label: g.label,
+      theme,
+      variant,
+      ...(g.complete && { complete: true }),
+      ...(g.medal && { medal: g.medal }),
+    })
   }
   return out
 }
