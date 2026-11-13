@@ -2,6 +2,7 @@ import type { Book, SortKey } from './library'
 import { STATUS_LABELS, groupLabel, hexToHsl, spiceRank, starsOf } from './library'
 import { seriesGroups } from './series'
 import { seriesReads } from './medals'
+import { sleepSeriesKeys } from './sleepSeries'
 import type { Separator } from './shelfLayout'
 import { themeFor } from './nookThemes'
 
@@ -22,6 +23,8 @@ interface Group {
   complete?: boolean
   /** series only, when complete: how many times every book has been read, for the nook's medal */
   medal?: number
+  /** series only: the whole series is a sleep read, a moon on its sign */
+  sleep?: boolean
   /** genre only: the genre itself, to pick the scene */
   genre?: string
 }
@@ -122,6 +125,8 @@ export function shelfGroups(books: Book[], arrangement: SortKey): Group[] {
   }
   const out = [...groups.values()]
   if (arrangement === 'series') {
+    const sleep = sleepSeriesKeys(books, series)
+    for (const g of out) if (g.key && sleep.has(g.key)) g.sleep = true
     for (const g of out)
       if (g.key && g.books.every((b) => b.status === 'read')) {
         g.complete = true
@@ -150,6 +155,7 @@ export function arrangementSeparators(books: Book[], arrangement: SortKey | null
       variant,
       ...(g.complete && { complete: true }),
       ...(g.medal && { medal: g.medal }),
+      ...(g.sleep && { sleep: true }),
     })
   }
   return out

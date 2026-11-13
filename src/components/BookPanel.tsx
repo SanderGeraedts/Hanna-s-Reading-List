@@ -39,6 +39,10 @@ interface Props {
   onChangeCover: () => void
   /** every book on the shelf, to find copies of this one */
   shelf: Book[]
+  /** the series this book is in, and whether the whole series is a sleep read */
+  sleepSeries?: { name: string; on: boolean }
+  /** mark or unmark the whole series as a sleep read */
+  onSleepSeries?: (on: boolean) => void
   /** merge another copy into this book */
   onMerge: (otherId: string) => void
   onRemove: () => void
@@ -156,6 +160,8 @@ export function BookPanel({
   genreOptions,
   onChangeCover,
   shelf,
+  sleepSeries,
+  onSleepSeries,
   onMerge,
   onRemove,
   onClose,
@@ -703,12 +709,23 @@ export function BookPanel({
         <label className="check">
           <input
             type="checkbox"
-            checked={!!book.sleepRead}
+            checked={!!book.sleepRead || !!sleepSeries?.on}
+            disabled={!!sleepSeries?.on}
             onChange={(e) => onUpdate({ sleepRead: e.target.checked || undefined })}
           />
           <span>🌙 Sleep read</span>
         </label>
-        {book.sleepRead && <small className="muted">No rating question when you finish it.</small>}
+        {sleepSeries && onSleepSeries && (
+          <label className="check">
+            <input type="checkbox" checked={sleepSeries.on} onChange={(e) => onSleepSeries(e.target.checked)} />
+            <span>🌙 The whole series: {sleepSeries.name}</span>
+          </label>
+        )}
+        {sleepSeries?.on ? (
+          <small className="muted">The whole series is a sleep read. No rating question when you read a book again.</small>
+        ) : (
+          book.sleepRead && <small className="muted">No rating question when you read it again.</small>
+        )}
       </div>
 
       <div className="field">

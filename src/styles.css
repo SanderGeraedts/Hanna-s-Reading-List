@@ -2370,3 +2370,17 @@ textarea.input {
 .calendar .day-pile::after {
   z-index: 1;
 }
+
+/* ---- "Is this part of …?" ----------------------------------------------- */
+.series-question-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.9rem;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.series-question-book {
+  margin: 0 0 0.35rem;
+}

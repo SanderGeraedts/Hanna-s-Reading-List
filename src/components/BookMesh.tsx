@@ -18,6 +18,8 @@ export interface BookMeshProps {
   book: Book
   /** paperclip colour, for books being read */
   clipColor?: string
+  /** a sleep read: a small moon on the spine */
+  sleep?: boolean
   dims: BookDims
   slot: Slot
   selected: boolean
@@ -93,6 +95,7 @@ export function BookMesh(props: BookMeshProps) {
     cameraBase,
     fov,
     inspectFrame,
+    sleep = false,
   } = props
   const group = useRef<THREE.Group>(null)
 
@@ -100,12 +103,12 @@ export function BookMesh(props: BookMeshProps) {
   const cover = useCoverTexture(book.coverUrl, dims.w / dims.h)
   const painted = useMemo(
     () => ({
-      spine: paintSpine(book, dims),
+      spine: paintSpine(book, dims, sleep),
       back: paintBack(book, dims),
       fallback: paintFallbackCover(book, dims),
     }),
     // repaint only when something visible changes
-    [book.title, book.authors.join(), book.color, book.status, book.language, book.description, book.isbn, book.pages, book.minutes, book.formats, book.format, dims.w, dims.h, dims.t],
+    [book.title, book.authors.join(), book.color, book.status, book.language, book.description, book.isbn, book.pages, book.minutes, book.formats, book.format, dims.w, dims.h, dims.t, sleep],
   )
   useEffect(
     () => () => {

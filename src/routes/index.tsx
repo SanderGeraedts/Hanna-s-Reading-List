@@ -5,6 +5,8 @@ import { AddBookDialog } from '#/components/AddBookDialog'
 import { BookPanel } from '#/components/BookPanel'
 import { CoverPicker } from '#/components/CoverPicker'
 import { RatingDialog } from '#/components/RatingDialog'
+import { SeriesQuestionDialog } from '#/components/SeriesQuestionDialog'
+import { joinSeries, markSleepSeries, notInSeries, seriesQuestions, skipsRatingQuestion, sleepSeriesKeys } from '#/lib/sleepSeries'
 import type { Face } from '#/components/BookPanel'
 import { nearestTurn } from '#/components/BookMesh'
 import type { InspectTarget } from '#/components/BookMesh'
@@ -14,7 +16,7 @@ import type { SortKey, SyncStatus } from '#/lib/library'
 import { useSession } from '#/lib/session'
 import type { Account } from '#/lib/session'
 import { SignIn } from '#/components/SignIn'
-import { detectSeries } from '#/lib/series'
+import { detectSeries, seriesGroups } from '#/lib/series'
 import { pickReadNext, readNextChoices } from '#/lib/readNext'
 import { Dashboard } from '#/components/Dashboard'
 import { useStorytelSync } from '#/lib/useStorytelSync'
@@ -162,6 +164,15 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   const selected = books.find((b) => b.id === selectedId) ?? null
   const seriesMap = useMemo(() => detectSeries(books), [books])
   const selectedSeries = selected ? seriesMap.get(selected.id) : undefined
+  // the whole series as a sleep read; new books by a series author are asked about once
+  const groups = useMemo(() => seriesGroups(books), [books])
+  const sleepKeys = useMemo(() => sleepSeriesKeys(books, groups), [books, groups])
+  const selectedGroup = selected ? groups.get(selected.id) : undefined
+  const [askLater, setAskLater] = useState<string[]>([])
+  const questions = useMemo(
+    () => (loaded ? seriesQuestions(books).filter((q) => !askLater.includes(q.book.id)) : []),
+    [books, loaded, askLater],
+  )
   const genreOptions = useMemo(() => genreSuggestions(books.flatMap((b) => b.genres ?? [])), [books])
   useBookDetails(allBooks, loaded, updateBook)
 
@@ -419,7 +430,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           onStatus={(status) => {
             updateBook(selected.id, statusPatch(selected, status))
             // a sleep read doesn't ask for a rating
-            if (status === 'read' && selected.status !== 'read' && !selected.sleepRead) setRatingFor(selected.id)
+            if (status === 'read' && selected.status !== 'read' && !skipsRatingQuestion(selected, books)) setRatingFor(selected.id)
           }}
           // what she read today goes in the reading log (#76)
           onProgress={(progress) => updateBook(selected.id, (b) => progressPatch(b, progress))}
@@ -432,6 +443,12 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           genreOptions={genreOptions}
           onChangeCover={() => setPickingCover(true)}
           shelf={books}
+          {...(selectedGroup?.key && {
+            sleepSeries: { name: selectedGroup.name, on: sleepKeys.has(selectedGroup.key) },
+            onSleepSeries: (on: boolean) => {
+              for (const [id, patch] of markSleepSeries(books, selectedGroup.key, on, groups)) updateBook(id, patch)
+            },
+          })}
           onMerge={(otherId) => mergeBook(selected.id, otherId)}
           onRemove={() => {
             select(null)
@@ -460,6 +477,15 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           />
         ) : null
       })()}
+
+      {questions.length > 0 && !adding && !ratingFor && !pickingCover && (
+        <SeriesQuestionDialog
+          questions={questions}
+          onJoin={(book, choice) => updateBook(book.id, joinSeries(choice))}
+          onNotInSeries={(book) => updateBook(book.id, notInSeries)}
+          onLater={() => setAskLater((ids) => [...ids, ...questions.map((q) => q.book.id)])}
+        />
+      )}
 
       {adding && (
         <AddBookDialog
