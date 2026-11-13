@@ -80,12 +80,27 @@ export interface Book {
   genres?: string[]
   /** lent to a friend: to whom, and since when (yyyy-mm-dd) */
   lent?: { to: string; since?: string }
+  /** book bingo cards this book filled (#119), kept so a full card stays full; see bingo.ts */
+  bingoCards?: FinishedBingoCard[]
   addedAt: number
   /**
    * When the book last changed (ms). When two copies of a shelf meet, the
    * newer edit of a book wins (see shelfMerge.ts); without it, the server's.
    */
   editedAt?: number
+}
+
+/** A full book bingo card (#119), remembered on the book that filled it. */
+export interface FinishedBingoCard {
+  year: number
+  /** 1 for the year's first card */
+  card: number
+  /** the finish that filled it ("yyyy-mm-dd|bookId|n"); the next card counts finishes after it */
+  endsAt: string
+  /** the square ids, in their places on the card */
+  squares: string[]
+  /** square id → the book that ticked it ('' when no single book did) */
+  ticks: Record<string, string>
 }
 
 export type BookFormat =

@@ -1,16 +1,17 @@
 import type { Book } from './library'
 import { localDay, timesRead } from './library'
-import { hasAudio, listenOnly, thicknessPages } from './listening'
+import { thicknessPages } from './listening'
 import { cleanRating, cleanSpice, topRated } from './ratings'
 import { amountUnit } from './readingLog'
-import { breakdown, monthlyCounts, seriesProgress } from './insights'
+import { breakdown, monthlyCounts } from './insights'
+import { bingoYear } from './bingo'
 import type { Period } from './stats'
-import { allFinishes, periodStats } from './stats'
+import { periodStats } from './stats'
 
 /**
  * More for the dashboard: when a book will be finished, a year of reading
- * days, favourite authors, the spice meter, listening and reading per month,
- * the year in review, book bingo and the pace towards the goal.
+ * days, favourite authors, the spice meter, the year in review and the pace
+ * towards the goal. Book bingo is in bingo.ts.
  */
 
 // ---- days ---------------------------------------------------------------------
@@ -249,6 +250,8 @@ export interface YearReview {
   spiciest?: Book
   /** longest run of reading days that year */
   streak: number
+  /** book bingo cards filled that year (#119) */
+  bingoCards: number
   genre?: string
   /** busiest month (1-12) and its books */
   busiest?: { month: number; books: number }
@@ -257,7 +260,7 @@ export interface YearReview {
 /** The year to look back on: this year, or last year in January. */
 export const reviewYear = (now = new Date()) => (now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear())
 
-export function yearReview(books: Book[], year: number): YearReview {
+export function yearReview(books: Book[], year: number, today = localDay()): YearReview {
   const period = { kind: 'year', year } as const
   const stats = periodStats(books, period)
   const days = new Set<number>()
@@ -281,124 +284,10 @@ export function yearReview(books: Book[], year: number): YearReview {
     topRated: topRated(books, period, 1)[0],
     spiciest: spiceStats(books, period, 1).spiciest[0],
     streak,
+    bingoCards: bingoYear(books, year, today).finished.length,
     ...(genre && { genre }),
     ...(most > 0 && { busiest: { month: counts.indexOf(most) + 1, books: most } }),
   }
-}
-
-// ---- book bingo ----------------------------------------------------------------------
-
-export interface BingoSquare {
-  id: string
-  label: string
-  /** ticked from what's on the shelf */
-  auto: boolean
-  /** the book that ticked it, when one did */
-  book?: Book
-  /** only she knows: never ticked automatically */
-  manualOnly?: boolean
-}
-
-const BINGO: Array<{ id: string; label: string; manualOnly?: true }> = [
-  { id: 'long', label: 'Over 500 pages' },
-  { id: 'dutch', label: 'A book in Dutch' },
-  { id: 'audio', label: 'An audiobook' },
-  { id: 'friend', label: 'Recommended by a friend', manualOnly: true },
-  { id: 'series', label: 'Finish a series' },
-  { id: 'five', label: 'A 5-star read' },
-  { id: 'short', label: 'Under 200 pages' },
-  { id: 'map', label: 'A book with a map', manualOnly: true },
-  { id: 'reread', label: 'A re-read' },
-  { id: 'week', label: 'Started and finished in a week' },
-  { id: 'author', label: 'A new author' },
-  { id: 'cover', label: 'Picked for the cover', manualOnly: true },
-  { id: 'three', label: '3 books in one month' },
-  { id: 'genre', label: 'Not fantasy' },
-  { id: 'spicy', label: 'A spicy read (4+ 🌶️)' },
-  { id: 'debut', label: "An author's debut", manualOnly: true },
-]
-
-export const BINGO_IDS = BINGO.map((s) => s.id)
-
-const FANTASY = /fantas/i
-
-/** The bingo card for a year (4 × 4), ticked from the books finished that year where it can be. */
-export function bingo(books: Book[], year: number): BingoSquare[] {
-  const prefix = `${year}-`
-  // each finish this year, with whether it was a re-read
-  const finishes: Array<{ book: Book; day: string; reread: boolean }> = []
-  for (const b of books) {
-    const days = [...(b.finished ?? [])].sort()
-    const undated = timesRead(b) > days.length
-    days.forEach((day, i) => {
-      if (day.startsWith(prefix)) finishes.push({ book: b, day, reread: i > 0 || undated })
-    })
-  }
-  finishes.sort((a, b) => a.day.localeCompare(b.day))
-  const find = (test: (b: Book, f: (typeof finishes)[number]) => boolean) => finishes.find((f) => test(f.book, f))?.book
-  const paper = (b: Book) => !listenOnly(b) && (b.pages ?? 0) > 0
-
-  // the first day she finished anything by each author; undated reads count as long ago
-  const firstByAuthor = new Map<string, string>()
-  for (const f of allFinishes(books))
-    for (const a of f.book.authors) {
-      const key = a.trim().toLowerCase()
-      const prev = firstByAuthor.get(key)
-      const day = f.day ?? ''
-      if (prev === undefined || day < prev) firstByAuthor.set(key, day)
-    }
-
-  const series = seriesProgress(books).find(
-    (s) => s.total >= 2 && s.read === s.total && s.books.some((b) => b.finished?.some((d) => d.startsWith(prefix))),
-  )
-  const counts = monthlyCounts(books, year)
-
-  const found: Record<string, Book | boolean | undefined> = {
-    long: find((b) => paper(b) && b.pages! > 500),
-    dutch: find((b) => b.language === 'nl'),
-    audio: find((b) => hasAudio(b)),
-    series: series && [...series.books].reverse().find((b) => b.finished?.some((d) => d.startsWith(prefix))),
-    five: find((b) => cleanRating(b.rating) === 5),
-    short: find((b) => paper(b) && b.pages! < 200),
-    reread: find((_, f) => f.reread),
-    week: find((b, f) =>
-      (b.started ?? []).some((s) => s <= f.day && dayNumber(f.day) - dayNumber(s) <= 6),
-    ),
-    author: find(
-      (b, f) =>
-        !f.reread &&
-        b.authors.some((a) => {
-          const first = firstByAuthor.get(a.trim().toLowerCase())
-          return first !== undefined && first.startsWith(prefix) && first >= f.day
-        }),
-    ),
-    three: counts.some((n) => n >= 3),
-    genre: find((b) => !!b.genres?.length && !b.genres.some((g) => FANTASY.test(g))),
-    spicy: find((b) => (cleanSpice(b.spice) ?? 0) >= 4),
-  }
-  return BINGO.map(({ id, label, manualOnly }) => {
-    const hit = found[id]
-    return {
-      id,
-      label,
-      auto: !!hit,
-      ...(hit && typeof hit === 'object' && { book: hit }),
-      ...(manualOnly && { manualOnly }),
-    }
-  })
-}
-
-/** Rows, columns and the two diagonals that are fully ticked. */
-export function bingoLines(ticked: boolean[], size = 4): number {
-  const at = (r: number, c: number) => ticked[r * size + c]
-  let lines = 0
-  for (let i = 0; i < size; i++) {
-    if (Array.from({ length: size }, (_, j) => at(i, j)).every(Boolean)) lines++
-    if (Array.from({ length: size }, (_, j) => at(j, i)).every(Boolean)) lines++
-  }
-  if (Array.from({ length: size }, (_, j) => at(j, j)).every(Boolean)) lines++
-  if (Array.from({ length: size }, (_, j) => at(j, size - 1 - j)).every(Boolean)) lines++
-  return lines
 }
 
 // ---- goal pace ---------------------------------------------------------------------

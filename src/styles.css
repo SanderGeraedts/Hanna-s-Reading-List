@@ -2321,19 +2321,16 @@ textarea.input {
   font-size: 0.72rem;
   line-height: 1.2;
   text-align: center;
-  cursor: pointer;
   overflow: hidden;
-}
-.bingo-square:hover {
-  border-color: rgba(217, 168, 91, 0.5);
 }
 .bingo-square.on {
   color: var(--text);
   background: rgba(217, 168, 91, 0.18);
   border-color: rgba(217, 168, 91, 0.6);
 }
-.bingo-square.auto {
-  cursor: default;
+.bingo-full {
+  margin: 0 0 0.5rem;
+  color: var(--accent);
 }
 .bingo-label {
   overflow-wrap: anywhere;

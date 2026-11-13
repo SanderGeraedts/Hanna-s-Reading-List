@@ -392,6 +392,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           <Dashboard
             books={books}
             onShowBook={showBook}
+            onUpdate={updateBook}
             accountId={account?.id ?? null}
           />
         )}
