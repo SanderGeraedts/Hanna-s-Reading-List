@@ -95,3 +95,44 @@ describe('book nooks for every arrangement (#17, #36)', () => {
     expect(arrangementSeparators([book('a')], null).size).toBe(0)
   })
 })
+
+describe('sorting by rating and spice', () => {
+  const titles = (books: Book[]) => books.map((b) => b.title)
+
+  it('puts the best rated first, equal ratings by title, unrated last', () => {
+    const shelf = [
+      book('Unrated'),
+      book('Good', { rating: 4 }),
+      book('Best', { rating: 5 }),
+      book('Also good', { rating: 4 }),
+      book('Half', { rating: 4.5 }),
+    ]
+    expect(titles(sortBooks(shelf, 'rating'))).toEqual(['Best', 'Half', 'Also good', 'Good', 'Unrated'])
+  })
+
+  it('puts the spiciest first, then No spice, then not scored; equal spice by rating', () => {
+    const shelf = [
+      book('Not scored'),
+      book('Clean', { spice: 0 }),
+      book('Mild', { spice: 1 }),
+      book('Hot', { spice: 5, rating: 3 }),
+      book('Hot and loved', { spice: 5, rating: 5 }),
+    ]
+    expect(titles(sortBooks(shelf, 'spice'))).toEqual(['Hot and loved', 'Hot', 'Mild', 'Clean', 'Not scored'])
+  })
+
+  it('puts a nook before each group of stars and peppers', () => {
+    const rated = [book('a', { rating: 5 }), book('b', { rating: 4.5 }), book('c', { rating: 4 }), book('d')]
+    expect(shelfGroups(sortBooks(rated, 'rating'), 'rating').map((g) => [g.label, g.books.length])).toEqual([
+      ['5 stars', 1],
+      ['4 stars', 2],
+      ['Not rated', 1],
+    ])
+    const spiced = [book('a', { spice: 1 }), book('b', { spice: 0 }), book('c')]
+    expect(shelfGroups(sortBooks(spiced, 'spice'), 'spice').map((g) => g.label)).toEqual([
+      '1 pepper',
+      'No spice',
+      'Spice not scored',
+    ])
+  })
+})

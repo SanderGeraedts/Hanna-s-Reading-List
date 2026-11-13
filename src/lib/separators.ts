@@ -1,5 +1,5 @@
 import type { Book, SortKey } from './library'
-import { STATUS_LABELS, groupLabel, hexToHsl } from './library'
+import { STATUS_LABELS, groupLabel, hexToHsl, spiceRank, starsOf } from './library'
 import { seriesGroups } from './series'
 import type { Separator } from './shelfLayout'
 import { themeFor } from './nookThemes'
@@ -85,6 +85,21 @@ function groupOfBook(arrangement: SortKey, series: ReturnType<typeof seriesGroup
       }
     case 'status':
       return (b) => [b.status, STATUS_LABELS[b.status]]
+    case 'rating':
+      // whole stars: 4½ stands with the 4s
+      return (b) => {
+        const r = starsOf(b)
+        if (r === undefined) return ['none', 'Not rated']
+        const n = Math.floor(r)
+        return [String(n), n === 0 ? 'Under 1 star' : `${n} ${n === 1 ? 'star' : 'stars'}`]
+      }
+    case 'spice':
+      return (b) => {
+        const n = spiceRank(b)
+        if (n < 0) return ['none', 'Spice not scored']
+        if (n === 0) return ['0', 'No spice']
+        return [String(n), `${n} ${n === 1 ? 'pepper' : 'peppers'}`]
+      }
   }
 }
 
