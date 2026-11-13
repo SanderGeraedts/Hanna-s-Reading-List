@@ -425,10 +425,6 @@ export function BingoCard({
           )
         })}
       </div>
-      <p className="muted hint">
-        Squares tick themselves from the books you finish. A square still open a month after the card started swaps
-        for another. A full card gives you a new one.
-      </p>
     </section>
   )
 }

@@ -413,12 +413,6 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             accountId={account?.id ?? null}
           />
         )}
-        {books.length > 1 && !selected && !onDashboard && (
-          <p className="stage-hint">
-            <span className="hint-mouse">Click a book to pull it off the shelf · drag to rearrange</span>
-            <span className="hint-touch">Tap a book to take it out · swipe to scroll · hold to move</span>
-          </p>
-        )}
       </main>
 
       {selected && (

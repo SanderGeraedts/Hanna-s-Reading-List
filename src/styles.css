@@ -129,20 +129,6 @@ h2 {
   padding: 0.5rem 1rem;
   border-radius: 999px;
 }
-.stage-hint {
-  position: absolute;
-  bottom: 1rem;
-  left: 50%;
-  transform: translateX(-50%);
-  margin: 0;
-  padding: 0.4rem 0.9rem;
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--muted);
-  font-size: 0.8rem;
-  white-space: nowrap;
-  pointer-events: none;
-}
 
 /* ---- controls ------------------------------------------------------- */
 .btn {
@@ -370,11 +356,6 @@ textarea.input {
     overscroll-behavior: contain;
     animation: sheet-up 0.3s ease-out;
   }
-  .stage-hint {
-    white-space: normal;
-    text-align: center;
-    width: calc(100% - 2rem);
-  }
 }
 
 /* ---- dialog --------------------------------------------------------- */
@@ -521,18 +502,6 @@ textarea.input {
 }
 .series-row .series-no {
   flex: 0 0 4rem;
-}
-
-.hint-touch {
-  display: none;
-}
-@media (pointer: coarse) {
-  .hint-mouse {
-    display: none;
-  }
-  .hint-touch {
-    display: inline;
-  }
 }
 
 .change-cover {

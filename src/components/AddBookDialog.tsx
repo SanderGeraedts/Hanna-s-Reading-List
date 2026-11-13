@@ -443,7 +443,6 @@ function ManualTab({ onAdd, isbn }: { onAdd: (b: NewBook) => void; isbn?: string
         <label className="field">
           <span>Published</span>
           <input className="input" placeholder="2008 or 12.03.2008" value={form.published} onChange={set('published')} />
-          <small className="muted">Not out yet? It still goes on the shelf; What next? waits until it's out.</small>
         </label>
         <label className="field">
           <span>Pages</span>
