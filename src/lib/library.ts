@@ -55,6 +55,13 @@ export interface Book {
   /** a go-to-sleep read: finishing it doesn't ask for a rating */
   sleepRead?: boolean
   /**
+   * its whole series is a sleep read: the key of the series it was marked
+   * for, so the mark only counts while the book is still in that series
+   */
+  sleepSeries?: string
+  /** answered "Is this part of …?" (or joined a series), so it isn't asked again */
+  seriesAsked?: boolean
+  /**
    * the days it was finished (yyyy-mm-dd, oldest first), noted from #59 on;
    * books finished before that have none until Hanna fills one in
    */

@@ -251,7 +251,6 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate }: DashboardP
       <div className={`dashboard-bar${arranging ? ' arranging' : ''}`}>
         {arranging ? (
           <>
-            <p className="small-text">Drag a block by ⠿ to move it anywhere. × hides it until you add it back.</p>
             <div className="dashboard-bar-actions">
               <button className="btn small" onClick={() => setLayout(DEFAULT_LAYOUT)}>
                 Reset

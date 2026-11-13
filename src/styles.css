@@ -129,20 +129,6 @@ h2 {
   padding: 0.5rem 1rem;
   border-radius: 999px;
 }
-.stage-hint {
-  position: absolute;
-  bottom: 1rem;
-  left: 50%;
-  transform: translateX(-50%);
-  margin: 0;
-  padding: 0.4rem 0.9rem;
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--muted);
-  font-size: 0.8rem;
-  white-space: nowrap;
-  pointer-events: none;
-}
 
 /* ---- controls ------------------------------------------------------- */
 .btn {
@@ -370,11 +356,6 @@ textarea.input {
     overscroll-behavior: contain;
     animation: sheet-up 0.3s ease-out;
   }
-  .stage-hint {
-    white-space: normal;
-    text-align: center;
-    width: calc(100% - 2rem);
-  }
 }
 
 /* ---- dialog --------------------------------------------------------- */
@@ -521,18 +502,6 @@ textarea.input {
 }
 .series-row .series-no {
   flex: 0 0 4rem;
-}
-
-.hint-touch {
-  display: none;
-}
-@media (pointer: coarse) {
-  .hint-mouse {
-    display: none;
-  }
-  .hint-touch {
-    display: inline;
-  }
 }
 
 .change-cover {
@@ -2369,4 +2338,18 @@ textarea.input {
 
 .calendar .day-pile::after {
   z-index: 1;
+}
+
+/* ---- "Is this part of …?" ----------------------------------------------- */
+.series-question-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.9rem;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.series-question-book {
+  margin: 0 0 0.35rem;
 }

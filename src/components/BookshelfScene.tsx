@@ -11,6 +11,7 @@ import { BookMesh, RAINBOW } from './BookMesh'
 import { Decorations } from './Decorations'
 import { BookNooks } from './BookNook'
 import { SeriesDividers } from './SeriesDivider'
+import { sleepReadIds } from '#/lib/sleepSeries'
 import type { InspectTarget } from './BookMesh'
 import { FLOOR_TILE_METRES, floorTexture, wallTexture, woodTexture } from './textures'
 
@@ -93,6 +94,7 @@ function Scene({
     [drag, books, byId],
   )
   const clipColors = useMemo(() => rainbowClips(books), [books])
+  const sleepIds = useMemo(() => sleepReadIds(books), [books])
   const size = useThree((s) => s.size)
   const aspect = size.width / Math.max(1, size.height)
   const portrait = aspect < 0.8
@@ -312,6 +314,7 @@ function Scene({
             key={book.id}
             book={book}
             clipColor={clipColors.get(book.id)}
+            sleep={sleepIds.has(book.id)}
             dims={dims}
             slot={slot}
             selected={book.id === selectedId}

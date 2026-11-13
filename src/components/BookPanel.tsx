@@ -39,6 +39,10 @@ interface Props {
   onChangeCover: () => void
   /** every book on the shelf, to find copies of this one */
   shelf: Book[]
+  /** the series this book is in, and whether the whole series is a sleep read */
+  sleepSeries?: { name: string; on: boolean }
+  /** mark or unmark the whole series as a sleep read */
+  onSleepSeries?: (on: boolean) => void
   /** merge another copy into this book */
   onMerge: (otherId: string) => void
   onRemove: () => void
@@ -156,6 +160,8 @@ export function BookPanel({
   genreOptions,
   onChangeCover,
   shelf,
+  sleepSeries,
+  onSleepSeries,
   onMerge,
   onRemove,
   onClose,
@@ -401,7 +407,6 @@ export function BookPanel({
         <button onClick={() => onFace('spine')}>Spine</button>
         <button onClick={() => onFace('back')}>Back</button>
       </div>
-      <p className="hint">Drag to turn the book · ← → to flip · Esc to put it back</p>
       <button className="btn change-cover" onClick={onChangeCover}>
         Change cover…
       </button>
@@ -552,7 +557,6 @@ export function BookPanel({
               + Add a date
             </button>
           )}
-          {finished.length === 0 && <small className="muted">For the calendar on the dashboard.</small>}
         </div>
       )}
 
@@ -587,7 +591,6 @@ export function BookPanel({
               + Add a date
             </button>
           )}
-          {started.length === 0 && <small className="muted">For “Started in …” on the dashboard.</small>}
         </div>
       )}
 
@@ -703,12 +706,18 @@ export function BookPanel({
         <label className="check">
           <input
             type="checkbox"
-            checked={!!book.sleepRead}
+            checked={!!book.sleepRead || !!sleepSeries?.on}
+            disabled={!!sleepSeries?.on}
             onChange={(e) => onUpdate({ sleepRead: e.target.checked || undefined })}
           />
           <span>🌙 Sleep read</span>
         </label>
-        {book.sleepRead && <small className="muted">No rating question when you finish it.</small>}
+        {sleepSeries && onSleepSeries && (
+          <label className="check">
+            <input type="checkbox" checked={sleepSeries.on} onChange={(e) => onSleepSeries(e.target.checked)} />
+            <span>🌙 The whole series: {sleepSeries.name}</span>
+          </label>
+        )}
       </div>
 
       <div className="field">
@@ -742,16 +751,12 @@ export function BookPanel({
           inputMode="numeric"
           value={pagesDraft}
           placeholder="Unknown"
-          aria-describedby="pages-hint"
           onChange={(e) => setPagesDraft(e.target.value.replace(/\D/g, ''))}
           onBlur={savePages}
           onKeyDown={(e) => {
             if (e.key === 'Enter') e.currentTarget.blur()
           }}
         />
-        <small id="pages-hint" className="muted">
-          {audio ? 'As in the printed book.' : 'As in your copy. Sets how thick the book is on the shelf.'}
-        </small>
       </label>
       {audio && (
         <label className="field">
@@ -761,7 +766,7 @@ export function BookPanel({
             value={minutesDraft}
             placeholder="e.g. 10:25"
             aria-invalid={minutesProblem}
-            aria-describedby="minutes-hint"
+            aria-describedby={minutesProblem ? 'minutes-hint' : undefined}
             onChange={(e) => {
               setMinutesDraft(e.target.value)
               setMinutesProblem(false)
@@ -771,13 +776,12 @@ export function BookPanel({
               if (e.key === 'Enter') e.currentTarget.blur()
             }}
           />
-          <small id="minutes-hint" className={minutesProblem ? 'error' : 'muted'}>
-            {minutesProblem
-              ? 'Try 10:25 or 10 h 25 min.'
-              : listenOnly(book)
-                ? 'Hours and minutes. A minute counts as a page on the shelf.'
-                : 'Hours and minutes of the audiobook.'}
-          </small>
+          {/* only when what she typed can't be read */}
+          {minutesProblem && (
+            <small id="minutes-hint" className="error">
+              Try 10:25 or 10 h 25 min.
+            </small>
+          )}
         </label>
       )}
       </div>
