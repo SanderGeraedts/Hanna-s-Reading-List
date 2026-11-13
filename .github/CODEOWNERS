@@ -1,0 +1,20 @@
+# Paths only Sander may approve. Branch protection on main requires a code
+# owner review for these, so a change here can't go live without him.
+# See docs/hanna-guardrails.md for why.
+
+# the account server on the NAS: schema, hooks, image
+/deploy/nas/                @SanderGeraedts
+
+# CI, deploy and hosting settings
+/.github/                   @SanderGeraedts
+/netlify/                   @SanderGeraedts
+/netlify.toml               @SanderGeraedts
+
+# how a shelf is saved and merged: her books can't be rebuilt
+/src/lib/shelfMerge.ts      @SanderGeraedts
+/src/server/shelf.ts        @SanderGeraedts
+
+# the guardrails themselves
+/CLAUDE.md                  @SanderGeraedts
+/.claude/                   @SanderGeraedts
+/docs/hanna-guardrails.md   @SanderGeraedts
