@@ -2,9 +2,12 @@ import type { Book } from './library'
 import { localDay } from './library'
 
 /**
- * Upcoming releases (#103): a book added before it comes out has a
- * `releaseDate` in the future. It isn't on the shelf yet but in the
- * dashboard's "Upcoming releases"; on its release day it moves to the shelf.
+ * Books that aren't out yet. They used to wait in a dashboard block of their
+ * own (#103); now they are on the shelf like any want-to-read book, and only
+ * "What next?" leaves them out until they can be read.
+ *
+ * A book counts as not out yet when its publication date is still to come,
+ * or when the Storytel sync gave it a release day still to come.
  */
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/
@@ -16,52 +19,6 @@ export function cleanReleaseDate(v: unknown): string | undefined {
   return DAY.test(day) && !Number.isNaN(Date.parse(day)) ? day : undefined
 }
 
-export const isUpcoming = (b: Book, today = localDay()) => !!b.releaseDate && b.releaseDate > today
-
-/** The books still to come out, the first one first. */
-export function upcomingBooks(books: Book[], today = localDay()): Book[] {
-  return books.filter((b) => isUpcoming(b, today)).sort((a, b) => a.releaseDate!.localeCompare(b.releaseDate!))
-}
-
-/** Books whose release day has come: they go onto the shelf. */
-export const releasedBooks = (books: Book[], today = localDay()) =>
-  books.filter((b) => !!b.releaseDate && b.releaseDate <= today)
-
-/**
- * The change that puts a released book on the shelf: no longer upcoming,
- * added as of today (so it shows up as a new book), with its publication
- * date filled in from the release day.
- */
-export function releasePatch(b: Book, now = Date.now()): Partial<Book> {
-  const day = b.releaseDate!
-  return {
-    releaseDate: undefined,
-    addedAt: now,
-    published: b.published ?? day,
-    year: b.year ?? Number(day.slice(0, 4)),
-  }
-}
-
-/** Whole days from `today` to `day` (both yyyy-mm-dd). */
-export function daysUntil(day: string, today = localDay()) {
-  const n = (d: string) => Date.UTC(Number(d.slice(0, 4)), Number(d.slice(5, 7)) - 1, Number(d.slice(8, 10)))
-  return Math.round((n(day) - n(today)) / 86_400_000)
-}
-
-export function countdownText(day: string, today = localDay()) {
-  const n = daysUntil(day, today)
-  if (n <= 0) return 'Out today'
-  if (n === 1) return 'Tomorrow'
-  if (n < 7) return `In ${n} days`
-  if (n < 60) return `In ${Math.round(n / 7)} week${Math.round(n / 7) === 1 ? '' : 's'}`
-  return `In ${Math.round(n / 30.4)} months`
-}
-
-export function releaseDayText(day: string) {
-  const [y, m, d] = day.split('-').map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
-}
-
 /** The first day a publication date can mean: "2027" → 2027-01-01, "2027-03" → 2027-03-01. */
 export function publishedDay(published?: string): string | undefined {
   if (!published) return undefined
@@ -70,11 +27,16 @@ export function publishedDay(published?: string): string | undefined {
 }
 
 /**
- * The release day that follows from a book's publication date (no tick box
- * needed): when it is still to come, the book is upcoming until that day. A
- * year on its own counts from 1 January of that year.
+ * The release day that follows from a book's publication date, when it is
+ * still to come. A year on its own counts from 1 January of that year.
  */
 export function releaseFromPublished(b: Pick<Book, 'published' | 'year'>, today = localDay()): string | undefined {
   const day = publishedDay(b.published) ?? (b.year && b.year > Number(today.slice(0, 4)) ? `${b.year}-01-01` : undefined)
   return day && day > today ? day : undefined
+}
+
+/** Whether a book can't be read yet because it hasn't come out. */
+export function notOutYet(b: Pick<Book, 'published' | 'year' | 'releaseDate'>, today = localDay()): boolean {
+  const release = cleanReleaseDate(b.releaseDate)
+  return (!!release && release > today) || !!releaseFromPublished(b, today)
 }

@@ -12,7 +12,6 @@ const {
   goalPace,
   goalPaceText,
   heatmap,
-  monthlyFormats,
   reviewYear,
   spiceStats,
   yearReview,
@@ -133,22 +132,6 @@ describe('spice meter', () => {
     expect(s.read).toBe(4)
     expect(s.spiciest.map((b) => b.id)).toEqual(['c', 'b', 'a'])
     expect(spiceStats([read('d', '2026-03-01')], { kind: 'all' }).average).toBeUndefined()
-  })
-})
-
-describe('listening vs reading', () => {
-  it('turns the reading log into pages and minutes per month', () => {
-    const m = monthlyFormats(
-      [
-        book('a', { pages: 400, readingLog: { '2026-01-05': 0.25, '2026-02-01': 0.5, '2025-01-01': 1 } }),
-        book('b', { pages: 600, minutes: 600, formats: ['storytel'], readingLog: { '2026-01-06': 0.1 } }),
-        book('c', { readingLog: { '2026-01-06': 0.5 } }), // no length: left out
-      ],
-      2026,
-    )
-    expect(m[0]).toEqual({ pages: 100, minutes: 60 })
-    expect(m[1]).toEqual({ pages: 200, minutes: 0 })
-    expect(m[2]).toEqual({ pages: 0, minutes: 0 })
   })
 })
 

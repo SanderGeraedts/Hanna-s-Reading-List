@@ -2160,31 +2160,6 @@ textarea.input {
   text-align: right;
 }
 
-/* ---- upcoming releases (#103) ----------------------------------------- */
-.upcoming-list {
-  list-style: none;
-  margin: 0.5rem 0 0;
-  padding: 0;
-  display: grid;
-  gap: 0.6rem;
-}
-.upcoming-list li {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-.upcoming-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.1rem;
-}
-.upcoming-info .input {
-  width: auto;
-}
-
 /* ---- page edges (#98) -------------------------------------------------- */
 .edges-actions,
 .edges-pick {
@@ -2207,36 +2182,7 @@ textarea.input {
   cursor: pointer;
 }
 
-/* ---- recommended for you ----------------------------------------------- */
-.recommend-list {
-  list-style: none;
-  margin: 0.5rem 0 0;
-  padding: 0;
-  display: grid;
-  gap: 0.75rem;
-}
-.recommend-list li {
-  display: flex;
-  gap: 0.7rem;
-  align-items: flex-start;
-}
-.recommend-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  min-width: 0;
-}
-.recommend-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-top: 0.25rem;
-}
-.btn.ghost {
-  background: transparent;
-}
-
-/* ---- more for the dashboard: pace, heatmap, spice, formats, year in review, bingo ---- */
+/* ---- more for the dashboard: pace, heatmap, spice, year in review, bingo ---- */
 .goal-to-go {
   font-size: 0.9rem;
   margin-bottom: 0.2rem !important;
@@ -2315,30 +2261,6 @@ textarea.input {
   height: 100%;
   border-radius: 999px;
   background: linear-gradient(90deg, #e9b85f, #e07a62 60%, #c9423a);
-}
-
-/* listening and reading: two small charts, each with its own scale */
-.formats-charts {
-  display: grid;
-  gap: 0.25rem;
-}
-.formats-label {
-  display: flex;
-  gap: 0.4rem;
-  align-items: center;
-  margin: 0.3rem 0 0 !important;
-}
-.formats-label .key {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  background: var(--accent);
-}
-.formats-label .key.listen {
-  background: #8fb8c9;
-}
-.bar-chart.listen .bar {
-  fill: #8fb8c9;
 }
 
 /* year in review */
@@ -2436,48 +2358,6 @@ textarea.input {
   .wrapped-numbers strong {
     font-size: 1.6rem;
   }
-}
-
-/* ---- complete your series ---------------------------------------------- */
-.complete-list {
-  list-style: none;
-  margin: 0.5rem 0 0;
-  padding: 0;
-  display: grid;
-  gap: 0.75rem;
-}
-.complete-gap {
-  margin: 0.15rem 0 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem 0.75rem;
-  align-items: baseline;
-}
-.dashboard .find-rest {
-  color: var(--accent);
-}
-.complete-missing {
-  list-style: none;
-  margin: 0.4rem 0 0;
-  padding: 0;
-  display: grid;
-  gap: 0.35rem;
-}
-.complete-book {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  min-width: 0;
-}
-.dashboard .dash-cover.tiny {
-  width: 1.1rem;
-  flex: none;
-}
-.complete-missing li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.5rem;
 }
 
 /* look up a missing back text */
