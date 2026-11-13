@@ -13,6 +13,8 @@ export const SORT_KEYS = [
   'color',
   'added',
   'status',
+  'rating',
+  'spice',
 ] as const
 
 export type SortKey = (typeof SORT_KEYS)[number]

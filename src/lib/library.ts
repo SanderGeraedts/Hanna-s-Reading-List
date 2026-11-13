@@ -171,6 +171,8 @@ export const SORT_LABELS: Record<SortKey, string> = {
   color: 'Colour',
   added: 'Date added',
   status: 'Reading status',
+  rating: 'Rating',
+  spice: 'Spice',
 }
 
 export const STATUS_LABELS: Record<ReadingStatus, string> = {
@@ -730,6 +732,20 @@ export function sortBooks(books: Book[], key: SortKey): Book[] {
       return copy.sort((a, b) => a.addedAt - b.addedAt)
     case 'status':
       return copy.sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status])
+    case 'rating':
+      // best first, unrated at the end; equal ratings by title
+      return copy.sort(
+        (a, b) =>
+          (starsOf(b) ?? -1) - (starsOf(a) ?? -1) || collator.compare(sortableTitle(a.title), sortableTitle(b.title)),
+      )
+    case 'spice':
+      // spiciest first, then No spice, then not scored; equal spice by rating, then title
+      return copy.sort(
+        (a, b) =>
+          spiceRank(b) - spiceRank(a) ||
+          (starsOf(b) ?? -1) - (starsOf(a) ?? -1) ||
+          collator.compare(sortableTitle(a.title), sortableTitle(b.title)),
+      )
     case 'color':
       return copy.sort((a, b) => {
         const [ha, sa, la] = hexToHsl(a.color)
@@ -743,6 +759,14 @@ export function sortBooks(books: Book[], key: SortKey): Book[] {
       })
   }
 }
+
+/** A book's stars for sorting: ½ to 5, or undefined when not rated. */
+export const starsOf = (b: Book) =>
+  typeof b.rating === 'number' && Number.isFinite(b.rating) && b.rating > 0 ? Math.min(5, b.rating) : undefined
+
+/** A book's spice for sorting: 1 to 5 peppers, 0 for No spice, -1 when not scored. */
+export const spiceRank = (b: Book) =>
+  typeof b.spice !== 'number' || !Number.isFinite(b.spice) ? -1 : Math.min(5, Math.max(0, Math.round(b.spice)))
 
 /** The group a book falls in when arranged by genre, language or format (undefined: unknown). */
 export function groupOf(key: 'genre' | 'language' | 'format'): (b: Book) => string | undefined {

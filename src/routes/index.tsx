@@ -34,8 +34,12 @@ export const Route = createFileRoute('/')({
 
 const FACE_ANGLE: Record<Face, number> = { front: 0, spine: Math.PI / 2, back: Math.PI }
 
-/** the arrangements in the menu: genre is a filter now (#41), and colour is gone (#45) */
-const MENU_SORT_KEYS: SortKey[] = (Object.keys(SORT_LABELS) as SortKey[]).filter((k) => k !== 'genre' && k !== 'color')
+/**
+ * the arrangements in the menu: genre is a filter now (#41), colour is gone
+ * (#45), and Hanna doesn't use How I have it or Date added
+ */
+const NOT_IN_MENU: SortKey[] = ['genre', 'color', 'format', 'added']
+const MENU_SORT_KEYS: SortKey[] = (Object.keys(SORT_LABELS) as SortKey[]).filter((k) => !NOT_IN_MENU.includes(k))
 
 /** the book fields each arrangement sorts by */
 const RESORT_ON: Partial<Record<SortKey, Array<keyof Book>>> = {
@@ -43,6 +47,8 @@ const RESORT_ON: Partial<Record<SortKey, Array<keyof Book>>> = {
   series: ['series', 'seriesIndex', 'title'],
   language: ['language'],
   format: ['format', 'formats'],
+  rating: ['rating', 'title'],
+  spice: ['spice', 'rating', 'title'],
 }
 
 function Home() {
