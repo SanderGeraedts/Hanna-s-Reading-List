@@ -1,13 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Book } from '#/lib/library'
 import { formatDuration } from '#/lib/listening'
 import { amountText } from '#/lib/readingLog'
 import { cleanSpice, ratingText } from '#/lib/ratings'
 import { readingYears } from '#/lib/stats'
 import {
-  BINGO_IDS,
-  bingo,
-  bingoLines,
   favouriteAuthors,
   finishEstimates,
   heatmap,
@@ -16,6 +13,7 @@ import {
   yearReview,
 } from '#/lib/insightsMore'
 import type { HeatDay } from '#/lib/insightsMore'
+import { bingoLines, bingoYear, rememberCard } from '#/lib/bingo'
 import { StarRating } from './StarRating'
 import { BookLine } from './DashboardExtras'
 import { Cover, PeriodSelect, PeriodTabs, monthName, periodLabel, toPeriod } from './Dashboard'
@@ -285,6 +283,7 @@ export function WrappedCard({ books, onShowBook }: Props) {
   if (r.busiest)
     facts.push(['Busiest month', `${monthName(r.busiest.month)} (${plural(r.busiest.books, 'book')})`])
   if (r.streak > 1) facts.push(['Longest streak', plural(r.streak, 'day')])
+  if (r.bingoCards > 0) facts.push(['Bingo cards', `${r.bingoCards} full 🎉`])
   return (
     <section className="dash-card wrapped-card" aria-labelledby="wrapped-title">
       <div className="dash-card-head">
@@ -346,91 +345,71 @@ export function WrappedCard({ books, onShowBook }: Props) {
 
 // ---- book bingo ----------------------------------------------------------------------
 
-const bingoKey = (accountId: string | null, year: number) =>
-  `hannas-reading-list:bingo:${accountId ?? 'local'}:${year}`
-
-/** The squares she ticked by hand, remembered on this device for this account and year. */
-function useManualTicks(accountId: string | null, year: number) {
-  const key = bingoKey(accountId, year)
-  const read = useCallback((): string[] => {
-    try {
-      const list: unknown = JSON.parse(localStorage.getItem(key) ?? '[]')
-      return Array.isArray(list) ? list.filter((id): id is string => BINGO_IDS.includes(id)) : []
-    } catch {
-      return []
-    }
-  }, [key])
-  const [ticks, setTicks] = useState<string[]>([])
-  // read after the first render, so the server's page and the browser's agree
-  useEffect(() => setTicks(read()), [read])
-  const toggle = (id: string) => {
-    const next = ticks.includes(id) ? ticks.filter((t) => t !== id) : [...ticks, id]
-    setTicks(next)
-    try {
-      localStorage.setItem(key, JSON.stringify(next))
-    } catch {
-      /* storage blocked: it still holds for this visit */
-    }
-  }
-  return [ticks, toggle] as const
-}
-
-export function BingoCard({ books, accountId }: { books: Book[]; accountId: string | null }) {
+export function BingoCard({
+  books,
+  onUpdate,
+}: {
+  books: Book[]
+  onUpdate: (id: string, patch: (book: Book) => Partial<Book>) => void
+}) {
   const year = new Date().getFullYear()
-  const squares = useMemo(() => bingo(books, year), [books, year])
-  const [manual, toggle] = useManualTicks(accountId, year)
-  const ticked = squares.map((s) => s.auto || manual.includes(s.id))
+  const b = useMemo(() => bingoYear(books, year), [books, year])
+  // a card just found full is remembered on the book that filled it, so it stays full (#119)
+  useEffect(() => {
+    for (const { bookId, card } of b.toRemember) onUpdate(bookId, (book) => rememberCard(book, card))
+  }, [b.toRemember, onUpdate])
+  const ticked = b.squares.map((s) => s.ticked)
   const done = ticked.filter(Boolean).length
   const lines = bingoLines(ticked)
+  const full = b.finished.length
   return (
     <section className="dash-card" aria-labelledby="bingo-title">
       <div className="dash-card-head">
-        <h2 id="bingo-title">Book bingo {year}</h2>
+        <h2 id="bingo-title">
+          Book bingo {year}
+          {b.card > 1 && <span className="muted"> · card {b.card}</span>}
+        </h2>
         <span className="muted small-text">
-          {done} of {squares.length}
+          {done} of {b.squares.length}
           {lines > 0 && ` · ${lines === 1 ? 'Bingo!' : `${lines} bingos!`} 🎉`}
         </span>
       </div>
-      <div className="bingo" role="group" aria-label={`Book bingo ${year}`}>
-        {squares.map((s, i) => {
-          const on = ticked[i]
-          const how = s.auto
-            ? s.book
-              ? `Done: ${s.book.title}`
-              : 'Done'
-            : on
-              ? 'Ticked by you. Tap to untick.'
-              : s.manualOnly
-                ? 'Tap to tick when you’ve done it'
-                : 'Ticks itself when a finished book fits. Or tap to tick it yourself.'
+      {full > 0 && (
+        <p className="small-text bingo-full">
+          {full === 1 ? '1 full card' : `${full} full cards`} this year 🎉
+        </p>
+      )}
+      <div className="bingo" role="group" aria-label={`Book bingo ${year}, card ${b.card}`}>
+        {b.squares.map((s) => {
+          const how = s.ticked ? (s.book ? `Done: ${s.book.title}` : 'Done') : 'Ticks itself when a finished book fits'
           return (
-            <button
+            <div
               key={s.id}
-              className={`bingo-square${on ? ' on' : ''}${s.auto ? ' auto' : ''}`}
-              aria-pressed={on}
+              className={`bingo-square${s.ticked ? ' on auto' : ''}`}
+              role="img"
               title={how}
               aria-label={`${s.label}. ${how}`}
-              // a square ticked by a book stays ticked
-              onClick={() => !s.auto && toggle(s.id)}
-              aria-disabled={s.auto || undefined}
             >
-              {s.auto && s.book ? (
+              {s.book ? (
                 <span className="bingo-cover" aria-hidden>
                   <Cover book={s.book} small />
                 </span>
               ) : (
-                on && (
+                s.ticked && (
                   <span className="bingo-tick" aria-hidden>
                     ✓
                   </span>
                 )
               )}
               <span className="bingo-label">{s.label}</span>
-            </button>
+            </div>
           )
         })}
       </div>
-      <p className="muted hint">Squares tick themselves from the books you finish this year. Tap the others when you've done them.</p>
+      <p className="muted hint">
+        Squares tick themselves from the books you finish. A square still open a month after the card started swaps
+        for another. A full card gives you a new one.
+      </p>
     </section>
   )
 }

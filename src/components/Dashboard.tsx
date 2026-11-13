@@ -57,6 +57,8 @@ export interface Props {
 interface DashboardProps extends Props {
   /** the signed-in account, or null when the shelf lives in this browser only */
   accountId: string | null
+  /** change a book: book bingo remembers a full card on the book that filled it (#119) */
+  onUpdate: (id: string, patch: (book: Book) => Partial<Book>) => void
 }
 
 export interface PeriodPick {
@@ -126,7 +128,7 @@ interface Drag {
   drop: Drop | null
 }
 
-export function Dashboard({ books, onShowBook, accountId }: DashboardProps) {
+export function Dashboard({ books, onShowBook, accountId, onUpdate }: DashboardProps) {
   const now = new Date()
   // the period picked under "Books read"; the charts and records follow it
   const [pick, setPick] = useState<PeriodPick>({ kind: 'year', year: now.getFullYear(), month: now.getMonth() + 1 })
@@ -159,7 +161,7 @@ export function Dashboard({ books, onShowBook, accountId }: DashboardProps) {
     authors: <AuthorsCard books={books} />,
     spice: <SpiceCard books={books} onShowBook={onShowBook} />,
     wrapped: <WrappedCard books={books} onShowBook={onShowBook} />,
-    bingo: <BingoCard books={books} accountId={accountId} />,
+    bingo: <BingoCard books={books} onUpdate={onUpdate} />,
   }
 
   const columns: BlockId[][] = narrow ? [singleColumn(layout)] : layout.columns

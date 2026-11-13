@@ -55,6 +55,15 @@ export function mergeBooks(keep: Book, other: Book): Book {
     lent: keep.lent ?? other.lent,
     edges: keep.edges ?? other.edges,
     rating: keep.rating ?? other.rating,
+    // full bingo cards stay full (#119)
+    ...((keep.bingoCards?.length || other.bingoCards?.length) && {
+      bingoCards: [
+        ...(keep.bingoCards ?? []),
+        ...(other.bingoCards ?? []).filter(
+          (c) => !keep.bingoCards?.some((k) => k.year === c.year && k.card === c.card),
+        ),
+      ],
+    }),
     spice: keep.spice ?? other.spice,
     // furthest along wins
     status,

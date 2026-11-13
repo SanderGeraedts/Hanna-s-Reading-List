@@ -5,8 +5,6 @@ vi.mock('#/server/shelf', () => ({ loadShelf: async () => null, saveShelf: async
 
 const {
   addDays,
-  bingo,
-  bingoLines,
   favouriteAuthors,
   finishEstimate,
   goalPace,
@@ -156,49 +154,6 @@ describe('year in review', () => {
     expect(r.topRated?.id).toBe('b')
     expect(r.spiciest?.id).toBe('c')
     expect(['Fantasy', 'Romance']).toContain(r.genre)
-  })
-})
-
-describe('book bingo', () => {
-  const ticked = (squares: ReturnType<typeof bingo>) => squares.filter((s) => s.auto).map((s) => s.id)
-
-  it('ticks squares from the books finished that year', () => {
-    const squares = bingo(
-      [
-        read('long', '2026-02-01', { pages: 650, language: 'nl', authors: ['New Author'] }),
-        read('short', '2026-02-10', { pages: 150, authors: ['Old Friend'], genres: ['Thriller'] }),
-        read('old', '2024-02-10', { authors: ['Old Friend'] }),
-        book('again', { status: 'read', readCount: 2, finished: ['2026-03-01'], authors: ['Old Friend'] }),
-        read('quick', '2026-04-07', { started: ['2026-04-02'], rating: 5, spice: 4, authors: ['Old Friend'] }),
-        read('listen', '2026-02-20', { formats: ['storytel'], minutes: 500, authors: ['Old Friend'] }),
-      ],
-      2026,
-    )
-    expect(squares.length).toBe(16)
-    expect(ticked(squares).sort()).toEqual(
-      ['audio', 'author', 'dutch', 'five', 'genre', 'long', 'reread', 'short', 'spicy', 'three', 'week'].sort(),
-    )
-    expect(squares.find((s) => s.id === 'author')!.book!.id).toBe('long')
-    expect(squares.filter((s) => s.manualOnly).every((s) => !s.auto)).toBe(true)
-  })
-
-  it('ticks a finished series and leaves other years alone', () => {
-    const shelf = [
-      read('s1', '2025-05-01', { series: 'Crowns', seriesIndex: 1 }),
-      read('s2', '2026-05-01', { series: 'Crowns', seriesIndex: 2 }),
-    ]
-    expect(ticked(bingo(shelf, 2026))).toContain('series')
-    expect(ticked(bingo([...shelf, book('s3', { series: 'Crowns', seriesIndex: 3 })], 2026))).not.toContain('series')
-    expect(ticked(bingo(shelf, 2024))).toEqual([])
-  })
-
-  it('counts lines', () => {
-    const t = Array(16).fill(false)
-    expect(bingoLines(t)).toBe(0)
-    for (const i of [0, 1, 2, 3]) t[i] = true
-    expect(bingoLines(t)).toBe(1)
-    for (const i of [5, 10, 15]) t[i] = true
-    expect(bingoLines(t)).toBe(2)
   })
 })
 
