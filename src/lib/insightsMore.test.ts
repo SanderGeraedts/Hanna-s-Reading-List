@@ -131,6 +131,15 @@ describe('spice meter', () => {
     expect(s.spiciest.map((b) => b.id)).toEqual(['c', 'b', 'a'])
     expect(spiceStats([read('d', '2026-03-01')], { kind: 'all' }).average).toBeUndefined()
   })
+
+  it('counts No spice as 0, but never as one of the spiciest', () => {
+    const shelf = [read('a', '2026-01-01', { spice: 4 }), read('clean', '2026-02-01', { spice: 0 }), read('d', '2026-03-01')]
+    const s = spiceStats(shelf, { kind: 'year', year: 2026 })
+    expect(s.average).toBe(2)
+    expect(s.rated).toBe(2)
+    expect(s.spiciest.map((b) => b.id)).toEqual(['a'])
+    expect(spiceStats([read('clean', '2026-02-01', { spice: 0 })], { kind: 'all' }).average).toBe(0)
+  })
 })
 
 describe('year in review', () => {

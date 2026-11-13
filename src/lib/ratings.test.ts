@@ -3,7 +3,7 @@ import type { Book } from './library'
 
 vi.mock('#/server/shelf', () => ({ loadShelf: async () => null, saveShelf: async () => ({ updated: 't' }) }))
 
-const { cleanRating, cleanSpice, ratingText, spiceText, topRated } = await import('./ratings')
+const { cleanRating, cleanSpice, ratingText, spiceScore, spiceText, topRated } = await import('./ratings')
 const { mergeBooks } = await import('./merge')
 
 const book = (id: string, extra: Partial<Book> = {}): Book => ({
@@ -51,7 +51,22 @@ describe('ratings (#100)', () => {
     expect(cleanSpice(9)).toBe(5)
     expect(cleanSpice(0)).toBeUndefined()
     expect(spiceText(2)).toBe('Spice 2 of 5')
-    expect(spiceText(undefined)).toBe('No spice level')
+    expect(spiceText(undefined)).toBe('Spice not scored')
+  })
+
+  it('No spice is 0, set on purpose; not scored stays undefined', () => {
+    expect(spiceScore(0)).toBe(0)
+    expect(spiceScore(3)).toBe(3)
+    expect(spiceScore(undefined)).toBeUndefined()
+    expect(spiceText(0)).toBe('No spice')
+    // no spice doesn't count as a spicy book anywhere peppers are counted
+    expect(cleanSpice(0)).toBeUndefined()
+  })
+
+  it('a merge keeps No spice and Sleep read', () => {
+    expect(mergeBooks(book('a'), book('b', { spice: 0 })).spice).toBe(0)
+    expect(mergeBooks(book('a'), book('b', { sleepRead: true })).sleepRead).toBe(true)
+    expect(mergeBooks(book('a'), book('b')).sleepRead).toBeUndefined()
   })
 
   it('a merge keeps the rating and the spice', () => {

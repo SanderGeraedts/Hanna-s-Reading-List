@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Book } from '#/lib/library'
-import { ratingText, spiceText } from '#/lib/ratings'
+import { NO_SPICE, ratingText, spiceText } from '#/lib/ratings'
 import { StarRating } from './StarRating'
 
 interface Props {
@@ -17,7 +17,7 @@ export function RatingDialog({ book, onUpdate, onClose }: Props) {
   const dialog = useRef<HTMLDialogElement>(null)
   // what it had before this read, so a re-read can keep it in one tap
   const [before] = useState(() => ({ rating: book.rating, spice: book.spice }))
-  const reread = !!(before.rating || before.spice)
+  const reread = !!before.rating || before.spice !== undefined
   const changed = book.rating !== before.rating || book.spice !== before.spice
   useEffect(() => {
     dialog.current?.showModal()
@@ -68,6 +68,14 @@ export function RatingDialog({ book, onUpdate, onClose }: Props) {
           size="large"
           label={`Spice level for ${book.title}`}
         />
+        <button
+          type="button"
+          className="format-chip no-spice"
+          aria-pressed={book.spice === NO_SPICE}
+          onClick={() => onUpdate({ spice: book.spice === NO_SPICE ? undefined : NO_SPICE })}
+        >
+          No spice
+        </button>
         <p className="muted small-text" aria-live="polite">
           {spiceText(book.spice)}
         </p>
@@ -84,7 +92,7 @@ export function RatingDialog({ book, onUpdate, onClose }: Props) {
             </button>
           )}
           <button className="btn" onClick={close}>
-            {reread ? (changed ? 'Done' : 'Still the same') : book.rating || book.spice ? 'Done' : 'Not now'}
+            {reread ? (changed ? 'Done' : 'Still the same') : book.rating || book.spice !== undefined ? 'Done' : 'Not now'}
           </button>
         </div>
       </div>

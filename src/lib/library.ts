@@ -50,8 +50,10 @@ export interface Book {
   readCount?: number
   /** her rating, ½ to 5 stars in halves (#100) */
   rating?: number
-  /** how spicy (steamy) she found it, 1 to 5 peppers */
+  /** how spicy (steamy) she found it, 1 to 5 peppers; 0 is No spice, set on purpose */
   spice?: number
+  /** a go-to-sleep read: finishing it doesn't ask for a rating */
+  sleepRead?: boolean
   /**
    * the days it was finished (yyyy-mm-dd, oldest first), noted from #59 on;
    * books finished before that have none until Hanna fills one in

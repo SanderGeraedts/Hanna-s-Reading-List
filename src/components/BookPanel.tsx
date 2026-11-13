@@ -17,7 +17,7 @@ import { LANGUAGE_CHOICES, languageName } from '#/lib/languages'
 import { tidyTitle } from '#/lib/titles'
 import type { SeriesInfo } from '#/lib/series'
 import { StarRating } from './StarRating'
-import { ratingText, spiceText } from '#/lib/ratings'
+import { NO_SPICE, ratingText, spiceText } from '#/lib/ratings'
 import { backText } from './textures'
 import { MergeSection } from './MergeSection'
 import { EdgesField } from './EdgesField'
@@ -488,6 +488,14 @@ export function BookPanel({
           <span>Spice</span>
           <div className="rating-field">
             <StarRating kind="spice" value={book.spice} onChange={(spice) => onUpdate({ spice })} size="large" />
+            <button
+              type="button"
+              className="format-chip no-spice"
+              aria-pressed={book.spice === NO_SPICE}
+              onClick={() => onUpdate({ spice: book.spice === NO_SPICE ? undefined : NO_SPICE })}
+            >
+              No spice
+            </button>
             <span className="muted small-text">{spiceText(book.spice)}</span>
           </div>
         </div>
@@ -598,6 +606,21 @@ export function BookPanel({
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="field">
+        <span>Sleep read</span>
+        <div className="chips">
+          <button
+            type="button"
+            className="format-chip"
+            aria-pressed={!!book.sleepRead}
+            onClick={() => onUpdate({ sleepRead: book.sleepRead ? undefined : true })}
+          >
+            🌙 Sleep read
+          </button>
+        </div>
+        <small className="muted">A book you read to fall asleep: no rating question when you finish it.</small>
       </div>
 
       <div className="field-row">

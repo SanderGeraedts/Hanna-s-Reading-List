@@ -54,6 +54,7 @@ export function mergeBooks(keep: Book, other: Book): Book {
     language: keep.language ?? other.language,
     lent: keep.lent ?? other.lent,
     edges: keep.edges ?? other.edges,
+    sleepRead: keep.sleepRead || other.sleepRead || undefined,
     rating: keep.rating ?? other.rating,
     // full bingo cards stay full (#119)
     ...((keep.bingoCards?.length || other.bingoCards?.length) && {

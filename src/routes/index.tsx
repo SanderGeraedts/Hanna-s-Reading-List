@@ -418,7 +418,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           // finishing a book counts as a read, finishing it again as one more (#53)
           onStatus={(status) => {
             updateBook(selected.id, statusPatch(selected, status))
-            if (status === 'read' && selected.status !== 'read') setRatingFor(selected.id)
+            // a sleep read doesn't ask for a rating
+            if (status === 'read' && selected.status !== 'read' && !selected.sleepRead) setRatingFor(selected.id)
           }}
           // what she read today goes in the reading log (#76)
           onProgress={(progress) => updateBook(selected.id, (b) => progressPatch(b, progress))}
