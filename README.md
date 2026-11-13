@@ -55,12 +55,19 @@ With `POCKETBASE_URL` set, the app asks people to sign in and keeps each person'
 
 Without `POCKETBASE_URL` there's no sign-in, and each browser keeps its own shelf in `localStorage`.
 
-To try it locally, download PocketBase, then run it with the migrations from this repo and create a user in its admin screen:
+To try it locally, download the PocketBase version named in `deploy/nas/Dockerfile` into `.pocketbase/` (gitignored), run it with this repo's schema and hooks, and sign up on the sign-in screen with the address you put in `SIGNUP_EMAILS`:
 
 ```bash
-pocketbase serve --migrationsDir=deploy/nas/pb_migrations
+SIGNUP_EMAILS=test@example.com .pocketbase/pocketbase serve --dir=.pocketbase/pb_data \
+  --migrationsDir=deploy/nas/pb_migrations --hooksDir=deploy/nas/pb_hooks
 POCKETBASE_URL=http://127.0.0.1:8090 npm run dev
 ```
+
+Never point a local dev server at the production `POCKETBASE_URL` (see #96).
+
+## Working on it with Claude
+
+`CLAUDE.md` is the project guide for Claude Code. Hanna has her own Claude instance, which follows [`docs/hanna-guardrails.md`](docs/hanna-guardrails.md): she can build features on her own, and anything that would need Sander (the NAS, secrets, paid or signed-up services, the shelf sync) is explained first and opened as a draft PR labelled `needs-sander`. Feature requests go through the `feature-chat` skill (`.claude/skills/feature-chat/`). `.github/CODEOWNERS` lists the paths only Sander may approve.
 
 ## How it fits together
 

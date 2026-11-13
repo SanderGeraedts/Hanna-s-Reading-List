@@ -14,3 +14,6 @@ todos.json
 
 # Local Netlify folder
 .netlify
+
+# Local PocketBase for development (docs/hanna-guardrails.md)
+.pocketbase
