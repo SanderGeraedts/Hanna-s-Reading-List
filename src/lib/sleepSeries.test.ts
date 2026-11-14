@@ -110,6 +110,13 @@ describe('"Is this part of …?"', () => {
     expect(seriesQuestions([...shelf, book('no', { addedAt: NEW, ...notInSeries })])).toEqual([])
   })
 
+  it('asks about a book added the evening it went live (#131)', () => {
+    // Hanna's test book: 13 November 2026, 23:15 in Amsterdam
+    const evening = book('test', { addedAt: Date.UTC(2026, 10, 13, 22, 15) })
+    expect(seriesQuestions([...shelf, evening]).map((x) => x.book.id)).toEqual(['test'])
+    expect(seriesQuestions([...shelf, book('before', { addedAt: Date.UTC(2026, 10, 13, 21, 0) })])).toEqual([])
+  })
+
   it('matches author names written differently', () => {
     expect(authorKey('J.R.R. Tolkien')).toBe(authorKey('J. R. R. Tolkien'))
     expect(authorKey('Rick Riordan')).toBe(authorKey('rick  riordan'))

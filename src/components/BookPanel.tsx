@@ -17,6 +17,7 @@ import {
 import { LANGUAGE_CHOICES, languageName } from '#/lib/languages'
 import { tidyTitle } from '#/lib/titles'
 import type { SeriesInfo } from '#/lib/series'
+import type { SeriesChoice } from '#/lib/sleepSeries'
 import { StarRating } from './StarRating'
 import { NO_SPICE, ratingText, spiceText } from '#/lib/ratings'
 import { backText } from './textures'
@@ -44,6 +45,10 @@ interface Props {
   sleepSeries?: { name: string; on: boolean }
   /** mark or unmark the whole series as a sleep read */
   onSleepSeries?: (on: boolean) => void
+  /** a new book by a series author, not asked yet: "Part of a series?" (#131) */
+  seriesChoices?: SeriesChoice[]
+  /** the answer: a series to join, or null for "Not in a series" */
+  onSeriesAnswer?: (choice: SeriesChoice | null) => void
   /** merge another copy into this book */
   onMerge: (otherId: string) => void
   onRemove: () => void
@@ -163,6 +168,8 @@ export function BookPanel({
   shelf,
   sleepSeries,
   onSleepSeries,
+  seriesChoices,
+  onSeriesAnswer,
   onMerge,
   onRemove,
   onClose,
@@ -755,6 +762,30 @@ export function BookPanel({
             onBlur={save}
           />
         </div>
+        {seriesChoices && onSeriesAnswer && seriesChoices.length > 0 && (
+          <div className="series-suggest">
+            <small className="muted">Part of a series?</small>
+            <div className="chips">
+              {seriesChoices.map((c) => (
+                <button
+                  key={c.key}
+                  type="button"
+                  className="btn small"
+                  onClick={() => {
+                    setSeriesName(c.name)
+                    onSeriesAnswer(c)
+                  }}
+                >
+                  {c.sleep && '🌙 '}
+                  {c.name}
+                </button>
+              ))}
+              <button type="button" className="btn small" onClick={() => onSeriesAnswer(null)}>
+                Not in a series
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className={audio ? 'field-row facts-row' : undefined}>
