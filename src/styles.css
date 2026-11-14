@@ -2374,6 +2374,9 @@ textarea.input {
 .series-question-book {
   margin: 0 0 0.35rem;
 }
+.suggestions {
+  margin-top: 0.35rem;
+}
 .series-suggest {
   display: grid;
   gap: 0.3rem;
