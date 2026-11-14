@@ -12,6 +12,7 @@ import {
   OnThisDayCard,
   PileCard,
   RecordsCard,
+  RecentCard,
   SeriesCard,
   StreakCard,
   dayStory,
@@ -161,6 +162,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate }: DashboardP
     authors: <AuthorsCard books={books} />,
     spice: <SpiceCard books={books} onShowBook={onShowBook} />,
     wrapped: <WrappedCard books={books} onShowBook={onShowBook} />,
+    recent: <RecentCard books={books} onShowBook={onShowBook} />,
     bingo: <BingoCard books={books} onUpdate={onUpdate} />,
   }
 
