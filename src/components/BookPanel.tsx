@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { formatPublished, normalizeIsbn, parsePublished, publishedYear } from '#/lib/bookFacts'
-import { seriesGroups } from '#/lib/series'
 import { formatDuration, hasAudio, lengthPatch, linkOnFormatChange, listenOnly, parseDuration } from '#/lib/listening'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { Book, BookFormat, ReadingStatus } from '#/lib/library'
@@ -17,7 +16,6 @@ import {
 import { LANGUAGE_CHOICES, languageName } from '#/lib/languages'
 import { tidyTitle } from '#/lib/titles'
 import type { SeriesInfo } from '#/lib/series'
-import type { SeriesChoice } from '#/lib/sleepSeries'
 import { StarRating } from './StarRating'
 import { NO_SPICE, ratingText, spiceText } from '#/lib/ratings'
 import { backText } from './textures'
@@ -45,10 +43,6 @@ interface Props {
   sleepSeries?: { name: string; on: boolean }
   /** mark or unmark the whole series as a sleep read */
   onSleepSeries?: (on: boolean) => void
-  /** a new book by a series author, not asked yet: "Part of a series?" (#131) */
-  seriesChoices?: SeriesChoice[]
-  /** the answer: a series to join, or null for "Not in a series" */
-  onSeriesAnswer?: (choice: SeriesChoice | null) => void
   /** merge another copy into this book */
   onMerge: (otherId: string) => void
   onRemove: () => void
@@ -168,8 +162,6 @@ export function BookPanel({
   shelf,
   sleepSeries,
   onSleepSeries,
-  seriesChoices,
-  onSeriesAnswer,
   onMerge,
   onRemove,
   onClose,
@@ -180,12 +172,6 @@ export function BookPanel({
   const pct = Math.round(progress * 100)
   const reads = timesRead(book)
   const [seriesName, setSeriesName] = useState(book.series ?? '')
-  // every series name on the shelf, for the suggestions under Series
-  const seriesNames = useMemo(() => {
-    const names = new Set<string>()
-    for (const g of seriesGroups(shelf).values()) if (g.key) names.add(g.name)
-    return [...names].sort((a, b) => a.localeCompare(b))
-  }, [shelf])
   const [blurb, setBlurb] = useState(backText(book))
   const [seriesNo, setSeriesNo] = useState(book.seriesIndex?.toString() ?? '')
   const [pagesDraft, setPagesDraft] = useState(book.pages?.toString() ?? '')
@@ -736,19 +722,12 @@ export function BookPanel({
 
       <div className="field">
         <span>Series</span>
-        {/* the series already on the shelf, suggested while typing, so one series isn't split by a typo */}
-        <datalist id="series-options">
-          {seriesNames.map((n) => (
-            <option key={n} value={n} />
-          ))}
-        </datalist>
         <div className="series-row">
           <input
             className="input"
             value={seriesName}
             placeholder={detectedSeries && !book.series ? detectedSeries.name : 'Not in a series'}
             aria-label="Series name"
-            list="series-options"
             onChange={(e) => setSeriesName(e.target.value)}
             onBlur={save}
           />
@@ -762,30 +741,6 @@ export function BookPanel({
             onBlur={save}
           />
         </div>
-        {seriesChoices && onSeriesAnswer && seriesChoices.length > 0 && (
-          <div className="series-suggest">
-            <small className="muted">Part of a series?</small>
-            <div className="chips">
-              {seriesChoices.map((c) => (
-                <button
-                  key={c.key}
-                  type="button"
-                  className="btn small"
-                  onClick={() => {
-                    setSeriesName(c.name)
-                    onSeriesAnswer(c)
-                  }}
-                >
-                  {c.sleep && '🌙 '}
-                  {c.name}
-                </button>
-              ))}
-              <button type="button" className="btn small" onClick={() => onSeriesAnswer(null)}>
-                Not in a series
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       <div className={audio ? 'field-row facts-row' : undefined}>

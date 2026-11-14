@@ -1465,6 +1465,27 @@ textarea.input {
 .cover-btn:focus-visible {
   transform: translateY(-3px);
 }
+/* ---- newly added (#132) ------------------------------------------------- */
+.recent-covers {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+.recent-covers .cover-btn {
+  width: 100%;
+  padding: 0;
+}
+.recent-covers .dash-cover.small {
+  width: 100%;
+}
+@media (max-width: 720px) {
+  .recent-covers {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
 .cover-row {
   list-style: none;
   margin: 0;
@@ -2352,9 +2373,4 @@ textarea.input {
 }
 .series-question-book {
   margin: 0 0 0.35rem;
-}
-.series-suggest {
-  display: grid;
-  gap: 0.3rem;
-  margin-top: 0.4rem;
 }

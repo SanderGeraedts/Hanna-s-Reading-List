@@ -21,12 +21,8 @@ import { seriesGroups } from './series'
  * (`seriesAsked`). Only books added from the day this shipped are asked.
  */
 
-/**
- * Books added from this moment on are asked about: when it went live, on
- * 13 November 2026 at 22:44 in Amsterdam (#131; it was midnight at first, so
- * a book added that evening to try it was never asked).
- */
-export const SERIES_QUESTION_FROM = Date.UTC(2026, 10, 13, 21, 44)
+/** Books added from this moment on are asked about (14 November 2026, Amsterdam). */
+export const SERIES_QUESTION_FROM = Date.UTC(2026, 10, 13, 23, 0)
 
 type Groups = ReturnType<typeof seriesGroups>
 

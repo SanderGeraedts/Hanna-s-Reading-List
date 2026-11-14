@@ -6,7 +6,6 @@ import { BookPanel } from '#/components/BookPanel'
 import { CoverPicker } from '#/components/CoverPicker'
 import { RatingDialog } from '#/components/RatingDialog'
 import { SeriesQuestionDialog } from '#/components/SeriesQuestionDialog'
-import type { SeriesChoice } from '#/lib/sleepSeries'
 import { joinSeries, markSleepSeries, notInSeries, seriesQuestions, skipsRatingQuestion, sleepSeriesKeys } from '#/lib/sleepSeries'
 import type { Face } from '#/components/BookPanel'
 import { nearestTurn } from '#/components/BookMesh'
@@ -170,10 +169,10 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   const sleepKeys = useMemo(() => sleepSeriesKeys(books, groups), [books, groups])
   const selectedGroup = selected ? groups.get(selected.id) : undefined
   const [askLater, setAskLater] = useState<string[]>([])
-  const allQuestions = useMemo(() => (loaded ? seriesQuestions(books) : []), [books, loaded])
-  const questions = useMemo(() => allQuestions.filter((q) => !askLater.includes(q.book.id)), [allQuestions, askLater])
-  // the same question in the book panel, even after Later (#131)
-  const selectedChoices = selected ? allQuestions.find((q) => q.book.id === selected.id)?.choices : undefined
+  const questions = useMemo(
+    () => (loaded ? seriesQuestions(books).filter((q) => !askLater.includes(q.book.id)) : []),
+    [books, loaded, askLater],
+  )
   const genreOptions = useMemo(() => genreSuggestions(books.flatMap((b) => b.genres ?? [])), [books])
   useBookDetails(allBooks, loaded, updateBook)
 
@@ -443,11 +442,6 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             onSleepSeries: (on: boolean) => {
               for (const [id, patch] of markSleepSeries(books, selectedGroup.key, on, groups)) updateBook(id, patch)
             },
-          })}
-          {...(selectedChoices && {
-            seriesChoices: selectedChoices,
-            onSeriesAnswer: (choice: SeriesChoice | null) =>
-              updateBook(selected.id, choice ? joinSeries(choice) : notInSeries),
           })}
           onMerge={(otherId) => mergeBook(selected.id, otherId)}
           onRemove={() => {

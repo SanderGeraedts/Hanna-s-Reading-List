@@ -20,6 +20,7 @@ import { goalPace, goalPaceText } from '#/lib/insightsMore'
 import type { BreakdownKind } from '#/lib/insights'
 import { periodStats } from '#/lib/stats'
 import { amountText } from '#/lib/readingLog'
+import { addedText, recentlyAdded } from '#/lib/recent'
 import type { DayEntry } from '#/lib/readingLog'
 import type { Period } from '#/lib/stats'
 import { Cover, monthName } from './Dashboard'
@@ -632,6 +633,34 @@ export function LentCard({ books, onShowBook }: Props) {
               </span>
             </BookLine>
           ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+// ---- newly added (#132) ---------------------------------------------------------------
+
+/** The covers of the last ten books added to the shelf, newest first; a tap opens one. */
+export function RecentCard({ books, onShowBook }: Props) {
+  const recent = recentlyAdded(books)
+  return (
+    <section className="dash-card" aria-labelledby="recent-title">
+      <h2 id="recent-title">Newly added</h2>
+      {recent.length === 0 ? (
+        <p className="muted small-text">Books you add show up here.</p>
+      ) : (
+        <ul className="recent-covers">
+          {recent.map((b) => {
+            const label = `${b.title}, ${addedText(b.addedAt)}`
+            return (
+              <li key={b.id}>
+                <button className="cover-btn" title={label} aria-label={label} onClick={() => onShowBook(b.id)}>
+                  <Cover book={b} small />
+                </button>
+              </li>
+            )
+          })}
         </ul>
       )}
     </section>

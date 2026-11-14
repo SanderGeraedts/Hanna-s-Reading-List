@@ -29,6 +29,7 @@ export const BLOCKS = {
   spice: 'Spice meter',
   wrapped: 'Year in review',
   bingo: 'Book bingo',
+  recent: 'Newly added',
 } as const
 
 export type BlockId = keyof typeof BLOCKS
@@ -41,7 +42,7 @@ export interface DashboardLayout {
 export const DEFAULT_LAYOUT: DashboardLayout = {
   columns: [
     ['count', 'reading', 'pace', 'monthly', 'heatmap', 'breakdown', 'records', 'authors', 'onthisday', 'fact', 'wrapped'],
-    ['goal', 'next', 'top', 'spice', 'calendar', 'bingo', 'series', 'streak', 'pile', 'lent'],
+    ['goal', 'next', 'top', 'spice', 'calendar', 'bingo', 'series', 'streak', 'pile', 'lent', 'recent'],
   ],
   hidden: [],
 }
