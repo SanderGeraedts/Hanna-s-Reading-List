@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { formatPublished, normalizeIsbn, parsePublished, publishedYear } from '#/lib/bookFacts'
 import { seriesGroups } from '#/lib/series'
+import { suggest } from '#/lib/suggest'
 import { formatDuration, hasAudio, lengthPatch, linkOnFormatChange, listenOnly, parseDuration } from '#/lib/listening'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { Book, BookFormat, ReadingStatus } from '#/lib/library'
@@ -180,6 +181,8 @@ export function BookPanel({
   const pct = Math.round(progress * 100)
   const reads = timesRead(book)
   const [seriesName, setSeriesName] = useState(book.series ?? '')
+  /** the field she's typing in, for its suggestions */
+  const [typing, setTyping] = useState<'series' | 'genre' | null>(null)
   // every series name on the shelf, for the suggestions under Series
   const seriesNames = useMemo(() => {
     const names = new Set<string>()
@@ -286,8 +289,8 @@ export function BookPanel({
     onUpdate({ title, originalTitle: title === original ? undefined : original })
   }
 
-  const addGenre = () => {
-    const typed = genreDraft.trim().replace(/\s+/g, ' ')
+  const addGenre = (value = genreDraft) => {
+    const typed = value.trim().replace(/\s+/g, ' ')
     setGenreDraft('')
     if (!typed) return
     // use the existing spelling when there is one, so "fantasy" and "Fantasy" stay one genre
@@ -656,8 +659,8 @@ export function BookPanel({
           ))}
           <input
             className="input chip-input"
-            list="genre-options"
             aria-label="Add a genre"
+            onFocus={() => setTyping('genre')}
             placeholder={book.genres?.length ? 'Add…' : book.genres ? 'Add a genre…' : 'Looking up…'}
             value={genreDraft}
             onChange={(e) => setGenreDraft(e.target.value)}
@@ -667,16 +670,21 @@ export function BookPanel({
                 addGenre()
               }
             }}
-            onBlur={addGenre}
+            onBlur={() => {
+              setTyping(null)
+              addGenre()
+            }}
           />
-          <datalist id="genre-options">
-            {genreOptions
-              .filter((g) => !book.genres?.includes(g))
-              .map((g) => (
-                <option key={g} value={g} />
-              ))}
-          </datalist>
         </div>
+        {typing === 'genre' && (
+          <Suggestions
+            names={suggest(
+              genreOptions.filter((g) => !book.genres?.includes(g)),
+              genreDraft,
+            )}
+            onPick={(g) => addGenre(g)}
+          />
+        )}
       </div>
 
       <div className="field">
@@ -736,21 +744,18 @@ export function BookPanel({
 
       <div className="field">
         <span>Series</span>
-        {/* the series already on the shelf, suggested while typing, so one series isn't split by a typo */}
-        <datalist id="series-options">
-          {seriesNames.map((n) => (
-            <option key={n} value={n} />
-          ))}
-        </datalist>
         <div className="series-row">
           <input
             className="input"
             value={seriesName}
             placeholder={detectedSeries && !book.series ? detectedSeries.name : 'Not in a series'}
             aria-label="Series name"
-            list="series-options"
+            onFocus={() => setTyping('series')}
             onChange={(e) => setSeriesName(e.target.value)}
-            onBlur={save}
+            onBlur={() => {
+              setTyping(null)
+              save()
+            }}
           />
           <input
             className="input series-no"
@@ -762,6 +767,16 @@ export function BookPanel({
             onBlur={save}
           />
         </div>
+        {/* the series already on the shelf, so one series isn't split by a typo */}
+        {typing === 'series' && (
+          <Suggestions
+            names={suggest(seriesNames, seriesName)}
+            onPick={(name) => {
+              setSeriesName(name)
+              onUpdate({ series: name })
+            }}
+          />
+        )}
         {seriesChoices && onSeriesAnswer && seriesChoices.length > 0 && (
           <div className="series-suggest">
             <small className="muted">Part of a series?</small>
@@ -1008,6 +1023,32 @@ function FindBackText({ book, onFound }: { book: Book; onFound: (description: st
         {state === 'busy' ? 'Looking…' : 'Find back text'}
       </button>
       {state === 'none' && <small className="muted">No back text found for this book. You can type it in above.</small>}
+    </div>
+  )
+}
+
+/**
+ * Names to pick from under a field while typing. Tapping one keeps the field
+ * focused (pointerdown is cancelled), so the half-typed text isn't saved first.
+ */
+function Suggestions({ names, onPick }: { names: string[]; onPick: (name: string) => void }) {
+  if (!names.length) return null
+  return (
+    <div className="chips suggestions" role="listbox" aria-label="Suggestions">
+      {names.map((n) => (
+        <button
+          key={n}
+          type="button"
+          role="option"
+          aria-selected={false}
+          className="btn small"
+          onPointerDown={(e) => e.preventDefault()}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => onPick(n)}
+        >
+          {n}
+        </button>
+      ))}
     </div>
   )
 }
