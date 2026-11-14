@@ -5,7 +5,9 @@ import { AddBookDialog } from '#/components/AddBookDialog'
 import { BookPanel } from '#/components/BookPanel'
 import { CoverPicker } from '#/components/CoverPicker'
 import { RatingDialog } from '#/components/RatingDialog'
+import { askedPatch, pendingRatings as findPendingRatings } from '#/lib/ratingAsk'
 import { SeriesQuestionDialog } from '#/components/SeriesQuestionDialog'
+import type { SeriesChoice } from '#/lib/sleepSeries'
 import { joinSeries, markSleepSeries, notInSeries, seriesQuestions, skipsRatingQuestion, sleepSeriesKeys } from '#/lib/sleepSeries'
 import type { Face } from '#/components/BookPanel'
 import { nearestTurn } from '#/components/BookMesh'
@@ -169,10 +171,12 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   const sleepKeys = useMemo(() => sleepSeriesKeys(books, groups), [books, groups])
   const selectedGroup = selected ? groups.get(selected.id) : undefined
   const [askLater, setAskLater] = useState<string[]>([])
-  const questions = useMemo(
-    () => (loaded ? seriesQuestions(books).filter((q) => !askLater.includes(q.book.id)) : []),
-    [books, loaded, askLater],
-  )
+  // finishes from the nightly sync that haven't had the rating pop-up yet
+  const pendingRatings = useMemo(() => (loaded ? findPendingRatings(books) : []), [books, loaded])
+  const allQuestions = useMemo(() => (loaded ? seriesQuestions(books) : []), [books, loaded])
+  const questions = useMemo(() => allQuestions.filter((q) => !askLater.includes(q.book.id)), [allQuestions, askLater])
+  // the same question in the book panel, even after Later (#131)
+  const selectedChoices = selected ? allQuestions.find((q) => q.book.id === selected.id)?.choices : undefined
   const genreOptions = useMemo(() => genreSuggestions(books.flatMap((b) => b.genres ?? [])), [books])
   useBookDetails(allBooks, loaded, updateBook)
 
@@ -443,6 +447,11 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
               for (const [id, patch] of markSleepSeries(books, selectedGroup.key, on, groups)) updateBook(id, patch)
             },
           })}
+          {...(selectedChoices && {
+            seriesChoices: selectedChoices,
+            onSeriesAnswer: (choice: SeriesChoice | null) =>
+              updateBook(selected.id, choice ? joinSeries(choice) : notInSeries),
+          })}
           onMerge={(otherId) => mergeBook(selected.id, otherId)}
           onRemove={() => {
             select(null)
@@ -462,12 +471,22 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
       )}
 
       {(() => {
-        const book = ratingFor ? books.find((b) => b.id === ratingFor) : undefined
+        // the book she just marked read, else a finish from the night's sync still to ask about,
+        // once nothing else is open (the series question goes first)
+        const book = ratingFor
+          ? books.find((b) => b.id === ratingFor)
+          : !adding && !pickingCover && questions.length === 0
+            ? pendingRatings[0]
+            : undefined
         return book ? (
           <RatingDialog
+            key={book.id}
             book={book}
             onUpdate={(patch) => updateBook(book.id, patch)}
-            onClose={() => setRatingFor(null)}
+            onClose={() => {
+              updateBook(book.id, askedPatch(book))
+              setRatingFor(null)
+            }}
           />
         ) : null
       })()}

@@ -61,6 +61,8 @@ export interface Book {
   sleepSeries?: string
   /** answered "Is this part of …?" (or joined a series), so it isn't asked again */
   seriesAsked?: boolean
+  /** the finish day (yyyy-mm-dd) the rating pop-up last asked about, so no finish is asked twice */
+  ratingAsked?: string
   /**
    * the days it was finished (yyyy-mm-dd, oldest first), noted from #59 on;
    * books finished before that have none until Hanna fills one in
