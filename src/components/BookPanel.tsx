@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { formatPublished, normalizeIsbn, parsePublished, publishedYear } from '#/lib/bookFacts'
+import { seriesGroups } from '#/lib/series'
 import { formatDuration, hasAudio, lengthPatch, linkOnFormatChange, listenOnly, parseDuration } from '#/lib/listening'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { Book, BookFormat, ReadingStatus } from '#/lib/library'
@@ -172,6 +173,12 @@ export function BookPanel({
   const pct = Math.round(progress * 100)
   const reads = timesRead(book)
   const [seriesName, setSeriesName] = useState(book.series ?? '')
+  // every series name on the shelf, for the suggestions under Series
+  const seriesNames = useMemo(() => {
+    const names = new Set<string>()
+    for (const g of seriesGroups(shelf).values()) if (g.key) names.add(g.name)
+    return [...names].sort((a, b) => a.localeCompare(b))
+  }, [shelf])
   const [blurb, setBlurb] = useState(backText(book))
   const [seriesNo, setSeriesNo] = useState(book.seriesIndex?.toString() ?? '')
   const [pagesDraft, setPagesDraft] = useState(book.pages?.toString() ?? '')
@@ -722,12 +729,19 @@ export function BookPanel({
 
       <div className="field">
         <span>Series</span>
+        {/* the series already on the shelf, suggested while typing, so one series isn't split by a typo */}
+        <datalist id="series-options">
+          {seriesNames.map((n) => (
+            <option key={n} value={n} />
+          ))}
+        </datalist>
         <div className="series-row">
           <input
             className="input"
             value={seriesName}
             placeholder={detectedSeries && !book.series ? detectedSeries.name : 'Not in a series'}
             aria-label="Series name"
+            list="series-options"
             onChange={(e) => setSeriesName(e.target.value)}
             onBlur={save}
           />
