@@ -8,6 +8,7 @@
  */
 
 export const BLOCKS = {
+  waiting: 'Waiting for you',
   count: 'Books read',
   goal: 'Reading goal',
   next: 'What next?',
@@ -41,7 +42,7 @@ export interface DashboardLayout {
 
 export const DEFAULT_LAYOUT: DashboardLayout = {
   columns: [
-    ['count', 'reading', 'pace', 'monthly', 'heatmap', 'breakdown', 'records', 'authors', 'onthisday', 'fact', 'wrapped'],
+    ['waiting', 'count', 'reading', 'pace', 'monthly', 'heatmap', 'breakdown', 'records', 'authors', 'onthisday', 'fact', 'wrapped'],
     ['goal', 'next', 'top', 'spice', 'calendar', 'bingo', 'series', 'streak', 'pile', 'lent', 'recent'],
   ],
   hidden: [],
@@ -58,6 +59,8 @@ export function cleanLayout(raw: unknown): DashboardLayout {
   const cols = Array.isArray(r.columns) ? r.columns : DEFAULT_LAYOUT.columns
   const columns: [BlockId[], BlockId[]] = [take(cols[0]), take(cols[1])]
   const hidden = take(r.hidden)
+  // "Waiting for you" goes first, also on a dashboard arranged before it existed
+  if (!seen.has('waiting')) columns[0].unshift('waiting'), seen.add('waiting')
   // blocks added to the app later go where they are by default
   for (const [c, list] of DEFAULT_LAYOUT.columns.entries()) {
     for (const id of list) if (!seen.has(id)) columns[c].push(id), seen.add(id)

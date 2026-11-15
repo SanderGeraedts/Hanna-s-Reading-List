@@ -1768,9 +1768,6 @@ textarea.input {
 .stars.spice .star {
   margin-right: 0.08em;
 }
-.rating-question {
-  margin: 0.6rem 0 0;
-}
 .top-ratings {
   display: flex;
   gap: 0.5rem;
@@ -1781,27 +1778,6 @@ textarea.input {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.6rem;
-}
-.rating-dialog .dialog-body {
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.4rem;
-}
-.rating-dialog .dialog-header {
-  align-self: stretch;
-}
-.rating-cover {
-  width: 5rem;
-  border-radius: 4px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
-}
-.dialog-actions {
-  display: flex;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-top: 0.4rem;
 }
 .top-list {
   list-style: none;
@@ -2361,18 +2337,36 @@ textarea.input {
   z-index: 1;
 }
 
-/* ---- "Is this part of …?" ----------------------------------------------- */
-.series-question-list {
+/* ---- waiting for you: books to rate, books that might be in a series ---- */
+.waiting-list {
   list-style: none;
   margin: 0.5rem 0 0;
   padding: 0;
   display: grid;
   gap: 0.9rem;
-  max-height: 60vh;
-  overflow-y: auto;
 }
-.series-question-book {
-  margin: 0 0 0.35rem;
+.waiting-list > li {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+}
+.waiting-info {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+.waiting-title {
+  margin: 0;
+}
+.waiting-rate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.waiting-subtitle {
+  margin: 1rem 0 0;
+  font-size: 0.95rem;
 }
 .suggestions {
   margin-top: 0.35rem;

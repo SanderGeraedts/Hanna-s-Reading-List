@@ -19,6 +19,9 @@ import {
 } from './DashboardExtras'
 import { AuthorsCard, BingoCard, HeatmapCard, PaceCard, SpiceCard, WrappedCard } from './DashboardMore'
 import { pickReadNext, readNextChoices } from '#/lib/readNext'
+import { pendingRatings } from '#/lib/ratingAsk'
+import { seriesQuestions } from '#/lib/sleepSeries'
+import { WaitingCard } from './WaitingCard'
 import { storytelLink } from '#/lib/storytelLink'
 import { topRated } from '#/lib/ratings'
 import { StarRating } from './StarRating'
@@ -59,7 +62,7 @@ interface DashboardProps extends Props {
   /** the signed-in account, or null when the shelf lives in this browser only */
   accountId: string | null
   /** change a book: book bingo remembers a full card on the book that filled it (#119) */
-  onUpdate: (id: string, patch: (book: Book) => Partial<Book>) => void
+  onUpdate: (id: string, patch: Partial<Book> | ((book: Book) => Partial<Book>)) => void
 }
 
 export interface PeriodPick {
@@ -141,7 +144,13 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate }: DashboardP
   const grid = useRef<HTMLDivElement>(null)
   const start = useRef({ x: 0, y: 0, scroll: 0 })
 
+  // finished books to rate and new books that might be in a series, instead of pop-ups
+  const toRate = useMemo(() => pendingRatings(books), [books])
+  const questions = useMemo(() => seriesQuestions(books), [books])
+  const nothingWaiting = toRate.length === 0 && questions.length === 0
+
   const blocks: Record<BlockId, React.ReactNode> = {
+    waiting: <WaitingCard toRate={toRate} questions={questions} onUpdate={onUpdate} onShowBook={onShowBook} />,
     count: <ReadCount books={books} onShowBook={onShowBook} pick={pick} onPick={setPick} />,
     goal: <GoalCard books={books} accountId={accountId} />,
     next: <ReadNextCard books={books} onShowBook={onShowBook} />,
@@ -283,6 +292,8 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate }: DashboardP
         {columns.map((ids, visual) => (
           <div className="dash-column" key={visual}>
             {ids.map((id) => {
+              // "Waiting for you" stays out of the way when nothing is waiting (shown while arranging)
+              if (id === 'waiting' && nothingWaiting && !arranging) return null
               const moving = drag?.id === id
               return (
                 <div

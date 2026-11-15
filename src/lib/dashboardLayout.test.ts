@@ -8,7 +8,8 @@ describe('dashboard layout (#85, #87)', () => {
   it('starts from the default and adds blocks it does not know yet', () => {
     expect(cleanLayout(null)).toEqual(DEFAULT_LAYOUT)
     const saved = cleanLayout({ columns: [['goal', 'nonsense', 'goal'], []], hidden: ['lent'] })
-    expect(saved.columns[0][0]).toBe('goal')
+    // Waiting for you goes first; then her own order
+    expect(saved.columns[0].slice(0, 2)).toEqual(['waiting', 'goal'])
     expect(saved.hidden).toEqual(['lent'])
     // every block exactly once
     const all = [...saved.columns[0], ...saved.columns[1], ...saved.hidden]
@@ -29,6 +30,15 @@ describe('dashboard layout (#85, #87)', () => {
     const back = showBlock(hideBlock(hidden, 'calendar'), 'next')
     expect(back.columns).toEqual([['count', 'reading'], ['next', 'goal']])
     expect(back.hidden).toEqual(['calendar'])
+  })
+
+  it('puts Waiting for you first, also on a dashboard arranged before it existed', () => {
+    const old = cleanLayout({ columns: [['count', 'reading'], ['goal']], hidden: [] })
+    expect(old.columns[0][0]).toBe('waiting')
+    expect(DEFAULT_LAYOUT.columns[0][0]).toBe('waiting')
+    // once she has moved or hidden it, it stays where she put it
+    expect(cleanLayout({ columns: [['count'], ['goal', 'waiting']], hidden: [] }).columns[1]).toContain('waiting')
+    expect(cleanLayout({ columns: [['count'], ['goal']], hidden: ['waiting'] }).columns.flat()).not.toContain('waiting')
   })
 
   it('takes turns between the columns on a narrow screen', () => {
