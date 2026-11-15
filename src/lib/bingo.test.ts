@@ -84,6 +84,18 @@ describe('book bingo squares', () => {
     expect(b.finished).toEqual([])
   })
 
+  it('counts audiobooks she only listens to by the shelf pages, a minute a page (#140)', () => {
+    const ticks = (b: Book) => bingoYear([b], 2026, '2026-11-13').squares.filter((s) => s.ticked).map((s) => s.id)
+    // 11 hours on Storytel, no page count: 660 pages on the shelf
+    expect(ticks(read('long-listen', '2026-03-01', { formats: ['storytel'], minutes: 660 }))).toContain('long')
+    // 2.5 hours: 150 pages
+    expect(ticks(read('short-listen', '2026-03-01', { formats: ['audiobook'], minutes: 150 }))).toContain('short')
+    // no length at all: no page square
+    const none = ticks(read('unknown', '2026-03-01', { formats: ['storytel'] }))
+    expect(none).not.toContain('short')
+    expect(none).not.toContain('long')
+  })
+
   it('counts lines', () => {
     const t = Array(16).fill(false)
     expect(bingoLines(t)).toBe(0)
