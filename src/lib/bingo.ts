@@ -106,8 +106,28 @@ const inOneMonth =
     return undefined
   }
 
+/**
+ * The day a read began: the earliest of its start days and its reading-log
+ * days since the book was last finished before. A book that went straight
+ * from want-to-read to read (read in a day, so the nightly sync saw no
+ * "reading") has no start day, but its reading log shows when she read it.
+ */
+export function readStart(b: Book, finishDay: string): string | undefined {
+  const before = (b.finished ?? []).filter((d) => d < finishDay).sort().at(-1) ?? ''
+  const days = [
+    ...(b.started ?? []),
+    ...Object.entries(b.readingLog ?? {})
+      .filter(([, amount]) => amount > 0)
+      .map(([day]) => day),
+  ].filter((d) => d > before && d <= finishDay)
+  return days.sort()[0]
+}
+
 const startedWithin = (days: number) =>
-  findIn((b, f) => (b.started ?? []).some((s) => s <= f.day && dayNumber(f.day) - dayNumber(s) <= days))
+  findIn((b, f) => {
+    const start = readStart(b, f.day)
+    return start !== undefined && dayNumber(f.day) - dayNumber(start) <= days
+  })
 
 export const SQUARES: Record<string, { label: string; tick: Tick }> = {
   // the squares the card has always had

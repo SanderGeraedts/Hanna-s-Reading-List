@@ -3,7 +3,7 @@ import type { Book } from './library'
 
 vi.mock('#/server/shelf', () => ({ loadShelf: async () => null, saveShelf: async () => ({ updated: 't' }) }))
 
-const { SQUARE_IDS, bingoLines, bingoYear, cardSquares, rememberCard } = await import('./bingo')
+const { SQUARE_IDS, bingoLines, bingoYear, cardSquares, readStart, rememberCard } = await import('./bingo')
 const { yearReview } = await import('./insightsMore')
 const { mergeBooks } = await import('./merge')
 
@@ -46,6 +46,31 @@ function everything(month: string, tag: string): Book[] {
 }
 
 describe('book bingo squares', () => {
+  it('counts a book read in a day without a start day, from its reading log', () => {
+    const ticks = (b: Book) => bingoYear([b], 2026, '2026-11-13').squares.filter((s) => s.ticked).map((s) => s.id)
+    // went straight from want-to-read to read: no start day, one day in the reading log
+    const grimm = read('grimm', '2026-11-12', { readingLog: { '2026-11-12': 1 } })
+    expect(grimm.started).toBeUndefined()
+    expect(readStart(grimm, '2026-11-12')).toBe('2026-11-12')
+    expect(ticks(grimm)).toContain('week')
+    // started months ago: its log goes back that far, so it isn't a fast read
+    const slow = read('slow', '2026-11-12', { readingLog: { '2026-06-01': 0.2, '2026-11-12': 0.8 } })
+    expect(ticks(slow)).not.toContain('week')
+    // marked read by hand without any log or start: nothing to go on
+    expect(readStart(read('unknown', '2026-11-12'), '2026-11-12')).toBeUndefined()
+  })
+
+  it('only looks at the log since the previous finish, for a re-read', () => {
+    const again = book('again', {
+      status: 'read',
+      readCount: 2,
+      finished: ['2026-02-01', '2026-09-10'],
+      readingLog: { '2026-01-20': 1, '2026-09-08': 0.5, '2026-09-10': 0.5 },
+    })
+    expect(readStart(again, '2026-09-10')).toBe('2026-09-08')
+    expect(readStart(again, '2026-02-01')).toBe('2026-01-20')
+  })
+
   it('has 28 squares, and the first card keeps the old ones in their places', () => {
     expect(SQUARE_IDS.length).toBe(28)
     const { squares } = cardSquares(2026, 1)
