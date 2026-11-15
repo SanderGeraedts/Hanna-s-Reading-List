@@ -1,6 +1,6 @@
 import type { Book, FinishedBingoCard } from './library'
 import { formatsOf, localDay, timesRead } from './library'
-import { hasAudio, listenOnly } from './listening'
+import { hasAudio, thicknessPages } from './listening'
 import { cleanRating, cleanSpice } from './ratings'
 import { seriesProgress } from './insights'
 import { seriesGroups } from './series'
@@ -80,7 +80,11 @@ type Tick = (win: BingoFinish[], shelf: Shelf) => Book | true | undefined
 const findIn = (test: (b: Book, f: BingoFinish, shelf: Shelf) => boolean): Tick => (win, shelf) =>
   win.find((f) => test(f.book, f, shelf))?.book
 
-const paper = (b: Book) => !listenOnly(b) && (b.pages ?? 0) > 0
+/**
+ * A book's pages for the page squares: its own page count, or for a book she
+ * only listens to the shelf's estimate, a minute counting as a page (#140).
+ */
+const pagesOf = (b: Book) => thicknessPages(b) ?? 0
 const genre = (re: RegExp) => findIn((b) => !!b.genres?.some((g) => re.test(g)))
 const has = (format: string) => findIn((b) => formatsOf(b).some((f) => f === format))
 const authorKey = (a: string) => a.trim().toLowerCase()
@@ -107,7 +111,7 @@ const startedWithin = (days: number) =>
 
 export const SQUARES: Record<string, { label: string; tick: Tick }> = {
   // the squares the card has always had
-  long: { label: 'Over 500 pages', tick: findIn((b) => paper(b) && b.pages! > 500) },
+  long: { label: 'Over 500 pages', tick: findIn((b) => pagesOf(b) > 500) },
   dutch: { label: 'A book in Dutch', tick: findIn((b) => b.language === 'nl') },
   audio: { label: 'An audiobook', tick: findIn((b) => hasAudio(b)) },
   series: {
@@ -118,7 +122,7 @@ export const SQUARES: Record<string, { label: string; tick: Tick }> = {
     }),
   },
   five: { label: 'A 5-star read', tick: findIn((b) => cleanRating(b.rating) === 5) },
-  short: { label: 'Under 200 pages', tick: findIn((b) => paper(b) && b.pages! < 200) },
+  short: { label: 'Under 200 pages', tick: findIn((b) => pagesOf(b) > 0 && pagesOf(b) < 200) },
   reread: { label: 'A re-read', tick: findIn((_, f) => f.reread) },
   week: { label: 'Started and finished in a week', tick: startedWithin(6) },
   author: {
@@ -129,7 +133,7 @@ export const SQUARES: Record<string, { label: string; tick: Tick }> = {
   genre: { label: 'Not fantasy', tick: findIn((b) => !!b.genres?.length && !b.genres.some((g) => /fantas/i.test(g))) },
   spicy: { label: 'A spicy read (4+ 🌶️)', tick: findIn((b) => (cleanSpice(b.spice) ?? 0) >= 4) },
   // new for #119
-  huge: { label: 'Over 700 pages', tick: findIn((b) => paper(b) && b.pages! > 700) },
+  huge: { label: 'Over 700 pages', tick: findIn((b) => pagesOf(b) > 700) },
   library: { label: 'From the library', tick: has('library') },
   borrowed: { label: 'A borrowed book', tick: has('borrowed') },
   hardcover: { label: 'A hardcover', tick: has('hardcover') },
