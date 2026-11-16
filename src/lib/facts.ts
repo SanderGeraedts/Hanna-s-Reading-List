@@ -1,5 +1,6 @@
 import type { Book } from './library'
 import { localDay } from './library'
+import { GENERAL_FACTS } from './generalFacts'
 
 /**
  * Book facts for the dashboard (#101). A new one comes with each reading
@@ -638,17 +639,53 @@ export const FACTS: string[] = [
   'The Rosetta Stone carries the same decree in hieroglyphs, Demotic and Greek, which helped scholars decode hieroglyphs.',
 ]
 
+/**
+ * From this day on, book facts and general-knowledge facts (#146) take turns:
+ * general, book, general, … Reading days before it keep the book fact they
+ * unlocked. A day that hadn't come yet when this shipped.
+ */
+export const MIX_FROM = '2026-11-20'
+
 export interface DailyFact {
   fact: string
   /** today is a reading day already, so today's fact is in */
   today: boolean
 }
 
-/** Today's fact: one more for every day in the reading log up to today. */
-export function dailyFact(books: Book[], now = new Date(), facts = FACTS): DailyFact {
-  const todayKey = localDay(now)
+/** Every reading day up to today, oldest first. */
+function readingDays(books: Book[], todayKey: string): string[] {
   const days = new Set<string>()
   for (const b of books) for (const day of Object.keys(b.readingLog ?? {})) if (day <= todayKey) days.add(day)
-  const n = days.size
-  return { fact: facts[(Math.max(n, 1) - 1) % facts.length], today: days.has(todayKey) }
+  return [...days].sort()
+}
+
+/** The fact each reading day unlocked, oldest first. */
+export function unlockedSequence(
+  days: string[],
+  facts = FACTS,
+  general = GENERAL_FACTS,
+  mixFrom = MIX_FROM,
+): string[] {
+  let book = 0
+  let gen = 0
+  let mixed = 0
+  return days.map((day) => {
+    if (day < mixFrom || !general.length) return facts[book++ % facts.length]
+    // from mixFrom on: general first, then book, taking turns
+    return mixed++ % 2 === 0 ? general[gen++ % general.length] : facts[book++ % facts.length]
+  })
+}
+
+/** Today's fact: one more for every day in the reading log up to today. */
+export function dailyFact(books: Book[], now = new Date(), facts = FACTS, general = GENERAL_FACTS): DailyFact {
+  const todayKey = localDay(now)
+  const days = readingDays(books, todayKey)
+  const seq = unlockedSequence(days, facts, general)
+  return { fact: seq.at(-1) ?? facts[0], today: days.at(-1) === todayKey }
+}
+
+/** Every fact unlocked so far, newest first, each once (#145). */
+export function unlockedFacts(books: Book[], now = new Date(), facts = FACTS, general = GENERAL_FACTS): string[] {
+  const seq = unlockedSequence(readingDays(books, localDay(now)), facts, general)
+  return [...new Set(seq.reverse())]
 }

@@ -1813,6 +1813,28 @@ textarea.input {
   line-height: 1.5;
   margin: 0.25rem 0 0.5rem;
 }
+/* all unlocked facts, with copy and share (#145) */
+.fact-actions {
+  margin: 0 0 0.5rem;
+}
+.fact-history {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.fact-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 24rem;
+  overflow-y: auto;
+  display: grid;
+  gap: 0.6rem;
+}
+.fact-list > li {
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+}
 
 /* ---- dashboard extras (#66) ------------------------------------------- */
 .small-text {

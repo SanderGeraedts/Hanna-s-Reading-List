@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { loadGoals, saveGoal } from '#/server/shelf'
 import type { Book } from '#/lib/library'
-import { dailyFact } from '#/lib/facts'
+import { dailyFact, unlockedFacts } from '#/lib/facts'
 import { formatDuration } from '#/lib/listening'
 import {
   breakdown,
@@ -567,14 +567,81 @@ export function StreakCard({ books }: { books: Book[] }) {
 
 export function FactCard({ books }: { books: Book[] }) {
   const { fact, today } = dailyFact(books)
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const all = useMemo(() => (open ? unlockedFacts(books) : []), [books, open])
+  const count = useMemo(() => unlockedFacts(books).length, [books])
+  const q = query.trim().toLowerCase()
+  const shown = q ? all.filter((f) => f.toLowerCase().includes(q)) : all
   return (
     <section className="dash-card fact-card" aria-labelledby="fact-title">
-      <h2 id="fact-title">Book fact</h2>
+      <h2 id="fact-title">Fact of the day</h2>
       <p className="fact-text">{fact}</p>
+      <FactActions fact={fact} />
       <p className="muted small-text">
         {today ? 'A new fact comes with your next reading day.' : 'Read today for a new fact.'}
       </p>
+      {count > 1 && (
+        <button type="button" className="link-btn small-text" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {open ? 'Hide my facts' : `All my facts (${count})`}
+        </button>
+      )}
+      {open && (
+        <div className="fact-history">
+          <input
+            className="input"
+            type="search"
+            placeholder="Search your facts"
+            aria-label="Search your facts"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          {shown.length === 0 ? (
+            <p className="muted small-text">No fact with “{query.trim()}”.</p>
+          ) : (
+            <ul className="fact-list">
+              {shown.map((f) => (
+                <li key={f}>
+                  <p className="fact-text">{f}</p>
+                  <FactActions fact={f} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </section>
+  )
+}
+
+/** Copy a fact, or share it from the phone (#145). */
+function FactActions({ fact }: { fact: string }) {
+  const [copied, setCopied] = useState(false)
+  const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(fact)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      /* copying not allowed here: nothing to do */
+    }
+  }
+  return (
+    <div className="chips fact-actions">
+      <button type="button" className="btn small" onClick={copy}>
+        {copied ? 'Copied ✓' : 'Copy'}
+      </button>
+      {canShare && (
+        <button
+          type="button"
+          className="btn small"
+          onClick={() => navigator.share({ text: fact }).catch(() => undefined)}
+        >
+          Share
+        </button>
+      )}
+    </div>
   )
 }
 
