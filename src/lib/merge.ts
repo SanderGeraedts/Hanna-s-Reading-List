@@ -58,6 +58,7 @@ export function mergeBooks(keep: Book, other: Book): Book {
     sleepSeries: keep.sleepSeries ?? other.sleepSeries,
     seriesAsked: keep.seriesAsked || other.seriesAsked || undefined,
     ratingAsked: [keep.ratingAsked, other.ratingAsked].filter(Boolean).sort().at(-1),
+    challengeMonth: keep.challengeMonth ?? other.challengeMonth,
     rating: keep.rating ?? other.rating,
     // full bingo cards stay full (#119)
     ...((keep.bingoCards?.length || other.bingoCards?.length) && {

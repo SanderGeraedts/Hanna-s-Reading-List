@@ -2423,6 +2423,26 @@ textarea.input {
   align-items: center;
   gap: 0.5rem;
 }
+/* monthly challenge (#144) */
+.challenge-card .btn {
+  margin-top: 0.5rem;
+}
+.challenge-months {
+  list-style: none;
+  margin: 0.5rem 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.challenge-months > li {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+}
+.challenge-reminder {
+  color: #e0a35f;
+}
 .waiting-subtitle {
   margin: 1rem 0 0;
   font-size: 0.95rem;
