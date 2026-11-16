@@ -9,6 +9,7 @@
 
 export const BLOCKS = {
   waiting: 'Waiting for you',
+  challenge: 'Monthly challenge',
   count: 'Books read',
   goal: 'Reading goal',
   next: 'What next?',
@@ -47,6 +48,9 @@ export const DEFAULT_LAYOUT: DashboardLayout = {
   ],
   hidden: [],
 }
+
+// the monthly challenge (#144) starts right under "Waiting for you"
+DEFAULT_LAYOUT.columns[0].splice(1, 0, 'challenge')
 
 const isBlock = (id: unknown): id is BlockId => typeof id === 'string' && Object.hasOwn(BLOCKS, id)
 

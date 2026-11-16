@@ -63,6 +63,8 @@ export interface Book {
   seriesAsked?: boolean
   /** the finish day (yyyy-mm-dd) the rating pop-up last asked about, so no finish is asked twice */
   ratingAsked?: string
+  /** the month ("2027-03") this book is the monthly challenge for (#144); see monthChallenge.ts */
+  challengeMonth?: string
   /**
    * the days it was finished (yyyy-mm-dd, oldest first), noted from #59 on;
    * books finished before that have none until Hanna fills one in
