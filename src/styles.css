@@ -2266,6 +2266,43 @@ textarea.input {
 }
 
 /* book bingo */
+/* A–Z challenge (#143) */
+.alphabet {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+}
+.alphabet-letter {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--muted);
+  font: inherit;
+  font-family: var(--serif);
+  font-size: 0.95rem;
+  padding: 0;
+}
+.alphabet-letter.on {
+  color: var(--text);
+  background: rgba(217, 168, 91, 0.25);
+  border-color: rgba(217, 168, 91, 0.7);
+  cursor: pointer;
+}
+.alphabet-behind {
+  color: #e0a35f;
+}
+.alphabet-tips {
+  margin-top: 0.6rem;
+}
+.alphabet-tip-letter {
+  display: inline-block;
+  width: 1.2rem;
+  font-family: var(--serif);
+}
 .bingo {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
