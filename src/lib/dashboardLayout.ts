@@ -23,7 +23,7 @@ export const BLOCKS = {
   onthisday: 'On this day',
   lent: 'Lent out',
   top: 'Top 5',
-  fact: 'Book fact',
+  fact: 'Fact of the day',
   pace: 'Finish by',
   heatmap: 'A year of reading',
   authors: 'Favourite authors',
