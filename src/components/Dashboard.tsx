@@ -22,6 +22,7 @@ import { pickReadNext, readNextChoices } from '#/lib/readNext'
 import { pendingRatings } from '#/lib/ratingAsk'
 import { seriesQuestions } from '#/lib/sleepSeries'
 import { WaitingCard } from './WaitingCard'
+import { AlphabetCard } from './AlphabetCard'
 import { storytelLink } from '#/lib/storytelLink'
 import { topRated } from '#/lib/ratings'
 import { StarRating } from './StarRating'
@@ -172,6 +173,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate }: DashboardP
     spice: <SpiceCard books={books} onShowBook={onShowBook} />,
     wrapped: <WrappedCard books={books} onShowBook={onShowBook} />,
     recent: <RecentCard books={books} onShowBook={onShowBook} />,
+    alphabet: <AlphabetCard books={books} onShowBook={onShowBook} />,
     bingo: <BingoCard books={books} onUpdate={onUpdate} />,
   }
 
