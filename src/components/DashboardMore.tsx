@@ -16,6 +16,7 @@ import {
 import type { HeatDay } from '#/lib/insightsMore'
 import { bingoLines, bingoYear, rememberCard } from '#/lib/bingo'
 import { StarRating } from './StarRating'
+import { ShareButton } from './ShareButton'
 import { BookLine } from './DashboardExtras'
 import { Cover, PeriodSelect, PeriodTabs, monthName, periodLabel, toPeriod } from './Dashboard'
 import type { PeriodPick, Props } from './Dashboard'
@@ -381,6 +382,23 @@ export function BingoCard({
   const done = ticked.filter(Boolean).length
   const lines = bingoLines(ticked)
   const full = b.finished.length
+  const title = `Book bingo ${year}${b.card > 1 ? ` · card ${b.card}` : ''}`
+  // a picture for friends (#153): the card, with the covers of the books that ticked it
+  const share = () => ({
+    title,
+    subtitle: `${done} of ${b.squares.length}${lines > 0 ? ` · ${lines === 1 ? 'Bingo!' : `${lines} bingos!`}` : ''}${
+      full > 0 ? ` · ${full === 1 ? '1 full card' : `${full} full cards`}` : ''
+    }`,
+    columns: 4,
+    aspect: 1,
+    tiles: b.squares.map((s) => ({
+      label: '',
+      caption: s.label,
+      cover: s.book?.coverUrl,
+      color: s.book?.color,
+      on: s.ticked,
+    })),
+  })
   return (
     <section className="dash-card" aria-labelledby="bingo-title">
       <div className="dash-card-head">
@@ -424,6 +442,9 @@ export function BingoCard({
             </div>
           )
         })}
+      </div>
+      <div className="challenge-actions">
+        <ShareButton spec={share} label={title} />
       </div>
     </section>
   )
