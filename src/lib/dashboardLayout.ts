@@ -33,6 +33,7 @@ export const BLOCKS = {
   bingo: 'Book bingo',
   recent: 'Newly added',
   alphabet: 'A–Z challenge',
+  alphabetAuthors: 'A–Z authors',
 } as const
 
 export type BlockId = keyof typeof BLOCKS
@@ -45,7 +46,7 @@ export interface DashboardLayout {
 export const DEFAULT_LAYOUT: DashboardLayout = {
   columns: [
     ['waiting', 'count', 'reading', 'pace', 'monthly', 'heatmap', 'breakdown', 'records', 'authors', 'onthisday', 'fact', 'wrapped'],
-    ['goal', 'next', 'top', 'spice', 'calendar', 'bingo', 'series', 'streak', 'pile', 'lent', 'recent', 'alphabet'],
+    ['goal', 'next', 'top', 'spice', 'calendar', 'bingo', 'series', 'streak', 'pile', 'lent', 'recent', 'alphabet', 'alphabetAuthors'],
   ],
   hidden: [],
 }

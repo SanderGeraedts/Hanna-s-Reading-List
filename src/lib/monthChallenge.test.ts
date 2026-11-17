@@ -3,7 +3,7 @@ import type { Book } from './library'
 
 vi.mock('#/server/shelf', () => ({ loadShelf: async () => null, saveShelf: async () => ({ updated: 't' }) }))
 
-const { canChange, challengeNow, challengeVisible, pickFor, pickable } = await import('./monthChallenge')
+const { canChange, challengeCalendar, challengeNow, pickFor, pickable } = await import('./monthChallenge')
 const { mergeBooks } = await import('./merge')
 
 const book = (id: string, extra: Partial<Book> = {}): Book => ({
@@ -21,21 +21,18 @@ describe('monthly challenge (#144)', () => {
   it('invites her to set it up while it is not in use', () => {
     const c = challengeNow([book('a')], '2026-11-16')
     expect(c.notStarted).toBe(true)
-    expect(challengeVisible(c)).toBe(true)
   })
 
-  it("shows this month's book until it's finished, then stays out of the way", () => {
+  it("lists this month's book as open until it's finished", () => {
     const dec = book('dec', { challengeMonth: '2026-12' })
     const before = challengeNow([dec], '2026-11-20')
     expect(before.open).toEqual([])
-    expect(challengeVisible(before)).toBe(false)
     const inDecember = challengeNow([dec], '2026-12-02')
     expect(inDecember.open.map((i) => i.book.id)).toEqual(['dec'])
     const finished = { ...dec, status: 'read' as const, finished: ['2026-12-10'] }
     const after = challengeNow([finished, book('jan', { challengeMonth: '2027-01' })], '2026-12-15')
     expect(after.open).toEqual([])
     expect(after.current?.doneOn).toBe('2026-12-10')
-    expect(challengeVisible(after)).toBe(false)
   })
 
   it('carries an unfinished book over, and counts it late when finished later', () => {
@@ -81,5 +78,20 @@ describe('monthly challenge (#144)', () => {
 
   it('merging duplicates keeps the challenge month', () => {
     expect(mergeBooks(book('a'), book('b', { challengeMonth: '2027-05' })).challengeMonth).toBe('2027-05')
+  })
+
+  it('shows the year as a calendar: every month, its book, and which are done (#154)', () => {
+    const books = [
+      book('nov', { challengeMonth: '2026-11', status: 'read', finished: ['2026-11-03'] }),
+      book('dec', { challengeMonth: '2026-12' }),
+      book('next', { challengeMonth: '2027-01' }),
+    ]
+    const cal = challengeCalendar(books, 2026, '2026-12-05')
+    expect(cal.map((m) => m.month)).toEqual(Array.from({ length: 12 }, (_, i) => `2026-${String(i + 1).padStart(2, '0')}`))
+    expect(cal[10]).toMatchObject({ current: false, past: true, item: { doneOn: '2026-11-03', late: false } })
+    expect(cal[11]).toMatchObject({ current: true, past: false, item: { book: { id: 'dec' } } })
+    expect(cal[11].item!.doneOn).toBeUndefined()
+    expect(cal[0].item).toBeUndefined()
+    expect(challengeCalendar(books, 2027, '2026-12-05')[0].item!.book.id).toBe('next')
   })
 })

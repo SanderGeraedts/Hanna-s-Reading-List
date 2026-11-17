@@ -24,7 +24,6 @@ import { seriesQuestions } from '#/lib/sleepSeries'
 import { WaitingCard } from './WaitingCard'
 import { AlphabetCard } from './AlphabetCard'
 import { storytelLink } from '#/lib/storytelLink'
-import { challengeNow, challengeVisible } from '#/lib/monthChallenge'
 import { ChallengeCard } from './ChallengeCard'
 import { topRated } from '#/lib/ratings'
 import { StarRating } from './StarRating'
@@ -142,7 +141,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate }: DashboardP
   const period = toPeriod(pick)
   const [layout, setLayout] = useLayout(accountId)
   const [arranging, setArranging] = useState(false)
-  // the monthly challenge's editor is open: keep the block in view (#144)
+  // the monthly challenge's editor is open (#144)
   const [challengeEditing, setChallengeEditing] = useState(false)
   const [drag, setDrag] = useState<Drag | null>(null)
   const narrow = useNarrow()
@@ -153,7 +152,6 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate }: DashboardP
   const toRate = useMemo(() => pendingRatings(books), [books])
   const questions = useMemo(() => seriesQuestions(books), [books])
   const nothingWaiting = toRate.length === 0 && questions.length === 0
-  const challengeShown = useMemo(() => challengeVisible(challengeNow(books)), [books])
 
   const blocks: Record<BlockId, React.ReactNode> = {
     waiting: <WaitingCard toRate={toRate} questions={questions} onUpdate={onUpdate} onShowBook={onShowBook} />,
@@ -187,7 +185,8 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate }: DashboardP
     spice: <SpiceCard books={books} onShowBook={onShowBook} />,
     wrapped: <WrappedCard books={books} onShowBook={onShowBook} />,
     recent: <RecentCard books={books} onShowBook={onShowBook} />,
-    alphabet: <AlphabetCard books={books} onShowBook={onShowBook} />,
+    alphabet: <AlphabetCard books={books} onShowBook={onShowBook} onUpdate={onUpdate} kind="title" />,
+    alphabetAuthors: <AlphabetCard books={books} onShowBook={onShowBook} onUpdate={onUpdate} kind="author" />,
     bingo: <BingoCard books={books} onUpdate={onUpdate} />,
   }
 
@@ -310,8 +309,6 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate }: DashboardP
             {ids.map((id) => {
               // "Waiting for you" stays out of the way when nothing is waiting (shown while arranging)
               if (id === 'waiting' && nothingWaiting && !arranging) return null
-              // the monthly challenge too, between its months (#144)
-              if (id === 'challenge' && !challengeShown && !challengeEditing && !arranging) return null
               const moving = drag?.id === id
               return (
                 <div

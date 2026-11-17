@@ -2325,6 +2325,95 @@ textarea.input {
   width: 1.2rem;
   font-family: var(--serif);
 }
+/* a done letter shows its book's cover (#150); tap it to pick another (#152) */
+.alphabet-letter {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+}
+.alphabet-cover,
+.alphabet-cover .dash-cover.small {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  box-shadow: none;
+}
+.alphabet-badge {
+  position: absolute;
+  left: 0.15rem;
+  bottom: 0.15rem;
+  min-width: 1.1rem;
+  padding: 0 0.15rem;
+  border-radius: 4px;
+  background: rgba(20, 15, 12, 0.82);
+  color: var(--text);
+  font-size: 0.8rem;
+  line-height: 1.25;
+  text-align: center;
+}
+.alphabet-more {
+  position: absolute;
+  top: 0.15rem;
+  right: 0.15rem;
+  min-width: 0.95rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #1b1512;
+  font-size: 0.65rem;
+  line-height: 0.95rem;
+  text-align: center;
+}
+.alphabet-letter.open {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.alphabet-rule {
+  margin: 0 0 0.3rem;
+}
+.alphabet-choose {
+  margin-top: 0.6rem;
+  padding: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+}
+.alphabet-choose p {
+  margin: 0 0 0.4rem;
+}
+.alphabet-options {
+  list-style: none;
+  margin: 0 0 0.4rem;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.alphabet-option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.alphabet-option.on {
+  border-color: rgba(217, 168, 91, 0.7);
+  background: rgba(217, 168, 91, 0.15);
+}
+/* share a picture of a challenge (#153) */
+.challenge-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
 .bingo {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2442,6 +2531,74 @@ textarea.input {
 }
 .challenge-reminder {
   color: #e0a35f;
+}
+/* the year as a calendar (#154): done months light up */
+.challenge-calendar {
+  list-style: none;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.45rem 0.4rem;
+}
+.challenge-month-tile {
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.challenge-month-tile .cover-btn {
+  position: relative;
+  width: 100%;
+}
+.challenge-month-tile .dash-cover.small,
+.challenge-empty {
+  width: 100%;
+  border-radius: 3px 5px 5px 3px;
+}
+.challenge-empty {
+  display: block;
+  aspect-ratio: 2 / 3;
+  border: 1px dashed var(--border);
+}
+.challenge-month-tile.past .dash-cover.small {
+  opacity: 0.55;
+}
+.challenge-month-tile.done .dash-cover.small {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.challenge-month-tile.current .challenge-month-name {
+  color: var(--text);
+  font-weight: 600;
+}
+.challenge-month-name {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.challenge-month-tile.done .challenge-month-name {
+  color: var(--accent);
+}
+.challenge-tick {
+  position: absolute;
+  top: -0.3rem;
+  right: -0.3rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #1b1512;
+  font-size: 0.7rem;
+  line-height: 1.1rem;
+  text-align: center;
+}
+.challenge-card .challenge-actions .btn {
+  margin-top: 0;
+}
+@media (max-width: 420px) {
+  .challenge-calendar {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 .waiting-subtitle {
   margin: 1rem 0 0;

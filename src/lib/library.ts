@@ -66,6 +66,11 @@ export interface Book {
   /** the month ("2027-03") this book is the monthly challenge for (#144); see monthChallenge.ts */
   challengeMonth?: string
   /**
+   * the A–Z letters Hanna picked this book to stand for (#152): "title:2026:T"
+   * or "author:2026:M"; see alphabet.ts
+   */
+  alphabetPicks?: string[]
+  /**
    * the days it was finished (yyyy-mm-dd, oldest first), noted from #59 on;
    * books finished before that have none until Hanna fills one in
    */

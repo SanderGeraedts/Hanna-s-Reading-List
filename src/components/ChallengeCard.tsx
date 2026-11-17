@@ -3,6 +3,7 @@ import type { Book } from '#/lib/library'
 import { localDay } from '#/lib/library'
 import {
   canChange,
+  challengeCalendar,
   challengeFor,
   challengeNow,
   monthKey,
@@ -10,7 +11,9 @@ import {
   pickable,
   thisMonth,
 } from '#/lib/monthChallenge'
+import type { ShareSpec } from '#/lib/shareImage'
 import { Cover, monthName } from './Dashboard'
+import { ShareButton } from './ShareButton'
 
 interface Props {
   books: Book[]
@@ -22,9 +25,10 @@ interface Props {
 }
 
 /**
- * The monthly challenge (#144): this month's book (and any carried over)
- * until it's finished, a reminder in December, and an editor to pick a
- * book for each month that hasn't started yet. See monthChallenge.ts.
+ * The monthly challenge (#144): a calendar of the year with each month's
+ * book, done months marked (#154), books carried over from earlier months,
+ * a reminder in December, and an editor to pick a book for each month that
+ * hasn't started yet. See monthChallenge.ts.
  */
 export function ChallengeCard({ books, onShowBook, onUpdate, editing, onEditing }: Props) {
   const today = localDay()
@@ -33,6 +37,12 @@ export function ChallengeCard({ books, onShowBook, onUpdate, editing, onEditing 
   const c = useMemo(() => challengeNow(books, today), [books, today])
   // the year to edit: this one while a month is left to change, else next year
   const [editYear, setEditYear] = useState(() => (today.slice(5, 7) === '12' || c.remindNextYear ? year + 1 : year))
+  // the year the calendar shows: this one, or next year once it has books
+  const [showYear, setShowYear] = useState(year)
+  const nextHasBooks = useMemo(() => challengeFor(books, year + 1).size > 0, [books, year])
+  const calendar = useMemo(() => challengeCalendar(books, showYear, today), [books, showYear, today])
+  const doneCount = calendar.filter((m) => m.item?.doneOn).length
+  const pickedCount = calendar.filter((m) => m.item).length
 
   if (editing) {
     const picks = challengeFor(books, editYear)
@@ -95,18 +105,93 @@ export function ChallengeCard({ books, onShowBook, onUpdate, editing, onEditing 
     )
   }
 
+  const carried = c.open.filter((i) => i.month < now)
+  const title = `Monthly challenge ${showYear}`
+  const share = (): ShareSpec => ({
+    title,
+    subtitle: `${doneCount} of ${pickedCount || 12} months done`,
+    columns: 4,
+    aspect: 1.5,
+    tiles: calendar.map((m) => ({
+      label: monthName(Number(m.month.slice(5, 7)), 'short'),
+      caption: m.item?.book.title,
+      cover: m.item?.book.coverUrl,
+      color: m.item?.book.color,
+      on: !!m.item?.doneOn,
+    })),
+  })
+
   return (
     <section className="dash-card challenge-card" aria-labelledby="challenge-title">
-      <h2 id="challenge-title">Monthly challenge</h2>
+      <div className="dash-card-head">
+        <h2 id="challenge-title">Monthly challenge</h2>
+        {nextHasBooks ? (
+          <div className="segmented" role="group" aria-label="Year">
+            {[year, year + 1].map((y) => (
+              <button key={y} type="button" aria-pressed={showYear === y} onClick={() => setShowYear(y)}>
+                {y}
+              </button>
+            ))}
+          </div>
+        ) : (
+          pickedCount > 0 && (
+            <span className="muted small-text">
+              {doneCount} of {pickedCount} done
+            </span>
+          )
+        )}
+      </div>
       {c.notStarted && (
         <p className="small-text">
           Pick a book for each month, and read along through the year. You can start with{' '}
           {today.slice(5, 7) === '12' ? 'next year' : 'next month'}.
         </p>
       )}
-      {c.open.length > 0 && (
+      <ol className="challenge-calendar" aria-label={title}>
+        {calendar.map((m) => {
+          const name = monthName(Number(m.month.slice(5, 7)))
+          const state = m.item?.doneOn
+            ? `done${m.item.late ? ' (late)' : ''}`
+            : m.item
+              ? m.current
+                ? 'this month'
+                : m.past
+                  ? 'not finished yet'
+                  : 'coming up'
+              : 'no book'
+          const cls = [
+            'challenge-month-tile',
+            m.item?.doneOn && 'done',
+            m.current && 'current',
+            m.past && !m.item?.doneOn && 'past',
+          ]
+            .filter(Boolean)
+            .join(' ')
+          const label = `${name}: ${m.item ? `${m.item.book.title}, ` : ''}${state}`
+          return (
+            <li key={m.month} className={cls}>
+              {m.item ? (
+                <button className="cover-btn" aria-label={label} title={label} onClick={() => onShowBook(m.item!.book.id)}>
+                  <Cover book={m.item.book} small />
+                  {m.item.doneOn && (
+                    <span className="challenge-tick" aria-hidden>
+                      ✓
+                    </span>
+                  )}
+                </button>
+              ) : (
+                <span className="challenge-empty" role="img" aria-label={label} title={label} />
+              )}
+              <span className="challenge-month-name" aria-hidden>
+                {monthName(Number(m.month.slice(5, 7)), 'short')}
+              </span>
+            </li>
+          )
+        })}
+      </ol>
+      {carried.length > 0 && (
         <ul className="waiting-list">
-          {c.open.map((item) => (
+          {carried.map((item) => (
             <li key={item.month}>
               <button className="cover-btn" aria-label={`Open ${item.book.title}`} onClick={() => onShowBook(item.book.id)}>
                 <Cover book={item.book} small />
@@ -117,8 +202,7 @@ export function ChallengeCard({ books, onShowBook, onUpdate, editing, onEditing 
                 </p>
                 <p className="muted small-text">
                   {monthName(Number(item.month.slice(5, 7)))}
-                  {item.month.slice(0, 4) !== String(year) && ` ${item.month.slice(0, 4)}`}
-                  {item.month < now ? ' · carried over' : ' · this month'}
+                  {item.month.slice(0, 4) !== String(year) && ` ${item.month.slice(0, 4)}`} · carried over
                 </p>
               </div>
             </li>
@@ -126,9 +210,12 @@ export function ChallengeCard({ books, onShowBook, onUpdate, editing, onEditing 
         </ul>
       )}
       {c.remindNextYear && <p className="small-text challenge-reminder">Set up your challenge for {year + 1}.</p>}
-      <button type="button" className="btn small" onClick={() => onEditing(true)}>
-        {c.notStarted || c.remindNextYear ? 'Set up' : 'Edit challenge'}
-      </button>
+      <div className="challenge-actions">
+        <button type="button" className="btn small" onClick={() => onEditing(true)}>
+          {c.notStarted || c.remindNextYear ? 'Set up' : 'Edit challenge'}
+        </button>
+        {pickedCount > 0 && <ShareButton spec={share} label={title} />}
+      </div>
     </section>
   )
 }

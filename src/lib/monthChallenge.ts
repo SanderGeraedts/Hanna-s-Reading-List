@@ -75,8 +75,35 @@ export function challengeNow(books: Book[], today = localDay()): ChallengeNow {
   }
 }
 
-/** Whether the block has something to say today (else it stays out of the way). */
-export const challengeVisible = (c: ChallengeNow) => c.open.length > 0 || c.remindNextYear || c.notStarted
+export interface CalendarMonth {
+  month: MonthKey
+  /** the book picked for it, and whether (and when) it's done */
+  item?: ChallengeItem
+  /** this month */
+  current: boolean
+  /** over: the month has ended */
+  past: boolean
+}
+
+/**
+ * The year as a calendar of twelve months (#154), so the block stays on the
+ * dashboard: each month with its book, done ones marked.
+ */
+export function challengeCalendar(books: Book[], year: number, today = localDay()): CalendarMonth[] {
+  const sleep = sleepReadIds(books)
+  const picks = challengeFor(books, year)
+  const now = thisMonth(today)
+  return Array.from({ length: 12 }, (_, i) => {
+    const month = monthKey(year, i + 1)
+    const book = picks.get(month)
+    return {
+      month,
+      ...(book && { item: itemFor(month, book, sleep) }),
+      current: month === now,
+      past: month < now,
+    }
+  })
+}
 
 /** A month can still be changed while it hasn't started. */
 export const canChange = (month: MonthKey, today = localDay()) => month > thisMonth(today)

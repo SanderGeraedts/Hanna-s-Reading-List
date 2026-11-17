@@ -3,7 +3,7 @@ import type { Book } from './library'
 
 vi.mock('#/server/shelf', () => ({ loadShelf: async () => null, saveShelf: async () => ({ updated: 't' }) }))
 
-const { alphabetYear, letterOf } = await import('./alphabet')
+const { alphabetYear, authorLetters, letterOf, pickLetter } = await import('./alphabet')
 
 const book = (id: string, title: string, extra: Partial<Book> = {}): Book => ({
   id,
@@ -75,5 +75,78 @@ describe('A–Z challenge (#143)', () => {
       '2026-06-01',
     )
     expect(y.tips.map((t) => `${t.letter}:${t.book.id}`)).toEqual(['Q:q', 'T:t'])
+  })
+
+  it('lists every book that counts for a letter, first finished first (#152)', () => {
+    const y = alphabetYear(
+      [read('t1', 'The Hobbit', '2026-02-01'), read('t2', 'Twilight', '2026-01-10'), read('t3', 'Tress', '2026-02-01')],
+      2026,
+      '2026-06-01',
+    )
+    expect(y.options.get('T')!.map((b) => b.id)).toEqual(['t2', 't1', 't3'])
+    expect(y.done.get('T')).toMatchObject({ picked: false, day: '2026-01-10' })
+  })
+
+  it('shows the book Hanna picked for a letter, for that year and challenge only (#152)', () => {
+    const books = [read('t1', 'The Hobbit', '2026-02-01'), read('t2', 'Twilight', '2026-01-10')]
+    const patches = pickLetter(books, 'title', 2026, 'T', 't1')
+    expect([...patches]).toEqual([['t1', { alphabetPicks: ['title:2026:T'] }]])
+    const picked = books.map((b) => ({ ...b, ...patches.get(b.id) }))
+    expect(alphabetYear(picked, 2026, '2026-06-01').done.get('T')).toMatchObject({ picked: true, day: '2026-02-01' })
+    expect(alphabetYear(picked, 2026, '2026-06-01').done.get('T')!.book.id).toBe('t1')
+    // another pick for T lets go of the first; other picks on the book stay
+    const twice = picked.map((b) => (b.id === 't1' ? { ...b, alphabetPicks: ['title:2026:T', 'author:2026:J'] } : b))
+    expect([...pickLetter(twice, 'title', 2026, 'T', 't2')]).toEqual([
+      ['t1', { alphabetPicks: ['author:2026:J'] }],
+      ['t2', { alphabetPicks: ['title:2026:T'] }],
+    ])
+  })
+
+  it('ignores a pick on a book that no longer counts for that letter', () => {
+    const y = alphabetYear(
+      [read('t1', 'The Hobbit', '2026-02-01', { alphabetPicks: ['title:2026:A'] }), read('a', 'Atlas', '2026-03-01')],
+      2026,
+      '2026-06-01',
+    )
+    expect(y.done.get('A')!.book.id).toBe('a')
+  })
+})
+
+describe('A–Z authors (#151)', () => {
+  it('counts the first name and the surname', () => {
+    expect(authorLetters('Sarah J. Maas')).toEqual(['S', 'M'])
+    expect(authorLetters('Rebecca Yarros')).toEqual(['R', 'Y'])
+    expect(authorLetters('Stephen King')).toEqual(['S', 'K'])
+    expect(authorLetters('Sally Rooney')).toEqual(['S', 'R'])
+    expect(authorLetters('Homer')).toEqual(['H'])
+    expect(authorLetters('Émile Zola')).toEqual(['E', 'Z'])
+    expect(authorLetters('')).toEqual([])
+  })
+
+  it('lights up both letters of every author of a finished book', () => {
+    const y = alphabetYear(
+      [
+        read('acotar', 'A Court of Thorns and Roses', '2026-02-01', { authors: ['Sarah J. Maas'] }),
+        read('duo', 'Good Omens', '2026-03-01', { authors: ['Terry Pratchett', 'Neil Gaiman'] }),
+        read('sleep', 'Sleepy', '2026-03-01', { authors: ['Xavier Quinn'], sleepRead: true }),
+      ],
+      2026,
+      '2026-06-01',
+      'author',
+    )
+    expect([...y.done.keys()]).toEqual(['G', 'M', 'N', 'P', 'S', 'T'])
+    expect(y.done.get('M')!.book.id).toBe('acotar')
+  })
+
+  it("keeps an author pick apart from a title pick", () => {
+    const b = read('a', 'Maybe Someday', '2026-02-01', { authors: ['Colleen Hoover'], alphabetPicks: ['title:2026:M'] })
+    const other = read('b', 'Middlemarch', '2026-01-01', { authors: ['George Eliot'] })
+    expect(alphabetYear([b, other], 2026, '2026-06-01').done.get('M')!.book.id).toBe('a')
+    expect(alphabetYear([b, other], 2026, '2026-06-01', 'author').done.has('M')).toBe(false)
+  })
+
+  it('suggests a book from her pile by its author', () => {
+    const y = alphabetYear([book('w', 'Iron Flame', { authors: ['Rebecca Yarros'] })], 2026, '2026-06-01', 'author')
+    expect(y.tips.map((t) => `${t.letter}:${t.book.id}`)).toEqual(['R:w', 'Y:w'])
   })
 })
