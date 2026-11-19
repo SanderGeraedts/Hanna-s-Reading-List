@@ -20,9 +20,22 @@
   --accent-line: rgba(217, 168, 91, 0.6); /* gold outline */
   --accent-ink: #2a1a08; /* text on gold */
   --warning: #e0a35f; /* behind, a reminder */
-  --danger: #e07a62; /* remove, wrong */
-  --header-ink: #3a2616; /* text over the wallpaper at the top: warm dark brown */
-  --header-muted: #6b4c32;
+  --danger: #ea8670; /* remove, wrong: 4.5:1 on a card (colours.test.ts) */
+  --header-ink: #2d2038; /* text straight on the wallpaper: deep plum */
+  --header-muted: #54456a;
+
+  /* the wallpaper: soft lavender stripes, behind the shelf and every page.
+     The 3D wall (wallTexture in textures.ts) uses the same colours, down to
+     --wall-floor; the pages stop at --wall-page-bottom, so text stays readable. */
+  --wall-top: #ece4f5; /* pale lavender */
+  --wall-2: #d9cbec;
+  --wall-mid: #c3afe0; /* lilac */
+  --wall-4: #a990cf;
+  --wall-floor: #8e74bb; /* deeper lilac, at the floor of the room */
+  --wall-page-bottom: #d4c4ea;
+  --wall-stripe: rgba(80, 50, 130, 0.07);
+  --wallpaper: repeating-linear-gradient(90deg, transparent 0 22px, var(--wall-stripe) 22px 44px),
+    linear-gradient(to bottom, var(--wall-top), var(--wall-page-bottom));
 
   /* text sizes: five, and nothing in between */
   --fs-tiny: 0.7rem; /* only inside dense grids: calendar days, bingo squares, A–Z letters */
@@ -1305,7 +1318,36 @@ textarea.input {
   z-index: 1;
   overflow-y: auto;
   padding: 6.5rem 1.5rem 2rem;
-  background: radial-gradient(ellipse at top, #3a2b20 0%, var(--bg) 60%);
+  /* the same lavender wallpaper as behind the shelf */
+  background: var(--wallpaper);
+  color: var(--header-ink);
+}
+/* what sits straight on the wallpaper: dark plum, not cream */
+.dashboard .dashboard-empty,
+.challenges-page > p,
+.calendar-summary {
+  color: var(--header-muted);
+}
+/* titles and navigation above the blocks sit on a card, like the blocks */
+.challenges-head,
+.calendar-nav,
+.calendar-big {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.dash-card,
+.calendar-day,
+.calendar-year > li,
+.calendar-coming,
+.trophy {
+  color: var(--text);
+}
+/* a button straight on the wallpaper (Arrange) gets the solid walnut of a card */
+.dashboard-bar:not(.arranging) .btn {
+  background: var(--surface-solid);
 }
 .dashboard-grid {
   max-width: 68rem;

@@ -24,6 +24,11 @@ const COLOURS: Array<[string, string]> = [
   ['--accent-line', 'Gold outline'],
   ['--warning', 'Behind, a reminder'],
   ['--danger', 'Remove, wrong'],
+  ['--wall-top', 'Wallpaper: pale lavender at the top'],
+  ['--wall-mid', 'Wallpaper: lilac'],
+  ['--wall-floor', 'Wallpaper: deeper lilac at the floor (3D room)'],
+  ['--header-ink', 'Text straight on the wallpaper'],
+  ['--header-muted', 'Helper text straight on the wallpaper'],
 ]
 
 const SIZES: Array<[string, string]> = [
