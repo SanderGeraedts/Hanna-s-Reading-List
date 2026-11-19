@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Book } from '#/lib/library'
 import { badges } from '#/lib/badges'
+import type { Badge } from '#/lib/badges'
 import { rhythm, WEEKDAY_NAMES } from '#/lib/rhythm'
 import { sleepReadIds } from '#/lib/sleepSeries'
 import type { ShareSpec } from '#/lib/shareImage'
@@ -13,29 +14,134 @@ const dayText = (day: string) =>
 /** Milestones & badges: every badge, earned ones with their day, the rest greyed out. */
 export function BadgesCard({ books }: { books: Book[] }) {
   const all = useMemo(() => badges(books), [books])
-  const earned = all.filter((b) => b.earned).length
+  // like Steam: unlocked first (newest on top), then the locked ones closest to done;
+  // secret badges stay hidden until unlocked, only counted
+  const earned = all
+    .filter((b) => b.earned)
+    .sort((a, b) => (b.on ?? '').localeCompare(a.on ?? ''))
+  const locked = all
+    .filter((b) => !b.earned && !b.secret)
+    .sort((a, b) => share(b) - share(a))
+  const hidden = all.filter((b) => !b.earned && b.secret).length
+  const percent = Math.round((earned.length / Math.max(1, all.length)) * 100)
   return (
     <section className="dash-card" aria-labelledby="badges-title">
       <div className="dash-card-head">
         <h2 id="badges-title">Badges</h2>
         <span className="muted small-text">
-          {earned} of {all.length}
+          {earned.length} of {all.length} unlocked ({percent}%)
         </span>
       </div>
+      <div
+        className="progress-bar badges-total"
+        role="progressbar"
+        aria-label="Badges unlocked"
+        aria-valuemin={0}
+        aria-valuemax={all.length}
+        aria-valuenow={earned.length}
+      >
+        <span style={{ width: `${percent}%` }} />
+      </div>
       <ul className="badges">
-        {all.map((b) => (
-          <li key={b.id} className={b.earned ? 'badge earned' : 'badge'} title={b.how}>
+        {earned.map((b) => (
+          <li key={b.id} className="badge earned" title={b.how}>
             <span className="badge-icon" aria-hidden>
               {b.icon}
             </span>
             <span className="badge-text">
               <strong>{b.name}</strong>
-              <span className="muted small-text">{b.earned ? (b.on ? dayText(b.on) : 'Earned') : b.how}</span>
+              <span className="muted small-text">{b.how}</span>
+              <span className="badge-on small-text">
+                {b.secret && <span className="badge-secret">secret · </span>}
+                {b.on ? `Unlocked ${dayText(b.on)}` : 'Unlocked'}
+              </span>
+            </span>
+          </li>
+        ))}
+        {locked.map((b) => (
+          <li key={b.id} className="badge locked" title={b.how}>
+            <span className="badge-icon" aria-hidden>
+              {b.icon}
+            </span>
+            <span className="badge-text">
+              <strong>{b.name}</strong>
+              <span className="muted small-text">{b.how}</span>
+              {b.progress && b.progress.done > 0 && (
+                <span className="badge-progress">
+                  <span className="progress-bar" aria-hidden>
+                    <span style={{ width: `${(b.progress.done / b.progress.goal) * 100}%` }} />
+                  </span>
+                  <span className="muted small-text">
+                    {b.progress.done.toLocaleString('en')} / {b.progress.goal.toLocaleString('en')}
+                  </span>
+                </span>
+              )}
             </span>
           </li>
         ))}
       </ul>
+      {hidden > 0 && (
+        <p className="badges-hidden muted small-text">
+          <span aria-hidden>🔒</span> + {hidden} hidden {hidden === 1 ? 'badge' : 'badges'}. Keep reading to find them!
+        </p>
+      )}
     </section>
+  )
+}
+
+/** How close a locked badge is to done, 0 to 1. */
+const share = (b: Badge) => (b.progress ? b.progress.done / b.progress.goal : 0)
+
+/**
+ * "Badge unlocked": a small Steam-like toast in the corner when a badge is
+ * earned, a few seconds each, at most three in a row. Each device remembers
+ * which badges it has already shown; the very first time it shows none (so
+ * the badges she already had don't all pop up at once).
+ */
+export function BadgeToasts({ books, accountId, ready }: { books: Book[]; accountId: string | null; ready: boolean }) {
+  const key = `hannas-reading-list:badges-shown:${accountId ?? 'local'}`
+  const [queue, setQueue] = useState<Badge[]>([])
+  const earnedIds = useMemo(() => (ready ? badges(books).filter((b) => b.earned) : null), [books, ready])
+
+  useEffect(() => {
+    if (!earnedIds) return
+    let shown: string[] | null = null
+    try {
+      const raw = localStorage.getItem(key)
+      shown = raw ? (JSON.parse(raw) as string[]) : null
+    } catch {
+      shown = null
+    }
+    const fresh = shown ? earnedIds.filter((b) => !shown!.includes(b.id)) : []
+    try {
+      localStorage.setItem(key, JSON.stringify(earnedIds.map((b) => b.id)))
+    } catch {
+      /* storage blocked: then no toasts, rather than the same ones every visit */
+      return
+    }
+    if (fresh.length) setQueue((q) => [...q, ...fresh].slice(0, 3))
+  }, [earnedIds, key])
+
+  // each toast stays a few seconds, then the next one
+  useEffect(() => {
+    if (!queue.length) return
+    const t = window.setTimeout(() => setQueue((q) => q.slice(1)), 5000)
+    return () => window.clearTimeout(t)
+  }, [queue])
+
+  const b = queue[0]
+  if (!b) return null
+  return (
+    <div className="badge-toast" role="status" key={b.id} onClick={() => setQueue((q) => q.slice(1))}>
+      <span className="badge-toast-icon" aria-hidden>
+        {b.icon}
+      </span>
+      <span className="badge-toast-text">
+        <span className="small-text">{b.secret ? 'Secret badge unlocked!' : 'Badge unlocked'}</span>
+        <strong>{b.name}</strong>
+        <span className="small-text muted">{b.how}</span>
+      </span>
+    </div>
   )
 }
 
