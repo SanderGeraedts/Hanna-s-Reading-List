@@ -218,7 +218,7 @@ export function AuthorsCard({ books }: { books: Book[] }) {
 
 // ---- spice meter -----------------------------------------------------------------
 
-export function SpiceCard({ books, onShowBook }: Props) {
+export function SpiceCard({ books, onShowBook, switcher }: Props & { switcher?: React.ReactNode }) {
   const now = new Date()
   const [pick, setPick] = useState<PeriodPick>({ kind: 'year', year: now.getFullYear(), month: now.getMonth() + 1 })
   const s = useMemo(() => spiceStats(books, toPeriod(pick)), [books, pick])
@@ -226,7 +226,8 @@ export function SpiceCard({ books, onShowBook }: Props) {
   return (
     <section className="dash-card" aria-labelledby="spice-title">
       <div className="dash-card-head">
-        <h2 id="spice-title">Spice meter</h2>
+        <h2 id="spice-title">{switcher ? 'My ratings' : 'Spice meter'}</h2>
+        {switcher}
         <PeriodTabs pick={pick} onPick={setPick} />
       </div>
       <PeriodSelect books={books} pick={pick} onPick={setPick} />

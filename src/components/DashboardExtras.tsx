@@ -339,7 +339,7 @@ export function SeriesCard({ books, onShowBook }: Props) {
 
 // ---- books per month -------------------------------------------------------------
 
-export function MonthlyChart({ books, year }: { books: Book[]; year: number }) {
+export function MonthlyChart({ books, year, bare = false }: { books: Book[]; year: number; bare?: boolean }) {
   const counts = useMemo(() => monthlyCounts(books, year), [books, year])
   const [hover, setHover] = useState<number | null>(null)
   const max = Math.max(...counts)
@@ -357,9 +357,10 @@ export function MonthlyChart({ books, year }: { books: Book[]; year: number }) {
   const total = counts.reduce((a, b) => a + b, 0)
 
   return (
-    <section className="dash-card" aria-labelledby="monthly-title">
+    // bare: inside the Books read block, without a card of its own
+    <section className={bare ? 'count-monthly' : 'dash-card'} aria-labelledby="monthly-title">
       <div className="dash-card-head">
-        <h2 id="monthly-title">Books per month · {year}</h2>
+        {bare ? <h3 id="monthly-title">Books per month · {year}</h3> : <h2 id="monthly-title">Books per month · {year}</h2>}
         <span className="muted small-text">{plural(total, 'book')}</span>
       </div>
       <div className="chart-wrap">

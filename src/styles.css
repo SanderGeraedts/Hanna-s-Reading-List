@@ -20,9 +20,29 @@
   --accent-line: rgba(217, 168, 91, 0.6); /* gold outline */
   --accent-ink: #2a1a08; /* text on gold */
   --warning: #e0a35f; /* behind, a reminder */
-  --danger: #e07a62; /* remove, wrong */
-  --header-ink: #1f2440;
-  --header-muted: #4a5172;
+  --danger: #ea8670; /* remove, wrong: 4.5:1 on a card (colours.test.ts) */
+  --header-ink: #2d2038; /* text straight on the wallpaper: deep plum */
+  --header-muted: #54456a;
+
+  /* the wallpaper: soft lavender stripes, behind the shelf and every page.
+     The 3D wall (wallTexture in textures.ts) uses the same colours, down to
+     --wall-floor; the pages stop at --wall-page-bottom, so text stays readable. */
+  --wall-top: #ece4f5; /* pale lavender */
+  --wall-2: #d9cbec;
+  --wall-mid: #c3afe0; /* lilac */
+  --wall-4: #a990cf;
+  --wall-floor: #8e74bb; /* deeper lilac, at the floor of the room */
+  --wall-page-bottom: #d4c4ea;
+  --wall-stripe: rgba(80, 50, 130, 0.07);
+  /* one stripe's width on screen: the 3D room sets it to match its own stripes
+     (useCameraRig in BookshelfScene.tsx); 44px until it has */
+  --wall-stripe-px: 44px;
+  --wallpaper: repeating-linear-gradient(
+      90deg,
+      transparent 0 var(--wall-stripe-px),
+      var(--wall-stripe) var(--wall-stripe-px) calc(var(--wall-stripe-px) * 2)
+    ),
+    linear-gradient(to bottom, var(--wall-top), var(--wall-page-bottom));
 
   /* text sizes: five, and nothing in between */
   --fs-tiny: 0.7rem; /* only inside dense grids: calendar days, bingo squares, A–Z letters */
@@ -1305,7 +1325,36 @@ textarea.input {
   z-index: 1;
   overflow-y: auto;
   padding: 6.5rem 1.5rem 2rem;
-  background: radial-gradient(ellipse at top, #3a2b20 0%, var(--bg) 60%);
+  /* the same lavender wallpaper as behind the shelf */
+  background: var(--wallpaper);
+  color: var(--header-ink);
+}
+/* what sits straight on the wallpaper: dark plum, not cream */
+.dashboard .dashboard-empty,
+.challenges-page > p,
+.calendar-summary {
+  color: var(--header-muted);
+}
+/* titles and navigation above the blocks sit on a card, like the blocks */
+.challenges-head,
+.calendar-nav,
+.calendar-big {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.dash-card,
+.calendar-day,
+.calendar-year > li,
+.calendar-coming,
+.trophy {
+  color: var(--text);
+}
+/* a button straight on the wallpaper (Arrange) gets the solid walnut of a card */
+.dashboard-bar:not(.arranging) .btn {
+  background: var(--surface-solid);
 }
 .dashboard-grid {
   max-width: 68rem;
@@ -3022,6 +3071,118 @@ textarea.input {
     min-width: 0;
     flex: 1;
   }
+}
+
+/* ---- dashboard sections and the today strip -------------------------- */
+.dash-section {
+  max-width: 68rem;
+  margin: 0 auto var(--space-5);
+  display: grid;
+  gap: var(--space-3);
+}
+.dash-section-head {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.dash-section-head:disabled {
+  cursor: default;
+}
+.dash-section-head h2 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: var(--fs-large);
+}
+.dash-section-fold {
+  color: var(--accent);
+}
+.dash-section .dashboard-grid {
+  margin: 0;
+  max-width: none;
+}
+.count-monthly {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+.count-monthly h3 {
+  margin: 0;
+  font-size: var(--fs-body);
+}
+.today-strip {
+  max-width: 68rem;
+  margin: 0 auto var(--space-3);
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.today-item {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+button.today-item {
+  cursor: pointer;
+}
+button.today-item:hover {
+  border-color: var(--accent-line);
+}
+.today-item .dash-cover.small {
+  width: 1.8rem;
+}
+.today-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.today-book .today-text strong {
+  max-width: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.today-progress {
+  display: block;
+  width: 6rem;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+.today-progress span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.today-icon {
+  font-size: var(--fs-heading);
+}
+.today-ring {
+  width: 2.2rem;
+  height: 2.2rem;
+}
+.today-ring circle {
+  fill: none;
+  stroke-width: 4;
 }
 
 /* ---- the reading reminder in the menu (#163) ------------------------- */

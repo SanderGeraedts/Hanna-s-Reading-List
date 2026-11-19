@@ -14,7 +14,6 @@ import {
   RecordsCard,
   RecentCard,
   SeriesCard,
-  StreakCard,
   dayStory,
 } from './DashboardExtras'
 import { AuthorsCard, BingoCard, HeatmapCard, PaceCard, SpiceCard, WrappedCard } from './DashboardMore'
@@ -36,14 +35,18 @@ import { percentText } from '#/lib/progress'
 import {
   BLOCKS,
   DEFAULT_LAYOUT,
+  SECTIONS,
+  SECTION_IDS,
   cleanLayout,
   hideBlock,
   moveBlock,
   placeOf,
   showBlock,
   singleColumn,
+  toggleFold,
 } from '#/lib/dashboardLayout'
-import type { BlockId, DashboardLayout } from '#/lib/dashboardLayout'
+import type { BlockId, DashboardLayout, SectionId } from '#/lib/dashboardLayout'
+import { TodayStrip } from './TodayStrip'
 import type { Period } from '#/lib/stats'
 
 /**
@@ -127,9 +130,10 @@ function useNarrow() {
 
 /** Where a dragged block would land, and which block (or column end) shows the drop line. */
 interface Drop {
+  section: SectionId
   column: 0 | 1
   index: number
-  /** the block it goes before, or `end:<n>` for the end of visual column n */
+  /** the block it goes before, or `end:<section>:<n>` for the end of visual column n */
   marker: string
 }
 
@@ -152,7 +156,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
   const [challengeEditing, setChallengeEditing] = useState(false)
   const [drag, setDrag] = useState<Drag | null>(null)
   const narrow = useNarrow()
-  const grid = useRef<HTMLDivElement>(null)
+  const root = useRef<HTMLDivElement>(null)
   const start = useRef({ x: 0, y: 0, scroll: 0 })
 
   // finished books to rate and new books that might be in a series, instead of pop-ups
@@ -173,37 +177,51 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
         onOpen={open('monthly')}
       />
     ),
-    count: <ReadCount books={books} onShowBook={onShowBook} pick={pick} onPick={setPick} />,
+    // Books read, with the books per month under it
+    count: (
+      <ReadCount books={books} onShowBook={onShowBook} pick={pick} onPick={setPick}>
+        <MonthlyChart books={books} year={pick.year} bare />
+      </ReadCount>
+    ),
     goal: <GoalCard books={books} accountId={accountId} onOpen={open('goal')} />,
     next: <ReadNextCard books={books} onShowBook={onShowBook} />,
     reading: <CurrentlyReadingCard books={books} onShowBook={onShowBook} />,
     series: <SeriesCard books={books} onShowBook={onShowBook} />,
-    monthly: <MonthlyChart books={books} year={pick.year} />,
     calendar: <Calendar books={books} onShowBook={onShowBook} onOpen={onOpenCalendar} />,
     breakdown: <BreakdownCard books={books} period={period} label={periodLabel(pick)} />,
     records: <RecordsCard books={books} period={period} label={periodLabel(pick)} onShowBook={onShowBook} />,
     pile: <PileCard books={books} />,
-    streak: <StreakCard books={books} />,
     onthisday: <OnThisDayCard books={books} onShowBook={onShowBook} />,
     lent: <LentCard books={books} onShowBook={onShowBook} />,
-    top: <TopRatedCard books={books} onShowBook={onShowBook} />,
+    // Top 5 and the spice meter in one block, with a switch
+    top: <RatingsCard books={books} onShowBook={onShowBook} />,
     fact: <FactCard books={books} />,
     pace: <PaceCard books={books} onShowBook={onShowBook} />,
     heatmap: <HeatmapCard books={books} />,
     authors: <AuthorsCard books={books} />,
-    spice: <SpiceCard books={books} onShowBook={onShowBook} />,
     wrapped: <WrappedCard books={books} onShowBook={onShowBook} />,
     recent: <RecentCard books={books} onShowBook={onShowBook} />,
     alphabet: <AlphabetCard books={books} onShowBook={onShowBook} onUpdate={onUpdate} compact onOpen={open('alphabet')} />,
     bingo: <BingoCard books={books} onUpdate={onUpdate} compact onOpen={open('bingo')} />,
   }
 
-  const columns: BlockId[][] = narrow ? [singleColumn(layout)] : layout.columns
-  const scroller = () => grid.current?.closest<HTMLElement>('.dashboard') ?? null
+  /** a block that has nothing to say right now stays out of the way (still shown while arranging) */
+  const showing = (id: BlockId) => arranging || !(id === 'waiting' && nothingWaiting)
+  const columnsOf = (section: SectionId): BlockId[][] =>
+    narrow ? [singleColumn(layout.sections[section])] : layout.sections[section]
+  const scroller = () => root.current
 
-  /** The drop place under the pointer: before the first block whose middle is below it, in the column it is over. */
+  /** The drop place under the pointer: the section it is over, then before the first block whose middle is below it. */
   const dropAt = (x: number, y: number, id: BlockId): Drop | null => {
-    const cols = [...(grid.current?.querySelectorAll<HTMLElement>(':scope > .dash-column') ?? [])]
+    const grids = [...(root.current?.querySelectorAll<HTMLElement>('.dash-section-grid') ?? [])]
+    if (!grids.length) return null
+    const vdist = (el: HTMLElement) => {
+      const r = el.getBoundingClientRect()
+      return y < r.top ? r.top - y : y > r.bottom ? y - r.bottom : 0
+    }
+    const grid = grids.reduce((best, el) => (vdist(el) < vdist(best) ? el : best), grids[0])
+    const section = grid.dataset.section as SectionId
+    const cols = [...grid.querySelectorAll<HTMLElement>(':scope > .dash-column')]
     if (!cols.length) return null
     const dist = (el: HTMLElement) => {
       const r = el.getBoundingClientRect()
@@ -223,11 +241,12 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
       return place && { ...place, marker: before.dataset.block! }
     }
     const last = others.at(-1)
+    const end = `end:${section}:${visual}`
     if (last) {
       const place = placeOf(rest, last.dataset.block as BlockId)
-      return place && { column: place.column, index: place.index + 1, marker: `end:${visual}` }
+      return place && { section, column: place.column, index: place.index + 1, marker: end }
     }
-    return { column: visual as 0 | 1, index: 0, marker: `end:${visual}` }
+    return { section, column: visual as 0 | 1, index: 0, marker: end }
   }
 
   const handleProps = (id: BlockId) => ({
@@ -255,33 +274,41 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
       })
     },
     onPointerUp: () => {
-      if (drag?.id === id && drag.drop) setLayout(moveBlock(layout, id, drag.drop.column, drag.drop.index))
+      if (drag?.id === id && drag.drop) {
+        setLayout(moveBlock(layout, id, drag.drop.section, drag.drop.column, drag.drop.index))
+      }
       setDrag(null)
     },
     onPointerCancel: () => setDrag(null),
-    // without a pointer: arrow keys move the block
+    // without a pointer: arrow keys move the block; with Shift, up and down go to the next section
     onKeyDown: (e: React.KeyboardEvent<HTMLButtonElement>) => {
       const place = placeOf(layout, id)
       if (!place) return
+      const s = SECTION_IDS.indexOf(place.section)
       const to =
-        e.key === 'ArrowUp'
-          ? { column: place.column, index: place.index - 1 }
-          : e.key === 'ArrowDown'
-            ? { column: place.column, index: place.index + 1 }
-            : e.key === 'ArrowLeft' && !narrow
-              ? { column: 0 as const, index: place.index }
-              : e.key === 'ArrowRight' && !narrow
-                ? { column: 1 as const, index: place.index }
-                : null
+        e.shiftKey && e.key === 'ArrowUp' && s > 0
+          ? { section: SECTION_IDS[s - 1], column: place.column, index: 999 }
+          : e.shiftKey && e.key === 'ArrowDown' && s < SECTION_IDS.length - 1
+            ? { section: SECTION_IDS[s + 1], column: place.column, index: 0 }
+            : e.key === 'ArrowUp' && !e.shiftKey
+              ? { ...place, index: place.index - 1 }
+              : e.key === 'ArrowDown' && !e.shiftKey
+                ? { ...place, index: place.index + 1 }
+                : e.key === 'ArrowLeft' && !narrow
+                  ? { ...place, column: 0 as const }
+                  : e.key === 'ArrowRight' && !narrow
+                    ? { ...place, column: 1 as const }
+                    : null
       if (!to || to.index < 0) return
       e.preventDefault()
-      setLayout(moveBlock(layout, id, to.column, to.index))
+      setLayout(moveBlock(layout, id, to.section, to.column, to.index))
     },
   })
 
-  const shown = columns.some((c) => c.length > 0)
+  const shown = SECTION_IDS.some((s) => layout.sections[s].flat().some(showing))
   return (
-    <div className="dashboard">
+    <div className="dashboard" ref={root}>
+      <TodayStrip books={books} accountId={accountId} onShowBook={onShowBook} />
       <div className={`dashboard-bar${arranging ? ' arranging' : ''}`}>
         {arranging ? (
           <>
@@ -311,49 +338,100 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
         )}
       </div>
       {!shown && <p className="muted dashboard-empty">Every block is hidden. Press Arrange to add some back.</p>}
-      <div className={`dashboard-grid${arranging ? ' arranging' : ''}${drag ? ' dragging' : ''}`} ref={grid}>
-        {columns.map((ids, visual) => (
-          <div className="dash-column" key={visual}>
-            {ids.map((id) => {
-              // "Waiting for you" stays out of the way when nothing is waiting (shown while arranging)
-              if (id === 'waiting' && nothingWaiting && !arranging) return null
-              const moving = drag?.id === id
-              return (
-                <div
-                  key={id}
-                  data-block={id}
-                  className={`dash-block${moving ? ' moving' : ''}${drag?.drop?.marker === id ? ' drop-before' : ''}`}
-                  style={moving ? { transform: `translate(${drag.dx}px, ${drag.dy}px)` } : undefined}
-                >
-                  {arranging && (
-                    <div className="block-tools">
-                      <button
-                        className="btn icon small block-handle"
-                        aria-label={`Move ${BLOCKS[id]}: drag it, or use the arrow keys`}
-                        title="Drag to move"
-                        {...handleProps(id)}
-                      >
-                        <span aria-hidden>⠿</span>
-                      </button>
-                      <button
-                        className="btn icon small"
-                        aria-label={`Hide ${BLOCKS[id]}`}
-                        title="Hide"
-                        onClick={() => setLayout(hideBlock(layout, id))}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  )}
-                  {blocks[id]}
-                </div>
-              )
-            })}
-            {drag?.drop?.marker === `end:${visual}` && <div className="drop-end" aria-hidden />}
-          </div>
-        ))}
-      </div>
+      {SECTION_IDS.map((section) => {
+        const ids = layout.sections[section].flat().filter(showing)
+        // an empty section stays out of the way, except while arranging (to drop blocks into)
+        if (ids.length === 0 && !arranging) return null
+        // while arranging every section is open, so blocks can be dropped in
+        const folded = layout.folded.includes(section) && !arranging
+        return (
+          <section key={section} className="dash-section" aria-labelledby={`section-${section}`}>
+            <button
+              type="button"
+              className="dash-section-head"
+              aria-expanded={!folded}
+              onClick={() => setLayout(toggleFold(layout, section))}
+              disabled={arranging}
+            >
+              <h2 id={`section-${section}`}>{SECTIONS[section]}</h2>
+              <span className="dash-section-fold" aria-hidden>
+                {folded ? '▸' : '▾'}
+              </span>
+            </button>
+            {!folded && (
+              <div
+                className={`dashboard-grid dash-section-grid${arranging ? ' arranging' : ''}${drag ? ' dragging' : ''}`}
+                data-section={section}
+              >
+                {columnsOf(section).map((col, visual) => (
+                  <div className="dash-column" key={visual}>
+                    {col.filter(showing).map((id) => {
+                      const moving = drag?.id === id
+                      return (
+                        <div
+                          key={id}
+                          data-block={id}
+                          className={`dash-block${moving ? ' moving' : ''}${drag?.drop?.marker === id ? ' drop-before' : ''}`}
+                          style={moving ? { transform: `translate(${drag.dx}px, ${drag.dy}px)` } : undefined}
+                        >
+                          {arranging && (
+                            <div className="block-tools">
+                              <button
+                                className="btn icon small block-handle"
+                                aria-label={`Move ${BLOCKS[id]}: drag it, or use the arrow keys (Shift for another section)`}
+                                title="Drag to move"
+                                {...handleProps(id)}
+                              >
+                                <span aria-hidden>⠿</span>
+                              </button>
+                              <button
+                                className="btn icon small"
+                                aria-label={`Hide ${BLOCKS[id]}`}
+                                title="Hide"
+                                onClick={() => setLayout(hideBlock(layout, id))}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          )}
+                          {blocks[id]}
+                        </div>
+                      )
+                    })}
+                    {drag?.drop?.marker === `end:${section}:${visual}` && <div className="drop-end" aria-hidden />}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )
+      })}
     </div>
+  )
+}
+
+/** Top 5 and the spice meter in one block, with a Stars | Spice switch. */
+function RatingsCard({ books, onShowBook }: Props) {
+  const [kind, setKind] = useState<'stars' | 'spice'>('stars')
+  const switcher = (
+    <div className="segmented" role="group" aria-label="Stars or spice">
+      {(['stars', 'spice'] as const).map((k) => (
+        <button
+          key={k}
+          type="button"
+          className={kind === k ? 'active' : undefined}
+          aria-pressed={kind === k}
+          onClick={() => setKind(k)}
+        >
+          {k === 'stars' ? '★ Stars' : '🌶️ Spice'}
+        </button>
+      ))}
+    </div>
+  )
+  return kind === 'stars' ? (
+    <TopRatedCard books={books} onShowBook={onShowBook} switcher={switcher} />
+  ) : (
+    <SpiceCard books={books} onShowBook={onShowBook} switcher={switcher} />
   )
 }
 
@@ -444,14 +522,15 @@ export function PeriodSelect({
 }
 
 /** Her five favourites (#100): the best-rated books she finished, of all time, a year or a month. */
-function TopRatedCard({ books, onShowBook }: Props) {
+function TopRatedCard({ books, onShowBook, switcher }: Props & { switcher?: React.ReactNode }) {
   const now = new Date()
   const [pick, setPick] = useState<PeriodPick>({ kind: 'all', year: now.getFullYear(), month: now.getMonth() + 1 })
   const top = useMemo(() => topRated(books, toPeriod(pick)), [books, pick])
   return (
     <section className="dash-card top-card" aria-labelledby="top-title">
       <div className="dash-card-head">
-        <h2 id="top-title">Top 5</h2>
+        <h2 id="top-title">{switcher ? 'My ratings' : 'Top 5'}</h2>
+        {switcher}
         <PeriodTabs pick={pick} onPick={setPick} />
       </div>
       <PeriodSelect books={books} pick={pick} onPick={setPick} />
@@ -490,7 +569,8 @@ function ReadCount({
   onShowBook,
   pick,
   onPick,
-}: Props & { pick: PeriodPick; onPick: (pick: PeriodPick) => void }) {
+  children,
+}: Props & { pick: PeriodPick; onPick: (pick: PeriodPick) => void; children?: React.ReactNode }) {
   const { kind, year, month } = pick
   const stats = useMemo(() => periodStats(books, toPeriod({ kind, year, month })), [books, kind, year, month])
   const label = periodLabel(pick)
@@ -530,6 +610,7 @@ function ReadCount({
           {stats.list.length > 40 && <li className="muted more">+{stats.list.length - 40}</li>}
         </ul>
       )}
+      {children}
     </section>
   )
 }

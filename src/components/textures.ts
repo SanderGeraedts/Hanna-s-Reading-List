@@ -670,24 +670,40 @@ export function floorTexture() {
 
 const WALL_HEIGHT_M = 8
 
+/** One repeat of the wallpaper: a cream stripe and a warm-beige one, in metres. */
+export const WALLPAPER_REPEAT_M = 0.24
+
 /**
- * Lavender-cornflower wall: deeper at the floor, fading to a pale periwinkle above the bookcase.
- * Slightly over-saturated on purpose – the warm room lights pull it back toward grey.
+ * The wall behind the bookcase: a soft lavender striped wallpaper, pale at
+ * the top, a deeper lilac near the floor (Hanna's favourite colour). This paints one repeat
+ * (two stripes) the full height of the wall; the scene repeats it sideways.
  */
 export function wallTexture() {
-  const c = canvas(4, 1024)
+  const W = 48
+  const H = 1024
+  const c = canvas(W, H)
   const ctx = c.getContext('2d')!
-  const g = ctx.createLinearGradient(0, 0, 0, c.height)
   // stops are placed by height above the floor (metres); canvas y=0 is the top
   const at = (metres: number) => 1 - metres / WALL_HEIGHT_M
-  g.addColorStop(at(WALL_HEIGHT_M), '#e3e9ff')
-  g.addColorStop(at(3.2), '#cdd8ff')
-  g.addColorStop(at(2), '#aabcfa')
-  g.addColorStop(at(0.9), '#8ba1f0')
-  g.addColorStop(at(0), '#6c84e0')
+  const g = ctx.createLinearGradient(0, 0, 0, H)
+  // the lavender of --wall-top … --wall-floor in styles.css
+  g.addColorStop(at(WALL_HEIGHT_M), '#ece4f5')
+  g.addColorStop(at(3.2), '#d9cbec')
+  g.addColorStop(at(2), '#c3afe0')
+  g.addColorStop(at(0.9), '#a990cf')
+  g.addColorStop(at(0), '#8e74bb')
   ctx.fillStyle = g
-  ctx.fillRect(0, 0, c.width, c.height)
-  return toTexture(c)
+  ctx.fillRect(0, 0, W, H)
+  // the second stripe a touch deeper (--wall-stripe)
+  ctx.fillStyle = 'rgba(80, 50, 130, 0.09)'
+  ctx.fillRect(W / 2, 0, W / 2, H)
+  // a fine line at the edge of each stripe, as printed wallpaper has
+  ctx.fillStyle = 'rgba(90, 60, 140, 0.12)'
+  ctx.fillRect(W / 2 - 1, 0, 1, H)
+  ctx.fillRect(W - 1, 0, 1, H)
+  const t = toTexture(c)
+  t.wrapS = THREE.RepeatWrapping
+  return t
 }
 
 /** Text printed on the back cover: the blurb, or a short placeholder when there is none. */
