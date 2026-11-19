@@ -4,16 +4,26 @@ import { LETTERS, alphabetYear, pickLetter, type AlphabetKind } from '#/lib/alph
 import type { ShareSpec } from '#/lib/shareImage'
 import { Cover } from './Dashboard'
 import { ShareButton } from './ShareButton'
+import { OpenLink } from './OpenLink'
 
 interface Props {
   books: Book[]
   onShowBook: (id: string) => void
   onUpdate: (id: string, patch: Partial<Book>) => void
-  /** titles (#143) or authors (#151) */
-  kind: AlphabetKind
+  /** which challenge it opens on: titles (#143) or authors (#151); a switch changes it */
+  kind?: AlphabetKind
+  /** another year than this one, on the Challenges page */
+  year?: number
+  /** on the dashboard: the letters only, no tips or share */
+  compact?: boolean
+  onOpen?: () => void
 }
 
 const TITLES: Record<AlphabetKind, string> = { title: 'A–Z challenge', author: 'A–Z authors' }
+const KINDS: Array<[AlphabetKind, string]> = [
+  ['title', 'Titles'],
+  ['author', 'Authors'],
+]
 
 /**
  * An A–Z challenge: a book for every letter this year, how it's going, and
@@ -21,8 +31,10 @@ const TITLES: Record<AlphabetKind, string> = { title: 'A–Z challenge', author:
  * tapping it lets Hanna pick which of the books that count stands for it
  * (#152). See alphabet.ts.
  */
-export function AlphabetCard({ books, onShowBook, onUpdate, kind }: Props) {
-  const year = new Date().getFullYear()
+export function AlphabetCard({ books, onShowBook, onUpdate, kind: firstKind = 'title', year: forYear, compact = false, onOpen }: Props) {
+  const year = forYear ?? new Date().getFullYear()
+  // the titles and the authors challenge in one block, with a switch
+  const [kind, setKind] = useState<AlphabetKind>(firstKind)
   const a = useMemo(() => alphabetYear(books, year, undefined, kind), [books, year, kind])
   const [open, setOpen] = useState<string | null>(null)
   const title = `${TITLES[kind]} ${year}`
@@ -47,6 +59,25 @@ export function AlphabetCard({ books, onShowBook, onUpdate, kind }: Props) {
     <section className="dash-card" aria-labelledby={id}>
       <div className="dash-card-head">
         <h2 id={id}>{title}</h2>
+        <OpenLink onOpen={onOpen} label="A–Z challenge" />
+      </div>
+      <div className="alphabet-switch">
+        <div className="segmented" role="group" aria-label="Which A–Z challenge">
+          {KINDS.map(([k, name]) => (
+            <button
+              key={k}
+              type="button"
+              className={kind === k ? 'active' : undefined}
+              aria-pressed={kind === k}
+              onClick={() => {
+                setKind(k)
+                setOpen(null)
+              }}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
         <span className={`small-text${a.onTrack ? ' muted' : ' alphabet-behind'}`}>{a.pace}</span>
       </div>
       {kind === 'author' && (
@@ -123,7 +154,7 @@ export function AlphabetCard({ books, onShowBook, onUpdate, kind }: Props) {
           </button>
         </div>
       )}
-      {a.tips.length > 0 && (
+      {!compact && a.tips.length > 0 && (
         <div className="alphabet-tips">
           <p className="muted small-text">From your pile:</p>
           <ul className="book-list">
@@ -139,9 +170,11 @@ export function AlphabetCard({ books, onShowBook, onUpdate, kind }: Props) {
           </ul>
         </div>
       )}
-      <div className="challenge-actions">
-        <ShareButton spec={share} label={title} />
-      </div>
+      {!compact && (
+        <div className="challenge-actions">
+          <ShareButton spec={share} label={title} />
+        </div>
+      )}
     </section>
   )
 }

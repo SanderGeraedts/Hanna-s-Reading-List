@@ -24,6 +24,7 @@ import { addedText, recentlyAdded } from '#/lib/recent'
 import type { DayEntry } from '#/lib/readingLog'
 import type { Period } from '#/lib/stats'
 import { Cover, monthName } from './Dashboard'
+import { OpenLink } from './OpenLink'
 import type { Props } from './Dashboard'
 
 /** The dashboard extras (#66). */
@@ -61,10 +62,10 @@ export function BookLine({
  * with a copy in this browser for a quick start and for when the server can't
  * be reached. Without an account it lives in this browser only.
  */
-const goalKey = (accountId: string | null, year: number) =>
+export const goalKey = (accountId: string | null, year: number) =>
   `hannas-reading-list:goal:${accountId ?? 'local'}:${year}`
 
-function readLocalGoal(key: string): number | null {
+export function readLocalGoal(key: string): number | null {
   try {
     const n = Number(localStorage.getItem(key))
     return Number.isInteger(n) && n > 0 ? n : null
@@ -82,9 +83,24 @@ function writeLocalGoal(key: string, goal: number | null) {
   }
 }
 
-export function GoalCard({ books, accountId }: { books: Book[]; accountId: string | null }) {
-  const now = new Date()
-  const year = now.getFullYear()
+export function GoalCard({
+  books,
+  accountId,
+  year: forYear,
+  onOpen,
+}: {
+  books: Book[]
+  accountId: string | null
+  /** another year than this one, on the Challenges page: shown, not changed */
+  year?: number
+  /** on the dashboard: open the Challenges page */
+  onOpen?: () => void
+}) {
+  const today = new Date()
+  const year = forYear ?? today.getFullYear()
+  const past = year < today.getFullYear()
+  // a past year is judged at its last day
+  const now = past ? new Date(year, 11, 31, 23) : today
   const key = goalKey(accountId, year)
   const [goal, setGoal] = useState(() => readLocalGoal(key))
   const [draft, setDraft] = useState(goal?.toString() ?? '')
@@ -149,7 +165,16 @@ export function GoalCard({ books, accountId }: { books: Book[]; accountId: strin
     </form>
   )
 
-  if (!goal || editing) {
+  if (past && !goal) {
+    return (
+      <section className="dash-card goal-card" aria-labelledby="goal-title">
+        <h2 id="goal-title">Reading goal {year}</h2>
+        <p className="muted">No goal set for {year}. You read {plural(done, 'book')}.</p>
+      </section>
+    )
+  }
+
+  if (!goal || (editing && !past)) {
     return (
       <section className="dash-card goal-card" aria-labelledby="goal-title">
         <h2 id="goal-title">Reading goal</h2>
@@ -166,20 +191,25 @@ export function GoalCard({ books, accountId }: { books: Book[]; accountId: strin
   const pace =
     done >= goal
       ? 'Goal reached! 🎉'
-      : p.ahead > 0
-        ? `You're ${plural(p.ahead, 'book')} ahead of schedule`
-        : p.ahead < 0
-          ? `You're ${plural(-p.ahead, 'book')} behind schedule`
-          : 'Right on schedule'
-  const toGo = goalPaceText(goalPace(done, goal, year, now))
+      : past
+        ? `${done} of ${goal} read`
+        : p.ahead > 0
+          ? `You're ${plural(p.ahead, 'book')} ahead of schedule`
+          : p.ahead < 0
+            ? `You're ${plural(-p.ahead, 'book')} behind schedule`
+            : 'Right on schedule'
+  const toGo = past ? undefined : goalPaceText(goalPace(done, goal, year, now))
 
   return (
     <section className="dash-card goal-card" aria-labelledby="goal-title">
       <div className="dash-card-head">
         <h2 id="goal-title">Reading goal {year}</h2>
-        <button className="btn small" onClick={() => setEditing(true)}>
-          Change
-        </button>
+        <OpenLink onOpen={onOpen} label="Reading goal" />
+        {!past && (
+          <button className="btn small" onClick={() => setEditing(true)}>
+            Change
+          </button>
+        )}
       </div>
       <div className="goal-body">
         <svg className="goal-ring" viewBox="0 0 100 100" role="img" aria-label={`${done} of ${goal} books read`}>
@@ -202,7 +232,7 @@ export function GoalCard({ books, accountId }: { books: Book[]; accountId: strin
         <div>
           <p className="goal-pace">{pace}</p>
           {toGo && <p className="goal-to-go">{toGo}</p>}
-          <p className="muted small-text">By now {Math.floor(p.expected)} at an even pace</p>
+          {!past && <p className="muted small-text">By now {Math.floor(p.expected)} at an even pace</p>}
         </div>
       </div>
     </section>

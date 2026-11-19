@@ -25,6 +25,7 @@ import { WaitingCard } from './WaitingCard'
 import { AlphabetCard } from './AlphabetCard'
 import { storytelLink } from '#/lib/storytelLink'
 import { ChallengeCard } from './ChallengeCard'
+import type { ChallengeSection } from './ChallengesPage'
 import { topRated } from '#/lib/ratings'
 import { StarRating } from './StarRating'
 import { monthWeeks, periodStats, readingYears } from '#/lib/stats'
@@ -65,6 +66,8 @@ interface DashboardProps extends Props {
   accountId: string | null
   /** change a book: book bingo remembers a full card on the book that filled it (#119) */
   onUpdate: (id: string, patch: Partial<Book> | ((book: Book) => Partial<Book>)) => void
+  /** "Open ›" on a challenge block: the Challenges page, at that challenge */
+  onOpenChallenges?: (section: ChallengeSection) => void
 }
 
 export interface PeriodPick {
@@ -134,7 +137,8 @@ interface Drag {
   drop: Drop | null
 }
 
-export function Dashboard({ books, onShowBook, accountId, onUpdate }: DashboardProps) {
+export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChallenges }: DashboardProps) {
+  const open = (section: ChallengeSection) => (onOpenChallenges ? () => onOpenChallenges(section) : undefined)
   const now = new Date()
   // the period picked under "Books read"; the charts and records follow it
   const [pick, setPick] = useState<PeriodPick>({ kind: 'year', year: now.getFullYear(), month: now.getMonth() + 1 })
@@ -162,10 +166,12 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate }: DashboardP
         onUpdate={onUpdate}
         editing={challengeEditing}
         onEditing={setChallengeEditing}
+        compact
+        onOpen={open('monthly')}
       />
     ),
     count: <ReadCount books={books} onShowBook={onShowBook} pick={pick} onPick={setPick} />,
-    goal: <GoalCard books={books} accountId={accountId} />,
+    goal: <GoalCard books={books} accountId={accountId} onOpen={open('goal')} />,
     next: <ReadNextCard books={books} onShowBook={onShowBook} />,
     reading: <CurrentlyReadingCard books={books} onShowBook={onShowBook} />,
     series: <SeriesCard books={books} onShowBook={onShowBook} />,
@@ -185,9 +191,8 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate }: DashboardP
     spice: <SpiceCard books={books} onShowBook={onShowBook} />,
     wrapped: <WrappedCard books={books} onShowBook={onShowBook} />,
     recent: <RecentCard books={books} onShowBook={onShowBook} />,
-    alphabet: <AlphabetCard books={books} onShowBook={onShowBook} onUpdate={onUpdate} kind="title" />,
-    alphabetAuthors: <AlphabetCard books={books} onShowBook={onShowBook} onUpdate={onUpdate} kind="author" />,
-    bingo: <BingoCard books={books} onUpdate={onUpdate} />,
+    alphabet: <AlphabetCard books={books} onShowBook={onShowBook} onUpdate={onUpdate} compact onOpen={open('alphabet')} />,
+    bingo: <BingoCard books={books} onUpdate={onUpdate} compact onOpen={open('bingo')} />,
   }
 
   const columns: BlockId[][] = narrow ? [singleColumn(layout)] : layout.columns

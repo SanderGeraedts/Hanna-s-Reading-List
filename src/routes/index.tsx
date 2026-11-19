@@ -19,6 +19,8 @@ import { SignIn } from '#/components/SignIn'
 import { detectSeries, seriesGroups } from '#/lib/series'
 import { pickReadNext, readNextChoices } from '#/lib/readNext'
 import { Dashboard } from '#/components/Dashboard'
+import { ChallengesPage } from '#/components/ChallengesPage'
+import type { ChallengeSection } from '#/components/ChallengesPage'
 import { useStorytelSync } from '#/lib/useStorytelSync'
 import type { Tab } from '#/components/AddBookDialog'
 import { SearchBox } from '#/components/SearchBox'
@@ -29,9 +31,13 @@ import { filterByGenre, genreOptions as shelfGenres, reorderShown } from '#/lib/
 
 export const Route = createFileRoute('/')({
   component: Home,
-  // ?view=dashboard opens the dashboard (#59), so the back button returns to the shelf
-  validateSearch: (search: Record<string, unknown>): { view?: 'dashboard' } =>
-    search.view === 'dashboard' ? { view: 'dashboard' } : {},
+  // ?view=dashboard opens the dashboard (#59), ?view=challenges the Challenges page, so the
+  // back button returns to the shelf; &focus= scrolls to one challenge ("Open ›")
+  validateSearch: (search: Record<string, unknown>): { view?: 'dashboard' | 'challenges'; focus?: ChallengeSection } => {
+    const view = search.view === 'dashboard' || search.view === 'challenges' ? search.view : undefined
+    const focus = FOCUS.find((f) => f === search.focus)
+    return { ...(view && { view }), ...(view === 'challenges' && focus && { focus }) }
+  },
 })
 
 const FACE_ANGLE: Record<Face, number> = { front: 0, spine: Math.PI / 2, back: Math.PI }
@@ -194,23 +200,33 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     setSelectedId(id)
   }, [])
 
-  // the shelf or the dashboard (#59)
-  const onDashboard = Route.useSearch().view === 'dashboard'
+  // the shelf, the dashboard (#59) or the Challenges page
+  const search = Route.useSearch()
+  const view: View = search.view ?? 'shelf'
+  const onDashboard = view === 'dashboard'
+  const offShelf = view !== 'shelf'
   const navigate = useNavigate({ from: '/' })
   const showView = useCallback(
-    (view: 'shelf' | 'dashboard') => {
-      if (view === 'dashboard') select(null)
-      navigate({ search: view === 'dashboard' ? { view } : {} })
+    (to: View) => {
+      if (to !== 'shelf') select(null)
+      navigate({ search: to === 'shelf' ? {} : { view: to } })
+    },
+    [navigate, select],
+  )
+  const openChallenges = useCallback(
+    (focus: ChallengeSection) => {
+      select(null)
+      navigate({ search: { view: 'challenges', focus } })
     },
     [navigate, select],
   )
   /** a book picked on the dashboard or in the search: show it on the shelf */
   const showBook = useCallback(
     (id: string | null) => {
-      if (id && onDashboard) navigate({ search: {} })
+      if (id && offShelf) navigate({ search: {} })
       select(id)
     },
-    [navigate, onDashboard, select],
+    [navigate, offShelf, select],
   )
 
   const showFace = useCallback((face: Face) => {
@@ -291,8 +307,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
       <header className="topbar">
         <div className="brand">
           <div className="brand-title">
-            <ViewMenu view={onDashboard ? 'dashboard' : 'shelf'} onView={showView}>
-              {!onDashboard &&
+            <ViewMenu view={view} onView={showView}>
+              {!offShelf &&
                 ((close) => (
                   <div className="menu-tools mobile-only">
                     <label className="menu-field">
@@ -333,7 +349,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
         </div>
         <div className="toolbar">
           <SearchBox books={books} detectedSeries={seriesMap} onPick={showBook} />
-          {!onDashboard && (
+          {!offShelf && (
             // on a phone these are in the ☰ menu instead (#88)
             <>
               <label className="sort desktop-only">
@@ -408,6 +424,16 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             onShowBook={showBook}
             onUpdate={updateBook}
             accountId={account?.id ?? null}
+            onOpenChallenges={openChallenges}
+          />
+        )}
+        {view === 'challenges' && (
+          <ChallengesPage
+            books={books}
+            accountId={account?.id ?? null}
+            onShowBook={showBook}
+            onUpdate={updateBook}
+            focus={search.focus}
           />
         )}
       </main>
@@ -516,19 +542,24 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   )
 }
 
+type View = 'shelf' | 'dashboard' | 'challenges'
+
 const VIEWS = [
   { view: 'shelf', icon: '📚', label: 'Bookshelf' },
   { view: 'dashboard', icon: '📊', label: 'Dashboard' },
+  { view: 'challenges', icon: '🏆', label: 'Challenges' },
 ] as const
 
-/** The menu to go between the shelf and the dashboard (#59). */
+const FOCUS: ChallengeSection[] = ['goal', 'monthly', 'bingo', 'alphabet']
+
+/** The menu to go between the shelf, the dashboard (#59) and the Challenges page. */
 function ViewMenu({
   view,
   onView,
   children,
 }: {
-  view: 'shelf' | 'dashboard'
-  onView: (view: 'shelf' | 'dashboard') => void
+  view: View
+  onView: (view: View) => void
   /** more in the menu, e.g. the shelf's tools on a phone (#88); `close` closes the menu */
   children?: false | ((close: () => void) => React.ReactNode)
 }) {

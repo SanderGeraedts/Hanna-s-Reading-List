@@ -14,6 +14,7 @@ import {
 import type { ShareSpec } from '#/lib/shareImage'
 import { Cover, monthName } from './Dashboard'
 import { ShareButton } from './ShareButton'
+import { OpenLink } from './OpenLink'
 
 interface Props {
   books: Book[]
@@ -22,6 +23,11 @@ interface Props {
   /** the editor is open: the dashboard keeps the block in view meanwhile */
   editing: boolean
   onEditing: (open: boolean) => void
+  /** a fixed year, on the Challenges page; earlier years are only shown */
+  year?: number
+  /** on the dashboard: no share */
+  compact?: boolean
+  onOpen?: () => void
 }
 
 /**
@@ -30,7 +36,7 @@ interface Props {
  * a reminder in December, and an editor to pick a book for each month that
  * hasn't started yet. See monthChallenge.ts.
  */
-export function ChallengeCard({ books, onShowBook, onUpdate, editing, onEditing }: Props) {
+export function ChallengeCard({ books, onShowBook, onUpdate, editing, onEditing, year: forYear, compact = false, onOpen }: Props) {
   const today = localDay()
   const year = Number(today.slice(0, 4))
   const now = thisMonth(today)
@@ -38,7 +44,9 @@ export function ChallengeCard({ books, onShowBook, onUpdate, editing, onEditing 
   // the year to edit: this one while a month is left to change, else next year
   const [editYear, setEditYear] = useState(() => (today.slice(5, 7) === '12' || c.remindNextYear ? year + 1 : year))
   // the year the calendar shows: this one, or next year once it has books
-  const [showYear, setShowYear] = useState(year)
+  const [chosenYear, setShowYear] = useState(year)
+  const showYear = forYear ?? chosenYear
+  const pastYear = showYear < year
   const nextHasBooks = useMemo(() => challengeFor(books, year + 1).size > 0, [books, year])
   const calendar = useMemo(() => challengeCalendar(books, showYear, today), [books, showYear, today])
   const doneCount = calendar.filter((m) => m.item?.doneOn).length
@@ -125,7 +133,8 @@ export function ChallengeCard({ books, onShowBook, onUpdate, editing, onEditing 
     <section className="dash-card challenge-card" aria-labelledby="challenge-title">
       <div className="dash-card-head">
         <h2 id="challenge-title">Monthly challenge</h2>
-        {nextHasBooks ? (
+        <OpenLink onOpen={onOpen} label="Monthly challenge" />
+        {nextHasBooks && forYear === undefined ? (
           <div className="segmented" role="group" aria-label="Year">
             {[year, year + 1].map((y) => (
               <button key={y} type="button" aria-pressed={showYear === y} onClick={() => setShowYear(y)}>
@@ -141,7 +150,7 @@ export function ChallengeCard({ books, onShowBook, onUpdate, editing, onEditing 
           )
         )}
       </div>
-      {c.notStarted && (
+      {c.notStarted && !pastYear && (
         <p className="small-text">
           Pick a book for each month, and read along through the year. You can start with{' '}
           {today.slice(5, 7) === '12' ? 'next year' : 'next month'}.
@@ -189,7 +198,7 @@ export function ChallengeCard({ books, onShowBook, onUpdate, editing, onEditing 
           )
         })}
       </ol>
-      {carried.length > 0 && (
+      {!pastYear && carried.length > 0 && (
         <ul className="waiting-list">
           {carried.map((item) => (
             <li key={item.month}>
@@ -209,12 +218,14 @@ export function ChallengeCard({ books, onShowBook, onUpdate, editing, onEditing 
           ))}
         </ul>
       )}
-      {c.remindNextYear && <p className="small-text challenge-reminder">Set up your challenge for {year + 1}.</p>}
+      {c.remindNextYear && !pastYear && <p className="small-text challenge-reminder">Set up your challenge for {year + 1}.</p>}
       <div className="challenge-actions">
-        <button type="button" className="btn small" onClick={() => onEditing(true)}>
-          {c.notStarted || c.remindNextYear ? 'Set up' : 'Edit challenge'}
-        </button>
-        {pickedCount > 0 && <ShareButton spec={share} label={title} />}
+        {!pastYear && (
+          <button type="button" className="btn small" onClick={() => onEditing(true)}>
+            {c.notStarted || c.remindNextYear ? 'Set up' : 'Edit challenge'}
+          </button>
+        )}
+        {!compact && pickedCount > 0 && <ShareButton spec={share} label={title} />}
       </div>
     </section>
   )
