@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import type { ThreeEvent } from '@react-three/fiber'
 import type { Book } from '#/lib/library'
 import { timesRead } from '#/lib/library'
@@ -111,7 +112,7 @@ export function BookMesh(props: BookMeshProps) {
       fallback: paintFallbackCover(book, dims),
     }),
     // repaint only when something visible changes
-    [book.title, book.authors.join(), book.color, book.status, book.language, book.description, book.isbn, book.pages, book.minutes, book.formats, book.format, dims.w, dims.h, dims.t, sleep],
+    [book.title, book.authors.join(), book.color, book.status, book.readCount, book.language, book.description, book.isbn, book.pages, book.minutes, book.formats, book.format, dims.w, dims.h, dims.t, sleep],
   )
   useEffect(
     () => () => {
@@ -157,6 +158,13 @@ export function BookMesh(props: BookMeshProps) {
     ]
   }, [painted, cover, edges])
   useEffect(() => () => materials.forEach((m) => m.dispose()), [materials])
+
+  // softly rounded corners and edges, like a real book (a few millimetres)
+  const geometry = useMemo(
+    () => new RoundedBoxGeometry(dims.w, dims.h, dims.t, 2, Math.min(0.0025, dims.t * 0.12)),
+    [dims.w, dims.h, dims.t],
+  )
+  useEffect(() => () => geometry.dispose(), [geometry])
 
   // ---- animation --------------------------------------------------------
   const anim = useRef({
@@ -239,6 +247,7 @@ export function BookMesh(props: BookMeshProps) {
         castShadow={!selected}
         receiveShadow={!selected}
         material={materials}
+        geometry={geometry}
         onPointerDown={(e) => props.onPointerDown(e, book.id)}
         onPointerMove={(e) => props.onPointerMove(e, book.id)}
         onPointerUp={(e) => props.onPointerUp(e, book.id)}
@@ -247,9 +256,7 @@ export function BookMesh(props: BookMeshProps) {
           props.onHover(book.id)
         }}
         onPointerOut={() => props.onHover(null)}
-      >
-        <boxGeometry args={[dims.w, dims.h, dims.t]} />
-      </mesh>
+      />
       {(book.status === 'reading' || book.status === 'paused') && (
         <Bookmark dims={dims} progress={book.progress ?? 0} color={props.clipColor ?? RAINBOW[0]} />
       )}

@@ -53,17 +53,21 @@ export interface Slot {
   row: number
 }
 
-export type DecorKind = 'koala' | 'succulent' | 'frame' | 'candle' | 'vase'
+export type DecorKind = 'koala' | 'succulent' | 'frame' | 'candle' | 'vase' | 'cat' | 'mug' | 'ivy'
 
 /** Decorations in placement order (the koala always comes first) and their footprint width. */
 export const DECOR: Array<{ kind: DecorKind; width: number }> = [
   { kind: 'koala', width: 0.17 },
+  { kind: 'candle', width: 0.08 },
+  { kind: 'cat', width: 0.18 },
+  { kind: 'ivy', width: 0.11 },
+  { kind: 'mug', width: 0.1 },
   { kind: 'succulent', width: 0.11 },
   { kind: 'frame', width: 0.15 },
-  { kind: 'candle', width: 0.08 },
   { kind: 'vase', width: 0.11 },
 ]
-const DECOR_PER_ROW = 2
+/** at most one decoration per shelf, so the books stay the main thing */
+const DECOR_PER_ROW = 1
 const DECOR_GAP = 0.05
 const DECOR_MARGIN = 0.035
 
