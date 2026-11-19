@@ -58,10 +58,11 @@ export type DecorKind = 'koala' | 'succulent' | 'frame' | 'candle' | 'vase' | 'c
 /** Decorations in placement order (the koala always comes first) and their footprint width. */
 export const DECOR: Array<{ kind: DecorKind; width: number }> = [
   { kind: 'koala', width: 0.17 },
-  { kind: 'candle', width: 0.08 },
+  // the newer ones first, so they get a shelf before the older ones
   { kind: 'cat', width: 0.18 },
-  { kind: 'ivy', width: 0.11 },
   { kind: 'mug', width: 0.1 },
+  { kind: 'ivy', width: 0.11 },
+  { kind: 'candle', width: 0.08 },
   { kind: 'succulent', width: 0.11 },
   { kind: 'frame', width: 0.15 },
   { kind: 'vase', width: 0.11 },
