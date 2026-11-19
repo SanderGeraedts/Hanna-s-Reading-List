@@ -32,6 +32,9 @@ export const BLOCKS = {
   bingo: 'Book bingo',
   recent: 'Newly added',
   alphabet: 'A–Z challenge',
+  badges: 'Badges',
+  covers: 'Cover wall',
+  rhythm: 'When I read most',
 } as const
 
 export type BlockId = keyof typeof BLOCKS
@@ -64,11 +67,11 @@ export const DEFAULT_LAYOUT: DashboardLayout = {
     challenges: [['goal', 'alphabet'], ['bingo']],
     stats: [
       ['count', 'heatmap', 'breakdown', 'authors'],
-      ['calendar', 'records', 'series', 'pile'],
+      ['calendar', 'records', 'rhythm', 'series', 'pile'],
     ],
     fun: [
-      ['fact', 'wrapped'],
-      ['top', 'onthisday'],
+      ['badges', 'fact', 'wrapped'],
+      ['covers', 'top', 'onthisday'],
     ],
   },
   hidden: [],

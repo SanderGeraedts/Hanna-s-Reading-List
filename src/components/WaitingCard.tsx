@@ -4,6 +4,7 @@ import { askedPatch } from '#/lib/ratingAsk'
 import { joinSeries, notInSeries } from '#/lib/sleepSeries'
 import type { SeriesQuestion } from '#/lib/sleepSeries'
 import { ratingText, spiceText, NO_SPICE } from '#/lib/ratings'
+import type { Badge } from '#/lib/badges'
 import { StarRating } from './StarRating'
 import { Cover } from './Dashboard'
 
@@ -14,6 +15,9 @@ interface Props {
   questions: SeriesQuestion[]
   onUpdate: (id: string, patch: Partial<Book>) => void
   onShowBook: (id: string) => void
+  /** badges earned in the last week, not seen yet on this device */
+  newBadges?: Badge[]
+  onSeenBadge?: (id: string) => void
 }
 
 /**
@@ -22,11 +26,37 @@ interface Props {
  * takes a book off the list) and new books that might belong to a series.
  * The dashboard leaves the block out when nothing is waiting.
  */
-export function WaitingCard({ toRate, questions, onUpdate, onShowBook }: Props) {
+export function WaitingCard({ toRate, questions, onUpdate, onShowBook, newBadges = [], onSeenBadge }: Props) {
   return (
     <section className="dash-card waiting-card" aria-labelledby="waiting-title">
       <h2 id="waiting-title">Waiting for you</h2>
-      {toRate.length === 0 && questions.length === 0 && <p className="muted small-text">Nothing waiting.</p>}
+      {toRate.length === 0 && questions.length === 0 && newBadges.length === 0 && (
+        <p className="muted small-text">Nothing waiting.</p>
+      )}
+      {newBadges.length > 0 && (
+        <ul className="waiting-list">
+          {newBadges.map((b) => (
+            <li key={b.id}>
+              <span className="badge-icon" aria-hidden>
+                {b.icon}
+              </span>
+              <div className="waiting-info">
+                <p className="waiting-title">
+                  <strong>New badge: {b.name}!</strong>
+                </p>
+                <p className="muted small-text">{b.how}</p>
+                {onSeenBadge && (
+                  <div className="chips">
+                    <button type="button" className="btn small primary" onClick={() => onSeenBadge(b.id)}>
+                      Nice!
+                    </button>
+                  </div>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {toRate.length > 0 && (
         <ul className="waiting-list">

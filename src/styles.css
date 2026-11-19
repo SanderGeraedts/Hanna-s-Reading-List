@@ -2801,6 +2801,74 @@ textarea.input {
   margin-top: 0.4rem;
 }
 
+/* ---- badges, the cover wall, when I read most ------------------------ */
+.badges {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: var(--space-2);
+}
+.badge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-small);
+  background: var(--surface-sunken);
+  opacity: 0.5;
+}
+.badge.earned {
+  opacity: 1;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+}
+.badge-icon {
+  font-size: var(--fs-heading);
+  line-height: 1;
+}
+.badge-text {
+  display: grid;
+  min-width: 0;
+}
+.cover-wall {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(2.6rem, 1fr));
+  gap: var(--space-1);
+}
+.cover-wall .cover-btn,
+.cover-wall .dash-cover.small {
+  width: 100%;
+}
+.rhythm-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-1);
+  height: 7rem;
+}
+.rhythm-bar {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 2px;
+}
+.rhythm-fill {
+  width: 100%;
+  min-height: 2px;
+  border-radius: var(--radius-small) var(--radius-small) 0 0;
+  background: var(--accent);
+}
+.rhythm-label {
+  font-size: var(--fs-tiny);
+}
+
 /* ---- the Challenges page, and "Open ›" on the dashboard -------------- */
 .open-link {
   margin-left: auto;

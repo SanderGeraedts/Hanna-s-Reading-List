@@ -47,6 +47,10 @@ import {
 } from '#/lib/dashboardLayout'
 import type { BlockId, DashboardLayout, SectionId } from '#/lib/dashboardLayout'
 import { TodayStrip } from './TodayStrip'
+import { BadgesCard, CoverWallCard, RhythmCard } from './NewBlocks'
+import { badges, newBadges } from '#/lib/badges'
+
+const BADGES_SEEN = 'hannas-reading-list:badges-seen'
 import type { Period } from '#/lib/stats'
 
 /**
@@ -162,10 +166,41 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
   // finished books to rate and new books that might be in a series, instead of pop-ups
   const toRate = useMemo(() => pendingRatings(books), [books])
   const questions = useMemo(() => seriesQuestions(books), [books])
-  const nothingWaiting = toRate.length === 0 && questions.length === 0
+  // a new badge waits until "Nice!" (remembered on this device), or for a week
+  const [seenBadges, setSeenBadges] = useState<string[]>(() => {
+    try {
+      const v: unknown = JSON.parse(localStorage.getItem(BADGES_SEEN) ?? '[]')
+      return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+    } catch {
+      return []
+    }
+  })
+  const freshBadges = useMemo(() => newBadges(badges(books)).filter((b) => !seenBadges.includes(b.id)), [books, seenBadges])
+  const seeBadge = (id: string) => {
+    const next = [...seenBadges, id]
+    setSeenBadges(next)
+    try {
+      localStorage.setItem(BADGES_SEEN, JSON.stringify(next))
+    } catch {
+      /* storage blocked: it still holds for this visit */
+    }
+  }
+  const nothingWaiting = toRate.length === 0 && questions.length === 0 && freshBadges.length === 0
 
   const blocks: Record<BlockId, React.ReactNode> = {
-    waiting: <WaitingCard toRate={toRate} questions={questions} onUpdate={onUpdate} onShowBook={onShowBook} />,
+    waiting: (
+      <WaitingCard
+        toRate={toRate}
+        questions={questions}
+        onUpdate={onUpdate}
+        onShowBook={onShowBook}
+        newBadges={freshBadges}
+        onSeenBadge={seeBadge}
+      />
+    ),
+    badges: <BadgesCard books={books} />,
+    covers: <CoverWallCard books={books} onShowBook={onShowBook} />,
+    rhythm: <RhythmCard books={books} />,
     challenge: (
       <ChallengeCard
         books={books}
