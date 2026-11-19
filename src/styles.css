@@ -1352,6 +1352,15 @@ textarea.input {
 .mobile-only {
   display: none;
 }
+/* the ☰ menu itself: only on a phone, where it holds the shelf's tools */
+.phone-menu {
+  display: none;
+}
+@media (max-width: 720px) {
+  .phone-menu {
+    display: block;
+  }
+}
 .menu-tools {
   gap: 0.15rem;
   margin-top: 0.3rem;
