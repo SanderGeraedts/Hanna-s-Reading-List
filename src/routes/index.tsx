@@ -20,6 +20,7 @@ import { detectSeries, seriesGroups } from '#/lib/series'
 import { pickReadNext, readNextChoices } from '#/lib/readNext'
 import { Dashboard } from '#/components/Dashboard'
 import { ChallengesPage } from '#/components/ChallengesPage'
+import { ReminderToggle } from '#/components/ReminderToggle'
 import { CalendarPage } from '#/components/CalendarPage'
 import type { ChallengeSection } from '#/components/ChallengesPage'
 import { useStorytelSync } from '#/lib/useStorytelSync'
@@ -623,6 +624,7 @@ function ViewMenu({
           </button>
         ))}
         {children && children(() => menu.current && (menu.current.open = false))}
+        <ReminderToggle />
       </nav>
     </details>
   )
