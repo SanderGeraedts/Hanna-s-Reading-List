@@ -3040,6 +3040,50 @@ textarea.input {
   padding: 0;
 }
 
+/* ---- her own challenges ---------------------------------------------- */
+.own-challenge-form {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.own-challenge-form .field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.own-challenge-form label {
+  display: grid;
+  gap: var(--space-1);
+  flex: 1 1 10rem;
+}
+.own-challenge-count {
+  font-size: var(--fs-number);
+  font-weight: 700;
+  line-height: 1;
+}
+.own-challenge-books {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.own-challenge-books button {
+  border: 0;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+}
+.own-challenge-books img,
+.own-challenge-books .cover-chip {
+  display: block;
+  width: 2.2rem;
+  height: 3.3rem;
+  border-radius: 3px;
+  object-fit: cover;
+}
+
 /* ---- the reading journal ------------------------------------------- */
 .journal-note {
   display: block;
