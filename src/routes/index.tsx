@@ -339,7 +339,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
       <header className="topbar">
         <div className="brand">
           <div className="brand-title">
-            <ViewMenu view={view} onView={showView}>
+            <ViewMenu>
               {!offShelf &&
                 ((close) => (
                   <div className="menu-tools mobile-only">
@@ -378,6 +378,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
                   .map((s) => `${counts[s]} ${STATUS_LABELS[s].toLowerCase()}`)
                   .join(' · ')}
           </p>
+          <PageTabs view={view} onView={showView} />
         </div>
         <div className="toolbar">
           <SearchBox books={books} detectedSeries={seriesMap} onPick={showBook} onMatches={setMatches} />
@@ -603,14 +604,32 @@ const VIEWS = [
 
 const FOCUS: ChallengeSection[] = ['goal', 'monthly', 'bingo', 'alphabet']
 
-/** The menu to go between the shelf, the dashboard (#59) and the Challenges page. */
+/** The pages, always in view as tabs: one tap to switch. On a phone just the icons. */
+function PageTabs({ view, onView }: { view: View; onView: (view: View) => void }) {
+  return (
+    <nav className="page-tabs" aria-label="Pages">
+      {VIEWS.map((v) => (
+        <button
+          key={v.view}
+          type="button"
+          className={v.view === view ? 'page-tab active' : 'page-tab'}
+          aria-current={v.view === view ? 'page' : undefined}
+          aria-label={v.label}
+          title={v.label}
+          onClick={() => onView(v.view)}
+        >
+          <span aria-hidden>{v.icon}</span>
+          <span className="page-tab-label">{v.label}</span>
+        </button>
+      ))}
+    </nav>
+  )
+}
+
+/** The ☰ menu: the shelf's tools on a phone (#88) and the reading reminder; the pages are tabs now. */
 function ViewMenu({
-  view,
-  onView,
   children,
 }: {
-  view: View
-  onView: (view: View) => void
   /** more in the menu, e.g. the shelf's tools on a phone (#88); `close` closes the menu */
   children?: false | ((close: () => void) => React.ReactNode)
 }) {
@@ -628,20 +647,7 @@ function ViewMenu({
       <summary className="btn icon" aria-label="Menu" title="Menu">
         <span aria-hidden>☰</span>
       </summary>
-      <nav className="view-menu-list" aria-label="Views">
-        {VIEWS.map((v) => (
-          <button
-            key={v.view}
-            className={v.view === view ? 'active' : ''}
-            aria-current={v.view === view ? 'page' : undefined}
-            onClick={() => {
-              if (menu.current) menu.current.open = false
-              onView(v.view)
-            }}
-          >
-            <span aria-hidden>{v.icon}</span> {v.label}
-          </button>
-        ))}
+      <nav className="view-menu-list" aria-label="More">
         {children && children(() => menu.current && (menu.current.open = false))}
       </nav>
     </details>
