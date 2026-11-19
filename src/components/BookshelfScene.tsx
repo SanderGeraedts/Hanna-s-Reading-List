@@ -661,7 +661,8 @@ function Bookcase({ layout }: { layout: ShelfLayout }) {
 
   // satin oil finish on walnut: fairly matte with a soft sheen
   const mat = <meshStandardMaterial map={wood} color="#f3ece4" roughness={0.55} />
-  // the crown on top and the base below: stepped mouldings, a little wider each step
+  // the crown on top: stepped mouldings, a little wider each step (no moulding
+  // at the bottom: it stood in front of the bottom row of books)
   const crown: Array<[number, number, number]> = [
     // [extra width, height, extra depth]
     [0.03, 0.022, 0.02],
@@ -669,12 +670,7 @@ function Bookcase({ layout }: { layout: ShelfLayout }) {
     [0.1, 0.03, 0.06],
     [0.075, 0.012, 0.04],
   ]
-  const base: Array<[number, number, number]> = [
-    [0.05, 0.05, 0.035],
-    [0.03, 0.018, 0.02],
-  ]
   let crownY = caseHeight
-  let baseY = 0
   return (
     <group>
       {crown.map(([w, h, d], i) => {
@@ -692,16 +688,6 @@ function Bookcase({ layout }: { layout: ShelfLayout }) {
         <boxGeometry args={[outer + 0.07, 0.004, 0.003]} />
         <meshStandardMaterial color="#d9a85b" metalness={0.8} roughness={0.32} />
       </mesh>
-      {base.map(([w, h, d], i) => {
-        const y = baseY + h / 2
-        baseY += h
-        return (
-          <mesh key={`base-${i}`} position={[0, y, d / 2 - 0.005]} castShadow receiveShadow>
-            <boxGeometry args={[outer + w, h, D + d]} />
-            {mat}
-          </mesh>
-        )
-      })}
       {/* sides */}
       {[-1, 1].map((s) => (
         <mesh

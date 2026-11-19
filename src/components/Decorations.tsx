@@ -552,7 +552,8 @@ function TrailingIvy() {
   )
   // vines: from the pot, forward over the edge, then down (lengths differ)
   const vines = useMemo(() => {
-    const drops = [0.16, 0.24, 0.11, 0.2]
+    // short enough to drape over the board, never in front of the books below
+    const drops = [0.06, 0.08, 0.045, 0.07]
     const spreads = [-0.03, -0.008, 0.014, 0.034]
     return drops.map((drop, i) => {
       const x = spreads[i]
@@ -564,7 +565,7 @@ function TrailingIvy() {
         new THREE.Vector3(x * 1.2 + 0.006, -drop, IVY_TO_EDGE + 0.012),
       ])
       const geometry = new THREE.TubeGeometry(curve, 40, 0.0012, 5, false)
-      const count = Math.round(drop * 60)
+      const count = Math.round(drop * 110)
       const leaves = Array.from({ length: count }, (_, j) => {
         const t = 0.08 + (j / count) * 0.9
         return { pos: curve.getPoint(t), side: j % 2 ? 1 : -1, light: (i + j) % 3 === 0, size: 1 - t * 0.35 }

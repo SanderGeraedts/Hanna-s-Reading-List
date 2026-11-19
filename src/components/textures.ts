@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import type { Book } from '#/lib/library'
-import { formatsOf, timesRead } from '#/lib/library'
+import { timesRead } from '#/lib/library'
 import type { BookDims } from '#/lib/shelfLayout'
 import { formatDuration, listenOnly } from '#/lib/listening'
 import type { PageEdges } from '#/lib/edges'
@@ -136,10 +136,12 @@ export function paintSpine(book: Book, dims: BookDims, sleep = false) {
   const c = canvas(W, H)
   const ctx = c.getContext('2d', { willReadFrequently: true })!
   const bg = book.color
-  // a hardcover with a darker spine gets gilded (gold) lettering and bands
-  const gilded = formatsOf(book).includes('hardcover') && inkFor(bg) !== '#1d1a16'
-  const ink = gilded ? GOLD : inkFor(bg)
-  const accent = gilded ? GOLD : accentFor(bg)
+  // every book is a hardcover on the shelf, with gilded lettering and bands:
+  // bright gold on a darker spine, a deep gold on a light one (so it still reads)
+  const gilded = true
+  const gold = inkFor(bg) === '#1d1a16' ? DEEP_GOLD : GOLD
+  const ink = gold
+  const accent = gold
 
   // rounded-spine shading: darker at the edges, a highlight just off-centre
   const grad = ctx.createLinearGradient(0, 0, W, 0)
@@ -214,11 +216,12 @@ export function paintSpine(book: Book, dims: BookDims, sleep = false) {
 
 /** Gold leaf for the lettering on hardcovers. */
 const GOLD = '#dcb767'
+/** Gold leaf on a light spine: darker, so the lettering stands out. */
+const DEEP_GOLD = '#7a5a1c'
 
 /**
  * A little wear, the same every time for a book: rubbed ends on every spine,
- * and on a paperback that was read, a few reading creases down the spine
- * (more the more often she read it).
+ * and a few scuffs, more the more often she read it.
  */
 function paintWear(ctx: CanvasRenderingContext2D, W: number, H: number, book: Book) {
   const rnd = seeded(`wear:${book.id}`)
@@ -239,22 +242,6 @@ function paintWear(ctx: CanvasRenderingContext2D, W: number, H: number, book: Bo
   for (let i = 0; i < 4 + reads * 2; i++) {
     ctx.fillStyle = `rgba(255, 248, 235, ${0.05 + rnd() * 0.07})`
     ctx.fillRect(rnd() * W, rnd() * H, 1 + rnd() * W * 0.08, 1 + rnd() * H * 0.004)
-  }
-  // reading creases: thin pale lines along a paperback's spine
-  const paperback = !formatsOf(book).includes('hardcover')
-  if (paperback && reads > 0) {
-    const creases = Math.min(6, 1 + reads * 2)
-    ctx.lineWidth = Math.max(1, W * 0.012)
-    for (let i = 0; i < creases; i++) {
-      const x = W * (0.25 + rnd() * 0.5)
-      const y = H * (0.1 + rnd() * 0.3)
-      const len = H * (0.25 + rnd() * 0.45)
-      ctx.strokeStyle = `rgba(255, 250, 240, ${0.18 + rnd() * 0.14})`
-      ctx.beginPath()
-      ctx.moveTo(x, y)
-      ctx.lineTo(x + (rnd() - 0.5) * W * 0.06, y + len)
-      ctx.stroke()
-    }
   }
   ctx.restore()
 }

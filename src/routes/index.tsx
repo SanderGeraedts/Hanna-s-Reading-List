@@ -340,7 +340,9 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
       <header className="topbar">
         <div className="brand">
           <div className="brand-title">
-            <ViewMenu>
+            {/* the ☰ menu only holds the shelf's tools on a phone: elsewhere it would be empty */}
+            {!offShelf && (
+              <ViewMenu>
               {!offShelf &&
                 ((close) => (
                   <div className="menu-tools mobile-only">
@@ -365,7 +367,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
                     </button>
                   </div>
                 ))}
-            </ViewMenu>
+              </ViewMenu>
+            )}
             <h1>Hanna's Reading List</h1>
           </div>
           <p className="muted">
@@ -646,7 +649,7 @@ function ViewMenu({
     return () => document.removeEventListener('pointerdown', close)
   }, [])
   return (
-    <details className="view-menu" ref={menu}>
+    <details className="view-menu phone-menu" ref={menu}>
       <summary className="btn icon" aria-label="Menu" title="Menu">
         <span aria-hidden>☰</span>
       </summary>

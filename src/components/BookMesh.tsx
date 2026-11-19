@@ -148,23 +148,48 @@ export function BookMesh(props: BookMeshProps) {
     // the book shows its own colours from every side with no shading (#99).
     const face = (map: THREE.Texture, look: typeof paper) =>
       new THREE.MeshStandardMaterial({ map, emissiveMap: map, emissive: 0xffffff, emissiveIntensity: 0, ...look })
-    return [
-      face(pages.fore, paper),
-      face(painted.spine, coverMat),
-      face(pages.topBottom, paper),
-      face(pages.topBottom, paper),
-      face(cover ?? painted.fallback, coverMat),
-      face(painted.back, coverMat),
-    ]
+    const fore = face(pages.fore, paper)
+    const topBottom = face(pages.topBottom, paper)
+    const spine = face(painted.spine, coverMat)
+    const front = face(cover ?? painted.fallback, coverMat)
+    const back = face(painted.back, coverMat)
+    // the boards' thin edges, in the cloth of the spine
+    const edge = face(painted.spine, coverMat)
+    return {
+      all: [fore, topBottom, spine, front, back, edge],
+      // per part, in BoxGeometry face order
+      pages: [fore, topBottom, topBottom, topBottom, topBottom, topBottom],
+      front: [edge, edge, edge, edge, front, edge],
+      back: [edge, edge, edge, edge, edge, back],
+      spine: [edge, spine, edge, edge, edge, edge],
+    }
   }, [painted, cover, edges])
-  useEffect(() => () => materials.forEach((m) => m.dispose()), [materials])
+  useEffect(() => () => materials.all.forEach((m) => m.dispose()), [materials])
 
-  // softly rounded corners and edges, like a real book (a few millimetres)
-  const geometry = useMemo(
-    () => new RoundedBoxGeometry(dims.w, dims.h, dims.t, 2, Math.min(0.0025, dims.t * 0.12)),
-    [dims.w, dims.h, dims.t],
+  // every book is a hardcover: two boards and a spine round a page block that
+  // is a little smaller, so the covers stick out past the pages (a few mm),
+  // with softly rounded board edges
+  const parts = useMemo(() => {
+    // thick enough boards and a clear overhang, so it reads as a hardcover from the shelf
+    const board = THREE.MathUtils.clamp(dims.t * 0.1, 0.0018, 0.0032)
+    const over = Math.min(0.0045, dims.w * 0.04, dims.h * 0.025)
+    const round = board * 0.45
+    const pagesW = dims.w - board - over
+    return {
+      board,
+      pages: { geometry: new THREE.BoxGeometry(pagesW, dims.h - 2 * over, dims.t - 2 * board), x: -dims.w / 2 + board + pagesW / 2 },
+      board3: new RoundedBoxGeometry(dims.w - board, dims.h, board, 1, round),
+      spine: new RoundedBoxGeometry(board, dims.h, dims.t, 1, round),
+    }
+  }, [dims.w, dims.h, dims.t])
+  useEffect(
+    () => () => {
+      parts.pages.geometry.dispose()
+      parts.board3.dispose()
+      parts.spine.dispose()
+    },
+    [parts],
   )
-  useEffect(() => () => geometry.dispose(), [geometry])
 
   // ---- animation --------------------------------------------------------
   const anim = useRef({
@@ -231,36 +256,42 @@ export function BookMesh(props: BookMeshProps) {
     // a search match glows a little, the other books dim
     const glowing = fly + 0.22 * a.glow * (1 - fly)
     const shade = (1 - fly) * (1 - 0.65 * a.dim)
-    if (Math.abs(materials[0].emissiveIntensity - glowing) > 0.001 || Math.abs(materials[0].color.r - shade) > 0.001) {
-      for (const m of materials) {
+    const first = materials.all[0]
+    if (Math.abs(first.emissiveIntensity - glowing) > 0.001 || Math.abs(first.color.r - shade) > 0.001) {
+      for (const m of materials.all) {
         m.emissiveIntensity = glowing
         m.color.setScalar(shade)
       }
     }
   })
 
+  // what every part of the book shares: shadows and being picked up
+  const part = {
+    // taken out to look at, the book is lit evenly: no shadow on it, and it
+    // throws none onto the bookcase while it turns
+    castShadow: !selected,
+    receiveShadow: !selected,
+    onPointerDown: (e: ThreeEvent<PointerEvent>) => props.onPointerDown(e, book.id),
+    onPointerMove: (e: ThreeEvent<PointerEvent>) => props.onPointerMove(e, book.id),
+    onPointerUp: (e: ThreeEvent<PointerEvent>) => props.onPointerUp(e, book.id),
+    onPointerOver: (e: ThreeEvent<PointerEvent>) => {
+      e.stopPropagation()
+      props.onHover(book.id)
+    },
+    onPointerOut: () => props.onHover(null),
+  }
+
   return (
     <group ref={group} position={[slot.x, slot.y, slot.z]} rotation={[0, SPINE_OUT, 0]}>
-      <mesh
-        // taken out to look at, the book is lit evenly: no shadow on it, and it
-        // throws none onto the bookcase while it turns
-        castShadow={!selected}
-        receiveShadow={!selected}
-        material={materials}
-        geometry={geometry}
-        onPointerDown={(e) => props.onPointerDown(e, book.id)}
-        onPointerMove={(e) => props.onPointerMove(e, book.id)}
-        onPointerUp={(e) => props.onPointerUp(e, book.id)}
-        onPointerOver={(e) => {
-          e.stopPropagation()
-          props.onHover(book.id)
-        }}
-        onPointerOut={() => props.onHover(null)}
-      />
+      <mesh {...part} material={materials.pages} geometry={parts.pages.geometry} position={[parts.pages.x, 0, 0]} />
+      <mesh {...part} material={materials.front} geometry={parts.board3} position={[parts.board / 2, 0, dims.t / 2 - parts.board / 2]} />
+      <mesh {...part} material={materials.back} geometry={parts.board3} position={[parts.board / 2, 0, -dims.t / 2 + parts.board / 2]} />
+      <mesh {...part} material={materials.spine} geometry={parts.spine} position={[-dims.w / 2 + parts.board / 2, 0, 0]} />
       {(book.status === 'reading' || book.status === 'paused') && (
         <Bookmark dims={dims} progress={book.progress ?? 0} color={props.clipColor ?? RAINBOW[0]} />
       )}
       {book.status === 'read' && <Medal dims={dims} count={timesRead(book)} />}
+      <SpineRidges dims={dims} read={book.status === 'read'} />
     </group>
   )
 }
@@ -405,5 +436,27 @@ function Medal({ dims, count }: { dims: BookDims; count: number }) {
         <circleGeometry args={[r, 40]} />
       </mesh>
     </group>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Raised bands: the gilded ridges across the spine of an old hardcover, a
+// pair near the top and a pair near the bottom (none at the bottom when a
+// medal hangs there).
+// ---------------------------------------------------------------------------
+
+const ridgeMaterial = new THREE.MeshStandardMaterial({ color: '#c99a45', metalness: 0.75, roughness: 0.35 })
+
+function SpineRidges({ dims, read }: { dims: BookDims; read: boolean }) {
+  const ys = [0.06, 0.085, ...(read ? [] : [0.89, 0.915])].map((f) => dims.h / 2 - f * dims.h)
+  const height = Math.max(0.0014, dims.h * 0.006)
+  return (
+    <>
+      {ys.map((y) => (
+        <mesh key={y} material={ridgeMaterial} position={[-dims.w / 2 - 0.0006, y, 0]} castShadow>
+          <boxGeometry args={[0.0014, height, dims.t * 0.9]} />
+        </mesh>
+      ))}
+    </>
   )
 }

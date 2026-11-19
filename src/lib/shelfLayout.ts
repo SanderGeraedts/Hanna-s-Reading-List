@@ -58,10 +58,11 @@ export type DecorKind = 'koala' | 'succulent' | 'frame' | 'candle' | 'vase' | 'c
 /** Decorations in placement order (the koala always comes first) and their footprint width. */
 export const DECOR: Array<{ kind: DecorKind; width: number }> = [
   { kind: 'koala', width: 0.17 },
-  { kind: 'candle', width: 0.08 },
+  // the newer ones first, so they get a shelf before the older ones
   { kind: 'cat', width: 0.18 },
-  { kind: 'ivy', width: 0.11 },
   { kind: 'mug', width: 0.1 },
+  { kind: 'ivy', width: 0.11 },
+  { kind: 'candle', width: 0.08 },
   { kind: 'succulent', width: 0.11 },
   { kind: 'frame', width: 0.15 },
   { kind: 'vase', width: 0.11 },
@@ -201,8 +202,11 @@ export function computeLayout(
   }> = []
   let row = 0
   let x = 0
+  // every shelf keeps a spot at its right end for its decoration (one per
+  // shelf, in DECOR order), so full shelves still get their cat, mug or ivy
+  const roomFor = (r: number) => innerWidth - (r < DECOR.length ? DECOR[r].width + DECOR_MARGIN * 2 : 0)
   const fit = (width: number) => {
-    if (x > 0 && x + width > innerWidth) {
+    if (x > 0 && x + width > roomFor(row)) {
       row++
       x = 0
     }
