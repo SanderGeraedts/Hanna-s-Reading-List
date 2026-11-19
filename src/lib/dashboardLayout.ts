@@ -1,10 +1,12 @@
 /**
- * The dashboard layout (#85, #87): two columns of blocks, each stacked
- * tightly so there are no big gaps, in the order Hanna dragged them into.
- * Blocks she hides are left out until she adds them back; what they show
+ * The dashboard layout (#85, #87): four sections (Today, Challenges, My stats,
+ * Fun & memories), each with two columns of blocks stacked tightly, in the
+ * order Hanna dragged them into. She can drag a block within its section and
+ * to another one, fold a section shut, and hide blocks; what a block shows
  * comes from the shelf, so nothing is lost while one is hidden.
  *
- * On a narrow screen the two columns are shown as one, taking turns.
+ * On a narrow screen each section's two columns are shown as one, taking turns.
+ * The layout is remembered per device.
  */
 
 export const BLOCKS = {
@@ -15,20 +17,17 @@ export const BLOCKS = {
   next: 'What next?',
   reading: 'Currently reading',
   series: 'Series',
-  monthly: 'Books per month',
   calendar: 'Calendar',
   breakdown: 'What I read',
   records: 'Records',
   pile: 'Want-to-read pile',
-  streak: 'Reading streak',
   onthisday: 'On this day',
   lent: 'Lent out',
-  top: 'Top 5',
+  top: 'My ratings',
   fact: 'Fact of the day',
   pace: 'Finish by',
   heatmap: 'A year of reading',
   authors: 'Favourite authors',
-  spice: 'Spice meter',
   wrapped: 'Year in review',
   bingo: 'Book bingo',
   recent: 'Newly added',
@@ -37,62 +36,126 @@ export const BLOCKS = {
 
 export type BlockId = keyof typeof BLOCKS
 
+export const SECTIONS = {
+  today: 'Today',
+  challenges: 'Challenges',
+  stats: 'My stats',
+  fun: 'Fun & memories',
+} as const
+
+export type SectionId = keyof typeof SECTIONS
+export const SECTION_IDS = Object.keys(SECTIONS) as SectionId[]
+
+export type Columns = [BlockId[], BlockId[]]
+
 export interface DashboardLayout {
-  columns: [BlockId[], BlockId[]]
+  sections: Record<SectionId, Columns>
   hidden: BlockId[]
+  /** sections folded shut */
+  folded: SectionId[]
 }
 
 export const DEFAULT_LAYOUT: DashboardLayout = {
-  columns: [
-    ['waiting', 'count', 'reading', 'pace', 'monthly', 'heatmap', 'breakdown', 'records', 'authors', 'onthisday', 'fact', 'wrapped'],
-    ['goal', 'next', 'top', 'spice', 'calendar', 'bingo', 'series', 'streak', 'pile', 'lent', 'recent', 'alphabet'],
-  ],
+  sections: {
+    today: [
+      ['waiting', 'reading', 'pace', 'lent'],
+      ['challenge', 'next', 'recent'],
+    ],
+    challenges: [['goal', 'alphabet'], ['bingo']],
+    stats: [
+      ['count', 'heatmap', 'breakdown', 'authors'],
+      ['calendar', 'records', 'series', 'pile'],
+    ],
+    fun: [
+      ['fact', 'wrapped'],
+      ['top', 'onthisday'],
+    ],
+  },
   hidden: [],
+  folded: [],
 }
 
-// the monthly challenge (#144) starts right under "Waiting for you"
-DEFAULT_LAYOUT.columns[0].splice(1, 0, 'challenge')
+/** The section each block starts in (and comes back to when shown again). */
+const HOME = Object.fromEntries(
+  SECTION_IDS.flatMap((s) => DEFAULT_LAYOUT.sections[s].flat().map((id) => [id, s])),
+) as Record<BlockId, SectionId>
 
 const isBlock = (id: unknown): id is BlockId => typeof id === 'string' && Object.hasOwn(BLOCKS, id)
+const isSection = (id: unknown): id is SectionId => typeof id === 'string' && Object.hasOwn(SECTIONS, id)
+const emptySections = (): Record<SectionId, Columns> =>
+  Object.fromEntries(SECTION_IDS.map((s) => [s, [[], []]])) as unknown as Record<SectionId, Columns>
 
-/** A saved layout made safe: unknown blocks dropped, each block once, new blocks added. */
+/**
+ * A saved layout made safe: unknown blocks dropped (also the ones merged into
+ * another, like Books per month), each block once, new blocks added in their
+ * section. A layout saved before the sections had two long columns: each
+ * block goes to its section, in her order and on her side.
+ */
 export function cleanLayout(raw: unknown): DashboardLayout {
-  const r = (raw && typeof raw === 'object' ? raw : {}) as Partial<Record<keyof DashboardLayout, unknown>>
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
   const seen = new Set<BlockId>()
   const take = (list: unknown): BlockId[] =>
     (Array.isArray(list) ? list : []).filter((id): id is BlockId => isBlock(id) && !seen.has(id) && !!seen.add(id))
-  const cols = Array.isArray(r.columns) ? r.columns : DEFAULT_LAYOUT.columns
-  const columns: [BlockId[], BlockId[]] = [take(cols[0]), take(cols[1])]
+  const sections = emptySections()
+
   const hidden = take(r.hidden)
-  // "Waiting for you" goes first, also on a dashboard arranged before it existed
-  if (!seen.has('waiting')) columns[0].unshift('waiting'), seen.add('waiting')
-  // blocks added to the app later go where they are by default
-  for (const [c, list] of DEFAULT_LAYOUT.columns.entries()) {
-    for (const id of list) if (!seen.has(id)) columns[c].push(id), seen.add(id)
+  if (r.sections && typeof r.sections === 'object') {
+    const saved = r.sections as Record<string, unknown>
+    for (const s of SECTION_IDS) {
+      const cols = Array.isArray(saved[s]) ? (saved[s] as unknown[]) : []
+      sections[s] = [take(cols[0]), take(cols[1])]
+    }
+  } else if (Array.isArray(r.columns)) {
+    // before the sections: two long columns
+    for (const c of [0, 1] as const) for (const id of take((r.columns as unknown[])[c])) sections[HOME[id]][c].push(id)
+  } else {
+    return structuredClone(DEFAULT_LAYOUT)
   }
-  return { columns, hidden }
+
+  // "Waiting for you" goes first, also on a dashboard arranged before it existed
+  if (!seen.has('waiting')) sections.today[0].unshift('waiting'), seen.add('waiting')
+  // blocks added to the app later go where they are by default
+  for (const s of SECTION_IDS)
+    for (const [c, list] of DEFAULT_LAYOUT.sections[s].entries())
+      for (const id of list) if (!seen.has(id)) sections[s][c].push(id), seen.add(id)
+
+  const folded = (Array.isArray(r.folded) ? r.folded : []).filter(isSection)
+  return { sections, hidden, folded: [...new Set(folded)] }
 }
 
 const without = (layout: DashboardLayout, id: BlockId): DashboardLayout => ({
-  columns: [layout.columns[0].filter((x) => x !== id), layout.columns[1].filter((x) => x !== id)],
+  sections: Object.fromEntries(
+    SECTION_IDS.map((s) => [s, layout.sections[s].map((col) => col.filter((x) => x !== id))]),
+  ) as unknown as Record<SectionId, Columns>,
   hidden: layout.hidden.filter((x) => x !== id),
+  folded: layout.folded,
 })
 
-/** Moves a block to `index` in column `column` (an index among the other blocks of that column). */
-export function moveBlock(layout: DashboardLayout, id: BlockId, column: 0 | 1, index: number): DashboardLayout {
+/** Moves a block to `index` in a section's column (an index among the other blocks there). */
+export function moveBlock(
+  layout: DashboardLayout,
+  id: BlockId,
+  section: SectionId,
+  column: 0 | 1,
+  index: number,
+): DashboardLayout {
   const next = without(layout, id)
-  const list = [...next.columns[column]]
+  const list = [...next.sections[section][column]]
   list.splice(Math.max(0, Math.min(index, list.length)), 0, id)
-  next.columns[column] = list
+  next.sections[section][column] = list
   return next
 }
 
-/** Where a block is: its column and place in it, or null when hidden. */
-export function placeOf(layout: DashboardLayout, id: BlockId): { column: 0 | 1; index: number } | null {
-  for (const column of [0, 1] as const) {
-    const index = layout.columns[column].indexOf(id)
-    if (index >= 0) return { column, index }
-  }
+/** Where a block is: its section, column and place, or null when hidden. */
+export function placeOf(
+  layout: DashboardLayout,
+  id: BlockId,
+): { section: SectionId; column: 0 | 1; index: number } | null {
+  for (const section of SECTION_IDS)
+    for (const column of [0, 1] as const) {
+      const index = layout.sections[section][column].indexOf(id)
+      if (index >= 0) return { section, column, index }
+    }
   return null
 }
 
@@ -101,16 +164,25 @@ export function hideBlock(layout: DashboardLayout, id: BlockId): DashboardLayout
   return { ...next, hidden: [...next.hidden, id] }
 }
 
-/** Adds a hidden block back, at the top of the shorter column, where she sees it straight away. */
+/** Adds a hidden block back in its own section, at the top of the shorter column, where she sees it straight away. */
 export function showBlock(layout: DashboardLayout, id: BlockId): DashboardLayout {
   const next = without(layout, id)
-  const column = next.columns[0].length <= next.columns[1].length ? 0 : 1
-  return moveBlock(next, id, column, 0)
+  const section = HOME[id]
+  const [a, b] = next.sections[section]
+  const column = a.length <= b.length ? 0 : 1
+  return { ...moveBlock(next, id, section, column, 0), folded: next.folded.filter((s) => s !== section) }
 }
 
-/** The two columns as one list for a narrow screen, taking turns: left, right, left… */
-export function singleColumn(layout: DashboardLayout): BlockId[] {
-  const [a, b] = layout.columns
+/** Folds a section shut, or opens it. */
+export function toggleFold(layout: DashboardLayout, section: SectionId): DashboardLayout {
+  const folded = layout.folded.includes(section)
+    ? layout.folded.filter((s) => s !== section)
+    : [...layout.folded, section]
+  return { ...layout, folded }
+}
+
+/** A section's two columns as one list for a narrow screen, taking turns: left, right, left… */
+export function singleColumn([a, b]: Columns): BlockId[] {
   const out: BlockId[] = []
   for (let i = 0; i < Math.max(a.length, b.length); i++) {
     if (a[i]) out.push(a[i])

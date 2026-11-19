@@ -3023,3 +3023,115 @@ textarea.input {
     flex: 1;
   }
 }
+
+/* ---- dashboard sections and the today strip -------------------------- */
+.dash-section {
+  max-width: 68rem;
+  margin: 0 auto var(--space-5);
+  display: grid;
+  gap: var(--space-3);
+}
+.dash-section-head {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.dash-section-head:disabled {
+  cursor: default;
+}
+.dash-section-head h2 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: var(--fs-large);
+}
+.dash-section-fold {
+  color: var(--accent);
+}
+.dash-section .dashboard-grid {
+  margin: 0;
+  max-width: none;
+}
+.count-monthly {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+.count-monthly h3 {
+  margin: 0;
+  font-size: var(--fs-body);
+}
+.today-strip {
+  max-width: 68rem;
+  margin: 0 auto var(--space-3);
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.today-item {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+button.today-item {
+  cursor: pointer;
+}
+button.today-item:hover {
+  border-color: var(--accent-line);
+}
+.today-item .dash-cover.small {
+  width: 1.8rem;
+}
+.today-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.today-book .today-text strong {
+  max-width: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.today-progress {
+  display: block;
+  width: 6rem;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+.today-progress span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.today-icon {
+  font-size: var(--fs-heading);
+}
+.today-ring {
+  width: 2.2rem;
+  height: 2.2rem;
+}
+.today-ring circle {
+  fill: none;
+  stroke-width: 4;
+}

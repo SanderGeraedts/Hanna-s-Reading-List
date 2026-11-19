@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Book } from '#/lib/library'
-import { loadGoals } from '#/server/shelf'
 import { challengeYears, yearTrophies } from '#/lib/trophies'
 import type { Trophy } from '#/lib/trophies'
-import { GoalCard, goalKey, readLocalGoal } from './DashboardExtras'
+import { GoalCard } from './DashboardExtras'
+import { useYearGoal } from './useYearGoal'
 import { BingoCard } from './DashboardMore'
 import { AlphabetCard } from './AlphabetCard'
 import { ChallengeCard } from './ChallengeCard'
@@ -17,27 +17,6 @@ interface Props {
   onUpdate: (id: string, patch: Partial<Book> | ((book: Book) => Partial<Book>)) => void
   /** the challenge to scroll to, from "Open ›" on the dashboard */
   focus?: ChallengeSection
-}
-
-/** That year's reading goal: the copy in this browser, then the server's. */
-function useYearGoal(accountId: string | null, year: number): number | null {
-  const key = goalKey(accountId, year)
-  const [goal, setGoal] = useState(() => readLocalGoal(key))
-  useEffect(() => {
-    setGoal(readLocalGoal(key))
-    if (!accountId) return
-    let live = true
-    loadGoals()
-      .then((goals) => {
-        const remote = goals?.[String(year)]
-        if (live && typeof remote === 'number') setGoal(remote)
-      })
-      .catch(() => {})
-    return () => {
-      live = false
-    }
-  }, [accountId, key, year])
-  return goal
 }
 
 /**
