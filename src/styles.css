@@ -21,8 +21,8 @@
   --accent-ink: #2a1a08; /* text on gold */
   --warning: #e0a35f; /* behind, a reminder */
   --danger: #e07a62; /* remove, wrong */
-  --header-ink: #1f2440;
-  --header-muted: #4a5172;
+  --header-ink: #3a2616; /* text over the wallpaper at the top: warm dark brown */
+  --header-muted: #6b4c32;
 
   /* text sizes: five, and nothing in between */
   --fs-tiny: 0.7rem; /* only inside dense grids: calendar days, bingo squares, A–Z letters */

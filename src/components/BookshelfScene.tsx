@@ -13,7 +13,7 @@ import { BookNooks } from './BookNook'
 import { SeriesDividers } from './SeriesDivider'
 import { sleepReadIds } from '#/lib/sleepSeries'
 import type { InspectTarget } from './BookMesh'
-import { FLOOR_TILE_METRES, floorTexture, wallTexture, woodTexture } from './textures'
+import { FLOOR_TILE_METRES, WALLPAPER_REPEAT_M, floorTexture, wallTexture, woodTexture } from './textures'
 
 export interface BookshelfSceneProps {
   books: Book[]
@@ -470,10 +470,16 @@ function Lights({ caseHeight, cameraBase }: { caseHeight: number; cameraBase: TH
 
 /** must match WALL_HEIGHT_M in textures.ts so the gradient stops land at real heights */
 const WALL_HEIGHT = 8
+const WALL_WIDTH = 30
 const FLOOR_SIZE = 30
 
 function Room() {
-  const wall = useMemo(() => wallTexture(), [])
+  const wall = useMemo(() => {
+    const t = wallTexture()
+    // the striped wallpaper repeats sideways along the whole wall
+    t.repeat.set(WALL_WIDTH / WALLPAPER_REPEAT_M, 1)
+    return t
+  }, [])
   const floor = useMemo(() => {
     const t = floorTexture()
     // boards run away from the viewer
@@ -496,7 +502,7 @@ function Room() {
         <meshStandardMaterial map={floor} color="#f2ebe2" roughness={0.55} />
       </mesh>
       <mesh position={[0, WALL_HEIGHT / 2, -SHELF.depth / 2 - 0.02]} receiveShadow>
-        <planeGeometry args={[30, WALL_HEIGHT]} />
+        <planeGeometry args={[WALL_WIDTH, WALL_HEIGHT]} />
         <meshStandardMaterial map={wall} roughness={1} />
       </mesh>
     </>
