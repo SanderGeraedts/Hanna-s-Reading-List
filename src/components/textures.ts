@@ -670,24 +670,39 @@ export function floorTexture() {
 
 const WALL_HEIGHT_M = 8
 
+/** One repeat of the wallpaper: a cream stripe and a warm-beige one, in metres. */
+export const WALLPAPER_REPEAT_M = 0.24
+
 /**
- * Lavender-cornflower wall: deeper at the floor, fading to a pale periwinkle above the bookcase.
- * Slightly over-saturated on purpose – the warm room lights pull it back toward grey.
+ * The wall behind the bookcase: a warm striped wallpaper, cream at the top
+ * fading to caramel near the floor, like lamplight. This paints one repeat
+ * (two stripes) the full height of the wall; the scene repeats it sideways.
  */
 export function wallTexture() {
-  const c = canvas(4, 1024)
+  const W = 48
+  const H = 1024
+  const c = canvas(W, H)
   const ctx = c.getContext('2d')!
-  const g = ctx.createLinearGradient(0, 0, 0, c.height)
   // stops are placed by height above the floor (metres); canvas y=0 is the top
   const at = (metres: number) => 1 - metres / WALL_HEIGHT_M
-  g.addColorStop(at(WALL_HEIGHT_M), '#e3e9ff')
-  g.addColorStop(at(3.2), '#cdd8ff')
-  g.addColorStop(at(2), '#aabcfa')
-  g.addColorStop(at(0.9), '#8ba1f0')
-  g.addColorStop(at(0), '#6c84e0')
+  const g = ctx.createLinearGradient(0, 0, 0, H)
+  g.addColorStop(at(WALL_HEIGHT_M), '#f6ead6')
+  g.addColorStop(at(3.2), '#f0dfc3')
+  g.addColorStop(at(2), '#e6cca5')
+  g.addColorStop(at(0.9), '#d9b78a')
+  g.addColorStop(at(0), '#c99f70')
   ctx.fillStyle = g
-  ctx.fillRect(0, 0, c.width, c.height)
-  return toTexture(c)
+  ctx.fillRect(0, 0, W, H)
+  // the second stripe a touch warmer and darker
+  ctx.fillStyle = 'rgba(150, 95, 45, 0.09)'
+  ctx.fillRect(W / 2, 0, W / 2, H)
+  // a fine line at the edge of each stripe, as printed wallpaper has
+  ctx.fillStyle = 'rgba(160, 110, 55, 0.12)'
+  ctx.fillRect(W / 2 - 1, 0, 1, H)
+  ctx.fillRect(W - 1, 0, 1, H)
+  const t = toTexture(c)
+  t.wrapS = THREE.RepeatWrapping
+  return t
 }
 
 /** Text printed on the back cover: the blurb, or a short placeholder when there is none. */
