@@ -49,7 +49,7 @@ describe('dashboard layout with sections', () => {
   it('moves a block within its section and to another section', () => {
     const l = moveBlock(DEFAULT_LAYOUT, 'fact', 'today', 1, 0)
     expect(l.sections.today[1][0]).toBe('fact')
-    expect(l.sections.fun[0]).toEqual(['wrapped'])
+    expect(l.sections.fun[0]).toEqual(['badges', 'wrapped'])
     expect(placeOf(l, 'fact')).toEqual({ section: 'today', column: 1, index: 0 })
   })
 
