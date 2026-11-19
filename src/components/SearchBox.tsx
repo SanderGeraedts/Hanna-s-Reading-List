@@ -8,12 +8,14 @@ interface Props {
   detectedSeries: Map<string, SeriesInfo>
   /** take the book off the shelf */
   onPick: (id: string) => void
+  /** what matches the search, for the shelf to light up; null when there's no search */
+  onMatches?: (ids: string[] | null) => void
 }
 
 const SHOWN = 50
 
 /** Search the shelf: a button that opens a search field with a list of matching books. Also opens with "/". */
-export function SearchBox({ books, detectedSeries, onPick }: Props) {
+export function SearchBox({ books, detectedSeries, onPick, onMatches }: Props) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
@@ -21,6 +23,13 @@ export function SearchBox({ books, detectedSeries, onPick }: Props) {
   const hits = useMemo(() => searchShelf(books, query, detectedSeries), [books, query, detectedSeries])
 
   useEffect(() => setActive(0), [query])
+
+  // the shelf lights up what matches, also after the search closes, until it's cleared
+  const searching = query.trim().length >= 2
+  const matchKey = searching ? hits.map((h) => h.book.id).join(' ') : null
+  useEffect(() => {
+    onMatches?.(matchKey === null ? null : matchKey ? matchKey.split(' ') : [])
+  }, [matchKey, onMatches])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -64,6 +73,17 @@ export function SearchBox({ books, detectedSeries, onPick }: Props) {
           <path d="M15.5 15.5 21 21" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
         </svg>
       </button>
+      {!open && searching && (
+        <button
+          type="button"
+          className="btn small search-clear"
+          aria-label={`Stop lighting up books matching “${query.trim()}”`}
+          title="Clear the search"
+          onClick={() => setQuery('')}
+        >
+          “{query.trim()}” · {hits.length} ✕
+        </button>
+      )}
       {open && (
         <div className="search-pop">
           <input

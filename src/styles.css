@@ -645,6 +645,42 @@ textarea.input {
   background: #fff;
 }
 
+/* ---- finding and zooming on the shelf -------------------------------- */
+/* on the lavender wall: light buttons with dark plum text, like ↻ */
+.zoom-controls .btn,
+.topbar .btn.search-clear {
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--header-ink);
+  border-color: rgba(45, 32, 56, 0.2);
+}
+.zoom-controls .btn:hover:not(:disabled),
+.topbar .btn.search-clear:hover:not(:disabled) {
+  background: #fff;
+}
+.zoom-controls {
+  position: absolute;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.zoom-controls .btn {
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-size: var(--fs-large);
+}
+.search-clear {
+  white-space: nowrap;
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ---- Storytel refresh ------------------------------------------------ */
 .topbar .btn.refresh {
   width: 2.4rem;
@@ -741,6 +777,10 @@ textarea.input {
 /* ---- search --------------------------------------------------------- */
 .search {
   position: relative;
+  /* the search button, and next to it the “…” ✕ chip while books are lit up */
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 .topbar .search-btn {
   width: 2.4rem;

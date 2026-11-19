@@ -25,7 +25,15 @@ export interface BookshelfSceneProps {
   arrangement?: SortKey | null
   /** share of the screen height covered by the details sheet on phones (0..1) */
   sheet?: RefObject<number>
+  /** a search is on: the ids of the books that match it (the rest dim) */
+  highlight?: Set<string> | null
+  /** how far zoomed in: 1 is the whole case, up to ZOOM_MAX */
+  zoom?: number
+  onZoom?: (zoom: number) => void
 }
+
+export const ZOOM_MAX = 3
+export const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(1, z))
 
 const FOV = 35
 const DEFAULT_INSPECT = { fill: 0.6, yShift: 0 }
@@ -74,6 +82,9 @@ function Scene({
   onReorder,
   arrangement,
   sheet,
+  highlight = null,
+  zoom = 1,
+  onZoom,
 }: BookshelfSceneProps) {
   const [hovered, setHovered] = useState<string | null>(null)
   const [drag, setDrag] = useState<DragState | null>(null)
@@ -111,13 +122,33 @@ function Scene({
   if (!drag) stableLayout.current = layout
   const caseLayout = drag ? stableLayout.current : layout
 
-  const scroll = useRef<ScrollState>({ y: null, min: 0, max: 0, worldPerPx: 0 })
+  const scroll = useRef<ScrollState>({ y: null, min: 0, max: 0, worldPerPx: 0, x: 0, xMax: 0 })
   const cameraBase = useCameraRig(caseLayout.caseWidth, caseLayout.caseHeight, {
     parallax: !selectedId,
     portrait,
     scroll,
     dragging: !!drag,
+    zoom,
   })
+  // the zoom as the input handlers see it, without re-adding them on every change
+  const zoomRef = useRef(zoom)
+  zoomRef.current = zoom
+  const onZoomRef = useRef(onZoom)
+  onZoomRef.current = onZoom
+
+  // a new search: scroll (and, zoomed in, pan) to the first book that matches
+  useEffect(() => {
+    if (!highlight || highlight.size === 0) return
+    const first = ordered.find((b) => highlight.has(b.id))
+    const slot = first && layout.slots.get(first.id)
+    const dims = first && layout.dims.get(first.id)
+    const s = scroll.current
+    if (!slot || !dims) return
+    if (s.max > s.min) s.y = THREE.MathUtils.clamp(slot.y + dims.h / 2, s.min, s.max)
+    if (s.xMax > 0) s.x = THREE.MathUtils.clamp(slot.x, -s.xMax, s.xMax)
+    // only when the search changes, not when the shelf moves under it
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlight])
 
   useEffect(() => {
     gl.domElement.style.cursor = drag ? 'grabbing' : hovered && !selectedId ? 'grab' : 'auto'
@@ -216,35 +247,82 @@ function Scene({
   useEffect(() => {
     if (selectedId) return
     const el = gl.domElement
-    let swipe: { id: number; y: number; t: number; scrolling: boolean } | null = null
+    let swipe: { id: number; x: number; y: number; t: number; scrolling: boolean } | null = null
+    // two fingers on the screen: pinch to zoom
+    const touches = new Map<number, { x: number; y: number }>()
+    let pinch: { dist: number; zoom: number } | null = null
+    const gap = () => {
+      const [a, b] = [...touches.values()]
+      return Math.hypot(a.x - b.x, a.y - b.y)
+    }
+    const zoomTo = (z: number) => onZoomRef.current?.(clampZoom(z))
     const scrollBy = (px: number) => {
       const s = scroll.current
       if (s.y === null || s.max <= s.min) return
       s.y = THREE.MathUtils.clamp(s.y + px * s.worldPerPx, s.min, s.max)
     }
+    // zoomed in: move sideways along the shelf
+    const panBy = (px: number) => {
+      const s = scroll.current
+      if (s.xMax <= 0) return
+      s.x = THREE.MathUtils.clamp(s.x - px * s.worldPerPx, -s.xMax, s.xMax)
+    }
     const wheel = (e: WheelEvent) => {
-      if (scroll.current.max <= scroll.current.min) return
-      e.preventDefault()
-      scrollBy(-(e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY))
+      const unit = e.deltaMode === 1 ? 16 : 1
+      // Ctrl+scroll, and a trackpad pinch (which comes as Ctrl+scroll): zoom
+      if (e.ctrlKey) {
+        e.preventDefault()
+        zoomTo(zoomRef.current * Math.exp(-e.deltaY * unit * 0.01))
+        return
+      }
+      const sideways = e.shiftKey ? e.deltaY : e.deltaX
+      if (sideways && scroll.current.xMax > 0) {
+        e.preventDefault()
+        panBy(sideways * unit)
+      }
+      if (!e.shiftKey && e.deltaY && scroll.current.max > scroll.current.min) {
+        e.preventDefault()
+        scrollBy(-e.deltaY * unit)
+      }
     }
     const down = (e: PointerEvent) => {
       if (e.pointerType === 'mouse') return
-      swipe = { id: e.pointerId, y: e.clientY, t: performance.now(), scrolling: false }
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (touches.size === 2) {
+        // a second finger: a pinch, not a swipe or moving a book
+        pinch = { dist: gap(), zoom: zoomRef.current }
+        swipe = null
+        pending.current = null
+        if (dragRef.current) updateDrag(null)
+        setHovered(null)
+        return
+      }
+      swipe = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), scrolling: false }
     }
     const move = (e: PointerEvent) => {
+      if (touches.has(e.pointerId)) touches.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (pinch && touches.size === 2) {
+        zoomTo(pinch.zoom * (gap() / Math.max(1, pinch.dist)))
+        return
+      }
       if (!swipe || e.pointerId !== swipe.id || dragRef.current) return
+      const dx = e.clientX - swipe.x
       const dy = e.clientY - swipe.y
       if (!swipe.scrolling) {
         // a press held still is the start of moving a book, not a swipe
-        if (Math.abs(dy) < 8 || performance.now() - swipe.t > LONG_PRESS_MS) return
+        if (Math.max(Math.abs(dx), Math.abs(dy)) < 8 || performance.now() - swipe.t > LONG_PRESS_MS) return
         swipe.scrolling = true
         pending.current = null // so lifting the finger doesn't open a book
         setHovered(null)
       }
       scrollBy(dy)
+      panBy(dx)
+      swipe.x = e.clientX
       swipe.y = e.clientY
     }
     const up = (e: PointerEvent) => {
+      touches.delete(e.pointerId)
+      if (touches.size < 2) pinch = null
       if (swipe && e.pointerId === swipe.id) swipe = null
     }
     el.addEventListener('wheel', wheel, { passive: false })
@@ -320,6 +398,7 @@ function Scene({
             selected={book.id === selectedId}
             dragging={drag?.id === book.id}
             hovered={hovered === book.id}
+            match={highlight ? (highlight.has(book.id) ? 'glow' : 'dim') : null}
             dragPoint={dragPoint}
             inspect={inspect}
             cameraBase={cameraBase}
@@ -346,6 +425,9 @@ interface ScrollState {
   max: number
   /** world units per screen pixel at the bookcase, for 1:1 swiping */
   worldPerPx: number
+  /** zoomed in: how far the camera has moved sideways, and how far it may */
+  x: number
+  xMax: number
 }
 
 const LONG_PRESS_MS = 350
@@ -358,7 +440,7 @@ const LONG_PRESS_MS = 350
 function useCameraRig(
   caseWidth: number,
   caseHeight: number,
-  opts: { parallax: boolean; portrait: boolean; scroll: RefObject<ScrollState>; dragging: boolean },
+  opts: { parallax: boolean; portrait: boolean; scroll: RefObject<ScrollState>; dragging: boolean; zoom: number },
 ) {
   const camera = useThree((s) => s.camera)
   const size = useThree((s) => s.size)
@@ -376,12 +458,17 @@ function useCameraRig(
   // leave room for the header at the top
   const distH = (caseHeight * FRAME.vertical) / 2 / tan
   // desktops show the whole case; phones held upright scroll through it
-  const toCase = Math.max(distW, opts.portrait ? 0 : distH, 0.9)
+  const fitted = Math.max(distW, opts.portrait ? 0 : distH, 0.9)
+  // zooming in brings the camera closer (1: the whole case, as before)
+  const toCase = Math.max(0.35, fitted / Math.max(1, opts.zoom))
   base.z = toCase + SHELF.depth / 2
 
   const s = opts.scroll.current
   const viewH = 2 * toCase * tan
   s.worldPerPx = viewH / Math.max(1, size.height)
+  // zoomed in, the camera can move sideways as far as the case reaches
+  s.xMax = Math.max(0, caseWidth / 2 - (viewH * aspect) / 2 + 0.05)
+  s.x = THREE.MathUtils.clamp(s.x, -s.xMax, s.xMax)
   // the pages' wallpaper uses the same stripe width on screen as the 3D wall:
   // one stripe is half a repeat, seen at the wall (a little further than the case)
   const stripePx = ((WALLPAPER_REPEAT_M / 2) / s.worldPerPx) * (toCase / (toCase + SHELF.depth))
@@ -411,6 +498,7 @@ function useCameraRig(
       sc.y = THREE.MathUtils.clamp(sc.y + speed * 1.2 * d, sc.min, sc.max)
     }
     if (sc.y !== null) base.y = sc.y
+    base.x = sc.x
     // a touch of parallax following the mouse
     const px = opts.parallax ? state.pointer.x * 0.06 : 0
     const py = opts.parallax ? state.pointer.y * 0.04 : 0
