@@ -1,16 +1,52 @@
+/* ---- design system ---------------------------------------------------
+   The cosy library, refreshed: calm walnut browns, cream text and one warm
+   gold accent. Every colour, text size, gap and corner in the app comes from
+   these; /style shows them all side by side. */
 :root {
-  --bg: #2a1f18;
-  --surface: rgba(32, 23, 17, 0.82);
-  --surface-solid: #241a14;
+  /* colours */
+  --bg: #231a15; /* deep walnut, behind everything */
+  --surface: rgba(38, 29, 23, 0.88); /* cards and panels, over the shelf */
+  --surface-solid: #261d17; /* dialogs and sheets */
+  --surface-sunken: rgba(0, 0, 0, 0.22); /* inputs, wells, empty squares */
+  --surface-raised: rgba(255, 240, 215, 0.06); /* secondary buttons: readable over the shelf too */
+  --surface-hover: rgba(255, 240, 215, 0.12);
   --border: rgba(240, 220, 190, 0.14);
-  --text: #f4ead9;
-  --muted: #bca98f;
-  --accent: #d9a85b;
-  --accent-ink: #2a1a08;
-  --danger: #e07a62;
+  --border-strong: rgba(240, 220, 190, 0.26);
+  --text: #f4ead9; /* cream */
+  --muted: #bca98f; /* helper text: about 7:1 on the cards */
+  --accent: #d9a85b; /* warm gold: the one accent */
+  --accent-hover: #e7b96c;
+  --accent-soft: rgba(217, 168, 91, 0.18); /* gold wash: ticked, chosen */
+  --accent-line: rgba(217, 168, 91, 0.6); /* gold outline */
+  --accent-ink: #2a1a08; /* text on gold */
+  --warning: #e0a35f; /* behind, a reminder */
+  --danger: #e07a62; /* remove, wrong */
   --header-ink: #1f2440;
   --header-muted: #4a5172;
-  --radius: 12px;
+
+  /* text sizes: five, and nothing in between */
+  --fs-small: 0.8rem; /* helper text, chips, small buttons */
+  --fs-body: 0.95rem; /* everything else */
+  --fs-large: 1.1rem; /* emphasis, facts */
+  --fs-heading: 1.25rem; /* block titles */
+  --fs-number: 3rem; /* the big numbers */
+
+  /* spacing steps */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+
+  /* corners: three kinds */
+  --radius-card: 12px; /* blocks, panels, dialogs */
+  --radius-small: 6px; /* inputs, squares, covers */
+  --radius-pill: 999px; /* buttons, chips */
+  --radius: var(--radius-card);
+
+  /* a finger needs this much room on a phone */
+  --tap: 44px;
+
   --serif: 'Fraunces', Georgia, 'Times New Roman', serif;
   --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   color-scheme: dark;
@@ -41,7 +77,7 @@ h2 {
 .muted {
   color: var(--muted);
   margin: 0;
-  font-size: 0.875rem;
+  font-size: var(--fs-small);
 }
 
 .app {
@@ -131,20 +167,23 @@ h2 {
 }
 
 /* ---- controls ------------------------------------------------------- */
+/* buttons: .btn.primary is the main (gold) one, .btn the secondary (outlined),
+   .btn.quiet text only; .small for inside blocks */
 .btn {
   font: inherit;
-  font-size: 0.9rem;
+  font-size: var(--fs-body);
   font-weight: 500;
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-raised);
   color: var(--text);
-  padding: 0.55rem 1rem;
-  border-radius: 999px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
   cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
 }
 .btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--surface-hover);
+  border-color: var(--accent-line);
 }
 .btn:active:not(:disabled) {
   transform: translateY(1px);
@@ -160,14 +199,30 @@ h2 {
   font-weight: 600;
 }
 .btn.primary:hover:not(:disabled) {
-  background: #e7b96c;
+  background: var(--accent-hover);
+}
+.btn.quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+.btn.quiet:hover:not(:disabled) {
+  color: var(--text);
+  border-color: transparent;
+}
+.btn:focus-visible,
+.format-chip:focus-visible,
+.link-btn:focus-visible,
+.icon-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .btn.danger {
   color: var(--danger);
 }
 .btn.small {
-  padding: 0.35rem 0.8rem;
-  font-size: 0.8rem;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--fs-small);
 }
 .icon-btn {
   border: 0;
@@ -183,12 +238,12 @@ h2 {
 }
 .input {
   font: inherit;
-  font-size: 0.9rem;
+  font-size: var(--fs-body);
   width: 100%;
-  padding: 0.55rem 0.75rem;
-  border-radius: 8px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-small);
   border: 1px solid var(--border);
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--surface-sunken);
   color: var(--text);
 }
 .input:focus {
@@ -284,7 +339,7 @@ textarea.input {
 }
 .hint {
   margin: -0.5rem 0 0;
-  font-size: 0.75rem;
+  font-size: var(--fs-small);
   color: var(--muted);
   text-align: center;
 }
@@ -793,7 +848,7 @@ textarea.input {
 }
 .link-btn {
   font: inherit;
-  font-size: 0.8rem;
+  font-size: var(--fs-small);
   color: var(--accent);
   background: none;
   border: 0;
@@ -811,19 +866,19 @@ textarea.input {
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: var(--space-2);
   align-items: center;
 }
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.2rem;
-  padding: 0.2rem 0.3rem 0.2rem 0.65rem;
-  border-radius: 999px;
-  background: rgba(217, 168, 91, 0.16);
-  border: 1px solid rgba(217, 168, 91, 0.35);
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
   color: var(--text);
-  font-size: 0.8rem;
+  font-size: var(--fs-small);
 }
 .chip button {
   font: inherit;
@@ -969,10 +1024,10 @@ textarea.input {
 /* ---- how I have it: one toggle per format --------------------------- */
 .format-chip {
   font: inherit;
-  font-size: 0.8rem;
-  padding: 0.3rem 0.7rem;
-  border-radius: 999px;
-  border: 1px solid var(--border);
+  font-size: var(--fs-small);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong);
   background: transparent;
   color: var(--muted);
   cursor: pointer;
@@ -981,8 +1036,8 @@ textarea.input {
   color: var(--text);
 }
 .format-chip[aria-pressed='true'] {
-  background: rgba(217, 168, 91, 0.22);
-  border-color: rgba(217, 168, 91, 0.6);
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
   color: var(--text);
 }
 .format-chip[aria-pressed='true']::before {
@@ -1356,11 +1411,11 @@ textarea.input {
 }
 .dash-card {
   display: grid;
-  gap: 0.85rem;
-  padding: 1.25rem;
+  gap: var(--space-3);
+  padding: var(--space-5);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-card);
   min-width: 0;
 }
 .dash-card p {
@@ -1369,33 +1424,33 @@ textarea.input {
 .dash-card-head {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--space-2);
   align-items: center;
   justify-content: space-between;
 }
 .dash-card h2 {
   margin: 0;
   font-family: var(--serif);
-  font-size: 1.25rem;
+  font-size: var(--fs-heading);
   font-weight: 600;
 }
 .dash-card .hint {
-  font-size: 0.75rem;
+  font-size: var(--fs-small);
 }
 
 .segmented {
   display: inline-flex;
   padding: 3px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--border);
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--surface-sunken);
 }
 .segmented button {
   font: inherit;
-  font-size: 0.8rem;
-  padding: 0.3rem 0.8rem;
+  font-size: var(--fs-small);
+  padding: var(--space-1) var(--space-3);
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--muted);
   cursor: pointer;
@@ -1416,10 +1471,10 @@ textarea.input {
 
 .big-number {
   font-family: var(--serif);
-  font-size: 1.1rem;
+  font-size: var(--fs-large);
 }
 .big-number strong {
-  font-size: 3rem;
+  font-size: var(--fs-number);
   line-height: 1;
   color: var(--accent);
   margin-right: 0.15rem;
@@ -1838,7 +1893,96 @@ textarea.input {
 
 /* ---- dashboard extras (#66) ------------------------------------------- */
 .small-text {
-  font-size: 0.8rem;
+  font-size: var(--fs-small);
+}
+
+/* ---- the design system page (/style) ------------------------------- */
+.style-page {
+  height: 100%;
+  overflow-y: auto;
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4) 4rem;
+  display: grid;
+  gap: var(--space-5);
+}
+.style-page > section {
+  display: grid;
+  gap: var(--space-3);
+}
+.style-page h2 {
+  font-size: var(--fs-heading);
+}
+.style-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: var(--space-3);
+}
+.style-swatch {
+  display: grid;
+  gap: var(--space-1);
+}
+.style-swatch span {
+  height: 3rem;
+  border-radius: var(--radius-small);
+  border: 1px solid var(--border-strong);
+}
+.style-swatch code,
+.style-row code,
+.style-radius code {
+  font-size: var(--fs-small);
+  color: var(--accent);
+}
+.style-row {
+  display: flex;
+  gap: var(--space-4);
+  align-items: baseline;
+  margin: 0;
+}
+.style-row code {
+  flex: 0 0 9rem;
+}
+.style-spaces {
+  display: grid;
+  gap: var(--space-2);
+}
+.style-space {
+  height: 1rem;
+  background: var(--accent);
+}
+.style-radii {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.style-radius {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  min-width: 10rem;
+  border: 1px solid var(--accent-line);
+  background: var(--surface);
+}
+.style-blocks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-4);
+}
+
+/* on a phone, everything you tap is big enough for a finger */
+@media (pointer: coarse) {
+  .btn,
+  .segmented button {
+    min-height: var(--tap);
+  }
+  .btn.small,
+  .format-chip {
+    min-height: 36px;
+  }
+  .icon-btn {
+    min-width: var(--tap);
+    min-height: var(--tap);
+  }
 }
 /* book titles on the dashboard; the book panel's own .link-btn stays as it is */
 .dashboard .link-btn {

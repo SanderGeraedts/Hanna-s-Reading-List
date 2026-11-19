@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as StyleRouteImport } from './routes/style'
 import { Route as ApiNightlyStorytelRouteImport } from './routes/api/nightly-storytel'
 import { Route as ApiRemoteCoverRouteImport } from './routes/api/remote-cover'
 import { Route as ApiCoverKindValueRouteImport } from './routes/api/cover.$kind.$value'
@@ -17,6 +18,11 @@ import { Route as ApiCoverKindValueRouteImport } from './routes/api/cover.$kind.
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StyleRoute = StyleRouteImport.update({
+  id: '/style',
+  path: '/style',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiNightlyStorytelRoute = ApiNightlyStorytelRouteImport.update({
@@ -37,12 +43,14 @@ const ApiCoverKindValueRoute = ApiCoverKindValueRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/style': typeof StyleRoute
   '/api/nightly-storytel': typeof ApiNightlyStorytelRoute
   '/api/remote-cover': typeof ApiRemoteCoverRoute
   '/api/cover/$kind/$value': typeof ApiCoverKindValueRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/style': typeof StyleRoute
   '/api/nightly-storytel': typeof ApiNightlyStorytelRoute
   '/api/remote-cover': typeof ApiRemoteCoverRoute
   '/api/cover/$kind/$value': typeof ApiCoverKindValueRoute
@@ -50,6 +58,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/style': typeof StyleRoute
   '/api/nightly-storytel': typeof ApiNightlyStorytelRoute
   '/api/remote-cover': typeof ApiRemoteCoverRoute
   '/api/cover/$kind/$value': typeof ApiCoverKindValueRoute
@@ -58,18 +67,21 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/style'
     | '/api/nightly-storytel'
     | '/api/remote-cover'
     | '/api/cover/$kind/$value'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/style'
     | '/api/nightly-storytel'
     | '/api/remote-cover'
     | '/api/cover/$kind/$value'
   id:
     | '__root__'
     | '/'
+    | '/style'
     | '/api/nightly-storytel'
     | '/api/remote-cover'
     | '/api/cover/$kind/$value'
@@ -77,6 +89,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  StyleRoute: typeof StyleRoute
   ApiNightlyStorytelRoute: typeof ApiNightlyStorytelRoute
   ApiRemoteCoverRoute: typeof ApiRemoteCoverRoute
   ApiCoverKindValueRoute: typeof ApiCoverKindValueRoute
@@ -89,6 +102,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/style': {
+      id: '/style'
+      path: '/style'
+      fullPath: '/style'
+      preLoaderRoute: typeof StyleRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/nightly-storytel': {
@@ -117,6 +137,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  StyleRoute: StyleRoute,
   ApiNightlyStorytelRoute: ApiNightlyStorytelRoute,
   ApiRemoteCoverRoute: ApiRemoteCoverRoute,
   ApiCoverKindValueRoute: ApiCoverKindValueRoute,
