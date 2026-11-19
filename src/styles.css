@@ -3181,6 +3181,19 @@ textarea.input {
   }
 }
 
+/* ---- favourites on top --------------------------------------------- */
+.block-star.on {
+  color: var(--accent);
+}
+.dash-favourites-empty {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  color: var(--muted);
+  justify-self: start;
+}
+
 /* ---- dashboard sections and the today strip -------------------------- */
 .dash-section {
   max-width: 68rem;

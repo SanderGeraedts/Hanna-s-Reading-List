@@ -44,6 +44,8 @@ import {
   showBlock,
   singleColumn,
   toggleFold,
+  toggleFavourite,
+  favouriteColumns,
 } from '#/lib/dashboardLayout'
 import type { BlockId, DashboardLayout, SectionId } from '#/lib/dashboardLayout'
 import { TodayStrip } from './TodayStrip'
@@ -341,6 +343,22 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
   })
 
   const shown = SECTION_IDS.some((s) => layout.sections[s].flat().some(showing))
+  const favFolded = layout.folded.includes('favourites') && !arranging
+  /** ☆ / ★ in the block tools while arranging: a favourite also shows on top */
+  const star = (id: BlockId) => {
+    const on = layout.favourites.includes(id)
+    return (
+      <button
+        className={`btn icon small block-star${on ? ' on' : ''}`}
+        aria-pressed={on}
+        aria-label={on ? `Take ${BLOCKS[id]} out of the favourites` : `Add ${BLOCKS[id]} to the favourites`}
+        title={on ? 'Favourite' : 'Make a favourite'}
+        onClick={() => setLayout(toggleFavourite(layout, id))}
+      >
+        {on ? '★' : '☆'}
+      </button>
+    )
+  }
   return (
     <div className="dashboard" ref={root}>
       <TodayStrip books={books} accountId={accountId} onShowBook={onShowBook} />
@@ -373,6 +391,40 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
         )}
       </div>
       {!shown && <p className="muted dashboard-empty">Every block is hidden. Press Arrange to add some back.</p>}
+      {(layout.favourites.length > 0 || arranging) && (
+        <section className="dash-section dash-favourites" aria-labelledby="section-favourites">
+          <button
+            type="button"
+            className="dash-section-head"
+            aria-expanded={!favFolded}
+            onClick={() => setLayout(toggleFold(layout, 'favourites'))}
+            disabled={arranging}
+          >
+            <h2 id="section-favourites">★ Favourites</h2>
+            <span className="dash-section-fold" aria-hidden>
+              {favFolded ? '▸' : '▾'}
+            </span>
+          </button>
+          {!favFolded &&
+            (layout.favourites.length === 0 ? (
+              <p className="muted small-text dash-favourites-empty">Star blocks with ☆ to see them here, on top.</p>
+            ) : (
+              // the favourites also stay in their own section; these are copies, not dragged from here
+              <div className={`dashboard-grid${arranging ? ' arranging' : ''}`}>
+                {(narrow ? [singleColumn(favouriteColumns(layout))] : favouriteColumns(layout)).map((col, visual) => (
+                  <div className="dash-column" key={visual}>
+                    {col.filter(showing).map((id) => (
+                      <div key={id} className="dash-block">
+                        {arranging && <div className="block-tools">{star(id)}</div>}
+                        {blocks[id]}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ))}
+        </section>
+      )}
       {SECTION_IDS.map((section) => {
         const ids = layout.sections[section].flat().filter(showing)
         // an empty section stays out of the way, except while arranging (to drop blocks into)
@@ -419,6 +471,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
                               >
                                 <span aria-hidden>⠿</span>
                               </button>
+                              {star(id)}
                               <button
                                 className="btn icon small"
                                 aria-label={`Hide ${BLOCKS[id]}`}
