@@ -51,11 +51,16 @@ export const SECTION_IDS = Object.keys(SECTIONS) as SectionId[]
 
 export type Columns = [BlockId[], BlockId[]]
 
+/** What can be folded shut: a section, or the Favourites on top. */
+export type FoldId = SectionId | 'favourites'
+
 export interface DashboardLayout {
   sections: Record<SectionId, Columns>
   hidden: BlockId[]
   /** sections folded shut */
-  folded: SectionId[]
+  folded: FoldId[]
+  /** blocks starred as favourites, in the order she starred them: shown on top as well */
+  favourites: BlockId[]
 }
 
 export const DEFAULT_LAYOUT: DashboardLayout = {
@@ -76,6 +81,7 @@ export const DEFAULT_LAYOUT: DashboardLayout = {
   },
   hidden: [],
   folded: [],
+  favourites: [],
 }
 
 /** The section each block starts in (and comes back to when shown again). */
@@ -85,6 +91,7 @@ const HOME = Object.fromEntries(
 
 const isBlock = (id: unknown): id is BlockId => typeof id === 'string' && Object.hasOwn(BLOCKS, id)
 const isSection = (id: unknown): id is SectionId => typeof id === 'string' && Object.hasOwn(SECTIONS, id)
+const isFold = (id: unknown): id is FoldId => id === 'favourites' || isSection(id)
 const emptySections = (): Record<SectionId, Columns> =>
   Object.fromEntries(SECTION_IDS.map((s) => [s, [[], []]])) as unknown as Record<SectionId, Columns>
 
@@ -122,8 +129,12 @@ export function cleanLayout(raw: unknown): DashboardLayout {
     for (const [c, list] of DEFAULT_LAYOUT.sections[s].entries())
       for (const id of list) if (!seen.has(id)) sections[s][c].push(id), seen.add(id)
 
-  const folded = (Array.isArray(r.folded) ? r.folded : []).filter(isSection)
-  return { sections, hidden, folded: [...new Set(folded)] }
+  const folded = (Array.isArray(r.folded) ? r.folded : []).filter(isFold)
+  // favourites: known blocks, each once, not hidden
+  const favourites = [...new Set((Array.isArray(r.favourites) ? r.favourites : []).filter(isBlock))].filter(
+    (id) => !hidden.includes(id),
+  )
+  return { sections, hidden, folded: [...new Set(folded)], favourites }
 }
 
 const without = (layout: DashboardLayout, id: BlockId): DashboardLayout => ({
@@ -132,6 +143,7 @@ const without = (layout: DashboardLayout, id: BlockId): DashboardLayout => ({
   ) as unknown as Record<SectionId, Columns>,
   hidden: layout.hidden.filter((x) => x !== id),
   folded: layout.folded,
+  favourites: layout.favourites,
 })
 
 /** Moves a block to `index` in a section's column (an index among the other blocks there). */
@@ -162,9 +174,23 @@ export function placeOf(
   return null
 }
 
+/** Hiding a block also takes it out of the favourites. */
 export function hideBlock(layout: DashboardLayout, id: BlockId): DashboardLayout {
   const next = without(layout, id)
-  return { ...next, hidden: [...next.hidden, id] }
+  return { ...next, hidden: [...next.hidden, id], favourites: next.favourites.filter((x) => x !== id) }
+}
+
+/** Stars a block as a favourite (at the end), or takes the star off. */
+export function toggleFavourite(layout: DashboardLayout, id: BlockId): DashboardLayout {
+  const favourites = layout.favourites.includes(id)
+    ? layout.favourites.filter((x) => x !== id)
+    : [...layout.favourites, id]
+  return { ...layout, favourites }
+}
+
+/** The favourites in two columns, taking turns: first left, second right, … */
+export function favouriteColumns(layout: DashboardLayout): Columns {
+  return [layout.favourites.filter((_, i) => i % 2 === 0), layout.favourites.filter((_, i) => i % 2 === 1)]
 }
 
 /** Adds a hidden block back in its own section, at the top of the shorter column, where she sees it straight away. */
@@ -177,7 +203,7 @@ export function showBlock(layout: DashboardLayout, id: BlockId): DashboardLayout
 }
 
 /** Folds a section shut, or opens it. */
-export function toggleFold(layout: DashboardLayout, section: SectionId): DashboardLayout {
+export function toggleFold(layout: DashboardLayout, section: FoldId): DashboardLayout {
   const folded = layout.folded.includes(section)
     ? layout.folded.filter((s) => s !== section)
     : [...layout.folded, section]
