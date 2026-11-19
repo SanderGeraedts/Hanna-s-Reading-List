@@ -668,9 +668,10 @@ function Bookcase({ layout }: { layout: ShelfLayout }) {
     [0.1, 0.03, 0.06],
     [0.075, 0.012, 0.04],
   ]
+  // the base stays within the bottom board's height, so it never hides the bottom row of books
   const base: Array<[number, number, number]> = [
-    [0.05, 0.05, 0.035],
-    [0.03, 0.018, 0.02],
+    [0.05, SHELF.board * 0.6, 0.035],
+    [0.03, SHELF.board * 0.4, 0.02],
   ]
   let crownY = caseHeight
   let baseY = 0
