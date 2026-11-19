@@ -34,7 +34,14 @@
   --wall-floor: #8e74bb; /* deeper lilac, at the floor of the room */
   --wall-page-bottom: #d4c4ea;
   --wall-stripe: rgba(80, 50, 130, 0.07);
-  --wallpaper: repeating-linear-gradient(90deg, transparent 0 22px, var(--wall-stripe) 22px 44px),
+  /* one stripe's width on screen: the 3D room sets it to match its own stripes
+     (useCameraRig in BookshelfScene.tsx); 44px until it has */
+  --wall-stripe-px: 44px;
+  --wallpaper: repeating-linear-gradient(
+      90deg,
+      transparent 0 var(--wall-stripe-px),
+      var(--wall-stripe) var(--wall-stripe-px) calc(var(--wall-stripe-px) * 2)
+    ),
     linear-gradient(to bottom, var(--wall-top), var(--wall-page-bottom));
 
   /* text sizes: five, and nothing in between */

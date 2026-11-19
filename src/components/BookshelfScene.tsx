@@ -382,6 +382,14 @@ function useCameraRig(
   const s = opts.scroll.current
   const viewH = 2 * toCase * tan
   s.worldPerPx = viewH / Math.max(1, size.height)
+  // the pages' wallpaper uses the same stripe width on screen as the 3D wall:
+  // one stripe is half a repeat, seen at the wall (a little further than the case)
+  const stripePx = ((WALLPAPER_REPEAT_M / 2) / s.worldPerPx) * (toCase / (toCase + SHELF.depth))
+  useEffect(() => {
+    if (Number.isFinite(stripePx) && stripePx > 4) {
+      document.documentElement.style.setProperty('--wall-stripe-px', `${Math.round(stripePx)}px`)
+    }
+  }, [stripePx])
   if (distH <= toCase) {
     // everything fits: centre it, as before
     s.min = s.max = caseHeight / 2 + caseHeight * 0.04
