@@ -7,8 +7,48 @@ import { useYearGoal } from './useYearGoal'
 import { BingoCard } from './DashboardMore'
 import { AlphabetCard } from './AlphabetCard'
 import { ChallengeCard } from './ChallengeCard'
+import { ArrangeGrid } from './ArrangeGrid'
+import { useNarrow } from './Dashboard'
+import { cleanTwoColumns, showIn } from '#/lib/twoColumns'
+import type { TwoColumns } from '#/lib/twoColumns'
 
 export type ChallengeSection = 'goal' | 'monthly' | 'bingo' | 'alphabet'
+
+const CHALLENGE_IDS: readonly ChallengeSection[] = ['goal', 'monthly', 'bingo', 'alphabet']
+const CHALLENGE_NAMES: Record<ChallengeSection, string> = {
+  goal: 'Reading goal',
+  monthly: 'Monthly challenge',
+  bingo: 'Book bingo',
+  alphabet: 'A–Z challenge',
+}
+const DEFAULT_ORDER: TwoColumns<ChallengeSection> = {
+  columns: [
+    ['goal', 'bingo'],
+    ['monthly', 'alphabet'],
+  ],
+  hidden: [],
+}
+
+/** The Challenges page's arrangement, remembered on this device for this account. */
+function useChallengeLayout(accountId: string | null) {
+  const key = `hannas-reading-list:challenges-layout:${accountId ?? 'local'}`
+  const [layout, setState] = useState<TwoColumns<ChallengeSection>>(() => {
+    try {
+      return cleanTwoColumns(JSON.parse(localStorage.getItem(key) ?? 'null'), CHALLENGE_IDS, DEFAULT_ORDER)
+    } catch {
+      return DEFAULT_ORDER
+    }
+  })
+  const setLayout = (next: TwoColumns<ChallengeSection>) => {
+    setState(next)
+    try {
+      localStorage.setItem(key, JSON.stringify(next))
+    } catch {
+      /* storage blocked: it still holds for this visit */
+    }
+  }
+  return [layout, setLayout] as const
+}
 
 interface Props {
   books: Book[]
@@ -29,6 +69,10 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
   const thisYear = years[years.length - 1]
   const [year, setYear] = useState(thisYear)
   const [editing, setEditing] = useState(false)
+  // the order of the challenges, which she arranges like the dashboard (per device)
+  const [layout, setLayout] = useChallengeLayout(accountId)
+  const [arranging, setArranging] = useState(false)
+  const narrow = useNarrow()
   const goal = useYearGoal(accountId, year)
   const trophies = useMemo(() => yearTrophies(books, year, goal), [books, year, goal])
   const at = years.indexOf(year)
@@ -67,28 +111,61 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
 
       <Trophies trophies={trophies} year={year} />
 
-      <div className="challenges-grid">
-        <div id="challenge-goal">
-          <GoalCard key={`goal-${year}`} books={books} accountId={accountId} year={year} />
-        </div>
-        <div id="challenge-monthly">
-          <ChallengeCard
-            key={`monthly-${year}`}
-            books={books}
-            onShowBook={onShowBook}
-            onUpdate={onUpdate}
-            editing={editing}
-            onEditing={setEditing}
-            year={year}
-          />
-        </div>
-        <div id="challenge-bingo">
-          <BingoCard key={`bingo-${year}`} books={books} onUpdate={onUpdate} year={year} />
-        </div>
-        <div id="challenge-alphabet">
-          <AlphabetCard key={`alphabet-${year}`} books={books} onShowBook={onShowBook} onUpdate={onUpdate} year={year} />
-        </div>
+      <div className={`dashboard-bar${arranging ? ' arranging' : ''}`}>
+        {arranging ? (
+          <>
+            <div className="dashboard-bar-actions">
+              <button className="btn small" onClick={() => setLayout(DEFAULT_ORDER)}>
+                Reset
+              </button>
+              <button className="btn small primary" onClick={() => setArranging(false)}>
+                Done
+              </button>
+            </div>
+            {layout.hidden.length > 0 && (
+              <div className="hidden-blocks">
+                <span className="muted small-text">Hidden:</span>
+                {layout.hidden.map((id) => (
+                  <button key={id} className="btn small" onClick={() => setLayout(showIn(layout, id))}>
+                    + {CHALLENGE_NAMES[id]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <button className="btn small" onClick={() => setArranging(true)}>
+            <span aria-hidden>⠿</span> Arrange
+          </button>
+        )}
       </div>
+      <ArrangeGrid
+        layout={layout}
+        onLayout={setLayout}
+        arranging={arranging}
+        narrow={narrow}
+        label={(id) => CHALLENGE_NAMES[id]}
+        anchor={(id) => `challenge-${id}`}
+        render={(id) =>
+          id === 'goal' ? (
+            <GoalCard key={`goal-${year}`} books={books} accountId={accountId} year={year} />
+          ) : id === 'monthly' ? (
+            <ChallengeCard
+              key={`monthly-${year}`}
+              books={books}
+              onShowBook={onShowBook}
+              onUpdate={onUpdate}
+              editing={editing}
+              onEditing={setEditing}
+              year={year}
+            />
+          ) : id === 'bingo' ? (
+            <BingoCard key={`bingo-${year}`} books={books} onUpdate={onUpdate} year={year} />
+          ) : (
+            <AlphabetCard key={`alphabet-${year}`} books={books} onShowBook={onShowBook} onUpdate={onUpdate} year={year} />
+          )
+        }
+      />
     </div>
     </div>
   )

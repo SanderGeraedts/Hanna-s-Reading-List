@@ -122,7 +122,7 @@ function useLayout(accountId: string | null) {
 
 const NARROW = '(max-width: 860px)'
 
-function useNarrow() {
+export function useNarrow() {
   const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia(NARROW).matches)
   useEffect(() => {
     const m = window.matchMedia(NARROW)
