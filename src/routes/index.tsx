@@ -19,6 +19,7 @@ import { SignIn } from '#/components/SignIn'
 import { detectSeries, seriesGroups } from '#/lib/series'
 import { pickReadNext, readNextChoices } from '#/lib/readNext'
 import { Dashboard } from '#/components/Dashboard'
+import { BadgeToasts } from '#/components/NewBlocks'
 import { ChallengesPage } from '#/components/ChallengesPage'
 import { CalendarPage } from '#/components/CalendarPage'
 import type { ChallengeSection } from '#/components/ChallengesPage'
@@ -488,6 +489,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           />
         )}
       </main>
+
+      <BadgeToasts books={books} accountId={account?.id ?? null} ready={loaded} />
 
       {selected && (
         <BookPanel

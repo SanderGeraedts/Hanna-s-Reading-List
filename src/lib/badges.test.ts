@@ -52,6 +52,36 @@ describe('milestones & badges', () => {
   })
 })
 
+describe('more badges, progress and secrets', () => {
+  it('shows progress on locked visible badges, never on secret ones', () => {
+    const all = badges([read('a', '2026-01-02'), read('b', '2026-01-03')], '2026-11-20')
+    expect(find(all, 'books-10').progress).toEqual({ done: 2, goal: 10 })
+    expect(find(all, 'books-1').progress).toBeUndefined()
+    expect(find(all, 'author-5')).toMatchObject({ earned: false, secret: true })
+    expect(find(all, 'author-5').progress).toBeUndefined()
+  })
+
+  it('unlocks secret badges: loyal fan, binge, doorstopper, same day', () => {
+    const shelf = [
+      ...['2026-02-01', '2026-02-03', '2026-02-05', '2026-03-01', '2026-04-01'].map((d, i) => read(`f${i}`, d, { authors: ['Fan Author'] })),
+      read('big', '2026-05-01', { pages: 900 }),
+      read('fast', '2026-06-10', { started: ['2026-06-10'] }),
+    ]
+    const all = badges(shelf, '2026-11-20')
+    expect(find(all, 'author-5')).toMatchObject({ earned: true, on: '2026-04-01' })
+    expect(find(all, 'binge')).toMatchObject({ earned: true, on: '2026-02-05' })
+    expect(find(all, 'doorstopper')).toMatchObject({ earned: true, on: '2026-05-01' })
+    expect(find(all, 'same-day')).toMatchObject({ earned: true, on: '2026-06-10' })
+    expect(find(all, 'new-year').earned).toBe(false)
+  })
+
+  it('finds a rainbow of spines', () => {
+    const colours = ['#e5484d', '#f2843a', '#f5c842', '#4fb365', '#3d8fe0', '#5b5bd6', '#a35bd0']
+    const all = badges(colours.map((c, i) => read(`r${i}`, `2026-0${i + 1}-01`, { color: c })), '2026-11-20')
+    expect(find(all, 'rainbow')).toMatchObject({ earned: true, on: '2026-07-01' })
+  })
+})
+
 describe('when I read most', () => {
   it('finds the weekday with the most reading days', () => {
     // 2026-11-01 and 2026-11-08 are Sundays, 2026-11-03 a Tuesday
