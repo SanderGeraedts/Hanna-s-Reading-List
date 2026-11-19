@@ -59,6 +59,8 @@ export function mergeBooks(keep: Book, other: Book): Book {
     seriesAsked: keep.seriesAsked || other.seriesAsked || undefined,
     ratingAsked: [keep.ratingAsked, other.ratingAsked].filter(Boolean).sort().at(-1),
     challengeMonth: keep.challengeMonth ?? other.challengeMonth,
+    // both copies' journal notes; the kept copy's note wins on the same day
+    ...((keep.journal || other.journal) && { journal: { ...other.journal, ...keep.journal } }),
     ...((keep.alphabetPicks?.length || other.alphabetPicks?.length) && {
       alphabetPicks: [...new Set([...(keep.alphabetPicks ?? []), ...(other.alphabetPicks ?? [])])],
     }),

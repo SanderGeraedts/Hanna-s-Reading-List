@@ -65,6 +65,8 @@ export interface Book {
   ratingAsked?: string
   /** the month ("2027-03") this book is the monthly challenge for (#144); see monthChallenge.ts */
   challengeMonth?: string
+  /** the reading journal: a short note per day she read it (yyyy-mm-dd → note); see journal.ts */
+  journal?: Record<string, string>
   /**
    * the A–Z letters Hanna picked this book to stand for (#152): "title:2026:T"
    * or "author:2026:M"; see alphabet.ts
