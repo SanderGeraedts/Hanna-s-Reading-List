@@ -477,7 +477,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             onOpenCalendar={openCalendar}
           />
         )}
-        {view === 'calendar' && <CalendarPage books={books} onShowBook={showBook} startMonth={search.month} />}
+        {view === 'calendar' && <CalendarPage books={books} onShowBook={showBook} onUpdate={updateBook} startMonth={search.month} />}
         {view === 'challenges' && (
           <ChallengesPage
             books={books}

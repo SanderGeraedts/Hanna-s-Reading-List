@@ -8,10 +8,14 @@ import { sleepReadIds } from '#/lib/sleepSeries'
 import { monthReleases, monthSummary, summaryText, yearLevels } from '#/lib/calendarPage'
 import { Cover, WEEKDAYS, dayPile, mark, monthName } from './Dashboard'
 import { dayStory } from './DashboardExtras'
+import { JournalNote } from './JournalNote'
+import { hasNote } from '#/lib/journal'
 
 interface Props {
   books: Book[]
   onShowBook: (id: string) => void
+  /** for the reading journal: a note is kept on the book */
+  onUpdate: (id: string, patch: Partial<Book>) => void
   /** the month to open on (yyyy-mm), from "Open ›" on the dashboard */
   startMonth?: string
 }
@@ -22,7 +26,7 @@ interface Props {
  * reading-day dots with each month's finished covers. Only for looking:
  * dates are changed in the book panel.
  */
-export function CalendarPage({ books, onShowBook, startMonth }: Props) {
+export function CalendarPage({ books, onShowBook, onUpdate, startMonth }: Props) {
   const now = new Date()
   const today = localDay(now)
   const [mode, setMode] = useState<'month' | 'year'>('month')
@@ -86,6 +90,7 @@ export function CalendarPage({ books, onShowBook, startMonth }: Props) {
             picked={picked}
             onPick={setPicked}
             onShowBook={onShowBook}
+            onUpdate={onUpdate}
           />
         ) : (
           <YearView
@@ -113,6 +118,7 @@ function MonthView({
   picked,
   onPick,
   onShowBook,
+  onUpdate,
 }: {
   books: Book[]
   year: number
@@ -123,6 +129,7 @@ function MonthView({
   picked: number | null
   onPick: (day: number | null) => void
   onShowBook: (id: string) => void
+  onUpdate: (id: string, patch: Partial<Book>) => void
 }) {
   const byDay = useMemo(() => monthEntries(books, year, month), [books, year, month])
   const releases = useMemo(() => monthReleases(books, year, month, today), [books, year, month, today])
@@ -173,6 +180,7 @@ function MonthView({
                   // sleep reads only as a moon, so real reads stay in front
                   const entries = all.filter((e) => !sleep.has(e.book.id))
                   const moon = all.length > entries.length
+                  const noted = hasNote(all.map((e) => e.book), dayKey(d))
                   const coming = releases.byDay.get(d) ?? []
                   const story = [
                     ...all.map((e) => `${e.book.title}, you ${dayStory(e)}`),
@@ -197,9 +205,10 @@ function MonthView({
                       >
                         <span className="day-number">
                           {d}
-                          {moon && (
-                            <span className="day-moon" aria-hidden>
-                              🌙
+                          {(moon || noted) && (
+                            <span className="day-marks" aria-hidden>
+                              {noted && '✎'}
+                              {moon && '🌙'}
                             </span>
                           )}
                         </span>
@@ -246,6 +255,7 @@ function MonthView({
                         {sleep.has(e.book.id) && <span aria-label="sleep read"> 🌙</span>}
                       </p>
                       <p className="muted small-text">You {dayStory(e)}</p>
+                      <JournalNote book={e.book} day={dayKey(picked)} onUpdate={onUpdate} />
                     </div>
                   </li>
                 ))}

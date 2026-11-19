@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { formatPublished, normalizeIsbn, parsePublished, publishedYear } from '#/lib/bookFacts'
 import { seriesGroups } from '#/lib/series'
 import { suggest } from '#/lib/suggest'
+import { notesOf } from '#/lib/journal'
 import { formatDuration, hasAudio, lengthPatch, linkOnFormatChange, listenOnly, parseDuration } from '#/lib/listening'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { Book, BookFormat, ReadingStatus } from '#/lib/library'
@@ -741,6 +742,20 @@ export function BookPanel({
           </label>
         )}
       </div>
+
+      {notesOf(book).length > 0 && (
+        <div className="field">
+          <span>Journal</span>
+          <ul className="journal-list">
+            {notesOf(book).map(({ day, note }) => (
+              <li key={day}>
+                <span className="muted small-text">{formatPublished(day)}</span>
+                <p>{note}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="field">
         <span>Series</span>

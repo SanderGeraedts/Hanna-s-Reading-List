@@ -3050,6 +3050,42 @@ textarea.input {
   }
 }
 
+/* ---- the reading journal ------------------------------------------- */
+.journal-note {
+  display: block;
+  margin-top: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-left: 2px solid var(--accent-line);
+  background: var(--surface-sunken);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-small);
+  font-style: italic;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 0 var(--radius-small) var(--radius-small) 0;
+}
+.journal-edit {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+.journal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.journal-list p {
+  margin: 0;
+  font-style: italic;
+}
+.day-marks {
+  font-size: var(--fs-tiny);
+}
+
 /* ---- the Calendar page ----------------------------------------------- */
 .calendar-page {
   max-width: 72rem;
