@@ -25,6 +25,8 @@ export interface BookMeshProps {
   selected: boolean
   dragging: boolean
   hovered: boolean
+  /** a search is on: this book matches it (glows, stands out a little) or not (dims) */
+  match?: 'glow' | 'dim' | null
   dragPoint: RefObject<THREE.Vector3>
   inspect: RefObject<InspectTarget>
   /** where the camera sits (not the animated camera, the resting one) */
@@ -90,6 +92,7 @@ export function BookMesh(props: BookMeshProps) {
     selected,
     dragging,
     hovered,
+    match = null,
     dragPoint,
     inspect,
     cameraBase,
@@ -163,6 +166,8 @@ export function BookMesh(props: BookMeshProps) {
     hover: 0,
     progress: 0,
     rotY: SPINE_OUT,
+    glow: 0,
+    dim: 0,
     rotX: 0,
     wasSelected: false,
   })
@@ -179,6 +184,8 @@ export function BookMesh(props: BookMeshProps) {
     else a.drag.copy(a.shelf)
     a.dragAmt = damp(a.dragAmt, dragging ? 1 : 0, 12, dt)
     a.hover = damp(a.hover, hovered && !dragging && !selected ? 1 : 0, 12, dt)
+    a.glow = damp(a.glow, match === 'glow' && !selected ? 1 : 0, 8, dt)
+    a.dim = damp(a.dim, match === 'dim' && !selected ? 1 : 0, 8, dt)
     a.progress = damp(a.progress, selected ? 1 : 0, selected ? 3.2 : 4.5, dt)
 
     if (selected) {
@@ -196,7 +203,7 @@ export function BookMesh(props: BookMeshProps) {
     const out = smooth(p, 0, 0.35)
     const fly = smooth(p, 0.2, 1)
     tmp.base.lerpVectors(a.shelf, a.drag, a.dragAmt)
-    tmp.base.z += 0.035 * a.hover + 0.28 * out
+    tmp.base.z += 0.035 * a.hover + 0.28 * out + 0.03 * a.glow
     tmp.base.y += 0.01 * a.hover
 
     // distance at which the book fills `fill` of the view height
@@ -212,11 +219,14 @@ export function BookMesh(props: BookMeshProps) {
       -0.12 * a.dragAmt,
     )
 
-    // fade from lit to evenly lit as the book flies out (and back as it returns)
-    if (Math.abs(materials[0].emissiveIntensity - fly) > 0.001) {
+    // fade from lit to evenly lit as the book flies out (and back as it returns);
+    // a search match glows a little, the other books dim
+    const glowing = fly + 0.22 * a.glow * (1 - fly)
+    const shade = (1 - fly) * (1 - 0.65 * a.dim)
+    if (Math.abs(materials[0].emissiveIntensity - glowing) > 0.001 || Math.abs(materials[0].color.r - shade) > 0.001) {
       for (const m of materials) {
-        m.emissiveIntensity = fly
-        m.color.setScalar(1 - fly)
+        m.emissiveIntensity = glowing
+        m.color.setScalar(shade)
       }
     }
   })

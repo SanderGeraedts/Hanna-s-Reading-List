@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ClientOnly, createFileRoute, useNavigate } from '@tanstack/react-router'
-import { BookshelfScene } from '#/components/BookshelfScene'
+import { BookshelfScene, ZOOM_MAX, clampZoom } from '#/components/BookshelfScene'
 import { AddBookDialog } from '#/components/AddBookDialog'
 import { BookPanel } from '#/components/BookPanel'
 import { CoverPicker } from '#/components/CoverPicker'
@@ -116,6 +116,10 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   // books not out yet are on the shelf too, as want-to-read
   const books = allBooks
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  // the 3D shelf: zoomed in (1 is the whole case) and what a search lights up
+  const [zoom, setZoom] = useState(1)
+  const [matches, setMatches] = useState<string[] | null>(null)
+  const highlight = useMemo(() => (matches ? new Set(matches) : null), [matches])
   const [adding, setAdding] = useState<Tab | null>(null)
   const [pickingCover, setPickingCover] = useState(false)
   /** the book just marked as read, to ask for a rating (#100) */
@@ -376,7 +380,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           </p>
         </div>
         <div className="toolbar">
-          <SearchBox books={books} detectedSeries={seriesMap} onPick={showBook} />
+          <SearchBox books={books} detectedSeries={seriesMap} onPick={showBook} onMatches={setMatches} />
           {!offShelf && (
             // on a phone these are in the ☰ menu instead (#88)
             <>
@@ -435,8 +439,24 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             // a shelf still arranged by genre or colour from before #41/#45 keeps its order, without those nooks
             arrangement={arrangement && MENU_SORT_KEYS.includes(arrangement) ? arrangement : null}
             sheet={sheet}
+            highlight={highlight}
+            zoom={zoom}
+            onZoom={setZoom}
           />
         </ClientOnly>
+        {!offShelf && !selected && books.length > 0 && (
+          <div className="zoom-controls" role="group" aria-label="Zoom">
+            <button className="btn icon" aria-label="Zoom in" title="Zoom in (Ctrl + scroll)" disabled={zoom >= ZOOM_MAX} onClick={() => setZoom(clampZoom(zoom * 1.4))}>
+              +
+            </button>
+            <button className="btn icon" aria-label="Zoom out" title="Zoom out" disabled={zoom <= 1} onClick={() => setZoom(clampZoom(zoom / 1.4))}>
+              −
+            </button>
+            <button className="btn icon" aria-label="Show the whole bookcase" title="Show the whole bookcase" disabled={zoom <= 1} onClick={() => setZoom(1)}>
+              ⤢
+            </button>
+          </div>
+        )}
 
         {loaded && books.length === 0 && (
           <div className="empty">
