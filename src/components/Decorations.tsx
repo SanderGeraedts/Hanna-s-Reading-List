@@ -28,6 +28,10 @@ const PLACEMENT: Record<DecorKind, { z: number; rotY: number }> = {
   frame: { z: BACK_Z, rotY: -0.08 },
   candle: { z: FRONT_Z, rotY: 0 },
   vase: { z: 0, rotY: 0.3 },
+  cat: { z: FRONT_Z - 0.02, rotY: 0.15 },
+  mug: { z: FRONT_Z + 0.01, rotY: -0.6 },
+  // near the front edge, so the vines can hang over it
+  ivy: { z: SHELF.depth / 2 - 0.07, rotY: 0 },
 }
 
 /** Eases decorations to a new spot when books push them along. */
@@ -48,6 +52,9 @@ function Placed({ slot }: { slot: DecorSlot }) {
       {slot.kind === 'frame' && <PictureFrame />}
       {slot.kind === 'candle' && <Candle />}
       {slot.kind === 'vase' && <PampasVase />}
+      {slot.kind === 'cat' && <SleepingCat />}
+      {slot.kind === 'mug' && <TeaMug />}
+      {slot.kind === 'ivy' && <TrailingIvy />}
     </group>
   )
 }
@@ -385,6 +392,286 @@ function PampasVase() {
           </Part>
         </group>
       ))}
+    </group>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// A grey cat curled up asleep, breathing slowly
+// ---------------------------------------------------------------------------
+
+function SleepingCat() {
+  const body = useRef<THREE.Group>(null)
+  const m = useMemo(
+    () => ({
+      fur: new THREE.MeshStandardMaterial({ color: '#8d8782', roughness: 0.95 }),
+      light: new THREE.MeshStandardMaterial({ color: '#d9d2ca', roughness: 0.95 }),
+      ear: new THREE.MeshStandardMaterial({ color: '#c99a9a', roughness: 0.9 }),
+      dark: new THREE.MeshStandardMaterial({ color: '#3a3330', roughness: 0.6 }),
+    }),
+    [],
+  )
+  useEffect(() => () => Object.values(m).forEach((x) => x.dispose()), [m])
+  const tail = useMemo(() => new THREE.TorusGeometry(0.062, 0.012, 10, 28, Math.PI * 1.15), [])
+  useEffect(() => () => tail.dispose(), [tail])
+
+  // a slow breath, about every four seconds
+  useFrame(({ clock }) => {
+    const b = body.current
+    if (b) b.scale.y = 1 + Math.sin(clock.elapsedTime * 1.5) * 0.035
+  })
+
+  return (
+    <group>
+      <group ref={body}>
+        {/* the curled body */}
+        <Part material={m.fur} position={[0, 0.034, 0]} scale={[1, 0.52, 0.78]}>
+          <sphereGeometry args={[0.068, 28, 20]} />
+        </Part>
+      </group>
+      {/* the head, tucked in at the front left, eyes closed */}
+      <group position={[-0.042, 0.04, 0.035]} rotation={[0.1, 0.5, -0.25]}>
+        <Part material={m.fur} scale={[1, 0.82, 0.9]}>
+          <sphereGeometry args={[0.032, 22, 16]} />
+        </Part>
+        <Part material={m.light} position={[0, -0.008, 0.022]} scale={[1, 0.7, 0.7]}>
+          <sphereGeometry args={[0.016, 14, 10]} />
+        </Part>
+        {[-1, 1].map((side) => (
+          <group key={side}>
+            <Part material={m.fur} position={[side * 0.017, 0.026, -0.004]} rotation={[0, 0, -side * 0.35]}>
+              <coneGeometry args={[0.011, 0.02, 4]} />
+            </Part>
+            <mesh material={m.ear} position={[side * 0.017, 0.025, -0.0005]} rotation={[0, 0, -side * 0.35]}>
+              <coneGeometry args={[0.007, 0.014, 4]} />
+            </mesh>
+            {/* closed eyes: two short dark lines */}
+            <mesh material={m.dark} position={[side * 0.011, 0.004, 0.028]} rotation={[0, 0, side * 0.2]}>
+              <boxGeometry args={[0.009, 0.0015, 0.001]} />
+            </mesh>
+          </group>
+        ))}
+        <mesh material={m.ear} position={[0, -0.004, 0.0335]}>
+          <sphereGeometry args={[0.003, 8, 6]} />
+        </mesh>
+      </group>
+      {/* the tail, wrapped round the front */}
+      <Part geometry={tail} material={m.fur} position={[0.004, 0.012, 0.004]} rotation={[Math.PI / 2, 0, -0.2]} />
+    </group>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// A lavender mug of tea, steaming a little
+// ---------------------------------------------------------------------------
+
+function TeaMug() {
+  const steam = useRef<THREE.Group>(null)
+  const m = useMemo(
+    () => ({
+      mug: new THREE.MeshStandardMaterial({ color: '#b9a3d6', roughness: 0.35 }),
+      inside: new THREE.MeshStandardMaterial({ color: '#efe8f6', roughness: 0.4, side: THREE.BackSide }),
+      tea: new THREE.MeshStandardMaterial({ color: '#7a4a24', roughness: 0.15 }),
+      steam: new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.12, depthWrite: false }),
+      tag: new THREE.MeshStandardMaterial({ color: '#f4efe6', roughness: 0.9 }),
+      string: new THREE.MeshStandardMaterial({ color: '#e8e0d0', roughness: 1 }),
+    }),
+    [],
+  )
+  useEffect(() => () => Object.values(m).forEach((x) => x.dispose()), [m])
+  const handle = useMemo(() => new THREE.TorusGeometry(0.019, 0.0055, 10, 24, Math.PI), [])
+  useEffect(() => () => handle.dispose(), [handle])
+
+  // three wisps that rise, widen and fade, over and over
+  useFrame(({ clock }) => {
+    const g = steam.current
+    if (!g) return
+    g.children.forEach((w, i) => {
+      const t = (clock.elapsedTime * 0.35 + i / 3) % 1
+      w.position.y = 0.085 + t * 0.07
+      w.position.x = Math.sin(t * 5 + i) * 0.006
+      w.scale.setScalar(0.6 + t * 1.2)
+      const mat = (w as THREE.Mesh).material as THREE.MeshBasicMaterial
+      mat.opacity = 0.14 * Math.sin(t * Math.PI)
+    })
+  })
+  // each wisp needs its own material for its own fade
+  const wisps = useMemo(() => [0, 1, 2].map(() => m.steam.clone()), [m])
+  useEffect(() => () => wisps.forEach((w) => w.dispose()), [wisps])
+
+  return (
+    <group>
+      <Part material={m.mug} position={[0, 0.0375, 0]}>
+        <cylinderGeometry args={[0.032, 0.029, 0.075, 32, 1, true]} />
+      </Part>
+      <mesh material={m.inside} position={[0, 0.0375, 0]}>
+        <cylinderGeometry args={[0.03, 0.027, 0.075, 32, 1, true]} />
+      </mesh>
+      <Part material={m.mug} position={[0, 0.002, 0]}>
+        <cylinderGeometry args={[0.029, 0.029, 0.004, 32]} />
+      </Part>
+      <mesh material={m.tea} position={[0, 0.064, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.0295, 32]} />
+      </mesh>
+      <Part geometry={handle} material={m.mug} position={[0.032, 0.04, 0]} rotation={[0, 0, -Math.PI / 2]} />
+      {/* the tea bag's string and tag over the rim */}
+      <mesh material={m.string} position={[-0.0305, 0.058, 0.004]}>
+        <cylinderGeometry args={[0.0006, 0.0006, 0.035, 4]} />
+      </mesh>
+      <mesh material={m.tag} position={[-0.0325, 0.036, 0.004]} rotation={[0, Math.PI / 2, 0]}>
+        <boxGeometry args={[0.014, 0.018, 0.0008]} />
+      </mesh>
+      <group ref={steam}>
+        {wisps.map((mat, i) => (
+          <mesh key={i} material={mat} position={[0, 0.09, 0]}>
+            <sphereGeometry args={[0.012, 10, 8]} />
+          </mesh>
+        ))}
+      </group>
+    </group>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Ivy in a small white pot, its vines hanging over the front of the shelf
+// ---------------------------------------------------------------------------
+
+/** How far the pot stands from the front edge (see PLACEMENT.ivy). */
+const IVY_TO_EDGE = 0.07
+
+function TrailingIvy() {
+  const m = useMemo(
+    () => ({
+      pot: new THREE.MeshStandardMaterial({ color: '#f1ece4', roughness: 0.7 }),
+      soil: new THREE.MeshStandardMaterial({ color: '#3b2a1e', roughness: 1 }),
+      vine: new THREE.MeshStandardMaterial({ color: '#4d6b3a', roughness: 0.9 }),
+      leaf: new THREE.MeshStandardMaterial({ color: '#5f8f4e', roughness: 0.55, side: THREE.DoubleSide }),
+      leafLight: new THREE.MeshStandardMaterial({ color: '#86ad6a', roughness: 0.55, side: THREE.DoubleSide }),
+    }),
+    [],
+  )
+  // vines: from the pot, forward over the edge, then down (lengths differ)
+  const vines = useMemo(() => {
+    const drops = [0.16, 0.24, 0.11, 0.2]
+    const spreads = [-0.03, -0.008, 0.014, 0.034]
+    return drops.map((drop, i) => {
+      const x = spreads[i]
+      const curve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(x * 0.4, 0.062, 0),
+        new THREE.Vector3(x * 0.8, 0.07, IVY_TO_EDGE * 0.5),
+        new THREE.Vector3(x, 0.012, IVY_TO_EDGE + 0.008),
+        new THREE.Vector3(x * 1.1, -0.04, IVY_TO_EDGE + 0.014),
+        new THREE.Vector3(x * 1.2 + 0.006, -drop, IVY_TO_EDGE + 0.012),
+      ])
+      const geometry = new THREE.TubeGeometry(curve, 40, 0.0012, 5, false)
+      const count = Math.round(drop * 60)
+      const leaves = Array.from({ length: count }, (_, j) => {
+        const t = 0.08 + (j / count) * 0.9
+        return { pos: curve.getPoint(t), side: j % 2 ? 1 : -1, light: (i + j) % 3 === 0, size: 1 - t * 0.35 }
+      })
+      return { geometry, leaves }
+    })
+  }, [])
+  useEffect(
+    () => () => {
+      Object.values(m).forEach((x) => x.dispose())
+      vines.forEach((v) => v.geometry.dispose())
+    },
+    [m, vines],
+  )
+
+  return (
+    <group>
+      <Part material={m.pot} position={[0, 0.03, 0]}>
+        <cylinderGeometry args={[0.04, 0.032, 0.06, 28]} />
+      </Part>
+      <mesh material={m.soil} position={[0, 0.0595, 0]}>
+        <cylinderGeometry args={[0.037, 0.037, 0.003, 24]} />
+      </mesh>
+      {/* a little bush on top */}
+      {[-0.018, 0, 0.018].map((x, i) => (
+        <Part key={i} material={i === 1 ? m.leafLight : m.leaf} position={[x, 0.075, (i - 1) * 0.01]} scale={[1, 0.6, 1]}>
+          <sphereGeometry args={[0.02, 12, 8]} />
+        </Part>
+      ))}
+      {vines.map((v, i) => (
+        <group key={i}>
+          <mesh geometry={v.geometry} material={m.vine} castShadow />
+          {v.leaves.map((l, j) => (
+            <mesh
+              key={j}
+              material={l.light ? m.leafLight : m.leaf}
+              position={[l.pos.x + l.side * 0.005, l.pos.y, l.pos.z + 0.002]}
+              rotation={[0.3, l.side * 0.6, l.side * 0.5]}
+              scale={[l.size, l.size * 1.1, l.size]}
+              castShadow
+            >
+              <circleGeometry args={[0.0075, 7]} />
+            </mesh>
+          ))}
+        </group>
+      ))}
+    </group>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Fairy lights: a warm string drooping along the front of the top shelf,
+// each bulb twinkling softly at its own pace
+// ---------------------------------------------------------------------------
+
+export function FairyLights({ width, top }: { width: number; top: number }) {
+  const bulbs = useRef<THREE.Group>(null)
+  const { wire, points } = useMemo(() => {
+    // pinned at both sides and every ~40 cm, drooping a little in between
+    const spans = Math.max(2, Math.round(width / 0.4))
+    const z = SHELF.depth / 2 + 0.006
+    const y = top - SHELF.board - 0.006
+    const pts: THREE.Vector3[] = []
+    const per = 24
+    for (let i = 0; i <= spans * per; i++) {
+      const u = i / per
+      const within = u - Math.floor(u)
+      pts.push(new THREE.Vector3(-width / 2 + (u / spans) * width, y - Math.sin(within * Math.PI) * 0.035, z))
+    }
+    const curve = new THREE.CatmullRomCurve3(pts)
+    const n = spans * 7
+    return {
+      wire: new THREE.TubeGeometry(curve, spans * per, 0.0009, 4, false),
+      points: Array.from({ length: n }, (_, i) => curve.getPointAt((i + 0.5) / n)),
+    }
+  }, [width, top])
+  const m = useMemo(
+    () => ({
+      wire: new THREE.MeshStandardMaterial({ color: '#b08d57', metalness: 0.6, roughness: 0.4 }),
+      bulb: new THREE.MeshBasicMaterial({ color: '#ffd38a', toneMapped: false }),
+    }),
+    [],
+  )
+  // each bulb its own colour, so it can twinkle on its own
+  const bulbMats = useMemo(() => points.map(() => m.bulb.clone()), [points, m])
+  useEffect(() => () => wire.dispose(), [wire])
+  useEffect(() => () => Object.values(m).forEach((x) => x.dispose()), [m])
+  useEffect(() => () => bulbMats.forEach((x) => x.dispose()), [bulbMats])
+
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime
+    bulbMats.forEach((mat, i) => {
+      const glow = 0.78 + 0.22 * Math.sin(t * (0.9 + (i % 5) * 0.23) + i * 1.7)
+      mat.color.setRGB(glow, glow * 0.83, glow * 0.54)
+    })
+  })
+
+  return (
+    <group>
+      <mesh geometry={wire} material={m.wire} />
+      <group ref={bulbs}>
+        {points.map((pt, i) => (
+          <mesh key={i} material={bulbMats[i]} position={[pt.x, pt.y - 0.004, pt.z + 0.002]} scale={[1, 1.4, 1]}>
+            <sphereGeometry args={[0.0042, 10, 8]} />
+          </mesh>
+        ))}
+      </group>
     </group>
   )
 }

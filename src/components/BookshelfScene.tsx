@@ -8,7 +8,7 @@ import { FRAME, SHELF, computeLayout, fitShelf, rowFloorY } from '#/lib/shelfLay
 import { arrangementSeparators } from '#/lib/separators'
 import type { ShelfLayout } from '#/lib/shelfLayout'
 import { BookMesh, RAINBOW } from './BookMesh'
-import { Decorations } from './Decorations'
+import { Decorations, FairyLights } from './Decorations'
 import { BookNooks } from './BookNook'
 import { SeriesDividers } from './SeriesDivider'
 import { sleepReadIds } from '#/lib/sleepSeries'
@@ -382,6 +382,7 @@ function Scene({
       <Decorations items={layout.decor} />
       <BookNooks items={layout.nooks} />
       <SeriesDividers items={layout.dividers} />
+      <FairyLights width={caseLayout.innerWidth} top={caseLayout.caseHeight} />
 
       {ordered.map((book) => {
         const slot = layout.slots.get(book.id)

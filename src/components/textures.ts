@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import type { Book } from '#/lib/library'
+import { formatsOf, timesRead } from '#/lib/library'
 import type { BookDims } from '#/lib/shelfLayout'
 import { formatDuration, listenOnly } from '#/lib/listening'
 import type { PageEdges } from '#/lib/edges'
@@ -135,8 +136,10 @@ export function paintSpine(book: Book, dims: BookDims, sleep = false) {
   const c = canvas(W, H)
   const ctx = c.getContext('2d', { willReadFrequently: true })!
   const bg = book.color
-  const ink = inkFor(bg)
-  const accent = accentFor(bg)
+  // a hardcover with a darker spine gets gilded (gold) lettering and bands
+  const gilded = formatsOf(book).includes('hardcover') && inkFor(bg) !== '#1d1a16'
+  const ink = gilded ? GOLD : inkFor(bg)
+  const accent = gilded ? GOLD : accentFor(bg)
 
   // rounded-spine shading: darker at the edges, a highlight just off-centre
   const grad = ctx.createLinearGradient(0, 0, W, 0)
@@ -177,6 +180,11 @@ export function paintSpine(book: Book, dims: BookDims, sleep = false) {
   ctx.translate(W / 2, 0)
   ctx.rotate(Math.PI / 2)
   ctx.fillStyle = ink
+  if (gilded) {
+    // pressed into the cloth: a thin dark edge under the gold
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.55)'
+    ctx.shadowOffsetY = Math.max(1, W * 0.012)
+  }
   ctx.textBaseline = 'middle'
   const maxFont = W * 0.5
   // on finished books the text stops short of the medal and its ribbon
@@ -199,8 +207,56 @@ export function paintSpine(book: Book, dims: BookDims, sleep = false) {
   ctx.restore()
 
   grain(ctx, W, H, 0.05)
+  paintWear(ctx, W, H, book)
   if (read) paintMedalRibbon(ctx, W, H, dims)
   return toTexture(c)
+}
+
+/** Gold leaf for the lettering on hardcovers. */
+const GOLD = '#dcb767'
+
+/**
+ * A little wear, the same every time for a book: rubbed ends on every spine,
+ * and on a paperback that was read, a few reading creases down the spine
+ * (more the more often she read it).
+ */
+function paintWear(ctx: CanvasRenderingContext2D, W: number, H: number, book: Book) {
+  const rnd = seeded(`wear:${book.id}`)
+  const reads = timesRead(book)
+  ctx.save()
+  // rubbed top and bottom: paler towards the ends
+  for (const [y0, y1] of [
+    [0, H * 0.018],
+    [H, H * 0.982],
+  ]) {
+    const g = ctx.createLinearGradient(0, y0, 0, y1)
+    g.addColorStop(0, 'rgba(255, 248, 235, 0.32)')
+    g.addColorStop(1, 'rgba(255, 248, 235, 0)')
+    ctx.fillStyle = g
+    ctx.fillRect(0, Math.min(y0, y1), W, Math.abs(y1 - y0))
+  }
+  // a few small scuffs
+  for (let i = 0; i < 4 + reads * 2; i++) {
+    ctx.fillStyle = `rgba(255, 248, 235, ${0.05 + rnd() * 0.07})`
+    ctx.fillRect(rnd() * W, rnd() * H, 1 + rnd() * W * 0.08, 1 + rnd() * H * 0.004)
+  }
+  // reading creases: thin pale lines along a paperback's spine
+  const paperback = !formatsOf(book).includes('hardcover')
+  if (paperback && reads > 0) {
+    const creases = Math.min(6, 1 + reads * 2)
+    ctx.lineWidth = Math.max(1, W * 0.012)
+    for (let i = 0; i < creases; i++) {
+      const x = W * (0.25 + rnd() * 0.5)
+      const y = H * (0.1 + rnd() * 0.3)
+      const len = H * (0.25 + rnd() * 0.45)
+      ctx.strokeStyle = `rgba(255, 250, 240, ${0.18 + rnd() * 0.14})`
+      ctx.beginPath()
+      ctx.moveTo(x, y)
+      ctx.lineTo(x + (rnd() - 0.5) * W * 0.06, y + len)
+      ctx.stroke()
+    }
+  }
+  ctx.restore()
 }
 
 /** A small crescent moon, pale gold with a dark rim so it shows on light and dark spines. */

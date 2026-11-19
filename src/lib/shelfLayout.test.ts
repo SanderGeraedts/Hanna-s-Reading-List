@@ -102,3 +102,15 @@ describe('the bookcase follows the screen width (#39)', () => {
     expect(performance.now() - t).toBeLessThan(250)
   })
 })
+
+describe('decorations: at most one per shelf, the koala always there', () => {
+  it('never puts two decorations on the same shelf', () => {
+    for (const n of [0, 5, 30]) {
+      const books = Array.from({ length: n }, (_, i) => book(`b${i}`, `Book ${i}`))
+      const { decor } = computeLayout(books)
+      const rows = decor.map((d) => d.row)
+      expect(new Set(rows).size).toBe(rows.length)
+      expect(decor.some((d) => d.kind === 'koala')).toBe(true)
+    }
+  })
+})
