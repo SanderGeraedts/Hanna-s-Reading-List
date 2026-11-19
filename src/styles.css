@@ -3013,13 +3013,8 @@ textarea.input {
   background: var(--accent-soft);
   border-color: var(--accent-line);
 }
-.challenges-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-5);
-  align-items: start;
-}
-.challenges-grid > div {
+/* "Open ›" scrolls to a challenge: keep it clear of the top bar */
+.challenges-page .dash-block {
   scroll-margin-top: 6rem;
 }
 .alphabet-switch {
@@ -3043,11 +3038,6 @@ textarea.input {
 }
 .bingo-mini .bingo-square {
   padding: 0;
-}
-@media (max-width: 720px) {
-  .challenges-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 /* ---- the reading journal ------------------------------------------- */
