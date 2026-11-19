@@ -553,13 +553,13 @@ interface OakPalette {
   flecks: string
 }
 
-/** Grey "sonoma"-style oak, like a light grey laminate: beige with a cool grey cast. */
-const GREY_OAK: OakPalette = {
-  base: ['#cbc3b6', '#c0b8aa', '#d0c9bd', '#b8afa0', '#c7bfb2'],
-  late: '112, 102, 88',
-  early: '226, 221, 211',
-  pores: '96, 88, 76',
-  flecks: '238, 234, 226',
+/** Warm dark walnut, for the bookcase. */
+const WALNUT: OakPalette = {
+  base: ['#6b4630', '#61402b', '#734c34', '#5a3a26', '#684530'],
+  late: '42, 24, 14',
+  early: '138, 96, 64',
+  pores: '34, 20, 11',
+  flecks: '156, 112, 78',
 }
 
 /** Warm honey European oak (used for the floor). */
@@ -627,11 +627,12 @@ function paintOak(ctx: CanvasRenderingContext2D, W: number, H: number, p: OakPal
 }
 
 /** Grey oak for the bookcase. */
+/** The bookcase's wood: warm walnut (it was a grey oak before). */
 export function woodTexture() {
   const W = 2048
   const H = 512
   const c = canvas(W, H)
-  paintOak(c.getContext('2d', { willReadFrequently: true })!, W, H, GREY_OAK)
+  paintOak(c.getContext('2d', { willReadFrequently: true })!, W, H, WALNUT)
   const t = toTexture(c)
   t.wrapS = THREE.RepeatWrapping
   t.wrapT = THREE.RepeatWrapping
