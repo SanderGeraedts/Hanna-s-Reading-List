@@ -25,6 +25,7 @@ import { WaitingCard } from './WaitingCard'
 import { AlphabetCard } from './AlphabetCard'
 import { storytelLink } from '#/lib/storytelLink'
 import { ChallengeCard } from './ChallengeCard'
+import { OpenLink } from './OpenLink'
 import type { ChallengeSection } from './ChallengesPage'
 import { topRated } from '#/lib/ratings'
 import { StarRating } from './StarRating'
@@ -51,7 +52,7 @@ import type { Period } from '#/lib/stats'
  * DashboardExtras. She arranges the blocks herself (#85): see dashboardLayout.ts.
  */
 
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+export const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 export const monthName = (month: number, style: 'long' | 'short' = 'long') =>
   new Date(2000, month - 1, 1).toLocaleDateString('en-GB', { month: style })
 
@@ -68,6 +69,8 @@ interface DashboardProps extends Props {
   onUpdate: (id: string, patch: Partial<Book> | ((book: Book) => Partial<Book>)) => void
   /** "Open ›" on a challenge block: the Challenges page, at that challenge */
   onOpenChallenges?: (section: ChallengeSection) => void
+  /** "Open ›" on the calendar block: the Calendar page at that month (yyyy-mm) */
+  onOpenCalendar?: (month: string) => void
 }
 
 export interface PeriodPick {
@@ -137,7 +140,7 @@ interface Drag {
   drop: Drop | null
 }
 
-export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChallenges }: DashboardProps) {
+export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChallenges, onOpenCalendar }: DashboardProps) {
   const open = (section: ChallengeSection) => (onOpenChallenges ? () => onOpenChallenges(section) : undefined)
   const now = new Date()
   // the period picked under "Books read"; the charts and records follow it
@@ -176,7 +179,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
     reading: <CurrentlyReadingCard books={books} onShowBook={onShowBook} />,
     series: <SeriesCard books={books} onShowBook={onShowBook} />,
     monthly: <MonthlyChart books={books} year={pick.year} />,
-    calendar: <Calendar books={books} onShowBook={onShowBook} />,
+    calendar: <Calendar books={books} onShowBook={onShowBook} onOpen={onOpenCalendar} />,
     breakdown: <BreakdownCard books={books} period={period} label={periodLabel(pick)} />,
     records: <RecordsCard books={books} period={period} label={periodLabel(pick)} onShowBook={onShowBook} />,
     pile: <PileCard books={books} />,
@@ -593,24 +596,24 @@ function ReadNextCard({ books, onShowBook }: Props) {
  * day; below are the books started and finished that month.
  */
 /** class for a book finished, started or read on (continued) on a calendar day */
-const mark = (e: DayEntry) =>
+export const mark = (e: DayEntry) =>
   e.finished ? ' finished' : e.started ? ' started' : e.amount !== undefined ? ' continued' : ''
 
 /** at most this many covers in a day's pile; more show as "+2" */
-const PILE = 6
+export const PILE = 6
 
 /**
  * A day's books as a pile of covers, one layer per book (#102): the top one
  * changes each time the dashboard opens (`shuffle`), the rest lie under it.
  */
-function dayPile(entries: DayEntry[], day: number, shuffle: number) {
+export function dayPile(entries: DayEntry[], day: number, shuffle: number) {
   const top = (shuffle + day) % entries.length
   // the top book last, so it is drawn on top
   const order = [...entries.slice(top + 1), ...entries.slice(0, top), entries[top]]
   return order.slice(-PILE)
 }
 
-function Calendar({ books, onShowBook }: Props) {
+function Calendar({ books, onShowBook, onOpen }: Props & { onOpen?: (month: string) => void }) {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
@@ -641,6 +644,7 @@ function Calendar({ books, onShowBook }: Props) {
         <h2 id="calendar-title">
           {name} {year}
         </h2>
+        <OpenLink onOpen={onOpen && (() => onOpen(`${year}-${String(month).padStart(2, '0')}`))} label="Calendar" />
         <div className="period-pick">
           <button className="btn icon small" aria-label="Previous month" onClick={() => step(-1)}>
             ‹

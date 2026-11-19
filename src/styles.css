@@ -2843,3 +2843,183 @@ textarea.input {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ---- the Calendar page ----------------------------------------------- */
+.calendar-page {
+  max-width: 72rem;
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-3);
+}
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.calendar-nav h2 {
+  margin: 0;
+  min-width: 10rem;
+  text-align: center;
+  font-family: var(--serif);
+  font-size: var(--fs-heading);
+}
+.calendar-summary {
+  margin: 0;
+}
+.calendar-coming {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  border: 1px dashed var(--accent-line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+.calendar-coming li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.calendar-month {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 18rem;
+  gap: var(--space-4);
+  align-items: start;
+}
+.calendar-day {
+  padding: var(--space-4);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+/* the big month: taller days and bigger covers than the dashboard's */
+.calendar-big .day-cell {
+  height: 6.5rem;
+}
+.calendar-big .dash-cover.small {
+  width: 2.6rem;
+}
+.calendar-big .day-number {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-size: var(--fs-small);
+}
+.day-moon {
+  font-size: var(--fs-tiny);
+}
+.calendar .day-cover.release .dash-cover {
+  outline: 2px dashed var(--accent-line);
+  outline-offset: 1px;
+  opacity: 0.85;
+}
+.day-out {
+  margin-top: auto;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: var(--fs-tiny);
+  font-weight: 600;
+}
+.calendar-big .pile-more {
+  left: auto;
+  right: -6px;
+  top: -6px;
+}
+/* the year: twelve small months */
+.calendar-year {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+.calendar-year > li {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.calendar-mini {
+  display: grid;
+  gap: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.calendar-mini-name {
+  font-family: var(--serif);
+  font-size: var(--fs-large);
+}
+.calendar-dots {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+}
+.calendar-dot {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  background: var(--surface-sunken);
+}
+.calendar-dot.level-1 {
+  background: rgba(217, 168, 91, 0.3);
+}
+.calendar-dot.level-2 {
+  background: rgba(217, 168, 91, 0.5);
+}
+.calendar-dot.level-3 {
+  background: rgba(217, 168, 91, 0.75);
+}
+.calendar-dot.level-4 {
+  background: var(--accent);
+}
+.calendar-dot.today {
+  outline: 1px solid var(--text);
+}
+.calendar-mini-covers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px;
+}
+.calendar-mini-covers .dash-cover.small {
+  width: 1.3rem;
+}
+@media (max-width: 860px) {
+  .calendar-month {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .calendar-year {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 720px) {
+  /* phones: one small cover a day, "+2" for more; the details go under the grid */
+  .calendar-big .day-cell {
+    height: 4rem;
+    padding: 2px;
+  }
+  .calendar-big .dash-cover.small {
+    width: 1.5rem;
+  }
+  .calendar-big .pile-sheet:not(.pile-top) {
+    display: none;
+  }
+  .calendar-big .day-pile {
+    margin-left: 0;
+  }
+  .calendar-nav h2 {
+    min-width: 0;
+    flex: 1;
+  }
+}

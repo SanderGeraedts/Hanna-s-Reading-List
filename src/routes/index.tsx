@@ -20,6 +20,7 @@ import { detectSeries, seriesGroups } from '#/lib/series'
 import { pickReadNext, readNextChoices } from '#/lib/readNext'
 import { Dashboard } from '#/components/Dashboard'
 import { ChallengesPage } from '#/components/ChallengesPage'
+import { CalendarPage } from '#/components/CalendarPage'
 import type { ChallengeSection } from '#/components/ChallengesPage'
 import { useStorytelSync } from '#/lib/useStorytelSync'
 import type { Tab } from '#/components/AddBookDialog'
@@ -33,10 +34,19 @@ export const Route = createFileRoute('/')({
   component: Home,
   // ?view=dashboard opens the dashboard (#59), ?view=challenges the Challenges page, so the
   // back button returns to the shelf; &focus= scrolls to one challenge ("Open ›")
-  validateSearch: (search: Record<string, unknown>): { view?: 'dashboard' | 'challenges'; focus?: ChallengeSection } => {
-    const view = search.view === 'dashboard' || search.view === 'challenges' ? search.view : undefined
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { view?: 'dashboard' | 'challenges' | 'calendar'; focus?: ChallengeSection; month?: string } => {
+    const view =
+      search.view === 'dashboard' || search.view === 'challenges' || search.view === 'calendar' ? search.view : undefined
     const focus = FOCUS.find((f) => f === search.focus)
-    return { ...(view && { view }), ...(view === 'challenges' && focus && { focus }) }
+    // &month=2026-11 opens the Calendar page at that month
+    const month = typeof search.month === 'string' && /^\d{4}-\d{2}$/.test(search.month) ? search.month : undefined
+    return {
+      ...(view && { view }),
+      ...(view === 'challenges' && focus && { focus }),
+      ...(view === 'calendar' && month && { month }),
+    }
   },
 })
 
@@ -221,6 +231,13 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     (to: View) => {
       if (to !== 'shelf') select(null)
       navigate({ search: to === 'shelf' ? {} : { view: to } })
+    },
+    [navigate, select],
+  )
+  const openCalendar = useCallback(
+    (month: string) => {
+      select(null)
+      navigate({ search: { view: 'calendar', month } })
     },
     [navigate, select],
   )
@@ -436,8 +453,10 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             onUpdate={updateBook}
             accountId={account?.id ?? null}
             onOpenChallenges={openChallenges}
+            onOpenCalendar={openCalendar}
           />
         )}
+        {view === 'calendar' && <CalendarPage books={books} onShowBook={showBook} startMonth={search.month} />}
         {view === 'challenges' && (
           <ChallengesPage
             books={books}
@@ -553,12 +572,13 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   )
 }
 
-type View = 'shelf' | 'dashboard' | 'challenges'
+type View = 'shelf' | 'dashboard' | 'challenges' | 'calendar'
 
 const VIEWS = [
   { view: 'shelf', icon: '📚', label: 'Bookshelf' },
   { view: 'dashboard', icon: '📊', label: 'Dashboard' },
   { view: 'challenges', icon: '🏆', label: 'Challenges' },
+  { view: 'calendar', icon: '📅', label: 'Calendar' },
 ] as const
 
 const FOCUS: ChallengeSection[] = ['goal', 'monthly', 'bingo', 'alphabet']
