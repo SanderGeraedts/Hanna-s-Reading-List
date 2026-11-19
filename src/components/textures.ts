@@ -136,10 +136,12 @@ export function paintSpine(book: Book, dims: BookDims, sleep = false) {
   const c = canvas(W, H)
   const ctx = c.getContext('2d', { willReadFrequently: true })!
   const bg = book.color
-  // every book is a hardcover on the shelf: a darker spine gets gilded (gold) lettering and bands
-  const gilded = inkFor(bg) !== '#1d1a16'
-  const ink = gilded ? GOLD : inkFor(bg)
-  const accent = gilded ? GOLD : accentFor(bg)
+  // every book is a hardcover on the shelf, with gilded lettering and bands:
+  // bright gold on a darker spine, a deep gold on a light one (so it still reads)
+  const gilded = true
+  const gold = inkFor(bg) === '#1d1a16' ? DEEP_GOLD : GOLD
+  const ink = gold
+  const accent = gold
 
   // rounded-spine shading: darker at the edges, a highlight just off-centre
   const grad = ctx.createLinearGradient(0, 0, W, 0)
@@ -214,6 +216,8 @@ export function paintSpine(book: Book, dims: BookDims, sleep = false) {
 
 /** Gold leaf for the lettering on hardcovers. */
 const GOLD = '#dcb767'
+/** Gold leaf on a light spine: darker, so the lettering stands out. */
+const DEEP_GOLD = '#7a5a1c'
 
 /**
  * A little wear, the same every time for a book: rubbed ends on every spine,

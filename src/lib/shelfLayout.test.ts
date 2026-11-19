@@ -113,4 +113,11 @@ describe('decorations: at most one per shelf, the koala always there', () => {
       expect(decor.some((d) => d.kind === 'koala')).toBe(true)
     }
   })
+
+  it('keeps a spot for a decoration on every shelf, even when the shelves are full', () => {
+    const books = Array.from({ length: 200 }, (_, i) => book(`b${i}`, `Book ${i}`))
+    const { decor } = computeLayout(books)
+    expect(decor.map((d) => d.kind).slice(0, 4)).toEqual(['koala', 'cat', 'mug', 'ivy'])
+    expect(decor.map((d) => d.row).slice(0, 4)).toEqual([0, 1, 2, 3])
+  })
 })

@@ -202,8 +202,11 @@ export function computeLayout(
   }> = []
   let row = 0
   let x = 0
+  // every shelf keeps a spot at its right end for its decoration (one per
+  // shelf, in DECOR order), so full shelves still get their cat, mug or ivy
+  const roomFor = (r: number) => innerWidth - (r < DECOR.length ? DECOR[r].width + DECOR_MARGIN * 2 : 0)
   const fit = (width: number) => {
-    if (x > 0 && x + width > innerWidth) {
+    if (x > 0 && x + width > roomFor(row)) {
       row++
       x = 0
     }

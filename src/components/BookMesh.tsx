@@ -170,8 +170,9 @@ export function BookMesh(props: BookMeshProps) {
   // is a little smaller, so the covers stick out past the pages (a few mm),
   // with softly rounded board edges
   const parts = useMemo(() => {
-    const board = THREE.MathUtils.clamp(dims.t * 0.08, 0.0012, 0.0025)
-    const over = Math.min(0.0028, dims.w * 0.03, dims.h * 0.02)
+    // thick enough boards and a clear overhang, so it reads as a hardcover from the shelf
+    const board = THREE.MathUtils.clamp(dims.t * 0.1, 0.0018, 0.0032)
+    const over = Math.min(0.0045, dims.w * 0.04, dims.h * 0.025)
     const round = board * 0.45
     const pagesW = dims.w - board - over
     return {
@@ -290,6 +291,7 @@ export function BookMesh(props: BookMeshProps) {
         <Bookmark dims={dims} progress={book.progress ?? 0} color={props.clipColor ?? RAINBOW[0]} />
       )}
       {book.status === 'read' && <Medal dims={dims} count={timesRead(book)} />}
+      <SpineRidges dims={dims} read={book.status === 'read'} />
     </group>
   )
 }
@@ -434,5 +436,27 @@ function Medal({ dims, count }: { dims: BookDims; count: number }) {
         <circleGeometry args={[r, 40]} />
       </mesh>
     </group>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Raised bands: the gilded ridges across the spine of an old hardcover, a
+// pair near the top and a pair near the bottom (none at the bottom when a
+// medal hangs there).
+// ---------------------------------------------------------------------------
+
+const ridgeMaterial = new THREE.MeshStandardMaterial({ color: '#c99a45', metalness: 0.75, roughness: 0.35 })
+
+function SpineRidges({ dims, read }: { dims: BookDims; read: boolean }) {
+  const ys = [0.06, 0.085, ...(read ? [] : [0.89, 0.915])].map((f) => dims.h / 2 - f * dims.h)
+  const height = Math.max(0.0014, dims.h * 0.006)
+  return (
+    <>
+      {ys.map((y) => (
+        <mesh key={y} material={ridgeMaterial} position={[-dims.w / 2 - 0.0006, y, 0]} castShadow>
+          <boxGeometry args={[0.0014, height, dims.t * 0.9]} />
+        </mesh>
+      ))}
+    </>
   )
 }
