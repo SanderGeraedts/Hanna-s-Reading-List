@@ -135,8 +135,16 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     return () => clearTimeout(t)
   }, [notice])
   const refreshAll = async () => {
+    // books changed by hand go back to their place in the chosen arrangement (a shelf
+    // arranged by dragging has none, and keeps its order)
+    const resort = () => {
+      if (arrangement) sortBy(arrangement)
+    }
     // no account and no Storytel: nothing to sync with yet
-    if (!account && !storytel.login.saved) return setAdding('storytel')
+    if (!account && !storytel.login.saved) {
+      resort()
+      return setAdding('storytel')
+    }
     setNotice(null)
     dismissSync()
     setSyncing(true)
@@ -154,17 +162,20 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
         )
       }
     } finally {
+      // after the sync, so books from other devices and Storytel are put in place too
+      resort()
       setSyncing(false)
     }
   }
   const busy = syncing || syncState.kind === 'busy'
-  const refreshLabel = account
-    ? storytel.login.saved
-      ? 'Sync the shelf and refresh from Storytel'
-      : 'Sync the shelf'
-    : storytel.login.saved
-      ? 'Refresh from Storytel'
-      : 'Connect Storytel'
+  const refreshLabel =
+    (account
+      ? storytel.login.saved
+        ? 'Sync the shelf and refresh from Storytel'
+        : 'Sync the shelf'
+      : storytel.login.saved
+        ? 'Refresh from Storytel'
+        : 'Connect Storytel') + (arrangement ? ', and put the books back in order' : '')
 
   const selected = books.find((b) => b.id === selectedId) ?? null
   const seriesMap = useMemo(() => detectSeries(books), [books])
