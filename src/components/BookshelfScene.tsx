@@ -53,18 +53,32 @@ function portraitInspect(frame: { fill: number; yShift: number }, sheet: number,
   frame.yShift = (s - HEADER_SHARE) / 2
 }
 
+/** Phones get a lighter version of the room: smaller shadows, fewer pixels, so scrolling stays smooth. */
+function useLite() {
+  const [lite, setLite] = useState(false)
+  useEffect(() => {
+    const m = window.matchMedia('(max-width: 720px), (pointer: coarse)')
+    const on = () => setLite(m.matches)
+    on()
+    m.addEventListener('change', on)
+    return () => m.removeEventListener('change', on)
+  }, [])
+  return lite
+}
+
 export function BookshelfScene(props: BookshelfSceneProps) {
+  const lite = useLite()
   return (
     <Canvas
       shadows="soft"
-      dpr={[1, 2]}
+      dpr={lite ? [1, 1.5] : [1, 2]}
       camera={{ fov: FOV, near: 0.05, far: 60, position: [0, 0.7, 4] }}
       gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping }}
       style={{ touchAction: 'none' }}
     >
       <color attach="background" args={['#2a1f18']} />
       <fog attach="fog" args={['#2a1f18', 6, 14]} />
-      <Scene {...props} />
+      <Scene {...props} lite={lite} />
     </Canvas>
   )
 }
@@ -85,7 +99,8 @@ function Scene({
   highlight = null,
   zoom = 1,
   onZoom,
-}: BookshelfSceneProps) {
+  lite = false,
+}: BookshelfSceneProps & { lite?: boolean }) {
   const [hovered, setHovered] = useState<string | null>(null)
   const [drag, setDrag] = useState<DragState | null>(null)
   // handlers read the ref so back-to-back pointer events never see stale state
@@ -376,7 +391,7 @@ function Scene({
 
   return (
     <>
-      <Lights caseHeight={caseLayout.caseHeight} cameraBase={cameraBase} />
+      <Lights caseHeight={caseLayout.caseHeight} caseWidth={caseLayout.caseWidth} cameraBase={cameraBase} lite={lite} />
       <Room />
       <Bookcase layout={caseLayout} />
       <Decorations items={layout.decor} />
@@ -523,7 +538,22 @@ function useCameraRig(
   return base
 }
 
-function Lights({ caseHeight, cameraBase }: { caseHeight: number; cameraBase: THREE.Vector3 }) {
+/**
+ * A cosy reading-room light: warm and soft, with gentle shadows, and a
+ * reading lamp at the top left that makes gold details (medals, gilded signs)
+ * catch the light. Phones get smaller, sharper-edged shadows (lite).
+ */
+function Lights({
+  caseHeight,
+  caseWidth,
+  cameraBase,
+  lite,
+}: {
+  caseHeight: number
+  caseWidth: number
+  cameraBase: THREE.Vector3
+  lite: boolean
+}) {
   const keyLight = useRef<THREE.DirectionalLight>(null)
   // the shadow frustum follows the bookcase height; three.js needs telling when it changes
   useEffect(() => {
@@ -531,15 +561,15 @@ function Lights({ caseHeight, cameraBase }: { caseHeight: number; cameraBase: TH
   }, [caseHeight])
   return (
     <>
-      <hemisphereLight args={['#fff1dc', '#5a3c26', 1.5]} />
-      <ambientLight intensity={0.35} color="#ffe9cf" />
+      <hemisphereLight args={['#ffe8cc', '#4a2f1e', 1.3]} />
+      <ambientLight intensity={0.28} color="#ffdcb4" />
       <directionalLight
         ref={keyLight}
         position={[0.9, caseHeight + 0.9, 4.2]}
-        intensity={2.6}
-        color="#ffe7c4"
+        intensity={2.4}
+        color="#ffdcae"
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={lite ? [1024, 1024] : [2048, 2048]}
         // Bias is a fraction of the shadow camera's depth range, so keep that range
         // tight around the bookcase: with the default 0.5–500 m, even a tiny bias
         // shifts shadows by decimetres and they float away from what casts them.
@@ -547,11 +577,19 @@ function Lights({ caseHeight, cameraBase }: { caseHeight: number; cameraBase: TH
         shadow-camera-far={10}
         shadow-bias={-0.0001}
         shadow-normalBias={0.01}
-        shadow-radius={3}
+        shadow-radius={lite ? 3 : 7}
         shadow-camera-left={-1.5}
         shadow-camera-right={1.5}
         shadow-camera-top={caseHeight + 0.6}
         shadow-camera-bottom={-1.2}
+      />
+      {/* the reading lamp: warm, from the top left, without shadows of its own */}
+      <pointLight
+        position={[-caseWidth / 2 - 0.25, caseHeight + 0.35, 1.1]}
+        intensity={2.2}
+        distance={5}
+        decay={1.6}
+        color="#ffc27a"
       />
       {/* soft light near the viewer so an inspected book is well lit */}
       <pointLight
@@ -620,10 +658,49 @@ function Bookcase({ layout }: { layout: ShelfLayout }) {
   const D = SHELF.depth
   const outer = W + SHELF.side * 2
 
-  // satin oil finish: fairly matte with a soft sheen
-  const mat = <meshStandardMaterial map={wood} color="#f6f4f0" roughness={0.62} />
+  // satin oil finish on walnut: fairly matte with a soft sheen
+  const mat = <meshStandardMaterial map={wood} color="#f3ece4" roughness={0.55} />
+  // the crown on top and the base below: stepped mouldings, a little wider each step
+  const crown: Array<[number, number, number]> = [
+    // [extra width, height, extra depth]
+    [0.03, 0.022, 0.02],
+    [0.07, 0.016, 0.045],
+    [0.1, 0.03, 0.06],
+    [0.075, 0.012, 0.04],
+  ]
+  const base: Array<[number, number, number]> = [
+    [0.05, 0.05, 0.035],
+    [0.03, 0.018, 0.02],
+  ]
+  let crownY = caseHeight
+  let baseY = 0
   return (
     <group>
+      {crown.map(([w, h, d], i) => {
+        const y = crownY + h / 2
+        crownY += h
+        return (
+          <mesh key={`crown-${i}`} position={[0, y, d / 2 - 0.005]} castShadow receiveShadow>
+            <boxGeometry args={[outer + w, h, D + d]} />
+            {mat}
+          </mesh>
+        )
+      })}
+      {/* a thin gilded line along the crown, which catches the lamp */}
+      <mesh position={[0, caseHeight + 0.045, D / 2 + 0.034]}>
+        <boxGeometry args={[outer + 0.07, 0.004, 0.003]} />
+        <meshStandardMaterial color="#d9a85b" metalness={0.8} roughness={0.32} />
+      </mesh>
+      {base.map(([w, h, d], i) => {
+        const y = baseY + h / 2
+        baseY += h
+        return (
+          <mesh key={`base-${i}`} position={[0, y, d / 2 - 0.005]} castShadow receiveShadow>
+            <boxGeometry args={[outer + w, h, D + d]} />
+            {mat}
+          </mesh>
+        )
+      })}
       {/* sides */}
       {[-1, 1].map((s) => (
         <mesh
@@ -651,7 +728,7 @@ function Bookcase({ layout }: { layout: ShelfLayout }) {
       {/* back panel */}
       <mesh position={[0, caseHeight / 2, -D / 2 + 0.005]} receiveShadow>
         <boxGeometry args={[W, caseHeight, 0.01]} />
-        <meshStandardMaterial map={backWood} color="#dedad2" roughness={0.75} />
+        <meshStandardMaterial map={backWood} color="#c9b6a3" roughness={0.75} />
       </mesh>
     </group>
   )
