@@ -2758,3 +2758,88 @@ textarea.input {
   gap: 0.3rem;
   margin-top: 0.4rem;
 }
+
+/* ---- the Challenges page, and "Open ›" on the dashboard -------------- */
+.open-link {
+  margin-left: auto;
+}
+.challenges-page {
+  max-width: 68rem;
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-4);
+}
+.challenges-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.challenges-head h1 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: var(--fs-heading);
+}
+.challenges-year {
+  font-family: var(--serif);
+  font-size: var(--fs-large);
+  min-width: 3.5rem;
+  text-align: center;
+}
+.trophies {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.trophy {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.trophy.done {
+  color: var(--text);
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+}
+.challenges-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+  align-items: start;
+}
+.challenges-grid > div {
+  scroll-margin-top: 6rem;
+}
+.alphabet-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.bingo-history {
+  display: grid;
+  gap: var(--space-2);
+}
+.bingo-history-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: var(--space-3);
+}
+.bingo-mini .bingo {
+  gap: 2px;
+}
+.bingo-mini .bingo-square {
+  padding: 0;
+}
+@media (max-width: 720px) {
+  .challenges-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

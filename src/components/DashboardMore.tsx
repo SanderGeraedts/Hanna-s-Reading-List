@@ -14,9 +14,10 @@ import {
   yearReview,
 } from '#/lib/insightsMore'
 import type { HeatDay } from '#/lib/insightsMore'
-import { bingoLines, bingoYear, rememberCard } from '#/lib/bingo'
+import { SQUARES, bingoLines, bingoYear, rememberCard } from '#/lib/bingo'
 import { StarRating } from './StarRating'
 import { ShareButton } from './ShareButton'
+import { OpenLink } from './OpenLink'
 import { BookLine } from './DashboardExtras'
 import { Cover, PeriodSelect, PeriodTabs, monthName, periodLabel, toPeriod } from './Dashboard'
 import type { PeriodPick, Props } from './Dashboard'
@@ -368,16 +369,27 @@ export function WrappedCard({ books, onShowBook }: Props) {
 export function BingoCard({
   books,
   onUpdate,
+  year: forYear,
+  compact = false,
+  onOpen,
 }: {
   books: Book[]
   onUpdate: (id: string, patch: (book: Book) => Partial<Book>) => void
+  /** another year than this one, on the Challenges page */
+  year?: number
+  /** on the dashboard: just the card being played, no share */
+  compact?: boolean
+  onOpen?: () => void
 }) {
-  const year = new Date().getFullYear()
+  const thisYear = new Date().getFullYear()
+  const year = forYear ?? thisYear
   const b = useMemo(() => bingoYear(books, year), [books, year])
   // a card just found full is remembered on the book that filled it, so it stays full (#119)
   useEffect(() => {
+    if (year !== thisYear) return
     for (const { bookId, card } of b.toRemember) onUpdate(bookId, (book) => rememberCard(book, card))
-  }, [b.toRemember, onUpdate])
+  }, [b.toRemember, onUpdate, year, thisYear])
+  const byId = useMemo(() => new Map(books.map((x) => [x.id, x])), [books])
   const ticked = b.squares.map((s) => s.ticked)
   const done = ticked.filter(Boolean).length
   const lines = bingoLines(ticked)
@@ -410,6 +422,7 @@ export function BingoCard({
           {done} of {b.squares.length}
           {lines > 0 && ` · ${lines === 1 ? 'Bingo!' : `${lines} bingos!`} 🎉`}
         </span>
+        <OpenLink onOpen={onOpen} label="Book bingo" />
       </div>
       {full > 0 && (
         <p className="small-text bingo-full">
@@ -443,9 +456,48 @@ export function BingoCard({
           )
         })}
       </div>
-      <div className="challenge-actions">
-        <ShareButton spec={share} label={title} />
-      </div>
+      {!compact && b.finished.length > 0 && (
+        <div className="bingo-history">
+          <h3 className="waiting-subtitle">Full cards in {year}</h3>
+          <div className="bingo-history-cards">
+            {b.finished.map((card) => (
+              <div key={card.card} className="bingo-mini" role="group" aria-label={`Card ${card.card}, full`}>
+                <p className="small-text muted">Card {card.card} ✓</p>
+                <div className="bingo">
+                  {card.squares.map((id) => {
+                    const book = card.ticks[id] ? byId.get(card.ticks[id]) : undefined
+                    const label = SQUARES[id]?.label ?? id
+                    return (
+                      <div
+                        key={id}
+                        className="bingo-square on auto"
+                        role="img"
+                        title={book ? `${label}: ${book.title}` : label}
+                        aria-label={book ? `${label}: ${book.title}` : label}
+                      >
+                        {book ? (
+                          <span className="bingo-cover" aria-hidden>
+                            <Cover book={book} small />
+                          </span>
+                        ) : (
+                          <span className="bingo-tick" aria-hidden>
+                            ✓
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {!compact && (
+        <div className="challenge-actions">
+          <ShareButton spec={share} label={title} />
+        </div>
+      )}
     </section>
   )
 }
