@@ -22,6 +22,7 @@ import { pickReadNext, readNextChoices } from '#/lib/readNext'
 import { Dashboard } from '#/components/Dashboard'
 import { BadgeToasts } from '#/components/NewBlocks'
 import { ChallengesPage } from '#/components/ChallengesPage'
+import { ReminderToggle } from '#/components/ReminderToggle'
 import { CalendarPage } from '#/components/CalendarPage'
 import type { ChallengeSection } from '#/components/ChallengesPage'
 import { useStorytelSync } from '#/lib/useStorytelSync'
@@ -677,6 +678,7 @@ function ViewMenu({
       </summary>
       <nav className="view-menu-list" aria-label="More">
         {children && children(() => menu.current && (menu.current.open = false))}
+        <ReminderToggle />
       </nav>
     </details>
   )

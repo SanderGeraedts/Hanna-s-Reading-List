@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as StyleRouteImport } from './routes/style'
 import { Route as ApiNightlyStorytelRouteImport } from './routes/api/nightly-storytel'
+import { Route as ApiReadingReminderRouteImport } from './routes/api/reading-reminder'
 import { Route as ApiRemoteCoverRouteImport } from './routes/api/remote-cover'
 import { Route as ApiCoverKindValueRouteImport } from './routes/api/cover.$kind.$value'
 
@@ -30,6 +31,11 @@ const ApiNightlyStorytelRoute = ApiNightlyStorytelRouteImport.update({
   path: '/api/nightly-storytel',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiReadingReminderRoute = ApiReadingReminderRouteImport.update({
+  id: '/api/reading-reminder',
+  path: '/api/reading-reminder',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiRemoteCoverRoute = ApiRemoteCoverRouteImport.update({
   id: '/api/remote-cover',
   path: '/api/remote-cover',
@@ -45,6 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/style': typeof StyleRoute
   '/api/nightly-storytel': typeof ApiNightlyStorytelRoute
+  '/api/reading-reminder': typeof ApiReadingReminderRoute
   '/api/remote-cover': typeof ApiRemoteCoverRoute
   '/api/cover/$kind/$value': typeof ApiCoverKindValueRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/style': typeof StyleRoute
   '/api/nightly-storytel': typeof ApiNightlyStorytelRoute
+  '/api/reading-reminder': typeof ApiReadingReminderRoute
   '/api/remote-cover': typeof ApiRemoteCoverRoute
   '/api/cover/$kind/$value': typeof ApiCoverKindValueRoute
 }
@@ -60,6 +68,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/style': typeof StyleRoute
   '/api/nightly-storytel': typeof ApiNightlyStorytelRoute
+  '/api/reading-reminder': typeof ApiReadingReminderRoute
   '/api/remote-cover': typeof ApiRemoteCoverRoute
   '/api/cover/$kind/$value': typeof ApiCoverKindValueRoute
 }
@@ -69,6 +78,7 @@ export interface FileRouteTypes {
     | '/'
     | '/style'
     | '/api/nightly-storytel'
+    | '/api/reading-reminder'
     | '/api/remote-cover'
     | '/api/cover/$kind/$value'
   fileRoutesByTo: FileRoutesByTo
@@ -76,6 +86,7 @@ export interface FileRouteTypes {
     | '/'
     | '/style'
     | '/api/nightly-storytel'
+    | '/api/reading-reminder'
     | '/api/remote-cover'
     | '/api/cover/$kind/$value'
   id:
@@ -83,6 +94,7 @@ export interface FileRouteTypes {
     | '/'
     | '/style'
     | '/api/nightly-storytel'
+    | '/api/reading-reminder'
     | '/api/remote-cover'
     | '/api/cover/$kind/$value'
   fileRoutesById: FileRoutesById
@@ -91,6 +103,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   StyleRoute: typeof StyleRoute
   ApiNightlyStorytelRoute: typeof ApiNightlyStorytelRoute
+  ApiReadingReminderRoute: typeof ApiReadingReminderRoute
   ApiRemoteCoverRoute: typeof ApiRemoteCoverRoute
   ApiCoverKindValueRoute: typeof ApiCoverKindValueRoute
 }
@@ -118,6 +131,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiNightlyStorytelRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/reading-reminder': {
+      id: '/api/reading-reminder'
+      path: '/api/reading-reminder'
+      fullPath: '/api/reading-reminder'
+      preLoaderRoute: typeof ApiReadingReminderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/remote-cover': {
       id: '/api/remote-cover'
       path: '/api/remote-cover'
@@ -139,6 +159,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   StyleRoute: StyleRoute,
   ApiNightlyStorytelRoute: ApiNightlyStorytelRoute,
+  ApiReadingReminderRoute: ApiReadingReminderRoute,
   ApiRemoteCoverRoute: ApiRemoteCoverRoute,
   ApiCoverKindValueRoute: ApiCoverKindValueRoute,
 }

@@ -15,8 +15,15 @@ export const Route = createRootRoute({
       {
         title: "Hanna's Reading List",
       },
+      // installable on a phone's home screen, for the reading reminder (#163)
+      { name: 'theme-color', content: '#231a15' },
+      { name: 'apple-mobile-web-app-capable', content: 'yes' },
+      { name: 'apple-mobile-web-app-title', content: 'Reading List' },
     ],
     links: [
+      { rel: 'manifest', href: '/manifest.webmanifest' },
+      { rel: 'apple-touch-icon', href: '/icons/apple-touch-icon.png' },
+      { rel: 'icon', type: 'image/png', href: '/icons/icon-192.png' },
       { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
       { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
       {

@@ -3567,6 +3567,19 @@ button.today-item:hover {
   stroke-width: 4;
 }
 
+/* ---- the reading reminder in the menu (#163) ------------------------- */
+.menu-reminder {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--border);
+}
+.menu-note {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
 /* ---- new for you (#186; "Recommended for you" before #123) ------------------- */
 .recommend-list {
   list-style: none;
