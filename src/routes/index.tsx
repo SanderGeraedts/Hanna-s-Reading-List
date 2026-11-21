@@ -18,11 +18,12 @@ import { useSession } from '#/lib/session'
 import type { Account } from '#/lib/session'
 import { SignIn } from '#/components/SignIn'
 import { detectSeries, seriesGroups } from '#/lib/series'
-import { pickReadNext, readNextChoices } from '#/lib/readNext'
+import { readNextChoices } from '#/lib/readNext'
 import { Dashboard } from '#/components/Dashboard'
 import { BadgeToasts } from '#/components/NewBlocks'
 import { QuickUpdate } from '#/components/QuickUpdate'
 import { SparkleLayer, sparkle } from '#/components/Sparkles'
+import { WishCard } from '#/components/WishCard'
 import { ChallengesPage } from '#/components/ChallengesPage'
 import { CalendarPage } from '#/components/CalendarPage'
 import type { ChallengeSection } from '#/components/ChallengesPage'
@@ -32,7 +33,7 @@ import { SearchBox } from '#/components/SearchBox'
 import { genreSuggestions } from '#/lib/genres'
 import { useBookDetails } from '#/lib/useBookDetails'
 import type { Book } from '#/lib/library'
-import { filterByGenre, genreOptions as shelfGenres, reorderShown } from '#/lib/genreFilter'
+import { NO_GENRE, filterByGenre, genreOptions as shelfGenres, reorderShown } from '#/lib/genreFilter'
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -226,11 +227,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     [reorder, books, activeGenre],
   )
 
-  // what to read next (#58): from the genre shown, if one is picked
-  const readNext = useMemo(() => {
-    const shownIds = new Set(shown.map((b) => b.id))
-    return readNextChoices(books).filter((b) => shownIds.has(b.id))
-  }, [books, shown])
+  // what she could read next (#58): Make a wish grants from these; a genre picked at the top starts the wish
+  const wishChoices = useMemo(() => readNextChoices(books), [books])
 
   const select = useCallback((id: string | null) => {
     if (id) inspect.current = { rotY: 0, rotX: 0 }
@@ -308,12 +306,9 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     return acc
   }, {})
 
-  // make a wish: the star grants a book from her pile, with a sparkle
-  const pickNext = () => {
-    const wish = pickReadNext(readNext, selectedId)
-    select(wish?.id ?? null)
-    if (wish) sparkle()
-  }
+  // make a wish (version 2): she wishes for a length, genre or language, and the star grants three books
+  const [wishing, setWishing] = useState(false)
+  const pickNext = () => setWishing(true)
   const sortSelect = (done?: () => void) => (
     <select
       className="input"
@@ -373,7 +368,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
                       </label>
                     )}
                     <button
-                      disabled={readNext.length === 0}
+                      disabled={wishChoices.length === 0}
                       onClick={() => {
                         close()
                         pickNext()
@@ -419,11 +414,11 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
               <button
                 className="btn read-next desktop-only"
                 aria-label="What to read next"
-                disabled={readNext.length === 0}
+                disabled={wishChoices.length === 0}
                 // pressing again shows another one
                 onClick={pickNext}
                 title={
-                  readNext.length
+                  wishChoices.length
                     ? 'Make a wish: a book to read next from your pile (no re-reads, only the next book of a series)'
                     : 'No wishes left: no unread books waiting on the shelf'
                 }
@@ -515,6 +510,19 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
 
       <BadgeToasts books={books} accountId={account?.id ?? null} ready={loaded} />
       <SparkleLayer />
+      {wishing && (
+        <WishCard
+          books={books}
+          choices={wishChoices}
+          startGenre={activeGenre && activeGenre !== NO_GENRE ? activeGenre : undefined}
+          onPick={(id) => {
+            setWishing(false)
+            select(id)
+            sparkle()
+          }}
+          onClose={() => setWishing(false)}
+        />
+      )}
       <QuickUpdate books={books} onUpdate={updateBook} onShowBook={showBook} hidden={!loaded || !!selected} />
 
       {selected && (

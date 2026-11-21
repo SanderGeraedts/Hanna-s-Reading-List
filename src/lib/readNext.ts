@@ -1,36 +1,50 @@
 import type { Book } from './library'
 import { localDay, sortBooks, timesRead } from './library'
-import { seriesGroups } from './series'
+import { detectSeries } from './series'
 import { notOutYet } from './upcoming'
 
 /**
  * The books Hanna could read next (#58): ones she wants to read and has never
- * finished (no re-reads), and from a series only the first book she hasn't
- * read yet, so never book 3 before book 2. A series she is in the middle of
- * (the next book is being read or paused) has nothing to offer. A book that
- * isn't out yet can't be read, so it isn't offered either.
+ * finished (no re-reads), that are out already, and that are either a
+ * standalone or have every book before them in their series read: never
+ * book 3 before book 2. Strict (her rule for Make a wish): a book that isn't
+ * on the shelf counts as not read, by the series number, so a lone "Book 3"
+ * isn't offered either. A series she is in the middle of (the next book is
+ * being read or paused) has nothing to offer.
  */
 export function readNextChoices(books: Book[], today = localDay()): Book[] {
-  const groups = seriesGroups(books)
-  const nextInSeries = new Set<string>()
-  const seen = new Set<string>()
-  // in series order: by number, else by year
-  for (const b of sortBooks(books, 'series')) {
-    const key = groups.get(b.id)!.key
-    if (key === '' || seen.has(key) || !unread(b)) continue
-    seen.add(key)
-    nextInSeries.add(b.id)
+  const series = detectSeries(books)
+  const keyOf = (name: string) => name.toLowerCase().replace(/[\s…]+/g, ' ').trim()
+  const bySeries = new Map<string, Book[]>()
+  for (const b of books) {
+    const info = series.get(b.id)
+    if (info) bySeries.set(keyOf(info.name), [...(bySeries.get(keyOf(info.name)) ?? []), b])
   }
-  return books.filter(
-    (b) =>
-      b.status === 'want' &&
-      unread(b) &&
-      !notOutYet(b, today) &&
-      (groups.get(b.id)!.key === '' || nextInSeries.has(b.id)),
-  )
+  const blocked = (b: Book) => {
+    const info = series.get(b.id)
+    if (!info) return false // a standalone
+    const siblings = bySeries.get(keyOf(info.name))!.filter((s) => s.id !== b.id)
+    const index = info.index
+    if (index !== undefined) {
+      const at = (s: Book) => series.get(s.id)?.index
+      // every whole number before it must be read; one that isn't on the shelf counts as unread
+      for (let k = 1; k < Math.ceil(index); k++) {
+        if (!siblings.some((s) => at(s) === k && read(s))) return true
+      }
+      // and every book on the shelf numbered before it (a 1.5 novella too)
+      return siblings.some((s) => at(s) !== undefined && at(s)! < index && !read(s))
+    }
+    // no number: the books of the series before it (by year) must be read
+    for (const s of sortBooks([b, ...siblings], 'series')) {
+      if (s.id === b.id) return false
+      if (!read(s)) return true
+    }
+    return false
+  }
+  return books.filter((b) => b.status === 'want' && !read(b) && !notOutYet(b, today) && !blocked(b))
 }
 
-const unread = (b: Book) => b.status !== 'read' && timesRead(b) === 0
+const read = (b: Book) => b.status === 'read' || timesRead(b) > 0
 
 /** One of the choices at random, not the one just shown when there are others. */
 export function pickReadNext(choices: Book[], lastId?: string | null, random = Math.random): Book | undefined {
