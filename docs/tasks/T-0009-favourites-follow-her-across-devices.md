@@ -249,6 +249,48 @@ two-profile check passed.
 - The hook only accepts lowercase letters for block ids. All 25 block ids are like that today, but a new id such as `finishBy` would be dropped without a word.
 - Two tabs on one device share the unsent list. If both send it at the same moment, one tab's newer change can be removed from the list by the other. This needs two open tabs with near-simultaneous taps, so it is unlikely.
 
+## Third run (tester, 2026-11-21, on `d16615b`)
+
+**Verdict: passed.** The tests that depended on timing are now stable, and the feature still
+holds. This run was short. It covers what changed since the second run: the waits in
+`favouritesSync.test.ts` and the hook's trimming. Everything else stands from the second run.
+
+- `npm ci`: `added 654 packages`. `npm run build`: `✓ built in 1.33s`.
+- Full `npm test`, run 5 times: `Tests 351 passed | 9 skipped (360)` each time, with no failures,
+  including in the old `shelfLayout` timing test.
+- The favourites files alone, run 5 times:
+  `npm exec vitest -- run src/lib/favouritesSync.test.ts src/lib/favourites.test.ts` gave
+  `Tests 28 passed (28)` each time.
+- Two local PocketBase 0.40.6 instances on 8811 and 8812. The old one had neither the favourites
+  migration nor its hook.
+  - My race and data-safety test, unchanged except the ports:
+    - `lost one star in 0 of 20 rounds`
+    - `no-shelf: nothing created OK`
+    - favourites saves: `library_versions 0 -> 0`, and the books, arrangement and goals intact
+    - an old app's shelf save keeps the favourites
+    - the other user is isolated, and re-owning a record gives `404`
+    - old server: `updated 10:48:43.517Z -> 10:48:43.517Z`, with no `favourites` key
+  - `PB_TEST_URL=http://127.0.0.1:8811 PB_TEST_OLD_URL=http://127.0.0.1:8812 npm exec vitest -- run src/server/favourites.pocketbase.test.ts`:
+    `Tests 9 passed (9)`.
+- The hook's trimming, checked with curl against 8811:
+  - Normal use: all 25 real blocks starred, then Goal unstarred and starred again. Result: 25
+    entries with `goal` last. Nothing was trimmed, because there are only 25 blocks and the
+    limit is 50.
+  - 60 junk ids plus non-ids (`7`, `"<x>"`, `null`) written straight to the record, then a star
+    of Calendar. Result: 50 entries, the oldest junk dropped, the non-ids gone, and `calendar`
+    last. The new star landed.
+  - Real stars first, then 30 junk ids, then a new star: Goal, Reading and Finish by were all
+    kept.
+  - The trimming can only drop a real star when something other than the app writes more than
+    25 unknown ids after that star. The app never writes unknown ids, so it doesn't happen in
+    normal use.
+  - `finishBy` and a 40-character id are kept; a 41-character id is dropped.
+  - 50 ids of 40 characters take 2,151 bytes, under the 4 KB limit, and the books were
+    untouched.
+
+The first two non-blocking points from the second run (unknown ids, lowercase only) are fixed.
+The two-tabs point stays as noted by the developer, and does not block.
+
 # Log
 
 - 2026-11-21 architect: Task written from #182, following the reading-goals pattern (#66).
@@ -304,3 +346,4 @@ two-profile check passed.
     - `tsc --noEmit`: clean.
     - `PB_TEST_URL=http://127.0.0.1:8771 PB_TEST_OLD_URL=http://127.0.0.1:8772 npx vitest run src/server/favourites.pocketbase.test.ts`: `Tests 9 passed (9)`.
 
+- 2026-11-21 tester: passed. On `d16615b`: full `npm test` passed 5 of 5 (`351 passed | 9 skipped`); the favourites files alone passed 5 of 5 (`28 passed`); `npm run build` built; my race test against a local PocketBase lost a star in 0 of 20 rounds, and the data-safety checks hold; the opt-in PocketBase test gave `9 passed`; the hook's trimming keeps every real star in normal use. Earlier runs covered the hook's security, the Funnel path, the down migration, ordering against #165 and #177, and the two-profile, offline, Reset and signed-out checks. Remaining: the Engineer's code-owner review (deploy/nas migration and hook, backend workflow), then the merge, the backend image and a check on the live site.
