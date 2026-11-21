@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetLayout, toggleFavourite, type BlockId, type DashboardLayout } from './dashboardLayout'
 
 /**
@@ -19,9 +19,12 @@ const server = vi.hoisted(() => ({
   /** favourites saves on their way right now, and the most at once */
   saving: 0,
   mostAtOnce: 0,
+  /** calls of any kind still being answered */
+  busy: 0,
 }))
 
-vi.mock('#/server/pocketbase', () => {
+vi.mock('#/server/pocketbase', async () => {
+  const { applyChange, cleanFavourites } = await import('./favourites')
   class PocketBaseError extends Error {
     constructor(
       readonly status: number,
@@ -35,33 +38,40 @@ vi.mock('#/server/pocketbase', () => {
     PocketBaseError,
     asUser: <T,>(fn: (token: string) => Promise<T>) => fn('token'),
     tokenUserId: () => 'user1',
-    pb: async (path: string, { method = 'GET', body }: { method?: string; body?: Record<string, unknown> } = {}) => {
+    pb: async (path: string, options: { method?: string; body?: Record<string, unknown> } = {}) => {
       if (!server.online) throw new Error("The reading-list server can't be reached right now.")
-      server.requests.push({ method, path, body: structuredClone(body) })
-      // like PocketBase: a field the collection doesn't have is left out of the answer
-      const view = (r: NonNullable<typeof server.record>) =>
-        server.hasField ? { id: r.id, favourites: structuredClone(r.favourites ?? null) } : { id: r.id }
-      if (method === 'GET') {
-        await wait()
-        return { items: server.record ? [view(server.record)] : [] }
+      server.busy++
+      try {
+        return await answer(path, options)
+      } finally {
+        server.busy--
       }
-      if (method === 'POST' && path === '/api/collections/libraries/favourites') {
-        // like pb_hooks/favourites.pb.js: the change applied to the list as it is at that moment
-        server.saving++
-        server.mostAtOnce = Math.max(server.mostAtOnce, server.saving)
-        await wait()
-        server.saving--
-        if (!server.record || !server.hasField) throw new PocketBaseError(404, 'Not found.')
-        const { applyChange, cleanFavourites } = await import('./favourites')
-        const next = applyChange(cleanFavourites(server.record.favourites), {
-          add: cleanFavourites(body?.add),
-          remove: cleanFavourites(body?.remove),
-        })
-        server.record.favourites = next
-        return { favourites: structuredClone(next) }
-      }
-      throw new Error(`unexpected ${method} ${path}`)
     },
+  }
+  async function answer(path: string, { method = 'GET', body }: { method?: string; body?: Record<string, unknown> }) {
+    server.requests.push({ method, path, body: structuredClone(body) })
+    // like PocketBase: a field the collection doesn't have is left out of the answer
+    const view = (r: NonNullable<typeof server.record>) =>
+      server.hasField ? { id: r.id, favourites: structuredClone(r.favourites ?? null) } : { id: r.id }
+    if (method === 'GET') {
+      await wait()
+      return { items: server.record ? [view(server.record)] : [] }
+    }
+    if (method === 'POST' && path === '/api/collections/libraries/favourites') {
+      // like pb_hooks/favourites.pb.js: the change applied to the list as it is at that moment
+      server.saving++
+      server.mostAtOnce = Math.max(server.mostAtOnce, server.saving)
+      await wait()
+      server.saving--
+      if (!server.record || !server.hasField) throw new PocketBaseError(404, 'Not found.')
+      const next = applyChange(cleanFavourites(server.record.favourites), {
+        add: cleanFavourites(body?.add),
+        remove: cleanFavourites(body?.remove),
+      })
+      server.record.favourites = next
+      return { favourites: structuredClone(next) }
+    }
+    throw new Error(`unexpected ${method} ${path}`)
   }
 })
 
@@ -106,6 +116,7 @@ class Device {
     }
   }
   open() {
+    if (!devices.includes(this)) devices.push(this)
     this.hook = renderHook(() => useDashboardLayout(this.account, this.store))
     return this
   }
@@ -131,15 +142,40 @@ class Device {
   }
   close() {
     this.hook?.unmount()
+    this.hook = null
   }
 }
 
-/** lets the pretend server calls finish */
-const settle = () => act(() => new Promise((r) => setTimeout(r, 60)))
+const devices: Device[] = []
+
+/**
+ * Waits until every device has finished talking to the pretend server: no
+ * call being answered for a few timer turns in a row. A device starts its next
+ * call straight after the last one is answered, before any timer runs, so a
+ * quiet turn means its queue is empty. No fixed sleeps: it waits as long as it
+ * takes on a busy machine.
+ */
+const settle = () =>
+  act(async () => {
+    const until = Date.now() + 10_000
+    for (let quiet = 0; quiet < 3; ) {
+      await new Promise((r) => setTimeout(r, 1))
+      quiet = server.busy === 0 ? quiet + 1 : 0
+      if (Date.now() > until) throw new Error('the devices never finished talking to the server')
+    }
+  })
 
 const writes = () => server.requests.filter((r) => r.method !== 'GET')
 
+// nothing from one test's devices may reach the next test
+afterEach(async () => {
+  server.online = true
+  for (const d of devices.splice(0)) d.close()
+  await settle()
+})
+
 beforeEach(() => {
+  server.busy = 0
   server.record = { id: 'r1', books: structuredClone(BOOKS), arrangement: 'title', favourites: null }
   server.hasField = true
   server.online = true

@@ -21,12 +21,13 @@ routerAdd(
     const ids = (v) => {
       const out = []
       if (!Array.isArray(v)) return out
-      for (const x of v) if (typeof x === 'string' && /^[a-z]{1,30}$/.test(x) && out.indexOf(x) < 0) out.push(x)
-      return out.slice(0, 50)
+      // block ids like "goal", or a later "finishBy"; the app itself keeps only the ones it knows
+      for (const x of v) if (typeof x === 'string' && /^[A-Za-z][A-Za-z0-9_-]{0,39}$/.test(x) && out.indexOf(x) < 0) out.push(x)
+      return out
     }
     const body = e.requestInfo().body || {}
-    const add = ids(body.add)
-    const remove = ids(body.remove)
+    const add = ids(body.add).slice(0, 50)
+    const remove = ids(body.remove).slice(0, 50)
     const owner = e.auth.id
 
     if (!e.app.findCollectionByNameOrId('libraries').fields.getByName('favourites')) throw new NotFoundError()
@@ -40,16 +41,17 @@ routerAdd(
       } catch (_) {
         return // no shelf yet; the first shelf save makes it
       }
-      let now = []
+      let stored = null
       try {
-        now = JSON.parse(shelf.getString('favourites') || 'null')
+        stored = JSON.parse(shelf.getString('favourites') || 'null')
       } catch (_) {}
-      if (!Array.isArray(now)) now = []
-      now = now.filter((x) => typeof x === 'string')
+      // anything that isn't a block id (written some other way) is dropped
+      const now = ids(stored)
       const next = now.filter((x) => remove.indexOf(x) < 0)
       for (const x of add) if (remove.indexOf(x) < 0 && next.indexOf(x) < 0) next.push(x)
-      saved = next.slice(0, 50)
-      if (JSON.stringify(saved) !== JSON.stringify(now)) {
+      // over the limit: the oldest go, so a new star always lands
+      saved = next.slice(Math.max(0, next.length - 50))
+      if (JSON.stringify(saved) !== JSON.stringify(stored === null ? [] : stored)) {
         shelf.set('favourites', saved)
         txApp.save(shelf)
       }

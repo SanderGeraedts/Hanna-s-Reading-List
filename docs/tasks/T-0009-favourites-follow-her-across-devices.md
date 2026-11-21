@@ -283,4 +283,24 @@ two-profile check passed.
     - A star of Records in profile 2 reached profile 1 when its `visibilitychange` handler ran. I fired that event in the page, because the browser tool doesn't switch tabs.
     - The books stayed `b1, b2` throughout.
 - 2026-11-21 tester: sent back: `npm test` failed in 6 of 7 full runs on this machine. The new hook tests in `favouritesSync.test.ts` wait a fixed 60 ms (`settle`), and one test's leftover queue leaks into the next. They need to wait for a condition instead. Everything else passed on `02de8e4`: 0 of 20 races lost on a real PocketBase; my adapted sync test passes on the new code and fails on the old; the hook is owner-only, cleans its input and is capped; the route is reachable through the existing Funnel path and opens no new one; data safety holds; and the two-profile, offline, Reset and signed-out checks pass (see Second run).
+- 2026-11-21 developer: fixed what the tester sent back the second time.
+  - `src/lib/favouritesSync.test.ts` has no fixed sleeps any more.
+    - `settle()` waits until the stand-in server has had no call in progress for three timer turns in a row, with a 10 s limit. A device starts its next call before any timer runs, so a quiet turn means its queue is empty.
+    - After each test, every device is unmounted and the test waits for quiet before the stand-in server is reset, so nothing leaks into the next test.
+    - The tester's condition-based `zz-tester-sync.test.ts` passed 3 of 3 against this code.
+  - Hook (`pb_hooks/favourites.pb.js`):
+    - Stored values that aren't block ids are dropped.
+    - Over the limit of 50, the oldest go, so a new star always lands.
+    - Ids may be camelCase (`^[A-Za-z][A-Za-z0-9_-]{0,39}$`); the app still keeps only the ids it knows.
+    - New PocketBase tests: 60 junk ids, then a real star lands last; `finishBy` is kept and malformed ids are dropped.
+  - Noted, not changed: two tabs of the app on one device share the unsent list in browser storage. Both may send the same change, which is harmless because a change is idempotent. A change can also be sent while the other tab is removing it from the list.
+  - Check output:
+    - `npm test` ×10 in full:
+      - runs 1, 3, 4, 5, 6, 8, 9 and 10: `Test Files 49 passed | 1 skipped (50)`, `Tests 340 passed | 9 skipped (349)`;
+      - runs 2 and 7 failed only the existing `shelfLayout` timing test, `is quick enough to run on every change` (430 ms and 358 ms against a 250 ms limit), in code this task doesn't touch. For the architect: that test fails on a busy machine.
+      - `favouritesSync.test.ts` passed in every run.
+    - `npx vitest run src/lib/favouritesSync.test.ts` ×10: `Tests 17 passed (17)` every time.
+    - `npm run build`: built.
+    - `tsc --noEmit`: clean.
+    - `PB_TEST_URL=http://127.0.0.1:8771 PB_TEST_OLD_URL=http://127.0.0.1:8772 npx vitest run src/server/favourites.pocketbase.test.ts`: `Tests 9 passed (9)`.
 

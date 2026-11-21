@@ -183,6 +183,38 @@ describe.skipIf(!URL_)('favourites on a local PocketBase (#182)', () => {
     })
     expect(await srv.readFavourites(a.token)).toEqual({ kept: true, favourites: ['goal'] })
   })
+
+  it('a real star still lands when the list is full of junk', async () => {
+    const junk = Array.from({ length: 60 }, (_, i) => `junk${i}`)
+    await api(URL_!, `/api/collections/libraries/records/${recordId}`, {
+      method: 'PATCH',
+      token: a.token,
+      body: { favourites: [...junk, 7, null] },
+    })
+    expect(await srv.changeFavourites(a.token, { add: ['calendar'], remove: [] })).toEqual({
+      kept: true,
+      favourites: ['calendar'],
+    })
+    const stored = (await shelf(URL_!, a.token)).favourites as unknown[]
+    expect(stored.length).toBe(50)
+    expect(stored.at(-1)).toBe('calendar')
+    expect(stored).not.toContain(7)
+  })
+
+  it('the server keeps block ids written in camelCase, for blocks added later', async () => {
+    await api(URL_!, `/api/collections/libraries/records/${recordId}`, {
+      method: 'PATCH',
+      token: a.token,
+      body: { favourites: ['goal'] },
+    })
+    const r = await api(URL_!, '/api/collections/libraries/favourites', {
+      method: 'POST',
+      token: a.token,
+      body: { add: ['finishBy', 'not an id', 'x'.repeat(41)] },
+    })
+    expect(r.status).toBe(200)
+    expect(r.json.favourites).toEqual(['goal', 'finishBy'])
+  })
 })
 
 describe.skipIf(!OLD_URL)('favourites on a local PocketBase without the field (#182)', () => {
