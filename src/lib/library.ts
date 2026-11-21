@@ -33,6 +33,11 @@ export interface Book {
   storytelIds?: string[]
   /** where Hanna keeps the e-book file, an https:// or http:// link (#185); see ebookLink.ts */
   ebookUrl?: string
+  /**
+   * what she paid for a bought paperback, hardcover or e-book, in euros with at
+   * most two decimals (T-0016); the buying jar spends €5 a coin (D-0024); see price.ts
+   */
+  price?: number
   /** ids of the copies merged into this book, so they don't come back */
   mergedIds?: string[]
   /** books Hanna said are not the same book, so they aren't suggested for merging */

@@ -27,6 +27,8 @@ import { MergeSection } from './MergeSection'
 import { EdgesField } from './EdgesField'
 import { SetInField } from './SetInField'
 import { EbookButton, EbookLinkField } from './EbookLink'
+import { PanelPriceField } from './PriceField'
+import { ownsCopy } from '#/lib/price'
 import { ebookHref } from '#/lib/ebookLink'
 import { findBackText } from '#/lib/findBackText'
 import { stoppedAtText } from '#/lib/didNotFinish'
@@ -642,6 +644,9 @@ export function BookPanel({
           ))}
         </div>
       </div>
+
+      {/* what she paid, only while she owns a copy; a price on another format is kept but hidden (T-0016) */}
+      {ownsCopy(formats) && <PanelPriceField price={book.price} onChange={(price) => onUpdate({ price })} />}
 
       <EbookLinkField link={book.ebookUrl} onChange={(ebookUrl) => onUpdate({ ebookUrl })} />
 

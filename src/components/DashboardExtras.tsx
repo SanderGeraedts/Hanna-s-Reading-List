@@ -18,7 +18,8 @@ import {
 } from '#/lib/insights'
 import { goalPace, goalPaceText } from '#/lib/insightsMore'
 import { localDay } from '#/lib/library'
-import { TREAT_COST, pileJars, pileMonths, pileSentence, signed } from '#/lib/pile'
+import { pileJars, pileMonths, pileSentence, signed } from '#/lib/pile'
+import { belowZero, buyingJarLabel, coinText } from '#/lib/price'
 import type { PileMonth } from '#/lib/pile'
 import { goalForecast } from '#/lib/finishEstimate'
 import type { BreakdownKind } from '#/lib/insights'
@@ -658,17 +659,16 @@ function Coins({ coins, places }: { coins: number; places: number }) {
   )
 }
 
+/** The buying jar (T-0016, D-0024): just its count, "🪙 4.6 coins", in the warning colour below zero. */
 function BuyingJar({ coins }: { coins: number }) {
-  const treat = coins >= TREAT_COST
+  const below = belowZero(coins)
   return (
-    <div
-      className={treat ? 'jar treat' : 'jar'}
-      role="group"
-      aria-label={treat ? `Buying jar: ${coins} coins, treat earned` : `Buying jar: ${coins} of ${TREAT_COST} coins`}
-    >
+    <div className="jar" role="group" aria-label={buyingJarLabel(coins)}>
       <p className="jar-name">📚 Buying jar</p>
-      <Coins coins={coins} places={TREAT_COST} />
-      {treat ? <p className="jar-status treat">Treat earned! 🎁</p> : <p className="jar-status muted">{coins} of {TREAT_COST}</p>}
+      {/* read through the group's label, so the 🪙 and the minus sign aren't read out */}
+      <p className={below ? 'jar-count below' : 'jar-count'} aria-hidden>
+        {coinText(coins)}
+      </p>
     </div>
   )
 }

@@ -51,6 +51,13 @@ describe('merging two copies of a book (#14)', () => {
     expect(m.lent).toEqual({ to: 'Lotte' })
   })
 
+  it('keeps the kept copy’s price, else the other’s (T-0016)', () => {
+    expect(mergeBooks({ ...paperback, price: 12.5 }, { ...storytel, price: 3 }).price).toBe(12.5)
+    expect(mergeBooks(paperback, { ...storytel, price: 3 }).price).toBe(3)
+    expect(mergeBooks({ ...paperback, price: 0 }, { ...storytel, price: 3 }).price).toBe(0)
+    expect(mergeBooks(paperback, storytel).price).toBeUndefined()
+  })
+
   it('takes the furthest status, progress and times read', () => {
     const m = mergeBooks(paperback, storytel)
     expect(m.status).toBe('read')

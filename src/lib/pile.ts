@@ -1,5 +1,6 @@
 import type { Book } from './library'
 import { formatsOf, localDay } from './library'
+import { COIN_CENTS, ownsCopy, priceCents } from './price'
 import { readNextChoices } from './readNext'
 
 /**
@@ -7,7 +8,7 @@ import { readNextChoices } from './readNext'
  * the shelf, so every device agrees:
  * - in vs. out per month: books added against books read "from the pile";
  * - two coin jars: one coin per book read from the pile, the buying jar
- *   spending 3 when she adds a book she owns;
+ *   spending what an owned book cost (€5 a coin, D-0024);
  * - the weekly dust-off: the want-to-read book that has waited longest.
  */
 
@@ -15,8 +16,6 @@ import { readNextChoices } from './readNext'
 export const PILE_DAYS = 14
 /** The jars start counting here, so she starts with this month's coins. */
 export const JAR_START = '2026-11-01'
-/** What a treat costs from the buying jar. */
-export const TREAT_COST = 3
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -90,40 +89,39 @@ export const signed = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '0'
 // ---- the jars ----------------------------------------------------------------------------------
 
 /** She owns it on paper or as an e-book (library, borrowed, audiobook and Storytel aren't owned). */
-export const owned = (book: Book) => formatsOf(book).some((f) => f === 'paperback' || f === 'hardcover' || f === 'ebook')
+export const owned = (book: Book) => ownsCopy(formatsOf(book))
 /** A Storytel book she only listens to: Storytel, and no paper or e-book copy. */
 export const storytelOnly = (book: Book) => formatsOf(book).includes('storytel') && !owned(book)
 
 export interface Jars {
-  /** coins in the buying jar: earned by owned books read from the pile, 3 spent per owned book added */
+  /**
+   * coins in the buying jar: one earned per owned book read from the pile,
+   * price / 5 spent per owned book added (D-0024); may be below zero
+   */
   buying: number
   /** coins in the Storytel jar: a score, never spent */
   storytel: number
 }
 
 /**
- * The two jars, by walking the adds and the finishes in date order from
- * JAR_START up to today. On the same day finishes come first, so a coin
- * earned that day can be spent that day. Adding an owned book spends 3 coins
- * only when there are 3; otherwise nothing happens.
+ * The two jars, from JAR_START up to today. The buying jar is summed in cents
+ * (a coin is €5) so decimals never drift: each owned finish from the pile
+ * adds 500, each owned book added spends its price; no price spends nothing.
+ * There is no threshold and no floor, so the order of the days doesn't matter.
  */
 export function pileJars(books: Book[], today = localDay(), start = JAR_START): Jars {
-  type Event = { day: string; kind: 0 | 1; book: Book } // 0: a finish, 1: an add (finishes first)
-  const events: Event[] = []
-  for (const f of pileFinishes(books)) if (f.day >= start && f.day <= today) events.push({ day: f.day, kind: 0, book: f.book })
+  let cents = 0
+  let storytel = 0
+  for (const f of pileFinishes(books)) {
+    if (f.day < start || f.day > today) continue
+    if (owned(f.book)) cents += COIN_CENTS
+    else if (storytelOnly(f.book)) storytel++
+  }
   for (const b of books) {
     const d = addedDay(b)
-    if (d >= start && d <= today && owned(b)) events.push({ day: d, kind: 1, book: b })
+    if (d >= start && d <= today && owned(b)) cents -= priceCents(b.price)
   }
-  events.sort((a, b) => a.day.localeCompare(b.day) || a.kind - b.kind)
-  const jars: Jars = { buying: 0, storytel: 0 }
-  for (const e of events) {
-    if (e.kind === 1) {
-      if (jars.buying >= TREAT_COST) jars.buying -= TREAT_COST
-    } else if (owned(e.book)) jars.buying++
-    else if (storytelOnly(e.book)) jars.storytel++
-  }
-  return jars
+  return { buying: cents / COIN_CENTS, storytel }
 }
 
 // ---- dust off the oldest -----------------------------------------------------------------------
