@@ -1,0 +1,19 @@
+#!/bin/sh
+# Written by `harness sync`; don't edit (G-0011). Refuses any push to the default branch,
+# by any agent or tool. Feature branches push normally. The default branch changes only
+# through a pull request.
+# Git passes "<local ref> <local sha> <remote ref> <remote sha>" lines on stdin.
+
+refused=0
+while read -r local_ref local_sha remote_ref remote_sha || [ -n "$remote_ref" ]; do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    refused=1
+  fi
+done
+
+if [ "$refused" -eq 1 ]; then
+  echo "pre-push: refusing to push to main (G-0011)." >&2
+  echo "Push a feature branch and open a pull request; a green one merges itself." >&2
+  exit 1
+fi
+exit 0
