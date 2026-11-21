@@ -36,6 +36,7 @@ export const BLOCKS = {
   badges: 'Badges',
   covers: 'Cover wall',
   rhythm: 'When I read most',
+  flower: 'Genre flower',
   again: 'Give it another try',
 } as const
 
@@ -73,7 +74,7 @@ export const DEFAULT_LAYOUT: DashboardLayout = {
     ],
     challenges: [['goal', 'alphabet'], ['bingo']],
     stats: [
-      ['count', 'heatmap', 'breakdown', 'authors'],
+      ['count', 'heatmap', 'breakdown', 'flower', 'authors'],
       ['calendar', 'records', 'rhythm', 'series', 'pile'],
     ],
     fun: [
