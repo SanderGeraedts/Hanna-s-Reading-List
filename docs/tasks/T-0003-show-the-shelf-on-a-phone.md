@@ -46,6 +46,10 @@ instead; the check below covers both.
   checks the canvas is visible with a non-zero size. Adding Playwright is allowed (D-0002).
 - `pnpm test` and `pnpm run build` pass; CI is green.
 - The UX designer has reviewed the screenshots.
+- If the fix touched the header: at 390 × 844 and at 320 × 640 the page tabs are on one row and
+  cover no books, also while a search is on (type "the", close the search box; the chip stays
+  in the header). On the Dashboard at 390 × 844 and 1280 × 800, the strip with the book being
+  read is fully visible under the tabs.
 
 # Notes
 
@@ -61,9 +65,85 @@ instead; the check below covers both.
 UX designer: review only, unless the fix changes what the page looks like on a phone; then
 say how it should look before it is built.
 
+## Design (2026-11-21, before the build)
+
+**What I could see.** I ran `main` (`35e447a`) locally with no account server (shelf in the
+browser) and took screenshots in headless Chrome at 390 × 844, 360 × 800, 320 × 640,
+768 × 1024 and 1280 × 800, with 12 books and with 300 books. In all of them the bookcase *was*
+drawn, with books on it. So the problem did not show up on demo data in a desktop browser; it
+is probably something only a real phone does (its graphics chip, its browser, the address bar
+changing the height, or her real shelf with covers). The developer still has to reproduce it
+first, as the Goal says.
+
+**How the Bookshelf page must look on a phone once it is fixed.** This is how it looks today in
+the emulator, and it is the target. Nothing new is designed:
+
+- Top: the ☰ menu, "Hanna's Reading List", and under it the one-line count
+  ("12 books · 2 reading · …", cut off with "…" when too long). On the right: 🔍, ↻ and
+  "+ Add".
+- Under that, the four page tabs as round icon buttons (📚 📊 🏆 📅), with 📚 in gold.
+- The wooden bookcase fills the screen width, apart from its side boards. The top shelf's books
+  are on the first screen without scrolling, and their spine text can be read. Swiping up and
+  down moves through the shelves.
+- Bottom right: the zoom buttons +, − and ⤢.
+- A tap on a book takes it out. The details sheet slides up from the bottom, and the book stays
+  visible above it.
+
+**States.**
+
+- *Loading:* "Building the shelf…" in the middle, as now, until the bookcase is drawn.
+- *Empty shelf:* "Add your first book to start filling the shelf." with "+ Add book", as now.
+- *Error, only if the cause turns out to be the 3D drawing failing on the phone* (the browser
+  can't draw it, or drops the drawing when memory runs out): instead of an empty page, show a
+  note in the middle of the page, styled like the empty-shelf note:
+  - "The bookshelf can't be drawn on this phone right now."
+  - "Your books are safe. The Dashboard, Challenges and Calendar still work."
+  - one main button: "Try again" (draws the shelf again; reloading the page is fine).
+  The note is announced to a screen reader (`role="status"`). After the tabs, "Try again" is the
+  next thing the keyboard reaches. If the cause is something else, this note isn't needed.
+
+**Seen while looking, and possibly the cause: the header since #172 (the page tabs).**
+
+1. On the Dashboard, at every width, the tabs sit on top of the strip that shows the book she
+   is reading, the streak and the books read. They hide the top half of that strip.
+2. At 390 px, while a search is on (the “the” · 3 ✕ chip in the header), the four tabs no
+   longer fit next to the toolbar. They stack in a column down the left side of the shelf, over
+   the books.
+3. At 320 px the tabs wrap onto two rows. The second row (📅) covers the top of the first
+   shelf's books.
+
+All three have the same reason. On a phone the tabs sit inside the title column, which only
+gets the width left over by the buttons on the right. The header's height also changes, but
+the content below doesn't know about it. **If the developer finds #181 comes from this header**,
+fix it like this, keeping the look:
+
+- On phones (up to 720 px) the tabs get their own full-width row, under the title row and the
+  buttons: one line of four 44 px round icon buttons. They fit easily at 320 px (4 × 44 px plus
+  gaps is about 190 px). They never wrap, and they don't move when the search chip appears.
+- Everything below the header (the bookcase's camera fit, the Dashboard's top strip, the other
+  pages) starts under the header's real height, so the header hides nothing.
+- Desktop (above 720 px) stays exactly as it is, apart from the Dashboard strip moving down
+  clear of the tabs.
+
+**If the cause is elsewhere**, leave the header alone in this task. The three points above
+should then become a task of their own (architect).
+
+**Keyboard and screen reader:** no change. The tabs stay a `nav` labelled "Pages", with
+`aria-current="page"` on the current one, and each icon button keeps its name (Bookshelf,
+Dashboard, Challenges, Calendar).
+
+**Where to look (added 2026-11-21):** the deploy previews show the sign-in screen, so they may
+have the production account server's address. Until the Engineer has confirmed they don't, the
+review and the tester's screenshots come from a local dev server with no backend (shelf in the
+browser) or a local PocketBase, never from signing in or adding books on a deploy preview.
+
 # Test
 
 # Log
 
 - 2026-11-21 architect: Task written from #181; the report is one line, so the assumption is
   written in the Goal. Priority: first of the Requester's issues, because the shelf is the app.
+- 2026-11-21 ux-designer: design written. Not reproduced on demo data in headless Chrome
+  (390, 360 and 320 px; 12 and 300 books): the shelf showed. Found the page tabs covering
+  content on phones, and the Dashboard strip at every width. The design says how to fix that if
+  it is the cause, and adds an error note in case the cause is the 3D drawing failing.

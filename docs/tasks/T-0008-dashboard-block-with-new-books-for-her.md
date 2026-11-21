@@ -52,6 +52,11 @@ asked: e.g. **"New for you"**.
   after a reload. The block can be hidden and moved like the others.
 - `pnpm test` and `pnpm run build` pass; CI is green.
 - The UX designer has reviewed the block on a phone and a desktop.
+- The block is called "New for you" and stands, on a fresh layout, in *Today* right after
+  *What next?*. With Open Library blocked (e.g. offline in the browser's developer tools) and
+  no earlier suggestions, *Suggest books* shows "Open Library can't be reached right now. Try
+  again later." in helper text, and the rest of the dashboard works.
+- At 320 × 640 each suggestion's cover, title, reason and both buttons are fully visible.
 
 # Notes
 
@@ -70,9 +75,92 @@ asked: e.g. **"New for you"**.
 UX designer, before it is built: the block's name, where it sits by default, and how it looks on
 the current design system. Review after.
 
+## Design (2026-11-21, before the build)
+
+The old *Recommended for you* block comes back as it worked, under the name she asked for and
+on today's design system. Only the name, the place and a few states change. English, British
+spelling, like the rest of the app.
+
+**Name:** **"New for you"**, as the block's heading and in the Arrange list (`BLOCKS`).
+
+**Where by default:** in *Today*, in the right column straight after *What next?* and before
+*Newly added* (that's also where it stood before #123, next to *What next?*). On a phone the
+two columns are shown as one, so it comes after *What next?* there too. Saved layouts get it in
+that place via `cleanLayout`; she can move, star or hide it like any block.
+
+**Layout** (a normal `dash-card`, with a button in the card's head like other blocks):
+
+```
+New for you                              [ Suggest books ]
+[cover]  A Court of Silver Flames
+         Sarah J. Maas · 2021
+         More by Sarah J. Maas, whose books you rate ★4½
+         [ + Want to read ]  Not for me
+[cover]  The Book of Doors
+         Gareth Brown · 2025
+         New in Fantasy
+         [ + Want to read ]  Not for me
+…  (at most 6)
+```
+
+- **Cover:** the small dashboard cover (`.dash-cover.small`), loaded lazily. Until it loads,
+  or when there is none, a blank cover in the book's stand-in colour (`.dash-cover.blank`).
+- **Title** in normal text, bold; **author · year** in helper text; the **reason** in small
+  text ("More by …, whose books you rate ★4½", "New in Fantasy"), exactly as `recommend.ts`
+  writes them.
+- **"+ Want to read"** (`btn small`, secondary): adds the book to the shelf as *Want to read*,
+  with its cover and details from Open Library, like adding it through search. While busy:
+  "Adding…". Then the line leaves the list, and a helper-text line at the top of the block
+  says "“A Court of Silver Flames” is on your shelf." (`role="status"`).
+- **"Not for me"** (`btn small quiet`, text only; the old `ghost` class is gone since #157 and
+  `quiet` replaces it): the line leaves the list and the book isn't suggested again on this
+  device, also after a reload. The old "not for me" list (`hannas-reading-list:not-for-me:…`)
+  is read again.
+- **The head button:** "Suggest books" when the block has nothing to show, "New suggestions"
+  when it has, "Looking…" (disabled) while it searches. The block doesn't search by itself
+  every time the dashboard opens: the last suggestions are kept on the device (as before), so
+  opening the dashboard is quick and Open Library isn't asked every time.
+
+**States** (all in helper text, `muted small-text`; nothing in the red error colour, because
+none of these are her fault):
+
+- *Never asked, or all suggestions used up:* "New books by your favourite authors and in your
+  favourite genres. Rate a few books for better picks."
+- *Looking:* the button says "Looking…"; suggestions already shown stay; the list has
+  `aria-busy="true"`.
+- *Too little to go on* (no rated or read books): "Finish and rate a few books first, so there
+  is something to go on."
+- *Open Library can't be reached* (every request failed): "Open Library can't be reached right
+  now. Try again later." Suggestions shown before stay; the rest of the dashboard isn't
+  affected. This is the note the unit test in *Done when* checks.
+- *Nothing new found:* "Nothing new found just now. Try again later."
+
+**Phone and long text:** at 390 px and at 320 px the cover stays on the left and the text
+beside it. The two buttons wrap under each other when they don't fit, each at least 44 px high
+on touch screens. Long titles and reasons wrap; they aren't cut off. The head button may drop
+under the heading on a narrow card, like other block heads.
+
+**Keyboard and screen reader:** a `section` labelled by its heading, and the suggestions a
+list. Because there are up to six of each, the buttons get names that include the book: "Add
+“A Court of Silver Flames” as Want to read" and "Not for me: “A Court of Silver Flames”".
+After a line leaves the list, focus goes to the next line's "+ Want to read", or to the head
+button when the list is empty.
+
+**Easy to revert:** one block, restored from `20ea52a^` with its tests; hiding it or removing
+the block id puts the dashboard back as it is today.
+
+**Where to look (added 2026-11-21):** the deploy previews show the sign-in screen, so they may
+have the production account server's address. Until the Engineer has confirmed they don't, the
+review and the tester's screenshots come from a local dev server with no backend (shelf in the
+browser) or a local PocketBase, never from signing in or adding books on a deploy preview.
+
 # Test
 
 # Log
 
 - 2026-11-21 architect: Task written from #186; found the removed block (#111, #117, #123) and
   chose restoring it as the smallest reversible reading of the request.
+- 2026-11-21 ux-designer: design written. "New for you" goes in Today after What next?; the
+  old block on the design system with "+ Want to read" and "Not for me" (quiet), "Suggest
+  books" / "New suggestions", and notes in helper text, including one for Open Library being
+  unreachable.
