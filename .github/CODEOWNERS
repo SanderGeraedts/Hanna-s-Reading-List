@@ -18,3 +18,9 @@
 /CLAUDE.md                  @SanderGeraedts
 /.claude/                   @SanderGeraedts
 /docs/hanna-guardrails.md   @SanderGeraedts
+
+# the harness's rules and hooks, which the rules from CLAUDE.md moved into
+# (T-0001, until Q-003 is answered)
+/AGENTS.md                  @SanderGeraedts
+/.harness/                  @SanderGeraedts
+/.githooks/                 @SanderGeraedts
