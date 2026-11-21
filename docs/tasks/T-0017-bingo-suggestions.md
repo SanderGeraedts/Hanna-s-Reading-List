@@ -2,7 +2,7 @@
 id: T-0017
 title: "Suggest a book for an empty bingo square, keep A–Z tips to the series order and never recommend sleep reads"
 description: "Tapping an empty square on the bingo card being played shows one fitting book from her pile (cover, title, Open, Another one), A–Z tips only offer want-to-read books she can start next, and readNextChoices leaves out sleep reads everywhere."
-status: Open
+status: Doing
 depends_on: [T-0013, T-0014]
 decisions: [D-0002, D-0008, D-0013, D-0014, D-0016, D-0020, D-0022, D-0025]
 raised_on: 2026-11-21
@@ -390,6 +390,35 @@ sentence (D-0014, choice 4).
 and the 44 px × on touch screens, all with these tokens. `BingoCard` gets an `onShowBook` prop from
 `Dashboard.tsx` and `ChallengesPage.tsx`.
 
+## Build notes (developer, 2026-11-22)
+
+- **Where it lives:** `src/lib/bingoSuggest.ts` (`suggestionPool(id, books, year, today)`: `null`
+  for no reaction, `[]` for no fit, else the fitting books with their `wishWeight`;
+  `drawSuggestion(pool, shown, random)`: the weighted draw that doesn't repeat until all were shown).
+  Each square's test reuses the helpers now exported from `src/lib/bingo.ts` (`pagesOf`, `pubYear`,
+  `authorKey`, `GENRE_SQUARES`, `hasGenre`, `notFantasy`, `hasFormat`, `longListen`,
+  `inLongSeries`, `shelfFacts`); the ticks use the same functions, so they can't drift apart.
+  The weighted draw in `grantWish` moved into `weightedIndex` (`src/lib/wish.ts`), used by both.
+- **Same author twice tick:** `Shelf` got `before` (the year's finishes before the card started);
+  `bingoYear` passes it per card, and only the `sameauthor` tick reads it. Every other tick and
+  `cardSquares` are unchanged (the existing bingo tests pass untouched).
+- **readNext:** leaves out `sleepReadIds`. **A–Z tips:** a want-to-read book is a tip only when it is
+  in `readNextChoices`; reading, paused and DNF books as before.
+- **UI:** `BingoCard` gets `onShowBook` from `Dashboard.tsx` and `ChallengesPage.tsx`; empty
+  squares of this year's card (not `three`/`fivemonth`) are `<button>`s; the card is a `<section>`
+  under the grid. CSS only with existing tokens; no new colour.
+
+Choices taken while Hanna slept (the recommended option, none changes what she sees in *Design*):
+
+19. **The × comes last in tab order.** The Done-when asks for Open → 🎲 Another one → × after the
+    heading, so the × is the last element of the card in the page order and is drawn top right
+    (`position: absolute`), with the heading row keeping room for it.
+20. **Starting over after every book was shown** leaves out the book on screen (when there are
+    others), so Another one never shows the same book twice in a row.
+21. **The block heading `#bingo-title` gets `tabIndex={-1}`** so focus can go to it when the card
+    closes because its square ticked (choice 18); no ring for a plain `:focus`, the gold ring for
+    `:focus-visible`.
+
 # Test
 
 To be written by the tester.
@@ -406,3 +435,21 @@ To be written by the tester.
   architect's choice 5, with a test in *Done when*).
 - 2026-11-21 ux-designer: designed (the suggestion card under the bingo grid, tappable squares,
   keyboard and screen reader, wording; choices 12–18); handed to the developer.
+- 2026-11-22 developer: built the bingo suggestions (`src/lib/bingoSuggest.ts`, the card under the
+  grid in `BingoCard`, on the dashboard and on Challenges), the whole-year *Same author twice* tick,
+  no sleep reads in `readNextChoices`, A–Z tips for want books only from `readNextChoices`; choices
+  19–21 under *Build notes*. New tests: `bingoSuggest.test.ts` (22), `bingo.test.ts` (+5 for Same
+  author twice), `readNext.test.ts` (+1), `alphabet.test.ts` (+3); checked that the Same author and
+  sleep-read tests fail without the change. `pnpm test`: 77 files passed, 1 skipped; 578 tests
+  passed, 9 skipped. `pnpm exec tsc --noEmit`: no errors. `pnpm run build`: built.
+  `pnpm exec harness check`: tasks, decisions, engineers, generated files all ✓. Clicked through on
+  the no-backend dev server (shelf in the browser) at 390×844 and 1280×800 on lavender and
+  midnight: 40 screens in `docs/tasks/T-0017-screens/` (grid, suggestion, Another one, no fit,
+  `three`/filled square tapped, Open → book panel, Challenges, another year's card, What next?,
+  Make a wish). Logged: empty squares are buttons (10), `three` and filled squares stay
+  `role="img"` and tapping them opens nothing; focus lands on the card's heading; Tab goes Open →
+  🎲 Another one → ×; Escape and × put focus back on the square; Another one went through all three
+  500+ page books before repeating; no fit shows "No book on your shelf fits this one yet."; Open
+  opened the book panel on that book; another year's card has no buttons; Open, Another one and ×
+  44 px high on the phone (× 44×44); nothing scrolls sideways; What next? (25 picks) and Make a wish
+  (6 wishes) never offered the sleep read; no page errors. Handed to the UX designer for review.

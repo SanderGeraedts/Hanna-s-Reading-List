@@ -1,6 +1,7 @@
 import type { Book } from './library'
 import { localDay, sortBooks, timesRead } from './library'
 import { detectSeries } from './series'
+import { sleepReadIds } from './sleepSeries'
 import { notOutYet } from './upcoming'
 
 /**
@@ -10,7 +11,8 @@ import { notOutYet } from './upcoming'
  * book 3 before book 2. Strict (her rule for Make a wish): a book that isn't
  * on the shelf counts as not read, by the series number, so a lone "Book 3"
  * isn't offered either. A series she is in the middle of (the next book is
- * being read or paused) has nothing to offer.
+ * being read or paused) has nothing to offer. Sleep reads are never offered
+ * (D-0025): every suggestion from her pile comes from this list.
  */
 export function readNextChoices(books: Book[], today = localDay()): Book[] {
   const series = detectSeries(books)
@@ -41,7 +43,9 @@ export function readNextChoices(books: Book[], today = localDay()): Book[] {
     }
     return false
   }
-  return books.filter((b) => b.status === 'want' && !read(b) && !notOutYet(b, today) && !blocked(b))
+  // never a sleep read, ticked itself or through its series (D-0025)
+  const sleep = sleepReadIds(books)
+  return books.filter((b) => b.status === 'want' && !read(b) && !sleep.has(b.id) && !notOutYet(b, today) && !blocked(b))
 }
 
 const read = (b: Book) => b.status === 'read' || timesRead(b) > 0

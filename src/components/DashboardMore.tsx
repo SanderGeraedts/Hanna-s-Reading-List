@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Book } from '#/lib/library'
 import { formatDuration } from '#/lib/listening'
 import { amountText } from '#/lib/readingLog'
@@ -15,6 +15,7 @@ import {
 } from '#/lib/insightsMore'
 import type { HeatDay } from '#/lib/insightsMore'
 import { SQUARES, bingoLines, bingoYear, rememberCard } from '#/lib/bingo'
+import { drawSuggestion, suggestible, suggestionPool } from '#/lib/bingoSuggest'
 import { StarRating } from './StarRating'
 import { ShareButton } from './ShareButton'
 import { OpenLink } from './OpenLink'
@@ -377,6 +378,7 @@ export function BingoCard({
   year: forYear,
   compact = false,
   onOpen,
+  onShowBook,
 }: {
   books: Book[]
   onUpdate: (id: string, patch: (book: Book) => Partial<Book>) => void
@@ -385,10 +387,61 @@ export function BingoCard({
   /** on the dashboard: just the card being played, no share */
   compact?: boolean
   onOpen?: () => void
+  /** opens a suggested book in the book panel (T-0017) */
+  onShowBook?: (id: string) => void
 }) {
   const thisYear = new Date().getFullYear()
   const year = forYear ?? thisYear
   const b = useMemo(() => bingoYear(books, year), [books, year])
+  // suggestions for the empty squares of the card being played (T-0017)
+  const playing = year === thisYear
+  const suggestId = useId()
+  const [chosen, setChosen] = useState<string | null>(null)
+  const [shown, setShown] = useState<string[]>([])
+  const [focusTick, setFocusTick] = useState(0)
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  const squareRefs = useRef(new Map<string, HTMLButtonElement>())
+  const chosenSquare = chosen ? b.squares.find((s) => s.id === chosen && !s.ticked) : undefined
+  const pool = useMemo(() => (chosen ? suggestionPool(chosen, books, year) : null), [chosen, books, year])
+  const currentId = shown.at(-1)
+  const suggested = pool?.find((c) => c.book.id === currentId)?.book
+  const open = (id: string) => {
+    setChosen(id)
+    setShown(drawSuggestion(suggestionPool(id, books, year) ?? [])?.shown ?? [])
+    setFocusTick((n) => n + 1)
+  }
+  const close = (toSquare: boolean) => {
+    const id = chosen
+    setChosen(null)
+    setShown([])
+    if (toSquare && id) squareRefs.current.get(id)?.focus()
+  }
+  const another = () => {
+    const next = pool && drawSuggestion(pool, shown)
+    if (next) setShown(next.shown)
+  }
+  // focus moves to the card's heading when it opens or switches square
+  useEffect(() => {
+    if (!focusTick) return
+    const h = headingRef.current
+    if (!h) return
+    h.focus({ preventScroll: true })
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    h.closest('.bingo-suggest')?.scrollIntoView?.({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' })
+  }, [focusTick])
+  // the shelf changed under an open card: the square ticked (or the card moved on) closes it;
+  // a book that no longer fits makes room for another one
+  useEffect(() => {
+    if (!chosen) return
+    if (!chosenSquare) {
+      const inside = !!document.activeElement && !!document.querySelector(`[id="${suggestId}"]`)?.contains(document.activeElement)
+      setChosen(null)
+      setShown([])
+      if (inside) document.getElementById('bingo-title')?.focus()
+      return
+    }
+    if (pool && pool.length && !suggested) setShown((s) => drawSuggestion(pool, s)?.shown ?? [])
+  }, [chosen, chosenSquare, pool, suggested, suggestId])
   // a card just found full is remembered on the book that filled it, so it stays full (#119)
   useEffect(() => {
     if (year !== thisYear) return
@@ -417,9 +470,18 @@ export function BingoCard({
     })),
   })
   return (
-    <section className="dash-card" aria-labelledby="bingo-title">
+    <section
+      className="dash-card"
+      aria-labelledby="bingo-title"
+      onKeyDown={(e) => {
+        if (e.key === 'Escape' && chosen) {
+          e.stopPropagation()
+          close(true)
+        }
+      }}
+    >
       <div className="dash-card-head">
-        <h2 id="bingo-title">
+        <h2 id="bingo-title" tabIndex={-1}>
           Book bingo {year}
           {b.card > 1 && <span className="muted"> · card {b.card}</span>}
         </h2>
@@ -437,6 +499,28 @@ export function BingoCard({
       <div className="bingo" role="group" aria-label={`Book bingo ${year}, card ${b.card}`}>
         {b.squares.map((s) => {
           const how = s.ticked ? (s.book ? `Done: ${s.book.title}` : 'Done') : 'Ticks itself when a finished book fits'
+          // an empty square of the card being played suggests a book from her pile (T-0017)
+          if (playing && !s.ticked && suggestible(s.id)) {
+            const isChosen = chosen === s.id
+            return (
+              <button
+                key={s.id}
+                type="button"
+                ref={(el) => {
+                  if (el) squareRefs.current.set(s.id, el)
+                  else squareRefs.current.delete(s.id)
+                }}
+                className={`bingo-square tappable${isChosen ? ' chosen' : ''}`}
+                title="Suggest a book"
+                aria-label={`${s.label}, suggest a book`}
+                aria-expanded={isChosen}
+                aria-controls={isChosen ? suggestId : undefined}
+                onClick={() => (isChosen ? close(false) : open(s.id))}
+              >
+                <span className="bingo-label">{s.label}</span>
+              </button>
+            )
+          }
           return (
             <div
               key={s.id}
@@ -461,6 +545,52 @@ export function BingoCard({
           )
         })}
       </div>
+      {chosenSquare && (
+        <section className="bingo-suggest" id={suggestId} aria-labelledby={`${suggestId}-title`}>
+          <div className="bingo-suggest-top">
+            <h3 id={`${suggestId}-title`} ref={headingRef} tabIndex={-1}>
+              {chosenSquare.label}
+            </h3>
+          </div>
+          {suggested ? (
+            <div className="next-book">
+              <Cover book={suggested} />
+              <div>
+                <div aria-live="polite" aria-atomic="true">
+                  <p className="next-title bingo-suggest-title">{suggested.title}</p>
+                  {suggested.authors.length > 0 && <p className="muted">{suggested.authors.join(', ')}</p>}
+                </div>
+                <div className="next-actions bingo-suggest-actions">
+                  <button
+                    type="button"
+                    className="btn primary"
+                    aria-label={`Open ${suggested.title}`}
+                    onClick={() => onShowBook?.(suggested.id)}
+                  >
+                    Open
+                  </button>
+                  {(pool?.length ?? 0) > 1 && (
+                    <button
+                      type="button"
+                      className="btn"
+                      aria-label={`Another book for ${chosenSquare.label}`}
+                      onClick={another}
+                    >
+                      <span aria-hidden>🎲</span> Another one
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="muted">No book on your shelf fits this one yet.</p>
+          )}
+          {/* last in tab order (after Open and Another one), drawn top right */}
+          <button type="button" className="btn icon small bingo-suggest-close" aria-label="Close" onClick={() => close(true)}>
+            ×
+          </button>
+        </section>
+      )}
       {!compact && b.finished.length > 0 && (
         <div className="bingo-history">
           <h3 className="waiting-subtitle">Full cards in {year}</h3>

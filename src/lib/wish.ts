@@ -128,14 +128,17 @@ export function grantWish(
   const from = fresh.length >= Math.min(3, pool.length) ? fresh : pool
   const picked: typeof from = []
   const left = [...from]
-  while (picked.length < 3 && left.length) {
-    const total = left.reduce((a, x) => a + x.weight, 0)
-    let r = random() * total
-    let i = 0
-    while (i < left.length - 1 && r >= left[i].weight) r -= left[i++].weight
-    picked.push(left.splice(i, 1)[0])
-  }
+  while (picked.length < 3 && left.length) picked.push(left.splice(weightedIndex(left, random), 1)[0])
   return { books: picked.map((x) => ({ book: x.book, reasons: x.reasons })), exact }
+}
+
+/** The index of one item drawn at random, each as likely as its weight (the list must not be empty). */
+export function weightedIndex(items: Array<{ weight: number }>, random: () => number = Math.random): number {
+  const total = items.reduce((a, x) => a + x.weight, 0)
+  let r = random() * total
+  let i = 0
+  while (i < items.length - 1 && r >= items[i].weight) r -= items[i++].weight
+  return i
 }
 
 export const REASON_TEXT: Record<Reason, string> = {
