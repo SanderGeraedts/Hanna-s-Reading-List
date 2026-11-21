@@ -2,11 +2,11 @@
 id: T-0004
 title: "Make the text on dark spines white again instead of gold"
 description: "#180: since every book became a hardcover, dark spines get gold lettering; put the white lettering back, keeping dark lettering on light spines."
-status: Doing
+status: Done
 depends_on: [T-0001]
 decisions: [D-0002]
 raised_on: 2026-11-21
-done_on: ""
+done_on: "2026-11-21"
 result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/195"]
 ---
 
@@ -132,6 +132,55 @@ deals with it.)
 
 # Test
 
+Tester, 2026-11-21, on `b6fc9d1` in a fresh worktree of `origin/t-0004-spine-text` (`main` had
+not moved since the branch merged it).
+
+**Commands, with their output**
+
+- `npm ci`: "added 654 packages, and audited 655 packages in 57s"
+- `npm test`: "Test Files  43 passed (43)", "Tests  282 passed (282)"
+- `npm run build`: "✓ built in 1.63s"
+- CI on the pull request: `test` pass.
+
+**On the deploy preview → done locally instead.** Following #193, nothing was looked at with
+a sign-in or entered on the preview. Instead: a local dev server (`vite dev`, no
+`POCKETBASE_URL`, the Netlify environment turned off by `vite.config.ts`), shelf in the
+browser, 13 books seeded in local storage, screenshots at 1280, 390 and 320 px. Each spine was
+also painted straight with `paintSpine` in the browser and its pixels were read.
+
+- Dark spines (Dune `#1d2a44`, Rebecca `#5a1a24`, dark green `#0b3d2e`, Black `#000000`,
+  Orange `#e0662a`): title, surname and "EN" are off-white `#f6efe1`. Light spines (The Night
+  Circus `#f2e6c8`, Emma `#efe3cf`, `#f5f0e6`, White `#ffffff`, Mustard `#d4a017`): near-black
+  `#1d1a16`. Thousands of title-area pixels match the expected ink on every spine.
+- No shadow: the letters on the painted spines (looked at close up) have clean edges, without a
+  dark edge under them. In the code, the `shadowColor`/`shadowOffsetY` lines are gone.
+- The bands are still gold on dark spines and deep gold on light ones. The language tag has the
+  title's colour ("NL" on Mustard as well). The medal and its ribbon on the read books (Rebecca,
+  Emma, the long light one) show as before. No page errors at any size.
+- Compared with before `9abdd95`: `git show 9abdd95^:src/components/textures.ts` has
+  `const ink = inkFor(bg)` and no shadow in `paintSpine`, which is the same lettering as now.
+  Only the bands differ, and keeping them is intended.
+
+**What I tried to break**
+
+- The `inkFor` threshold (luminance > 0.6): `#999999` (exactly 0.6) gets off-white; `#9a9a9a`
+  gets near-black; `#998f99` gets off-white. The switch is sharp and matches `inkFor`, so the
+  bands always follow the lettering.
+- Unusual colour values: upper-case `#1D2A44` and `#FFFFFF` work. `#888`/`#fff` (3-digit),
+  `red`, `''`, `#zzzzzz` and `#1d2a44ff` all give the off-white ink, so `#fff` would get
+  off-white on white. `parseHex` does that, and it hasn't changed. It was so before #176 too.
+  The app only stores 6-digit colours (`colorFromString`, cover analysis), and Hanna can't
+  type a spine colour, so only damaged data could reach it. Not a fault of this change.
+- Very long titles (a 140-character title, with a long double-barrelled surname, on a dark and on a light spine, read and
+  unread): the title shrinks to the minimum size and ends in "...", in the right ink. It
+  stops before the medal's ribbon. The layout itself is unchanged.
+- Mid-tone grey spines (`#999999`/`#9a9a9a`) have low contrast either way. That's the known
+  limit of `inkFor` that the Design names, and it's outside this task.
+- Code-owned paths: the diff touches only `src/components/textures.ts`, a new
+  `src/components/textures.test.ts`, the task file and the index. None of them is code-owned.
+
+**Verdict: passed.**
+
 # Log
 
 - 2026-11-21 architect: Task written from #180; traced the change to `9abdd95` and `698d95a`.
@@ -147,3 +196,6 @@ deals with it.)
   ribbon, bookmark and language tag show as before.
 - 2026-11-21 ux-designer: reviewed: passes. Off-white lettering on dark spines, near-black on
   light ones, no shadow, bands kept, as designed (screenshots at 320, 390 and 1280 px).
+- 2026-11-21 tester: passed. `npm ci`, `npm test` (282 passed) and `npm run build` pass; checked locally
+  (not on the preview, #193): off-white on dark spines, near-black on light ones, no shadow,
+  bands, medal, ribbon and tag as before; threshold, odd colours and long titles tried.
