@@ -7,7 +7,7 @@ depends_on: [T-0001]
 decisions: [D-0002]
 raised_on: 2026-11-21
 done_on: ""
-result: []
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/199"]
 ---
 
 # Goal
@@ -219,3 +219,10 @@ browser) or a local PocketBase, never from signing in or adding books on a deplo
   field, which the merge carries whole; tests prove the save merge, the nightly sync and the
   Storytel refresh keep it without changing other books. `npm test`: 45 files, 309 tests
   passed (27 new in `didNotFinish.test.ts` and `AgainCard.test.tsx`); `npm run build`: built.
+- 2026-11-21 developer: draft PR #199. Screens from a local dev server with no backend at 320 px
+  and 1280 px: header "5 books · 1 reading · 1 want to read · 1 read · 2 did not finish", the
+  *Did not finish* nook last on the shelf, no bookmark, a medal only on the one read before;
+  panel "Stopped at 42% · page 100 of 237" with no slider; the block shows one book, *Try
+  again* moves it to *Currently reading* with its 42% and shows the next, then "No books put
+  aside."; buttons 44 px high; no horizontal scroll. No code-owned path touched. Next: the UX
+  designer's review.
