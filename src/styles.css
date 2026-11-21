@@ -3936,6 +3936,48 @@ textarea.input {
   justify-content: flex-end;
 }
 
+/* ---- reading in pictures: the genre flower ---------------------------- */
+.flower-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: center;
+}
+@media (max-width: 420px) {
+  .flower-body {
+    grid-template-columns: 1fr;
+  }
+}
+.flower {
+  width: 100%;
+  max-width: 14rem;
+  justify-self: center;
+}
+.flower-count {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 700;
+  fill: #3a2614;
+}
+.flower-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+.flower-legend li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--space-2);
+  align-items: center;
+}
+.flower-dot {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+}
+
 /* ---- favourites on top --------------------------------------------- */
 .block-star.on {
   color: var(--accent);
