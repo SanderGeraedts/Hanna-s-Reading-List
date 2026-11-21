@@ -37,3 +37,27 @@ describe('3D book nooks (T-0012)', () => {
     expect(Array.from(a.slice(0, 2000)).join()).not.toBe(Array.from(b.slice(0, 2000)).join())
   })
 })
+
+describe('the name sign is always in front (T-0012, Hanna on #211)', () => {
+  it('hangs in front of everything inside the scene', async () => {
+    const { INNER_SIGN } = await import('./BookNook')
+    const { IW, SHELL } = await import('./nookPaint')
+    for (const theme of NOOK_3D) {
+      for (const variant of [0, 7, 123, 999]) {
+        const g = nookGeometry(theme, variant)!
+        for (const geo of [g.solid, g.glow]) {
+          const pos = geo.attributes.position
+          let front = -Infinity
+          for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i)
+            const y = pos.getY(i)
+            // only the scene inside the box, not the box and its gilt edging
+            if (Math.abs(x) < IW / 2 - 0.001 && y > SHELL + 0.001 && y < H - SHELL - 0.001) front = Math.max(front, pos.getZ(i))
+          }
+          // the back of the sign board is still in front of the scene's frontmost point
+          expect(INNER_SIGN.z - 0.00125, `${theme} ${variant}`).toBeGreaterThan(front)
+        }
+      }
+    }
+  })
+})

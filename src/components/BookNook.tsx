@@ -78,8 +78,12 @@ function Nook(props: NookProps) {
 const worldSolid = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0.03 })
 const worldGlow = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false })
 
-/** The hanging sign inside a 3D nook: smaller, from a bracket on the right-hand wall, near the front. */
-const INNER_SIGN = { w: 0.024, h: 0.136, x: IW / 2 - 0.034, z: D / 2 - 0.03, top: H - SHELL - 0.022 }
+/**
+ * The hanging sign inside a 3D nook: smaller, from a bracket on the right-hand wall, right
+ * behind the opening, so the name is always in front of the scene and never hidden by a house
+ * or a tower (a test checks this in nook3d.test.ts).
+ */
+export const INNER_SIGN = { w: 0.024, h: 0.136, x: IW / 2 - 0.034, z: D / 2 - 0.005, top: H - SHELL - 0.022 }
 
 function Nook3D({ world, theme: themeId, variant, label, complete, sleep, medal }: NookProps & { world: NookGeometry }) {
   const tex = useMemo(() => sceneTextures(themeId, variant), [themeId, variant])

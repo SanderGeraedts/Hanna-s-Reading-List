@@ -82,3 +82,4 @@ backend:
 - 2026-11-21 developer: built the alley and the castle as merged 3D scenes.
 - 2026-11-21 tester: passed locally. Remaining: Hanna checks the look on the preview and steers
   the style before the other eight scenes are built.
+- 2026-11-21 developer: Hanna on #211: "looks good, but make sure the name of a series is always in front". The sign now hangs right behind the opening (0.5 cm), in front of every house, tower and lantern; a test checks every scene and several variants. Screenshot updated.
