@@ -281,3 +281,83 @@ describe('Same author twice counts the whole year (T-0017, Hanna 2026-11-21)', (
     expect(sq.book!.id).toBe('fresh2')
   })
 })
+
+describe('Same author twice: saved cards stay, ticks are only added (tester, T-0017)', () => {
+  const d = (n: number) => `2026-02-${String(n).padStart(2, '0')}`
+  const card1: Book[] = [
+    ...[1, 2, 3, 4, 5].map((i) => read(`saga${i}`, d(i), { series: 'Saga', seriesIndex: i, authors: ['Saga Writer'] })),
+    read('big', d(10), {
+      pages: 800,
+      language: 'nl',
+      genres: ['Romance'],
+      rating: 5,
+      spice: 4,
+      year: 2026,
+      formats: ['hardcover', 'library'],
+      started: [d(9)],
+      authors: ['New Writer'],
+    }),
+    read('small', d(11), { pages: 150, formats: ['borrowed'], genres: ['Mystery'], authors: ['New Writer'] }),
+    read('listen', d(12), { formats: ['audiobook'], minutes: 1000, genres: ['Biography'], authors: ['Listen Writer'] }),
+    read('space', d(13), { genres: ['Science fiction'], year: 1900, authors: ['Space Writer'] }),
+    book('again', { status: 'read', readCount: 2, finished: ['2020-01-01', d(14)], authors: ['Again Writer'] }),
+  ]
+  /** card 1 as it would be saved on the book that filled it */
+  const saved = () => {
+    const first = bingoYear(card1, 2026, '2026-03-01')
+    expect(first.toRemember).toHaveLength(1)
+    const { bookId, card } = first.toRemember[0]
+    return { shelf: card1.map((b) => (b.id === bookId ? { ...b, ...rememberCard(b, card) } : b)), card }
+  }
+
+  it('a saved full card keeps its squares and ticks, and is not saved again', () => {
+    const { shelf, card } = saved()
+    const b = bingoYear([...shelf, read('listen2', '2026-04-01', { authors: ['Listen Writer'] })], 2026, '2026-04-30')
+    expect(b.finished).toEqual([card])
+    expect(b.toRemember).toEqual([])
+  })
+
+  it('on the card being played, only Same author twice changes; every other square and its book stays', () => {
+    const { shelf } = saved()
+    // the same April finish, once by a writer from card 1 and once by a stranger
+    const known = bingoYear([...shelf, read('x', '2026-04-01', { authors: ['Listen Writer'] })], 2026, '2026-04-30')
+    const stranger = bingoYear([...shelf, read('x', '2026-04-01', { authors: ['Listen Writer Two'] })], 2026, '2026-04-30')
+    const view = (s: typeof known.squares) => s.filter((q) => q.id !== 'sameauthor' && q.id !== 'author').map((q) => [q.id, q.ticked, q.book?.id])
+    expect(view(known.squares)).toEqual(view(stranger.squares))
+    expect(known.squares.find((q) => q.id === 'sameauthor')!.ticked).toBe(true)
+    expect(stranger.squares.find((q) => q.id === 'sameauthor')!.ticked).toBe(false)
+  })
+
+  it('never takes away a tick the old rule (this card only) gave', async () => {
+    const { SQUARES } = await import('./bingo')
+    const old = (win: Array<{ book: Book }>) => {
+      const seen = new Map<string, string>()
+      for (const f of win)
+        for (const a of f.book.authors) {
+          const k = a.trim().toLowerCase()
+          const prev = seen.get(k)
+          if (prev !== undefined && prev !== f.book.id) return f.book
+          if (prev === undefined) seen.set(k, f.book.id)
+        }
+      return undefined
+    }
+    let seed = 7
+    const random = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646
+    const pick = <T,>(xs: T[]) => xs[Math.floor(random() * xs.length)]
+    for (let run = 0; run < 500; run++) {
+      const books = Array.from({ length: 6 }, (_, i) =>
+        book(`b${i}`, { authors: random() < 0.3 ? [pick(['A', 'B', 'C'])!, pick(['A', 'B', 'C'])!] : [pick(['A', 'B', 'C', 'D'])!] }),
+      )
+      const finish = (i: number) => ({ book: pick(books)!, day: '2026-05-01', reread: false, key: `k${i}` })
+      const before = Array.from({ length: Math.floor(random() * 4) }, (_, i) => finish(i))
+      const win = Array.from({ length: 1 + Math.floor(random() * 4) }, (_, i) => finish(10 + i))
+      const tick = SQUARES.sameauthor.tick as unknown as (w: unknown, s: unknown) => Book | undefined
+      const now = tick(win, { before })
+      if (old(win)) expect(now, `run ${run}`).toBeTruthy()
+      // without earlier finishes it is exactly the old rule
+      expect(tick(win, { before: [] })?.id).toBe(old(win)?.id)
+      // the book that ticks is always a finish on this card, by an author with another book
+      if (now) expect(win.map((f) => f.book.id)).toContain(now.id)
+    }
+  })
+})

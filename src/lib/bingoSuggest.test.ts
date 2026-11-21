@@ -278,3 +278,22 @@ describe('bingo suggestions: the draw (T-0017)', () => {
     expect(drawSuggestion([], [])).toBeUndefined()
   })
 })
+
+describe('bingo suggestions: sleep reads through their series (tester, T-0017)', () => {
+  it('re-read leaves out a finished book whose series is marked as a sleep read', () => {
+    const shelf = [
+      read('n1', '2025-01-01', { series: 'Night', seriesIndex: 1, rating: 5, sleepSeries: 'night' }),
+      read('n2', '2025-02-01', { series: 'Night', seriesIndex: 2, rating: 5 }),
+      read('day', '2025-03-01', { rating: 5 }),
+    ]
+    expect(ids('reread', shelf)).toEqual(['day'])
+  })
+
+  it('no square offers a want book of a series marked as a sleep read', () => {
+    const shelf = [
+      read('n1', '2026-01-01', { series: 'Night', seriesIndex: 1, sleepSeries: 'night', authors: ['Night Writer'] }),
+      book('n2', { series: 'Night', seriesIndex: 2, pages: 150, language: 'nl', authors: ['Night Writer'] }),
+    ]
+    for (const id of SQUARE_IDS) if (id !== 'reread') expect(ids(id, shelf), id).not.toContain('n2')
+  })
+})

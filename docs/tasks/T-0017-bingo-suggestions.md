@@ -2,11 +2,11 @@
 id: T-0017
 title: "Suggest a book for an empty bingo square, keep A–Z tips to the series order and never recommend sleep reads"
 description: "Tapping an empty square on the bingo card being played shows one fitting book from her pile (cover, title, Open, Another one), A–Z tips only offer want-to-read books she can start next, and readNextChoices leaves out sleep reads everywhere."
-status: Doing
+status: Done
 depends_on: [T-0013, T-0014]
 decisions: [D-0002, D-0008, D-0013, D-0014, D-0016, D-0020, D-0022, D-0025]
 raised_on: 2026-11-21
-done_on: ""
+done_on: 2026-11-22
 result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/226"]
 ---
 
@@ -483,7 +483,93 @@ Differences that are fine, not to fix:
 
 # Test
 
-To be written by the tester.
+Tested by the tester on 2026-11-22, on branch `t-0017-bingo-suggestions`, from a clean install
+(`pnpm install --frozen-lockfile`). No backend and no production `POCKETBASE_URL` were used.
+
+## Commands (after the tester's tests below were added)
+
+- `pnpm test`: `Test Files  78 passed | 1 skipped (79)`, `Tests  588 passed | 9 skipped (597)`.
+  Before my tests it was 77 files / 578 tests passed, as in the developer's Log.
+- `pnpm exec tsc --noEmit`: no output, exit 0.
+- `pnpm run build`: `✓ built in 761ms` (client) and `✓ built in 553ms` (server).
+- `pnpm exec harness check`: `✓ tasks: 17 tasks, index in step`, `✓ decisions: 28 records, index
+  complete, 3 overrules valid`, `✓ engineers: 2 listed`, `✓ generated files: current`.
+- `src/routeTree.gen.ts` changes when the build runs; it was restored and isn't committed.
+
+## What I read and tried (`git diff main...HEAD -- src`)
+
+- **Square mapping.** All 28 ids in `SQUARES` are covered: 26 in `FITS`, `reread` handled on its
+  own, `three`/`fivemonth` give `null`. Each clear-fit test uses the same exported helper as the
+  tick (`pagesOf`, `GENRE_SQUARES`, `hasFormat`, `longListen`, `inLongSeries`, `notFantasy`,
+  `pubYear`), so the two can't drift apart. `author` matches the tick (`firstByAuthor`, per
+  author). `series` gives the last unread book of a 2+ series, and finishing it puts the series
+  in `readSeries`, which is what the tick checks. `brandnew` uses the card's year.
+- **Series order.** Every square except `reread` filters `readNextChoices`, which already counts a
+  missing earlier book as unread. Tested in `bingoSuggest.test.ts` (book 3 never offered while
+  book 2 is unread) and in `alphabet.test.ts` (a missing book 2 also blocks book 3 as an A–Z tip).
+- **Sleep reads.** `readNextChoices` leaves out `sleepReadIds`, so a sleep read, ticked on the book
+  or through its series, is never offered: not in Make a wish, What next?, dust-off, the bingo
+  squares or the A–Z tips (which already left them out). `reread` leaves them out too. *Added:* a
+  test that `reread` leaves out a finished book whose **series** is marked (only `sleepRead` was
+  tested), and one that no square offers a want book of a marked series.
+- **Re-reads only on the re-read square.** Every other square goes through `readNextChoices`
+  (want only, never finished). The existing test checks every square against a finished 5-star
+  book.
+- **Same author twice (Hanna's decision).** `before` holds the year's finishes up to the card's
+  start (`f.key <= after`), using `yearFinishes` for this year only, so last year's books don't
+  count. A finish only ticks when the author has *another* book id, so finishing the same book
+  twice doesn't tick. With an empty `before` the tick is exactly the old one. *Added:* a seeded
+  test (500 random shelves, co-written books included) that compares it with the old rule. Every
+  tick the old rule gave is still given, `before: []` gives exactly the old result, and the book
+  that ticks is always a finish on this card.
+- **Saved cards and bingo lines.** Full cards are read from `bingoCards` on the books
+  (`rememberedCards`) and never worked out again, and `bingoYear` only plays the cards after the
+  last saved one. So a full card's squares, ticks and lines can't change. *Added:* a test that
+  saves card 1 the way the app does (`rememberCard`), then adds a finish. Card 1 comes back
+  exactly as saved and isn't saved again (`toRemember` is empty). On the card being played, the
+  same April finish by a card-1 author or by a stranger leaves every other square, its tick and its
+  book the same. Only `sameauthor` changes, plus `author`, which ticks for the stranger because
+  that is a new author. Ticks only ever get added, so bingo lines on the card being played can
+  only go up.
+- **Your saved books.** The UI adds no new writes. Tapping, Another one, Open and closing never
+  call `onUpdate` (tested). The only write is the one that was already there: remembering a card
+  when it is full. If the wider *Same author twice* rule fills the card being played, that card is
+  remembered as usual. That adds a record and changes nothing she already has. **Nothing can harm
+  her saved books or cards.**
+- **Keyboard and screen reader** (*Done when*, the tester's part). *Added:*
+  `src/components/BingoSuggest.test.tsx`, which renders `BingoCard` on happy-dom with the clock
+  set to 2026-11-22. It checks these points:
+  - Every empty square of this year's card is a `<button type="button">` named "`<label>`, suggest
+    a book" with `aria-expanded="false"`, and there are 16 minus the no-reaction squares.
+    "3 books in one month" stays `role="img"`.
+  - Opening one sets `aria-expanded="true"` and `aria-controls` to the card. The card is a region
+    named after the square, and focus lands on its heading.
+  - The buttons come in the order Open → Another one → × ("Open `<title>`", "Another book for
+    `<label>`", "Close"). Another one shows the other book. Open calls `onShowBook` with that
+    book.
+  - Escape closes the card and puts focus back on the square, which goes back to expanded false.
+    × does the same.
+  - Tapping the chosen square again closes the card, and tapping another square switches to it.
+  - With one fitting book there is no Another one. With nothing fitting, the card has only the
+    heading, × and "No book on your shelf fits this one yet."
+  - Another year's card has no suggestion buttons.
+- **Look, 44 px and phone width.** I checked these from the CSS diff and the developer's 40
+  screens; the UX designer reviewed the screens too. The new CSS uses only tokens
+  (`colours.test.ts` passes). On `pointer: coarse` the × gets `min-width`/`min-height:
+  var(--tap)`, and `.btn` already has it. Titles get `overflow-wrap: anywhere` and the buttons
+  `white-space: nowrap`. I did not drive a real browser myself: the project has no Playwright, and
+  happy-dom doesn't do layout.
+
+## Notes (no fix needed)
+
+- Swapping squares starts on 2026-12-14 (30 days after `SWAPS_FROM`), so no card has swapped a
+  square yet. The wider tick therefore can't change which squares were swapped on a card she has
+  seen. After this ships, cards are worked out with the new rule from the start.
+
+## Verdict
+
+**Passed.** Every *Done when* item is covered by a test or a check above. No choices were needed
+while Hanna slept.
 
 # Log
 
@@ -517,3 +603,7 @@ To be written by the tester.
   (6 wishes) never offered the sleep read; no page errors. Handed to the UX designer for review.
 - 2026-11-22 ux-designer: reviewed: matches the design, no must-fix items. Agreed with the
   developer's choices 19–21 (review under *Design*). Handed to the tester.
+- 2026-11-22 tester: passed. Added tests: saved full cards stay as they are, the year-wide *Same
+  author twice* tick only adds ticks (compared with the old rule), sleep reads marked through a
+  series are left out, and the suggestion card's keyboard and screen-reader behaviour
+  (`BingoSuggest.test.tsx`). 588 tests passed, tsc, build and harness check green. Set to Done.
