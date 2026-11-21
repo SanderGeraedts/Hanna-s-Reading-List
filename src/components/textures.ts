@@ -136,12 +136,8 @@ export function paintSpine(book: Book, dims: BookDims, sleep = false) {
   const c = canvas(W, H)
   const ctx = c.getContext('2d', { willReadFrequently: true })!
   const bg = book.color
-  // every book is a hardcover on the shelf, with gilded lettering and bands:
-  // bright gold on a darker spine, a deep gold on a light one (so it still reads)
-  const gilded = true
-  const gold = inkFor(bg) === '#1d1a16' ? DEEP_GOLD : GOLD
-  const ink = gold
-  const accent = gold
+  // every book is a hardcover on the shelf, with gold bands and plain lettering
+  const { ink, bands: accent } = spineColours(bg)
 
   // rounded-spine shading: darker at the edges, a highlight just off-centre
   const grad = ctx.createLinearGradient(0, 0, W, 0)
@@ -182,11 +178,6 @@ export function paintSpine(book: Book, dims: BookDims, sleep = false) {
   ctx.translate(W / 2, 0)
   ctx.rotate(Math.PI / 2)
   ctx.fillStyle = ink
-  if (gilded) {
-    // pressed into the cloth: a thin dark edge under the gold
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.55)'
-    ctx.shadowOffsetY = Math.max(1, W * 0.012)
-  }
   ctx.textBaseline = 'middle'
   const maxFont = W * 0.5
   // on finished books the text stops short of the medal and its ribbon
@@ -214,10 +205,20 @@ export function paintSpine(book: Book, dims: BookDims, sleep = false) {
   return toTexture(c)
 }
 
-/** Gold leaf for the lettering on hardcovers. */
-const GOLD = '#dcb767'
-/** Gold leaf on a light spine: darker, so the lettering stands out. */
-const DEEP_GOLD = '#7a5a1c'
+/** Gold leaf for the bands on a darker hardcover spine. */
+export const GOLD = '#dcb767'
+/** Gold leaf on a light spine: darker, so the bands stand out. */
+export const DEEP_GOLD = '#7a5a1c'
+
+/**
+ * The colours on a spine: the lettering (title, author, language tag) is the
+ * plain ink that reads on the spine, off-white on dark and near-black on light;
+ * the bands are gold, a deep gold on a light spine (#180).
+ */
+export function spineColours(bg: string) {
+  const ink = inkFor(bg)
+  return { ink, bands: ink === '#1d1a16' ? DEEP_GOLD : GOLD }
+}
 
 /**
  * A little wear, the same every time for a book: rubbed ends on every spine,
