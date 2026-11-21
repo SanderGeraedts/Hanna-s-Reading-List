@@ -2,11 +2,11 @@
 id: T-0015
 title: "Let Hanna set where a book is set, and count the imaginary lands on the map"
 description: "The book panel gets a Set in field (places as chips with ×, add map countries from a list or type a made-up place), her places replace Open Library's and are never looked up again, and the world map shows imaginary lands with counts, most first."
-status: Doing
+status: Done
 depends_on: []
 decisions: [D-0002, D-0014, D-0020, D-0022, D-0023]
 raised_on: 2026-11-21
-done_on: ""
+done_on: "2026-11-21"
 result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/223"]
 ---
 
@@ -267,6 +267,60 @@ No new differences.
 
 # Test
 
+Tester, 2026-11-21, on `t-0015-map-places` at `4049d8e`, after `pnpm install --frozen-lockfile`.
+
+**Commands**
+
+- `pnpm test` → `Tests  506 passed | 9 skipped (515)` (includes `setIn.test.ts`, `mapCountries.test.ts`,
+  `places.test.ts`: counts most first with ties alphabetical, add/remove incl. Open Library places,
+  no duplicates, typed made-up places counted as imaginary, the static list equals the atlas,
+  `needsPlaces` false for `[]` and edited lists, `placesPatch` doesn't overwrite).
+- `pnpm run build` → `✓ built in 620ms`.
+- `pnpm exec harness check` → `✓ tasks: 15 tasks, index in step` · `✓ decisions: 26 records, index
+  complete, 3 overrules valid` · `✓ engineers: 2 listed` · `✓ generated files: current`.
+
+**Click-through** (`pnpm exec vite dev --port 3126 --strictPort`, no `POCKETBASE_URL`, shelf seeded in
+localStorage `hannas-reading-list:v1`, playwright-core with Chrome, at 390×844 touch and 1280×800;
+same results on both):
+
+- *Lookup finishing after an edit:* a finished book with `places` undefined and a work key, its Open
+  Library request held for 8 s. Placeholder "Looking up…"; she added a place meanwhile → stored
+  `["Middle (Imaginary place)"]`; after the lookup came back (request seen: `OL27482W`) still
+  `["Middle (Imaginary place)"]`.
+- *Same country twice / several countries / aliases:* on a book with `[]` ("Add a place…"): "fra" →
+  rows `🌍 France | 🗺️ Add "Fra" as a made-up place`, France highlighted, Enter added it; "france"
+  again → no rows, Enter emptied the box, nothing added; "usa" → only row `🌍 Add "USA"`, "england"
+  → `🌍 Add "England"`, "paris" → `🌍 Add "Paris"`, "new york" → `🌍 Add "New York"`. Stored
+  `["France","USA","England","Paris","New York", …]`, all chips 🌍 "…, country".
+- *Made-up place colliding with a country prefix:* "Fra" with France already on the book → only
+  `🗺️ Add "Fra" as a made-up place`; clicking it stored `"Fra (Imaginary place)"`, chip 🗺️ Fra.
+- *Hogwarts long/short:* "hog" → `🗺️ Hogwarts` (from another book) first; a book with both
+  "Hogwarts" and "Hogwarts School of Witchcraft and Wizardry" counted once: map "Hogwarts 3" from
+  exactly three finished books.
+- *Very long name* (101 characters): chip wraps onto three lines with × at the end, no chip past
+  the field edge, no sideways scroll; on the map it wraps with its count "1" on the same line.
+- *Phone sizes:* Set in chips 46–47 px tall, × 44×44 px.
+- *Keyboard:* "an" → 5 country rows + add row; ↑ from the first wraps to the add row, ↓ wraps back,
+  ↓ then Enter added Afghanistan (role `combobox`, `aria-activedescendant` set, focus stays in the
+  box, box emptied). "Velar" + Escape → list hidden, text kept, panel still open; ↓ reopens the
+  list; Tab leaves the field and adds nothing (stored list unchanged).
+- *Removing Open Library's places and emptying:* × "France" on a finished book with a work key →
+  `[]`, placeholder "Add a place…", focus back in the box; emptied a 4-place book (incl. "4 Privet
+  Drive") → `[]`. Reload + 6 s wait: both still `[]`, the Hobbit still `["Middle (Imaginary place)"]`,
+  **no Open Library work lookups** (D-0023).
+- *Want-to-read book:* "Add a place…"; "nar" → `🗺️ Narnia` (from her other books) first; tap
+  stored `["Narnia (Imaginary place)"]`, box emptied; not counted on the map (finished only).
+- *Map, lavender and midnight* (`data-wallpaper` checked): "🗺️ Imaginary lands: Hogwarts 3 · Narnia
+  2 · Fra 1 · Middle 1 · The Very Long … Endless Sea 1": most first, ties alphabetical, muted counts,
+  readable on both; no sideways scroll. No page errors or console errors.
+
+**Seen, not blocking** (for a later task if Hanna minds): on a book that already has "Hogwarts
+School of Witchcraft and Wizardry", "Hogwarts" can still be added as a second chip (the map counts
+it once, as designed); and Escape then Enter adds the highlighted row though the list is closed
+("ger" → Germany), which is what Enter would have done with the list open.
+
+**Verdict: passed.** Nothing left for a human to check.
+
 # Log
 
 - 2026-11-21 architect: task written
@@ -319,3 +373,4 @@ No new differences.
   (390×844, 1280×800). Hand back to the UX designer for review.
 - 2026-11-21 ux-designer: reviewed: matches. Both must-fix items fixed ("usa" → 🌍 Add "USA";
   map "Hogwarts 4 · Narnia 2 · Velaris 2 · Middle Earth 1"). Hand over to the tester.
+- 2026-11-21 tester: passed
