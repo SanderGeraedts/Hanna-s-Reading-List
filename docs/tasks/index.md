@@ -11,11 +11,10 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 - [T-0006 Add a "Did not finish" reading status, and a dashboard block that brings one back now and then](T-0006-did-not-finish-status.md): #187: books Hanna gave up on can be marked DNF; a dashboard block shows one of them at a time as a reminder to try again.
 - [T-0008 Bring back a dashboard block with new books she might like that aren't on her shelf](T-0008-dashboard-block-with-new-books-for-her.md): #186: a dashboard block of new releases by her favourite authors and in her favourite genres, from Open Library, leaving out books already on the shelf; built from the Recommended for you block removed in #123.
 - [T-0009 Keep the dashboard's favourites with the account, so every device shows the same ones](T-0009-favourites-follow-her-across-devices.md): #182: the starred dashboard blocks are saved per device today; keep them on the account's shelf record on the server, saved on their own like the reading goals.
-- [T-0010 Let the task index replace the roadmap issue #21](T-0010-the-task-index-replaces-the-roadmap-issue.md): #21 kept the order of open requests by hand; under the harness the generated task index does that, so #21 points to it and is closed.
 
 ## Doing
 
-None.
+- [T-0010 Let the task index replace the roadmap issue #21](T-0010-the-task-index-replaces-the-roadmap-issue.md): #21 kept the order of open requests by hand; under the harness the generated task index does that, so #21 points to it and is closed.
 
 ## Done
 

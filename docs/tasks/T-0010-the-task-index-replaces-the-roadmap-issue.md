@@ -2,7 +2,7 @@
 id: T-0010
 title: "Let the task index replace the roadmap issue #21"
 description: "#21 kept the order of open requests by hand; under the harness the generated task index does that, so #21 points to it and is closed."
-status: Open
+status: Doing
 depends_on: [T-0001]
 decisions: [D-0001, G-0012]
 raised_on: 2026-11-21
@@ -49,3 +49,4 @@ Nothing visible in the app.
 # Log
 
 - 2026-11-21 architect: Task written from #21.
+- 2026-11-21 developer: README's *Working on it with Claude* now says requests arrive as issues that the architect turns into tasks or questions, the order of work is `docs/tasks/index.md` and the decisions are `docs/decisions/index.md`. Harness check (local harness, `node .../harness/bin/harness.mjs check`, since the harness isn't installed until T-0001 merges): `✓ tasks: 10 tasks, index in step`, `✓ decisions: 8 records, index complete, 3 overrules valid`, `✓ engineers: 2 listed`; the six `✗ generated files ... run harness sync` lines (`.claude/agents/*`, `.githooks/pre-push`, `.claude/settings.json`) are expected until T-0001 (#192) lands. Docs only, no app change.
