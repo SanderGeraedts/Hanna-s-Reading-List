@@ -419,6 +419,68 @@ Choices taken while Hanna slept (the recommended option, none changes what she s
     closes because its square ticked (choice 18); no ring for a plain `:focus`, the gold ring for
     `:focus-visible`.
 
+## Review after building (2026-11-22)
+
+Reviewed by the UX designer against `git diff main...HEAD -- src` and the 40 screens in
+`docs/tasks/T-0017-screens/` (390×844 and 1280×800, lavender and midnight).
+
+**Verdict: matches the design. No must-fix items.** Handed to the tester.
+
+What matches, state by state:
+
+- **Squares.** Only the empty squares of the card being played are `<button type="button">`s,
+  named "`<label>`, suggest a book", with `aria-expanded`, `aria-controls` while open and the hover
+  title "Suggest a book". They get the `--border-strong` frame, and on hover `--surface-hover`
+  with `--accent-line`. The chosen square has the 2 px gold frame (`--accent` border plus a 1 px
+  shadow), its label in `--text` and a `--surface-sunken` background, so it never looks ticked
+  (`dashboard-suggest-*`). `three`, `fivemonth` and filled squares stay `role="img"` and look as
+  before (`dashboard-three-filled-*`). Another year's card has no buttons
+  (`challenges-other-year-*`). The grid's size and gaps are unchanged.
+- **Suggestion card.** It sits under the grid, inside the bingo block, and pushes the rest down.
+  There is no pop-up and no backdrop. On Challenges it sits above Share. It is a `<section>`
+  labelled by its `<h3>`, which shows the square's label unchanged. It uses only tokens
+  (`--surface-sunken`, `--accent-line` border, `--radius-card`, `--space-3`), so it looks the same
+  on both wallpapers. The card shows the `Cover` picture (not a button), the title in serif
+  `.next-title` and the author in `.muted` under it, all in one `aria-live="polite"` wrapper. Open
+  is a gold `.btn primary` named "Open `<title>`". 🎲 Another one is an outlined `.btn` named
+  "Another book for `<label>`", with the die `aria-hidden`, and it is left out when only one book
+  fits. The × is named "Close" and is 44×44 on the phone. Long titles wrap ("Middlemarch: A Study
+  of Provincial Life" in `dashboard-suggest-390-*`).
+- **No fit.** Only the heading, the × and "No book on your shelf fits this one yet."
+  (`dashboard-nofit-*`).
+- **Behaviour.** Opening or switching moves focus to the heading with `preventScroll`, then
+  scrolls the card into view only as far as needed (`block: 'nearest'`), with no smooth scrolling
+  under reduced motion. Tapping the chosen square again closes the card and leaves focus there.
+  × and Escape (a `keydown` on the block) close it and put focus back on the square. If the square
+  ticks, the card closes, and focus goes to `#bingo-title` only if focus was inside the card. A
+  book that no longer fits is replaced by another one. Nothing is stored. Open opens the book
+  panel (`dashboard-open-panel-*`).
+- **Wording.** Every text in *Exact wording* matches, and no explanation text was added
+  (D-0014).
+- **Sleep reads.** What next? and Make a wish show no sleep read on the test shelf
+  (`whatnext-*`, `wish-*`).
+
+The developer's choices:
+
+- **19. × last in tab order, drawn top right:** agreed. The Done-when asks for Open → 🎲 Another
+  one → × after the heading. The visual position is the usual place for a close button, and the
+  heading row keeps room for it (`padding-right`), so a long label never runs under it.
+- **20. Starting over leaves out the book on screen:** agreed. Showing the same book twice in a
+  row would look as if Another one did nothing. `drawSuggestion` keeps the single-book case
+  (Another one isn't shown then anyway).
+- **21. `#bingo-title` gets `tabIndex={-1}`:** agreed. It is needed so focus isn't lost when the
+  card closes under her. There is no ring for a plain `:focus` and a gold ring for
+  `:focus-visible`, as on the card's own heading.
+
+Differences that are fine, not to fix:
+
+- On the 390 px phone, Open and 🎲 Another one sit under each other, not side by side. The text
+  column next to the 5.5 rem cover is too narrow for both, and the design allows them to wrap as
+  whole buttons, Open first. What next? wraps the same way.
+- In `dashboard-suggest-390-lavender` and the 1280 screens, "Finish a series" looks lighter. That
+  is the hover state under the mouse pointer left there by the screenshot script, not a state of
+  its own.
+
 # Test
 
 To be written by the tester.
@@ -453,3 +515,5 @@ To be written by the tester.
   opened the book panel on that book; another year's card has no buttons; Open, Another one and ×
   44 px high on the phone (× 44×44); nothing scrolls sideways; What next? (25 picks) and Make a wish
   (6 wishes) never offered the sleep read; no page errors. Handed to the UX designer for review.
+- 2026-11-22 ux-designer: reviewed: matches the design, no must-fix items. Agreed with the
+  developer's choices 19–21 (review under *Design*). Handed to the tester.
