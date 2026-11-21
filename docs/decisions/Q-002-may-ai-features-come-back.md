@@ -5,7 +5,7 @@ description: "Hanna asked (#183) for completing series, book edges, quotes and b
 status: Open
 raised_on: 2026-11-21
 raised_by: architect
-issue: ""
+issue: "https://github.com/SanderGeraedts/Hanna-s-Reading-List/issues/189"
 blocks: []
 resolved_by: []
 tags: [outside-service, money]

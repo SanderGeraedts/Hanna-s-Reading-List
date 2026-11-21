@@ -115,8 +115,8 @@ Run in a fresh worktree of the task's branch (no `.netlify/` folder in it):
   the dev server there loads production's environment (#156). Build and run in a worktree
   without `.netlify/`, and never run `netlify link`.
 - `.nvmrc` and `netlify.toml`'s `NODE_VERSION` must name the same major version.
-- Open question **Q-003** (the `main` ruleset's code-owner review and bypass, `hold-paths`,
-  the guardrails): everything above goes ahead without it; only deleting or loosening the
+- Open question **Q-003**, issue #190 (the `main` ruleset's code-owner review and bypass,
+  `hold-paths`, the guardrails): everything above goes ahead without it; only deleting or loosening the
   `main` ruleset, `hold-paths` and rewriting the guardrails' rules wait for the answer.
 - Not in this task: decisions from closed issues (a later task), seeded demo data for previews
   (G-0019 gap, see the log).

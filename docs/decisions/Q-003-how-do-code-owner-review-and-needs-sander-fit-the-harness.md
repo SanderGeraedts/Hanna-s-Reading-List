@@ -5,7 +5,7 @@ description: "The existing ruleset 'main' requires a code-owner review for the p
 status: Open
 raised_on: 2026-11-21
 raised_by: architect
-issue: ""
+issue: "https://github.com/SanderGeraedts/Hanna-s-Reading-List/issues/190"
 blocks: [T-0001]
 resolved_by: []
 tags: [access, process]
