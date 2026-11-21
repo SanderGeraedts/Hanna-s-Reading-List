@@ -6,7 +6,7 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 
 ## Open
 
-None.
+- [T-0017 Suggest a book for an empty bingo square, keep A–Z tips to the series order and never recommend sleep reads](T-0017-bingo-suggestions.md): Tapping an empty square on the bingo card being played shows one fitting book from her pile (cover, title, Open, Another one), A–Z tips only offer want-to-read books she can start next, and readNextChoices leaves out sleep reads everywhere.
 
 ## Doing
 
