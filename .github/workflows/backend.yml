@@ -48,7 +48,7 @@ jobs:
       # throws, PocketBase exits and this fails before anything is published.
       - name: Check that it starts and applies the schema
         run: |
-          docker run -d --name pb -p 8090:8090 -e SIGNUP_EMAILS=allowed@example.com -e NIGHTLY_SECRET=ci-nightly-secret candidate \
+          docker run -d --name pb -p 8090:8090 -e SIGNUP_EMAILS=allowed@example.com,other@example.com -e NIGHTLY_SECRET=ci-nightly-secret candidate \
             serve --http=0.0.0.0:8090 --dir=/pb_data --migrationsDir=/pb_migrations --hooksDir=/pb_hooks --automigrate=false
           for i in $(seq 1 30); do
             curl -fsS http://127.0.0.1:8090/api/health && break
@@ -101,6 +101,48 @@ jobs:
           [ "$(curl -s "http://127.0.0.1:8090/api/collections/library_versions/records" -H "authorization: $utoken" | jq '.items | length')" = 0 ] \
             || [ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8090/api/collections/library_versions/records" -H "authorization: $utoken")" = 403 ] \
             || { echo "::error::library_versions readable by a user"; exit 1; }
+
+          # dashboard favourites (#182): the field exists, its owner can set and read it, nobody else can
+          fav() { curl -s "http://127.0.0.1:8090/api/collections/libraries/records/$lib?fields=id,favourites" "$@"; }
+          fav -H "authorization: $utoken" | jq -e 'has("favourites") and .favourites == null' >/dev/null \
+            || { echo "::error::libraries has no favourites field ($(fav -H "authorization: $utoken"))"; docker logs pb; exit 1; }
+          curl -fsS -o /dev/null -X PATCH "http://127.0.0.1:8090/api/collections/libraries/records/$lib" -H "authorization: $utoken" \
+            -H 'content-type: application/json' -d '{"favourites":["goal","reading"]}'
+          fav -H "authorization: $utoken" | jq -e '.favourites == ["goal","reading"]' >/dev/null \
+            || { echo "::error::favourites not saved ($(fav -H "authorization: $utoken"))"; exit 1; }
+          # saving the favourites left the books alone
+          curl -fsS "http://127.0.0.1:8090/api/collections/libraries/records/$lib" -H "authorization: $utoken" \
+            | jq -e '.books == [{"id":"a","title":"A"}]' >/dev/null || { echo "::error::a favourites save changed the books"; exit 1; }
+          [ "$(signup other@example.com)" = 200 ] || { echo "::error::a second allowlisted address could not sign up"; exit 1; }
+          otoken=$(curl -fsS -X POST http://127.0.0.1:8090/api/collections/users/auth-with-password \
+            -H 'content-type: application/json' -d '{"identity":"other@example.com","password":"signup-test-123"}' | jq -r .token)
+          [ "$(fav -o /dev/null -w '%{http_code}' -H "authorization: $otoken")" = 404 ] \
+            || { echo "::error::another user can read someone's favourites"; exit 1; }
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -X PATCH "http://127.0.0.1:8090/api/collections/libraries/records/$lib" \
+            -H "authorization: $otoken" -H 'content-type: application/json' -d '{"favourites":[]}')" = 404 ] \
+            || { echo "::error::another user can change someone's favourites"; exit 1; }
+          fav -H "authorization: $utoken" | jq -e '.favourites == ["goal","reading"]' >/dev/null \
+            || { echo "::error::favourites changed by another user"; exit 1; }
+
+          # the app's favourites route (pb_hooks/favourites.pb.js): stars and unstars in one transaction
+          star() { curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:8090/api/collections/libraries/favourites \
+            -H 'content-type: application/json' "$@"; }
+          [ "$(star -d '{"add":["goal"]}')" = 401 ] || { echo "::error::favourites route open while signed out"; exit 1; }
+          [ "$(star -H "authorization: $otoken" -d '{"add":["goal"]}')" = 404 ] \
+            || { echo "::error::favourites route answered for a user without a shelf"; exit 1; }
+          # ten stars sent at the same moment: none may be lost
+          for b in calendar heatmap breakdown authors records rhythm series pile badges covers; do
+            star -H "authorization: $utoken" -d "{\"add\":[\"$b\"],\"remove\":[\"reading\"]}" > "/tmp/star-$b" &
+          done
+          wait
+          for f in /tmp/star-*; do
+            [ "$(cat "$f")" = 200 ] || { echo "::error::a favourites save failed ($f: $(cat "$f"))"; docker logs pb; exit 1; }
+          done
+          fav -H "authorization: $utoken" \
+            | jq -e '(.favourites | sort) == (["goal","calendar","heatmap","breakdown","authors","records","rhythm","series","pile","badges","covers"] | sort)' >/dev/null \
+            || { echo "::error::stars lost when saved at the same moment ($(fav -H "authorization: $utoken"))"; docker logs pb; exit 1; }
+          curl -fsS "http://127.0.0.1:8090/api/collections/libraries/records/$lib" -H "authorization: $utoken" \
+            | jq -e '.books == [{"id":"a","title":"A"}]' >/dev/null || { echo "::error::the favourites route changed the books"; exit 1; }
 
       - name: Stop the check container
         if: always()

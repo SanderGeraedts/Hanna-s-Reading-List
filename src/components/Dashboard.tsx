@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Book, NewBook } from '#/lib/library'
 import { formatDuration } from '#/lib/listening'
 import {
@@ -39,21 +39,21 @@ import type { DayEntry } from '#/lib/readingLog'
 import { percentText } from '#/lib/progress'
 import {
   BLOCKS,
-  DEFAULT_LAYOUT,
   SECTIONS,
   SECTION_IDS,
-  cleanLayout,
   hideBlock,
   moveBlock,
   placeOf,
+  resetLayout,
   showBlock,
   singleColumn,
   toggleFold,
   toggleFavourite,
   favouriteColumns,
 } from '#/lib/dashboardLayout'
-import type { BlockId, DashboardLayout, SectionId } from '#/lib/dashboardLayout'
+import type { BlockId, SectionId } from '#/lib/dashboardLayout'
 import { TodayStrip } from './TodayStrip'
+import { useDashboardLayout } from './useDashboardLayout'
 import { BadgesCard, CoverWallCard, RhythmCard } from './NewBlocks'
 import { badges, newBadges } from '#/lib/badges'
 
@@ -103,32 +103,6 @@ export const toPeriod = ({ kind, year, month }: PeriodPick): Period =>
 export const periodLabel = ({ kind, year, month }: PeriodPick) =>
   kind === 'all' ? 'all time' : kind === 'year' ? `in ${year}` : `in ${monthName(month)} ${year}`
 
-const layoutKey = (accountId: string | null) => `hannas-reading-list:dashboard:${accountId ?? 'local'}`
-
-/** The layout, remembered on this device for this account (#85). */
-function useLayout(accountId: string | null) {
-  const key = layoutKey(accountId)
-  const [layout, setState] = useState<DashboardLayout>(() => {
-    try {
-      return cleanLayout(JSON.parse(localStorage.getItem(key) ?? 'null'))
-    } catch {
-      return DEFAULT_LAYOUT
-    }
-  })
-  const setLayout = useCallback(
-    (next: DashboardLayout) => {
-      setState(next)
-      try {
-        localStorage.setItem(key, JSON.stringify(next))
-      } catch {
-        /* storage blocked: it still holds for this visit */
-      }
-    },
-    [key],
-  )
-  return [layout, setLayout] as const
-}
-
 const NARROW = '(max-width: 860px)'
 
 export function useNarrow() {
@@ -165,7 +139,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
   // the period picked under "Books read"; the charts and records follow it
   const [pick, setPick] = useState<PeriodPick>({ kind: 'year', year: now.getFullYear(), month: now.getMonth() + 1 })
   const period = toPeriod(pick)
-  const [layout, setLayout] = useLayout(accountId)
+  const [layout, setLayout] = useDashboardLayout(accountId)
   const [arranging, setArranging] = useState(false)
   // the monthly challenge's editor is open (#144)
   const [challengeEditing, setChallengeEditing] = useState(false)
@@ -414,7 +388,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
         {arranging ? (
           <>
             <div className="dashboard-bar-actions">
-              <button className="btn small" onClick={() => setLayout(DEFAULT_LAYOUT)}>
+              <button className="btn small" onClick={() => setLayout(resetLayout(layout))}>
                 Reset
               </button>
               <button className="btn small primary" onClick={() => setArranging(false)}>

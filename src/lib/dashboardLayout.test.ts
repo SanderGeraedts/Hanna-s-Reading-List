@@ -7,6 +7,7 @@ import {
   hideBlock,
   moveBlock,
   placeOf,
+  resetLayout,
   showBlock,
   singleColumn,
   toggleFold,
@@ -103,5 +104,15 @@ describe('favourites on top', async () => {
     expect(saved.favourites).toEqual(['goal'])
     expect(saved.folded).toEqual(['favourites'])
     expect(cleanLayout({ ...saved, favourites: ['goal', 'nonsense', 'goal'] }).favourites).toEqual(['goal'])
+  })
+
+  it('Reset puts the default layout back but leaves the favourites alone (#182)', () => {
+    let l = toggleFavourite(toggleFavourite(DEFAULT_LAYOUT, 'goal'), 'calendar')
+    l = toggleFold(hideBlock(moveBlock(l, 'pace', 'fun', 1, 0), 'fact'), 'stats')
+    const reset = resetLayout(l)
+    expect(reset).toEqual({ ...DEFAULT_LAYOUT, favourites: ['goal', 'calendar'] })
+    // a copy: changing it later can't change the default
+    reset.sections.today[0].push('fact')
+    expect(DEFAULT_LAYOUT.sections.today[0]).not.toContain('fact')
   })
 })
