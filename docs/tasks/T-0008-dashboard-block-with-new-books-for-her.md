@@ -2,7 +2,7 @@
 id: T-0008
 title: "Bring back a dashboard block with new books she might like that aren't on her shelf"
 description: "#186: a dashboard block of new releases by her favourite authors and in her favourite genres, from Open Library, leaving out books already on the shelf; built from the Recommended for you block removed in #123."
-status: Open
+status: Doing
 depends_on: [T-0001]
 decisions: [D-0002, D-0003]
 raised_on: 2026-11-21
@@ -164,3 +164,28 @@ browser) or a local PocketBase, never from signing in or adding books on a deplo
   old block on the design system with "+ Want to read" and "Not for me" (quiet), "Suggest
   books" / "New suggestions", and notes in helper text, including one for Open Library being
   unreachable.
+- 2026-11-21 developer: checked the closed #123 (the block removed at her request) and #117
+  (AI removed): this brings back only the non-AI version from `20ea52a^` (Open Library's free
+  search, no key, no AI, no paid service), not *Complete your series* or *Upcoming releases*.
+  Built on branch `t-0008-new-for-you`, **based on T-0006's branch** (#199), because both add a
+  block to Today in `DEFAULT_LAYOUT` and the lines conflict. Restored `recommend.ts` with its
+  tests and `browseBooks` in `src/server/openLibrary.ts`; new `findSuggestions` tells "Open
+  Library can't be reached" (every request failed) apart from "nothing new" and "nothing to go
+  on". `NewForYouCard.tsx` ("New for you") follows the Design: right after *What next?*,
+  "Suggest books" / "New suggestions" / "Looking…", "+ Want to read" and "Not for me"
+  (`quiet`), names with the book's title, notes in helper text, a `role="status"` line after
+  adding, focus to the next line or the head button, no search when the dashboard opens (the
+  last suggestions are kept on the device; the old *Not for me* list is read again).
+  `cleanLayout` now puts a block added later after the block it follows by default, so saved
+  layouts get "New for you" right after *What next?*. `npm test`: 51 files, 351 tests passed
+  (T-0008's in `recommend.test.ts` and `NewForYouCard.test.tsx`); `npm run build`: built.
+  Local dev server with no backend, 320 px and 1280 px: opening the dashboard calls no Open
+  Library search (only the existing session and Storytel status calls); with the server
+  function blocked, *Suggest books* shows "Open Library can't be reached right now. Try again
+  later." and all 25 other blocks stay; with Open Library, six suggestions with reasons ("More
+  by Sarah J. Maas, whose books you rate ★4½", "New in Fantasy"), every line fully visible at
+  320 px, buttons 44 px on touch; *+ Want to read* put the book on the shelf as want-to-read
+  and it left the list; *Not for me* kept it gone after a reload. No code-owned path touched.
+  Note for the architect: two timing-based tests (`shelfLayout.test.ts` "is quick enough",
+  `library.sync.test.ts` first sign-in, `vite.config.test.ts`) failed once each on this busy
+  machine and passed on a rerun.

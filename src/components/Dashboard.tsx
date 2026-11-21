@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { Book } from '#/lib/library'
+import type { Book, NewBook } from '#/lib/library'
 import { formatDuration } from '#/lib/listening'
 import {
   BookLine,
@@ -23,6 +23,7 @@ import { seriesQuestions } from '#/lib/sleepSeries'
 import { WaitingCard } from './WaitingCard'
 import { AgainCard } from './AgainCard'
 import { AlphabetCard } from './AlphabetCard'
+import { NewForYouCard } from './NewForYouCard'
 import { storytelLink } from '#/lib/storytelLink'
 import { ChallengeCard } from './ChallengeCard'
 import { OpenLink } from './OpenLink'
@@ -81,6 +82,8 @@ interface DashboardProps extends Props {
   onOpenChallenges?: (section: ChallengeSection) => void
   /** "Open ›" on the calendar block: the Calendar page at that month (yyyy-mm) */
   onOpenCalendar?: (month: string) => void
+  /** put a suggested book on the shelf ("New for you") */
+  onAdd?: (book: NewBook) => void
 }
 
 export interface PeriodPick {
@@ -151,7 +154,7 @@ interface Drag {
   drop: Drop | null
 }
 
-export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChallenges, onOpenCalendar }: DashboardProps) {
+export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChallenges, onOpenCalendar, onAdd }: DashboardProps) {
   const open = (section: ChallengeSection) => (onOpenChallenges ? () => onOpenChallenges(section) : undefined)
   const now = new Date()
   // the period picked under "Books read"; the charts and records follow it
@@ -223,6 +226,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
     ),
     goal: <GoalCard books={books} accountId={accountId} onOpen={open('goal')} />,
     next: <ReadNextCard books={books} onShowBook={onShowBook} />,
+    newforyou: <NewForYouCard books={books} accountId={accountId} onAdd={onAdd ?? (() => {})} />,
     reading: <CurrentlyReadingCard books={books} onShowBook={onShowBook} />,
     series: <SeriesCard books={books} onShowBook={onShowBook} />,
     calendar: <Calendar books={books} onShowBook={onShowBook} onOpen={onOpenCalendar} />,

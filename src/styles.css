@@ -3539,3 +3539,53 @@ button.today-item:hover {
   fill: none;
   stroke-width: 4;
 }
+
+/* ---- new for you (#186; "Recommended for you" before #123) ------------------- */
+.recommend-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+.recommend-list:empty {
+  display: none;
+}
+.recommend-list li {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+.recommend-list .dash-cover.small {
+  width: 3.2rem;
+}
+.recommend-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.recommend-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.recommend-actions .btn {
+  white-space: nowrap;
+}
+@media (pointer: coarse) {
+  .recommend-actions .btn,
+  .recommend-card .dash-card-head .btn {
+    min-height: 44px;
+  }
+}
+/* the line after "+ Want to read" is announced; until then it takes no room */
+.recommend-status:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
