@@ -7,7 +7,7 @@ depends_on: []
 decisions: [D-0002, D-0014, D-0020, D-0022, D-0023]
 raised_on: 2026-11-21
 done_on: ""
-result: []
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/223"]
 ---
 
 # Goal
@@ -187,7 +187,7 @@ The existing line, now with a count after each land, most first, ties alphabetic
 - 2026-11-21 architect: task written
 - 2026-11-21 ux-designer: designed
 - 2026-11-21 requester: Hanna confirmed the design, including the designer's four choices
-- 2026-11-21 developer: built in a draft pull request (see `result`). New `src/lib/mapCountries.ts`
+- 2026-11-21 developer: built in draft pull request #223. New `src/lib/mapCountries.ts`
   (the 176 country names the map draws: world-atlas without Antarctica, which the map leaves out)
   and `src/lib/setIn.ts` (chip kind and label, `addPlace`/`removePlace` that always return an array,
   `placeFromTyped`: map country by the map's name, a name the map knows as a country kept as typed
