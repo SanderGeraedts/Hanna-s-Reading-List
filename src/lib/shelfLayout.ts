@@ -147,6 +147,21 @@ export interface ShelfFit {
 /** Header room and side margin the camera keeps around the bookcase. */
 export const FRAME = { vertical: 1.28, horizontal: 1.12 }
 
+/** height of the crown moulding on top of the bookcase (BookshelfScene's Bookcase) */
+export const CROWN_HEIGHT = 0.08
+
+/**
+ * Scrolled to the top, how far the top of the view is above the top of the
+ * case (world units). Without a header height (desktops): 14% of the view, as
+ * before. On a phone the header's real height decides (#181): the crown and
+ * the top shelf start below it, so the header never covers the top shelf.
+ */
+export function topGap(viewH: number, worldPerPx: number, headerPx: number) {
+  const base = viewH * 0.14
+  if (!(headerPx > 0)) return base
+  return Math.max(base, (headerPx + 8) * worldPerPx + CROWN_HEIGHT)
+}
+
 /**
  * Shapes the bookcase to the screen: wide on desktop, narrow and taller on a
  * portrait phone so the camera can come closer and the books appear bigger.
