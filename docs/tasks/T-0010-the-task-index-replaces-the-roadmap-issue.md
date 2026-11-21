@@ -2,12 +2,12 @@
 id: T-0010
 title: "Let the task index replace the roadmap issue #21"
 description: "#21 kept the order of open requests by hand; under the harness the generated task index does that, so #21 points to it and is closed."
-status: Doing
+status: Done
 depends_on: [T-0001]
 decisions: [D-0001, G-0012]
 raised_on: 2026-11-21
-done_on: ""
-result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/201"]
+done_on: 2026-11-21
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/201", "https://github.com/SanderGeraedts/Hanna-s-Reading-List/issues/21#issuecomment-7060428401"]
 ---
 
 # Goal
@@ -50,3 +50,4 @@ Nothing visible in the app.
 
 - 2026-11-21 architect: Task written from #21.
 - 2026-11-21 developer: README's *Working on it with Claude* now says requests arrive as issues that the architect turns into tasks or questions, the order of work is `docs/tasks/index.md` and the decisions are `docs/decisions/index.md`. Harness check (local harness, `node .../harness/bin/harness.mjs check`, since the harness isn't installed until T-0001 merges): `✓ tasks: 10 tasks, index in step`, `✓ decisions: 8 records, index complete, 3 overrules valid`, `✓ engineers: 2 listed`; the six `✗ generated files ... run harness sync` lines (`.claude/agents/*`, `.githooks/pre-push`, `.claude/settings.json`) are expected until T-0001 (#192) lands. Docs only, no app change.
+- 2026-11-21 developer: #201 green (`test` pass) and merged (8c9b083). Commented on #21 (no one addressed or mentioned) linking `docs/tasks/index.md` and `docs/decisions/index.md` on main, and closed it. `gh issue view 21 ... --jq '.state, .comments[-1].body'` prints `CLOSED` and the comment with the link to `https://github.com/SanderGeraedts/Hanna-s-Reading-List/blob/main/docs/tasks/index.md` (that address returns 200). Note: T-0001 (#192) hasn't merged yet; #21 was closed now because the Note's reason (links that work) already holds, both indexes being on main. Docs-only, so no separate tester run.
