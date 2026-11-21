@@ -5,10 +5,11 @@ import { useFrame } from '@react-three/fiber'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import type { ThreeEvent } from '@react-three/fiber'
 import type { Book } from '#/lib/library'
-import { timesRead } from '#/lib/library'
+import { hasMedal, timesRead } from '#/lib/library'
 import type { BookDims, Slot } from '#/lib/shelfLayout'
-import { METALS, medalFaceTexture, medalLayout, medalTier, pageTextures, paintBack, paintEdges, paintFallbackCover, paintSpine } from './textures'
+import { METALS, medalFaceTexture, medalLayout, medalTier, pageTextures, paintBack, paintEdges, paintFallbackCover, paintSpine, plainTexture } from './textures'
 import { cleanEdges } from '#/lib/edges'
+import { coverSize, facesToPaint } from '#/lib/bookFaces'
 
 export interface InspectTarget {
   rotY: number
@@ -21,6 +22,11 @@ export interface BookMeshProps {
   clipColor?: string
   /** a sleep read: a small moon on the spine */
   sleep?: boolean
+  /**
+   * on a phone: the book as one simple block, as before the hardcovers (#181):
+   * one piece to draw instead of about nine, so a full shelf fits on the phone
+   */
+  simple?: boolean
   dims: BookDims
   slot: Slot
   selected: boolean
@@ -46,13 +52,35 @@ const TAU = Math.PI * 2
 const damp = THREE.MathUtils.damp
 const smooth = THREE.MathUtils.smoothstep
 
+/** While searching (#184): the glow a match gets on top of the shelf's lighting. */
+export const MATCH_GLOW = 0.6
+/** While searching: how much a book that doesn't match dims (0.82 leaves it at 18%). */
+export const MATCH_DIM = 0.82
+/** While searching: how far a match comes forward off the shelf (a hover is 0.035). */
+export const MATCH_FORWARD = 0.06
+
+/**
+ * How a book is lit: `fly` from 0 (on the shelf) to 1 (taken out, lit evenly),
+ * `glow` and `dim` from 0 to 1 while a search is on. `emissive` is the glow on
+ * top of the scene's light; `shade` the brightness of the lit colour.
+ */
+export function bookLight(fly: number, glow: number, dim: number) {
+  return {
+    emissive: fly + MATCH_GLOW * glow * (1 - fly),
+    shade: (1 - fly) * (1 - MATCH_DIM * dim),
+  }
+}
+
 /** Shift `angle` by whole turns so it is as close as possible to `ref`. */
 export function nearestTurn(angle: number, ref: number) {
   return angle + Math.round((ref - angle) / TAU) * TAU
 }
 
 function useCoverTexture(url: string | undefined, bookAspect: number) {
+  // url is only set once the book has been taken out (see facesToPaint)
   const [tex, setTex] = useState<THREE.Texture | null>(null)
+  // the url whose image could not be loaded (then the painted stand-in shows)
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
   useEffect(() => {
     if (!url) return
     let disposed = false
@@ -60,8 +88,19 @@ function useCoverTexture(url: string | undefined, bookAspect: number) {
     new THREE.TextureLoader().load(
       url,
       (t) => {
+        // big covers are drawn smaller first, so each takes little picture memory
+        const src = t.image as HTMLImageElement
+        const size = coverSize(src.width, src.height)
+        if (size.width < src.width && typeof document !== 'undefined') {
+          const c = document.createElement('canvas')
+          c.width = size.width
+          c.height = size.height
+          c.getContext('2d')?.drawImage(src, 0, 0, size.width, size.height)
+          // three.js uploads a canvas just like an image
+          t.image = c as unknown as HTMLImageElement
+        }
         t.colorSpace = THREE.SRGBColorSpace
-        t.anisotropy = 8
+        t.anisotropy = 4
         // centre-crop covers that are wider than the book (e.g. square audiobook art)
         const img = t.image as { width: number; height: number }
         const imgAspect = img.width / img.height
@@ -74,7 +113,11 @@ function useCoverTexture(url: string | undefined, bookAspect: number) {
         setTex(t)
       },
       undefined,
-      () => setTex(null),
+      () => {
+        if (disposed) return
+        setTex(null)
+        setFailedUrl(url)
+      },
     )
     return () => {
       disposed = true
@@ -82,7 +125,7 @@ function useCoverTexture(url: string | undefined, bookAspect: number) {
       setTex(null)
     }
   }, [url, bookAspect])
-  return tex
+  return { tex, failed: !!url && failedUrl === url }
 }
 
 export function BookMesh(props: BookMeshProps) {
@@ -100,28 +143,29 @@ export function BookMesh(props: BookMeshProps) {
     fov,
     inspectFrame,
     sleep = false,
+    simple = false,
   } = props
   const group = useRef<THREE.Group>(null)
 
   // ---- textures ---------------------------------------------------------
-  const cover = useCoverTexture(book.coverUrl, dims.w / dims.h)
-  const painted = useMemo(
-    () => ({
-      spine: paintSpine(book, dims, sleep),
-      back: paintBack(book, dims),
-      fallback: paintFallbackCover(book, dims),
-    }),
-    // repaint only when something visible changes
-    [book.title, book.authors.join(), book.color, book.status, book.readCount, book.language, book.description, book.isbn, book.pages, book.minutes, book.formats, book.format, dims.w, dims.h, dims.t, sleep],
-  )
-  useEffect(
-    () => () => {
-      painted.spine.dispose()
-      painted.back.dispose()
-      painted.fallback.dispose()
-    },
-    [painted],
-  )
+  // the back and the cover are only needed once the book has been taken out, and kept after that
+  const [takenOut, setTakenOut] = useState(selected)
+  if (selected && !takenOut) setTakenOut(true)
+  const { tex: cover, failed: coverFailed } = useCoverTexture(takenOut ? book.coverUrl : undefined, dims.w / dims.h)
+  const paint = facesToPaint({ coverUrl: book.coverUrl, coverFailed, takenOut })
+  // repaint only when something visible changes
+  const looks = [book.title, book.authors.join(), book.color, book.status, book.readCount, book.language, book.description, book.isbn, book.pages, book.minutes, book.formats, book.format, dims.w, dims.h, dims.t]
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const spineTex = useMemo(() => paintSpine(book, dims, sleep), [...looks, sleep])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const backTex = useMemo(() => (paint.back ? paintBack(book, dims) : null), [...looks, paint.back])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const fallbackTex = useMemo(() => (paint.fallback ? paintFallbackCover(book, dims) : null), [...looks, paint.fallback])
+  useEffect(() => () => spineTex.dispose(), [spineTex])
+  useEffect(() => () => backTex?.dispose(), [backTex])
+  useEffect(() => () => fallbackTex?.dispose(), [fallbackTex])
+  const plain = plainTexture(book.color)
+  const painted = { spine: spineTex, back: backTex ?? plain, fallback: fallbackTex ?? plain }
 
   // her own page edges (#98), or the plain paper every book shares
   const edgesKey = JSON.stringify(cleanEdges(book.edges) ?? null)
@@ -162,34 +206,46 @@ export function BookMesh(props: BookMeshProps) {
       front: [edge, edge, edge, edge, front, edge],
       back: [edge, edge, edge, edge, edge, back],
       spine: [edge, spine, edge, edge, edge, edge],
+      // the simple block: fore-edge, spine, top, bottom, front, back
+      block: [fore, spine, topBottom, topBottom, front, back],
+      // the simple block on the shelf: the paper, then the spine (see shelfBlock)
+      shelf: [topBottom, spine],
     }
-  }, [painted, cover, edges])
+    // painted is a new object every render: depend on the textures in it
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spineTex, backTex, fallbackTex, plain, cover, edges])
   useEffect(() => () => materials.all.forEach((m) => m.dispose()), [materials])
 
   // every book is a hardcover: two boards and a spine round a page block that
   // is a little smaller, so the covers stick out past the pages (a few mm),
   // with softly rounded board edges
   const parts = useMemo(() => {
+    if (simple) return { block: new THREE.BoxGeometry(dims.w, dims.h, dims.t), shelfBlock: shelfBlock(dims) }
     // thick enough boards and a clear overhang, so it reads as a hardcover from the shelf
     const board = THREE.MathUtils.clamp(dims.t * 0.1, 0.0018, 0.0032)
     const over = Math.min(0.0045, dims.w * 0.04, dims.h * 0.025)
     const round = board * 0.45
     const pagesW = dims.w - board - over
     return {
-      board,
-      pages: { geometry: new THREE.BoxGeometry(pagesW, dims.h - 2 * over, dims.t - 2 * board), x: -dims.w / 2 + board + pagesW / 2 },
-      board3: new RoundedBoxGeometry(dims.w - board, dims.h, board, 1, round),
-      spine: new RoundedBoxGeometry(board, dims.h, dims.t, 1, round),
+      hardcover: {
+        board,
+        pages: { geometry: new THREE.BoxGeometry(pagesW, dims.h - 2 * over, dims.t - 2 * board), x: -dims.w / 2 + board + pagesW / 2 },
+        board3: new RoundedBoxGeometry(dims.w - board, dims.h, board, 1, round),
+        spine: new RoundedBoxGeometry(board, dims.h, dims.t, 1, round),
+      },
     }
-  }, [dims.w, dims.h, dims.t])
+  }, [dims.w, dims.h, dims.t, simple])
   useEffect(
     () => () => {
-      parts.pages.geometry.dispose()
-      parts.board3.dispose()
-      parts.spine.dispose()
+      parts.block?.dispose()
+      parts.shelfBlock?.dispose()
+      parts.hardcover?.pages.geometry.dispose()
+      parts.hardcover?.board3.dispose()
+      parts.hardcover?.spine.dispose()
     },
     [parts],
   )
+  const hc = parts.hardcover
 
   // ---- animation --------------------------------------------------------
   const anim = useRef({
@@ -236,7 +292,7 @@ export function BookMesh(props: BookMeshProps) {
     const out = smooth(p, 0, 0.35)
     const fly = smooth(p, 0.2, 1)
     tmp.base.lerpVectors(a.shelf, a.drag, a.dragAmt)
-    tmp.base.z += 0.035 * a.hover + 0.28 * out + 0.03 * a.glow
+    tmp.base.z += 0.035 * a.hover + 0.28 * out + MATCH_FORWARD * a.glow
     tmp.base.y += 0.01 * a.hover
 
     // distance at which the book fills `fill` of the view height
@@ -253,9 +309,8 @@ export function BookMesh(props: BookMeshProps) {
     )
 
     // fade from lit to evenly lit as the book flies out (and back as it returns);
-    // a search match glows a little, the other books dim
-    const glowing = fly + 0.22 * a.glow * (1 - fly)
-    const shade = (1 - fly) * (1 - 0.65 * a.dim)
+    // a search match glows, the other books dim
+    const { emissive: glowing, shade } = bookLight(fly, a.glow, a.dim)
     const first = materials.all[0]
     if (Math.abs(first.emissiveIntensity - glowing) > 0.001 || Math.abs(first.color.r - shade) > 0.001) {
       for (const m of materials.all) {
@@ -283,17 +338,45 @@ export function BookMesh(props: BookMeshProps) {
 
   return (
     <group ref={group} position={[slot.x, slot.y, slot.z]} rotation={[0, SPINE_OUT, 0]}>
-      <mesh {...part} material={materials.pages} geometry={parts.pages.geometry} position={[parts.pages.x, 0, 0]} />
-      <mesh {...part} material={materials.front} geometry={parts.board3} position={[parts.board / 2, 0, dims.t / 2 - parts.board / 2]} />
-      <mesh {...part} material={materials.back} geometry={parts.board3} position={[parts.board / 2, 0, -dims.t / 2 + parts.board / 2]} />
-      <mesh {...part} material={materials.spine} geometry={parts.spine} position={[-dims.w / 2 + parts.board / 2, 0, 0]} />
+      {parts.block &&
+        // on the shelf two draws (paper and spine) instead of six; taken out, every side with its picture
+        (takenOut ? (
+          <mesh {...part} material={materials.block} geometry={parts.block} />
+        ) : (
+          <mesh {...part} material={materials.shelf} geometry={parts.shelfBlock} />
+        ))}
+      {hc && (
+        <>
+          <mesh {...part} material={materials.pages} geometry={hc.pages.geometry} position={[hc.pages.x, 0, 0]} />
+          <mesh {...part} material={materials.front} geometry={hc.board3} position={[hc.board / 2, 0, dims.t / 2 - hc.board / 2]} />
+          <mesh {...part} material={materials.back} geometry={hc.board3} position={[hc.board / 2, 0, -dims.t / 2 + hc.board / 2]} />
+          <mesh {...part} material={materials.spine} geometry={hc.spine} position={[-dims.w / 2 + hc.board / 2, 0, 0]} />
+        </>
+      )}
       {(book.status === 'reading' || book.status === 'paused') && (
         <Bookmark dims={dims} progress={book.progress ?? 0} color={props.clipColor ?? RAINBOW[0]} />
       )}
-      {book.status === 'read' && <Medal dims={dims} count={timesRead(book)} />}
-      <SpineRidges dims={dims} read={book.status === 'read'} />
+      {hasMedal(book) && <Medal dims={dims} count={timesRead(book)} rim={!simple} />}
+      {!simple && <SpineRidges dims={dims} read={book.status === 'read'} />}
     </group>
   )
+}
+
+/**
+ * A book's block for the shelf on a phone, drawn in two parts instead of six:
+ * every side but the spine with one material (the paper), then the spine
+ * (BoxGeometry side 1, -x). Front and back face the books next to it there.
+ */
+export function shelfBlock(dims: BookDims) {
+  const g = new THREE.BoxGeometry(dims.w, dims.h, dims.t)
+  const index = g.index!.array
+  // BoxGeometry with one segment: six indices per side, in side order +x, -x, +y, -y, +z, -z
+  const side = (i: number) => Array.from(index.slice(i * 6, i * 6 + 6))
+  g.setIndex([...side(0), ...side(2), ...side(3), ...side(4), ...side(5), ...side(1)])
+  g.clearGroups()
+  g.addGroup(0, 30, 0)
+  g.addGroup(30, 6, 1)
+  return g
 }
 
 function damp3(v: THREE.Vector3, x: number, y: number, z: number, lambda: number, dt: number) {
@@ -423,15 +506,18 @@ export function getMedalMaterials(count: number) {
   return mats
 }
 
-function Medal({ dims, count }: { dims: BookDims; count: number }) {
+function Medal({ dims, count, rim = true }: { dims: BookDims; count: number; rim?: boolean }) {
   const { r, fromBottom } = medalLayout(dims)
   const mats = getMedalMaterials(count)
   return (
     // spine is the -x face; the disc faces outwards along -x
     <group position={[-dims.w / 2, -dims.h / 2 + fromBottom, 0]}>
-      <mesh castShadow material={mats.rim} position={[-MEDAL_DEPTH / 2, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[r, r, MEDAL_DEPTH, 40, 1, true]} />
-      </mesh>
+      {/* on a phone just the face: the thin rim is one more draw for every finished book */}
+      {rim && (
+        <mesh castShadow material={mats.rim} position={[-MEDAL_DEPTH / 2, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[r, r, MEDAL_DEPTH, 40, 1, true]} />
+        </mesh>
+      )}
       <mesh material={mats.face} position={[-MEDAL_DEPTH, 0, 0]} rotation={[0, -Math.PI / 2, 0]}>
         <circleGeometry args={[r, 40]} />
       </mesh>

@@ -7,6 +7,7 @@ import { monthWeeks } from '#/lib/stats'
 import { sleepReadIds } from '#/lib/sleepSeries'
 import { monthReleases, monthSummary, summaryText, yearLevels } from '#/lib/calendarPage'
 import { Cover, WEEKDAYS, dayPile, mark, monthName } from './Dashboard'
+import { WrapUpCard } from './WrapUpCard'
 import { dayStory } from './DashboardExtras'
 import { JournalNote } from './JournalNote'
 import { hasNote } from '#/lib/journal'
@@ -33,6 +34,7 @@ export function CalendarPage({ books, onShowBook, onUpdate, startMonth }: Props)
   const [year, setYear] = useState(() => (startMonth ? Number(startMonth.slice(0, 4)) : now.getFullYear()))
   const [month, setMonth] = useState(() => (startMonth ? Number(startMonth.slice(5, 7)) : now.getMonth() + 1))
   const [picked, setPicked] = useState<number | null>(null)
+  const [wrapping, setWrapping] = useState(false)
   /** which book is on top of each day's pile; new each time the page opens */
   const [shuffle] = useState(() => Math.floor(Math.random() * 1000))
   const sleep = useMemo(() => sleepReadIds(books), [books])
@@ -78,7 +80,14 @@ export function CalendarPage({ books, onShowBook, onUpdate, startMonth }: Props)
           <button className="btn small" onClick={() => show(now.getFullYear(), now.getMonth() + 1)}>
             Today
           </button>
+          {/* the month's wrap-up, for this month and the ones before it */}
+          {mode === 'month' && (year < now.getFullYear() || (year === now.getFullYear() && month <= now.getMonth() + 1)) && (
+            <button className="btn small" onClick={() => setWrapping(true)}>
+              ✨ Wrap-up
+            </button>
+          )}
         </div>
+        {wrapping && <WrapUpCard books={books} year={year} month={month} onShowBook={onShowBook} onClose={() => setWrapping(false)} />}
         {mode === 'month' ? (
           <MonthView
             books={books}

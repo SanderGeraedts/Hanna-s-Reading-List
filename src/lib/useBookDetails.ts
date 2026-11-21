@@ -6,6 +6,7 @@ import { guessLanguage } from './languages'
 import { seriesGroups } from './series'
 import { findOnOpenLibrary } from './storytelImport'
 import { titleQueries } from './titles'
+import { needsPlaces } from './places'
 
 const WORKERS = 3
 
@@ -39,6 +40,16 @@ async function lookUpGenres(b: Book): Promise<string[]> {
     }
   }
   return []
+}
+
+/**
+ * Where a finished book is set, from its Open Library work (for the map of
+ * her books). An empty list means Open Library knows none.
+ */
+async function lookUpPlaces(b: Book): Promise<string[]> {
+  const workKey = b.workKey ?? (await findOnOpenLibrary(b))?.workKey
+  if (!workKey) return []
+  return (await getWorkDetails({ data: { workKey } })).places ?? []
 }
 
 /**
@@ -92,7 +103,7 @@ export function useBookDetails(
   const tried = useRef(new Set<string>())
   const seen = useRef(new Set<string>())
   const borrowed = useRef(new Set<string>())
-  const queue = useRef<Array<{ book: Book; genres: boolean; facts: boolean }>>([])
+  const queue = useRef<Array<{ book: Book; genres: boolean; facts: boolean; places?: boolean }>>([])
   const running = useRef(0)
 
   useEffect(() => {
@@ -110,7 +121,9 @@ export function useBookDetails(
       }
       const genres = first && b.genres === undefined
       const facts = b.factsChecked !== (b.isbn ?? '') && !(b.isbn && b.published)
-      if (genres || facts) queue.current.push({ book: b, genres, facts })
+      // where a finished book is set, once (reading in pictures: the map)
+      const places = first && needsPlaces(b)
+      if (genres || facts || places) queue.current.push({ book: b, genres, facts, places })
     }
 
     const work = async () => {
@@ -121,6 +134,7 @@ export function useBookDetails(
           try {
             if (job.genres) updateBook(b.id, { genres: await lookUpGenres(b) })
             if (job.facts) updateBook(b.id, await lookUpFacts(b))
+            if (job.places) updateBook(b.id, { places: await lookUpPlaces(b) })
           } catch {
             /* Open Library unreachable: try again on the next visit */
           }

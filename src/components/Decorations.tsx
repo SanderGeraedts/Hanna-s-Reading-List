@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import type { DecorKind, DecorSlot } from '#/lib/shelfLayout'
 import { SHELF } from '#/lib/shelfLayout'
 import { toTexture } from './textures'
+
+/** On a phone the decorations sit still (no flicker, steam, breathing or twinkling): less work every frame. */
+export const StillDecorations = createContext(false)
 
 /**
  * Shelf decorations, modelled from primitives. Each model's origin is the
@@ -310,9 +313,10 @@ function Candle() {
   )
   useEffect(() => () => Object.values(m).forEach((x) => x.dispose()), [m])
 
+  const still = useContext(StillDecorations)
   useFrame(({ clock }) => {
     const f = flame.current
-    if (!f) return
+    if (!f || still) return
     const t = clock.elapsedTime
     const flicker = 1 + Math.sin(t * 13) * 0.06 + Math.sin(t * 23.7) * 0.05
     f.scale.set(0.55, 1.25 * flicker, 0.55)
@@ -416,9 +420,10 @@ function SleepingCat() {
   useEffect(() => () => tail.dispose(), [tail])
 
   // a slow breath, about every four seconds
+  const still = useContext(StillDecorations)
   useFrame(({ clock }) => {
     const b = body.current
-    if (b) b.scale.y = 1 + Math.sin(clock.elapsedTime * 1.5) * 0.035
+    if (b && !still) b.scale.y = 1 + Math.sin(clock.elapsedTime * 1.5) * 0.035
   })
 
   return (
@@ -483,9 +488,10 @@ function TeaMug() {
   useEffect(() => () => handle.dispose(), [handle])
 
   // three wisps that rise, widen and fade, over and over
+  const still = useContext(StillDecorations)
   useFrame(({ clock }) => {
     const g = steam.current
-    if (!g) return
+    if (!g || still) return
     g.children.forEach((w, i) => {
       const t = (clock.elapsedTime * 0.35 + i / 3) % 1
       w.position.y = 0.085 + t * 0.07
@@ -521,7 +527,7 @@ function TeaMug() {
       <mesh material={m.tag} position={[-0.0325, 0.036, 0.004]} rotation={[0, Math.PI / 2, 0]}>
         <boxGeometry args={[0.014, 0.018, 0.0008]} />
       </mesh>
-      <group ref={steam}>
+      <group ref={steam} visible={!still}>
         {wisps.map((mat, i) => (
           <mesh key={i} material={mat} position={[0, 0.09, 0]}>
             <sphereGeometry args={[0.012, 10, 8]} />
@@ -573,12 +579,36 @@ function TrailingIvy() {
       return { geometry, leaves }
     })
   }, [])
+  // every leaf of one colour is one instanced mesh: two draws instead of about thirty
+  const leafSets = useMemo(() => {
+    const geometry = new THREE.CircleGeometry(0.0075, 7)
+    const all = vines.flatMap((v) => v.leaves)
+    const o = new THREE.Object3D()
+    const make = (light: boolean) => {
+      const list = all.filter((l) => l.light === light)
+      const mesh = new THREE.InstancedMesh(geometry, light ? m.leafLight : m.leaf, Math.max(1, list.length))
+      mesh.count = list.length
+      list.forEach((l, i) => {
+        o.position.set(l.pos.x + l.side * 0.005, l.pos.y, l.pos.z + 0.002)
+        o.rotation.set(0.3, l.side * 0.6, l.side * 0.5)
+        o.scale.set(l.size, l.size * 1.1, l.size)
+        o.updateMatrix()
+        mesh.setMatrixAt(i, o.matrix)
+      })
+      mesh.castShadow = true
+      return mesh
+    }
+    return { geometry, dark: make(false), light: make(true) }
+  }, [vines, m])
   useEffect(
     () => () => {
       Object.values(m).forEach((x) => x.dispose())
       vines.forEach((v) => v.geometry.dispose())
+      leafSets.geometry.dispose()
+      leafSets.dark.dispose()
+      leafSets.light.dispose()
     },
-    [m, vines],
+    [m, vines, leafSets],
   )
 
   return (
@@ -596,22 +626,10 @@ function TrailingIvy() {
         </Part>
       ))}
       {vines.map((v, i) => (
-        <group key={i}>
-          <mesh geometry={v.geometry} material={m.vine} castShadow />
-          {v.leaves.map((l, j) => (
-            <mesh
-              key={j}
-              material={l.light ? m.leafLight : m.leaf}
-              position={[l.pos.x + l.side * 0.005, l.pos.y, l.pos.z + 0.002]}
-              rotation={[0.3, l.side * 0.6, l.side * 0.5]}
-              scale={[l.size, l.size * 1.1, l.size]}
-              castShadow
-            >
-              <circleGeometry args={[0.0075, 7]} />
-            </mesh>
-          ))}
-        </group>
+        <mesh key={i} geometry={v.geometry} material={m.vine} castShadow />
       ))}
+      <primitive object={leafSets.dark} />
+      <primitive object={leafSets.light} />
     </group>
   )
 }
@@ -622,7 +640,6 @@ function TrailingIvy() {
 // ---------------------------------------------------------------------------
 
 export function FairyLights({ width, top }: { width: number; top: number }) {
-  const bulbs = useRef<THREE.Group>(null)
   const { wire, points } = useMemo(() => {
     // pinned at both sides and every ~40 cm, drooping a little in between
     const spans = Math.max(2, Math.round(width / 0.4))
@@ -645,34 +662,53 @@ export function FairyLights({ width, top }: { width: number; top: number }) {
   const m = useMemo(
     () => ({
       wire: new THREE.MeshStandardMaterial({ color: '#b08d57', metalness: 0.6, roughness: 0.4 }),
-      bulb: new THREE.MeshBasicMaterial({ color: '#ffd38a', toneMapped: false }),
+      // white: each bulb's own warm colour comes from its instance colour
+      bulb: new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false }),
     }),
     [],
   )
-  // each bulb its own colour, so it can twinkle on its own
-  const bulbMats = useMemo(() => points.map(() => m.bulb.clone()), [points, m])
+  // all bulbs are one instanced mesh (one draw), each with its own colour to twinkle
+  const bulbMesh = useMemo(() => {
+    const geometry = new THREE.SphereGeometry(0.0042, 10, 8)
+    const mesh = new THREE.InstancedMesh(geometry, m.bulb, Math.max(1, points.length))
+    mesh.count = points.length
+    const o = new THREE.Object3D()
+    const warm = new THREE.Color(1, 0.83, 0.54)
+    points.forEach((pt, i) => {
+      o.position.set(pt.x, pt.y - 0.004, pt.z + 0.002)
+      o.scale.set(1, 1.4, 1)
+      o.updateMatrix()
+      mesh.setMatrixAt(i, o.matrix)
+      mesh.setColorAt(i, warm)
+    })
+    return mesh
+  }, [points, m])
   useEffect(() => () => wire.dispose(), [wire])
   useEffect(() => () => Object.values(m).forEach((x) => x.dispose()), [m])
-  useEffect(() => () => bulbMats.forEach((x) => x.dispose()), [bulbMats])
+  useEffect(
+    () => () => {
+      bulbMesh.geometry.dispose()
+      bulbMesh.dispose()
+    },
+    [bulbMesh],
+  )
+  const glowColor = useMemo(() => new THREE.Color(), [])
 
+  const still = useContext(StillDecorations)
   useFrame(({ clock }) => {
+    if (still) return
     const t = clock.elapsedTime
-    bulbMats.forEach((mat, i) => {
+    for (let i = 0; i < points.length; i++) {
       const glow = 0.78 + 0.22 * Math.sin(t * (0.9 + (i % 5) * 0.23) + i * 1.7)
-      mat.color.setRGB(glow, glow * 0.83, glow * 0.54)
-    })
+      bulbMesh.setColorAt(i, glowColor.setRGB(glow, glow * 0.83, glow * 0.54))
+    }
+    if (bulbMesh.instanceColor) bulbMesh.instanceColor.needsUpdate = true
   })
 
   return (
     <group>
       <mesh geometry={wire} material={m.wire} />
-      <group ref={bulbs}>
-        {points.map((pt, i) => (
-          <mesh key={i} material={bulbMats[i]} position={[pt.x, pt.y - 0.004, pt.z + 0.002]} scale={[1, 1.4, 1]}>
-            <sphereGeometry args={[0.0042, 10, 8]} />
-          </mesh>
-        ))}
-      </group>
+      <primitive object={bulbMesh} />
     </group>
   )
 }

@@ -2,12 +2,12 @@
 id: T-0004
 title: "Make the text on dark spines white again instead of gold"
 description: "#180: since every book became a hardcover, dark spines get gold lettering; put the white lettering back, keeping dark lettering on light spines."
-status: Open
+status: Done
 depends_on: [T-0001]
 decisions: [D-0002]
 raised_on: 2026-11-21
-done_on: ""
-result: []
+done_on: "2026-11-21"
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/195"]
 ---
 
 # Goal
@@ -98,7 +98,88 @@ have the production account server's address. Until the Engineer has confirmed t
 review and the tester's screenshots come from a local dev server with no backend (shelf in the
 browser) or a local PocketBase, never from signing in or adding books on a deploy preview.
 
+## Review after building (2026-11-21)
+
+Looked at the developer's screenshots of #195 (local dev server, no backend, 12 demo books):
+before (`main`) and after at 320, 390 and 1280 px, and the close-up of the 1280 px shelf. I also
+read the change in `paintSpine` and `spineColours`.
+
+**What matches the Design:**
+
+- **Dark spines** (Dune, Matilda, A Court of Thorns and Roses, The Hobbit, Mistborn, Rebecca,
+  The Name of the Wind, Dracula): the title, the surname and "EN" are off-white. In the close-up
+  they read clearly, where on `main` they were gold.
+- **Light spines** (The Night Circus, Circe, Piranesi, Emma): the lettering is near-black, where
+  on `main` it was deep gold. Piranesi's mustard spine gets the dark ink, as `inkFor` decided
+  before #176.
+- **No shadow under the letters.** The letters are clean at every size.
+- **The bands stay:** gold on dark spines, deep gold on light ones. With off-white letters
+  between them, the spines still look like hardcovers.
+- **The language tag has the title's colour**, on both kinds of spine.
+- **Unchanged:** the medals and their ribbons, the bookmarks (gold on The Night Circus, orange
+  on Circe, red on The Name of the Wind), the wear, and where the text sits and how big it is.
+- **On a phone** (390 and 320 px) the dark spines' titles are easier to read than in gold.
+  That was the aim.
+- **Compared with before `9abdd95`:** the lettering is the colour the Design gives for before
+  #176 (off-white / near-black from `inkFor`, no shadow). The only difference is the bands,
+  which #176 added and which this task keeps on purpose.
+
+**Differences:** none. (At 320 px the top row sits under the header's light fade and the page
+buttons. That was already so on `main`, it has nothing to do with spine lettering, and T-0003
+deals with it.)
+
+**Verdict: passes.** On to the tester.
+
 # Test
+
+Tester, 2026-11-21, on `b6fc9d1` in a fresh worktree of `origin/t-0004-spine-text` (`main` had
+not moved since the branch merged it).
+
+**Commands, with their output**
+
+- `npm ci`: "added 654 packages, and audited 655 packages in 57s"
+- `npm test`: "Test Files  43 passed (43)", "Tests  282 passed (282)"
+- `npm run build`: "✓ built in 1.63s"
+- CI on the pull request: `test` pass.
+
+**On the deploy preview → done locally instead.** Following #193, nothing was looked at with
+a sign-in or entered on the preview. Instead: a local dev server (`vite dev`, no
+`POCKETBASE_URL`, the Netlify environment turned off by `vite.config.ts`), shelf in the
+browser, 13 books seeded in local storage, screenshots at 1280, 390 and 320 px. Each spine was
+also painted straight with `paintSpine` in the browser and its pixels were read.
+
+- Dark spines (Dune `#1d2a44`, Rebecca `#5a1a24`, dark green `#0b3d2e`, Black `#000000`,
+  Orange `#e0662a`): title, surname and "EN" are off-white `#f6efe1`. Light spines (The Night
+  Circus `#f2e6c8`, Emma `#efe3cf`, `#f5f0e6`, White `#ffffff`, Mustard `#d4a017`): near-black
+  `#1d1a16`. Thousands of title-area pixels match the expected ink on every spine.
+- No shadow: the letters on the painted spines (looked at close up) have clean edges, without a
+  dark edge under them. In the code, the `shadowColor`/`shadowOffsetY` lines are gone.
+- The bands are still gold on dark spines and deep gold on light ones. The language tag has the
+  title's colour ("NL" on Mustard as well). The medal and its ribbon on the read books (Rebecca,
+  Emma, the long light one) show as before. No page errors at any size.
+- Compared with before `9abdd95`: `git show 9abdd95^:src/components/textures.ts` has
+  `const ink = inkFor(bg)` and no shadow in `paintSpine`, which is the same lettering as now.
+  Only the bands differ, and keeping them is intended.
+
+**What I tried to break**
+
+- The `inkFor` threshold (luminance > 0.6): `#999999` (exactly 0.6) gets off-white; `#9a9a9a`
+  gets near-black; `#998f99` gets off-white. The switch is sharp and matches `inkFor`, so the
+  bands always follow the lettering.
+- Unusual colour values: upper-case `#1D2A44` and `#FFFFFF` work. `#888`/`#fff` (3-digit),
+  `red`, `''`, `#zzzzzz` and `#1d2a44ff` all give the off-white ink, so `#fff` would get
+  off-white on white. `parseHex` does that, and it hasn't changed. It was so before #176 too.
+  The app only stores 6-digit colours (`colorFromString`, cover analysis), and Hanna can't
+  type a spine colour, so only damaged data could reach it. Not a fault of this change.
+- Very long titles (a 140-character title, with a long double-barrelled surname, on a dark and on a light spine, read and
+  unread): the title shrinks to the minimum size and ends in "...", in the right ink. It
+  stops before the medal's ribbon. The layout itself is unchanged.
+- Mid-tone grey spines (`#999999`/`#9a9a9a`) have low contrast either way. That's the known
+  limit of `inkFor` that the Design names, and it's outside this task.
+- Code-owned paths: the diff touches only `src/components/textures.ts`, a new
+  `src/components/textures.test.ts`, the task file and the index. None of them is code-owned.
+
+**Verdict: passed.**
 
 # Log
 
@@ -106,3 +187,15 @@ browser) or a local PocketBase, never from signing in or adding books on a deplo
 - 2026-11-21 ux-designer: design written. Off-white lettering on dark spines, near-black on
   light ones (today both are gold), with no shadow under the letters. The gold and deep-gold
   bands stay.
+- 2026-11-21 developer: built in #195 (draft). `spineColours(bg)` in `textures.ts` gives the
+  lettering `inkFor(bg)` (off-white `#f6efe1` on dark, near-black `#1d1a16` on light) and the
+  bands gold / deep gold; the shadow under the letters is gone. New `textures.test.ts` (fails
+  on `main`: "spineColours is not a function"). `npm test`: "Tests 282 passed (282)" (after merging `main` with T-0002);
+  `npm run build`: "built in 1.29s". Screenshots before (`main`) and after from a local dev
+  server with no backend, at 320, 390 and 1280 px, for the UX designer's review; the medal,
+  ribbon, bookmark and language tag show as before.
+- 2026-11-21 ux-designer: reviewed: passes. Off-white lettering on dark spines, near-black on
+  light ones, no shadow, bands kept, as designed (screenshots at 320, 390 and 1280 px).
+- 2026-11-21 tester: passed. `npm ci`, `npm test` (282 passed) and `npm run build` pass; checked locally
+  (not on the preview, #193): off-white on dark spines, near-black on light ones, no shadow,
+  bands, medal, ribbon and tag as before; threshold, odd colours and long titles tried.

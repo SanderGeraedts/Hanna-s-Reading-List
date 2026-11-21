@@ -147,6 +147,21 @@ export interface ShelfFit {
 /** Header room and side margin the camera keeps around the bookcase. */
 export const FRAME = { vertical: 1.28, horizontal: 1.12 }
 
+/** height of the crown moulding on top of the bookcase (BookshelfScene's Bookcase) */
+export const CROWN_HEIGHT = 0.08
+
+/**
+ * Scrolled to the top, how far the top of the view is above the top of the
+ * case (world units). Without a header height (desktops): 14% of the view, as
+ * before. On a phone the header's real height decides (#181): the crown and
+ * the top shelf start below it, so the header never covers the top shelf.
+ */
+export function topGap(viewH: number, worldPerPx: number, headerPx: number) {
+  const base = viewH * 0.14
+  if (!(headerPx > 0)) return base
+  return Math.max(base, (headerPx + 8) * worldPerPx + CROWN_HEIGHT)
+}
+
 /**
  * Shapes the bookcase to the screen: wide on desktop, narrow and taller on a
  * portrait phone so the camera can come closer and the books appear bigger.
@@ -185,7 +200,10 @@ export function computeLayout(
   { innerWidth = SHELF.innerWidth, minRows = SHELF.minRows }: Partial<ShelfFit> = {},
   /** book id -> what stands just before that book */
   separators: Map<string, Separator> = new Map(),
+  /** the decorations she picked, in shelf order (Make the room yours); all of them by default */
+  decorKinds: DecorKind[] = DECOR.map((d) => d.kind),
 ): ShelfLayout {
+  const decorList = decorKinds.map((k) => DECOR.find((d) => d.kind === k)!).filter(Boolean)
   const dims = new Map<string, BookDims>()
   const placed: Array<{ id: string; row: number; x: number; d: BookDims }> = []
   const sepPlaced: Array<{
@@ -204,7 +222,7 @@ export function computeLayout(
   let x = 0
   // every shelf keeps a spot at its right end for its decoration (one per
   // shelf, in DECOR order), so full shelves still get their cat, mug or ivy
-  const roomFor = (r: number) => innerWidth - (r < DECOR.length ? DECOR[r].width + DECOR_MARGIN * 2 : 0)
+  const roomFor = (r: number) => innerWidth - (r < decorList.length ? decorList[r].width + DECOR_MARGIN * 2 : 0)
   const fit = (width: number) => {
     if (x > 0 && x + width > roomFor(row)) {
       row++
@@ -251,11 +269,11 @@ export function computeLayout(
   const placeDecor = (rowCount: number) => {
     const out: Array<Omit<DecorSlot, 'floorY'>> = []
     let next = 0
-    for (let r = 0; r < rowCount && next < DECOR.length; r++) {
+    for (let r = 0; r < rowCount && next < decorList.length; r++) {
       let right = innerWidth - DECOR_MARGIN
       const left = usedEnd(r) + DECOR_MARGIN
-      for (let n = 0; n < DECOR_PER_ROW && next < DECOR.length; n++) {
-        const d = DECOR[next]
+      for (let n = 0; n < DECOR_PER_ROW && next < decorList.length; n++) {
+        const d = decorList[next]
         if (right - d.width < left) break
         out.push({ kind: d.kind, x: -innerWidth / 2 + right - d.width / 2, row: r })
         right -= d.width + DECOR_GAP
@@ -267,8 +285,8 @@ export function computeLayout(
 
   let rows = Math.max(minRows, row + 1)
   let decor = placeDecor(rows)
-  // there is always room for at least one koala: grow a shelf if needed
-  if (!decor.some((d) => d.kind === 'koala')) {
+  // there is always room for the first decoration she picked (the koala, unless she changed it): grow a shelf if needed
+  if (decorList.length && !decor.some((d) => d.kind === decorList[0].kind)) {
     rows++
     decor = placeDecor(rows)
   }

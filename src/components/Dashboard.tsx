@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { Book } from '#/lib/library'
+import type { Book, NewBook } from '#/lib/library'
 import { formatDuration } from '#/lib/listening'
 import {
   BookLine,
@@ -21,7 +21,12 @@ import { pickReadNext, readNextChoices } from '#/lib/readNext'
 import { pendingRatings } from '#/lib/ratingAsk'
 import { seriesQuestions } from '#/lib/sleepSeries'
 import { WaitingCard } from './WaitingCard'
+import { BooksWorldMapCard, GenreFlowerCard, PagesPerMonthCard } from './PictureBlocks'
+import { WrapUpCard } from './WrapUpCard'
+import { wrapKey, wrapUpDue } from '#/lib/wrapup'
+import { AgainCard } from './AgainCard'
 import { AlphabetCard } from './AlphabetCard'
+import { NewForYouCard } from './NewForYouCard'
 import { storytelLink } from '#/lib/storytelLink'
 import { ChallengeCard } from './ChallengeCard'
 import { OpenLink } from './OpenLink'
@@ -53,6 +58,8 @@ import { BadgesCard, CoverWallCard, RhythmCard } from './NewBlocks'
 import { badges, newBadges } from '#/lib/badges'
 
 const BADGES_SEEN = 'hannas-reading-list:badges-seen'
+/** the month whose wrap-up was opened or put away under Waiting for you (yyyy-mm) */
+const WRAP_SEEN = 'hannas-reading-list:wrapup-seen'
 import type { Period } from '#/lib/stats'
 
 /**
@@ -80,6 +87,8 @@ interface DashboardProps extends Props {
   onOpenChallenges?: (section: ChallengeSection) => void
   /** "Open ›" on the calendar block: the Calendar page at that month (yyyy-mm) */
   onOpenCalendar?: (month: string) => void
+  /** put a suggested book on the shelf ("New for you") */
+  onAdd?: (book: NewBook) => void
 }
 
 export interface PeriodPick {
@@ -150,7 +159,7 @@ interface Drag {
   drop: Drop | null
 }
 
-export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChallenges, onOpenCalendar }: DashboardProps) {
+export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChallenges, onOpenCalendar, onAdd }: DashboardProps) {
   const open = (section: ChallengeSection) => (onOpenChallenges ? () => onOpenChallenges(section) : undefined)
   const now = new Date()
   // the period picked under "Books read"; the charts and records follow it
@@ -187,7 +196,37 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
       /* storage blocked: it still holds for this visit */
     }
   }
-  const nothingWaiting = toRate.length === 0 && questions.length === 0 && freshBadges.length === 0
+  // last month's wrap-up waits for the first week of a new month, until opened or put away (on this device)
+  const due = wrapUpDue()
+  const [wrapSeen, setWrapSeen] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(WRAP_SEEN)
+    } catch {
+      return null
+    }
+  })
+  const [wrapOpen, setWrapOpen] = useState<{ year: number; month: number } | null>(null)
+  const seeWrap = () => {
+    if (!due) return
+    setWrapSeen(wrapKey(due.year, due.month))
+    try {
+      localStorage.setItem(WRAP_SEEN, wrapKey(due.year, due.month))
+    } catch {
+      /* storage blocked: it still holds for this visit */
+    }
+  }
+  const wrapUp =
+    due && wrapSeen !== wrapKey(due.year, due.month)
+      ? {
+          label: `Your ${monthName(due.month)} wrap-up is ready`,
+          onOpen: () => {
+            setWrapOpen(due)
+            seeWrap()
+          },
+          onDismiss: seeWrap,
+        }
+      : undefined
+  const nothingWaiting = toRate.length === 0 && questions.length === 0 && freshBadges.length === 0 && !wrapUp
 
   const blocks: Record<BlockId, React.ReactNode> = {
     waiting: (
@@ -198,11 +237,15 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
         onShowBook={onShowBook}
         newBadges={freshBadges}
         onSeenBadge={seeBadge}
+        wrapUp={wrapUp}
       />
     ),
     badges: <BadgesCard books={books} />,
     covers: <CoverWallCard books={books} onShowBook={onShowBook} />,
     rhythm: <RhythmCard books={books} />,
+    flower: <GenreFlowerCard books={books} />,
+    months: <PagesPerMonthCard books={books} />,
+    world: <BooksWorldMapCard books={books} />,
     challenge: (
       <ChallengeCard
         books={books}
@@ -222,6 +265,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
     ),
     goal: <GoalCard books={books} accountId={accountId} onOpen={open('goal')} />,
     next: <ReadNextCard books={books} onShowBook={onShowBook} />,
+    newforyou: <NewForYouCard books={books} accountId={accountId} onAdd={onAdd ?? (() => {})} />,
     reading: <CurrentlyReadingCard books={books} onShowBook={onShowBook} />,
     series: <SeriesCard books={books} onShowBook={onShowBook} />,
     calendar: <Calendar books={books} onShowBook={onShowBook} onOpen={onOpenCalendar} />,
@@ -230,6 +274,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
     pile: <PileCard books={books} />,
     onthisday: <OnThisDayCard books={books} onShowBook={onShowBook} />,
     lent: <LentCard books={books} onShowBook={onShowBook} />,
+    again: <AgainCard books={books} onShowBook={onShowBook} onUpdate={onUpdate} />,
     // Top 5 and the spice meter in one block, with a switch
     top: <RatingsCard books={books} onShowBook={onShowBook} />,
     fact: <FactCard books={books} />,
@@ -361,6 +406,9 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
   }
   return (
     <div className="dashboard" ref={root}>
+      {wrapOpen && (
+        <WrapUpCard books={books} year={wrapOpen.year} month={wrapOpen.month} onShowBook={onShowBook} onClose={() => setWrapOpen(null)} />
+      )}
       <TodayStrip books={books} accountId={accountId} onShowBook={onShowBook} />
       <div className={`dashboard-bar${arranging ? ' arranging' : ''}`}>
         {arranging ? (
