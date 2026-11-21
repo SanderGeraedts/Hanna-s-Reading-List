@@ -7,8 +7,9 @@ import type { ThreeEvent } from '@react-three/fiber'
 import type { Book } from '#/lib/library'
 import { timesRead } from '#/lib/library'
 import type { BookDims, Slot } from '#/lib/shelfLayout'
-import { METALS, medalFaceTexture, medalLayout, medalTier, pageTextures, paintBack, paintEdges, paintFallbackCover, paintSpine } from './textures'
+import { METALS, medalFaceTexture, medalLayout, medalTier, pageTextures, paintBack, paintEdges, paintFallbackCover, paintSpine, plainTexture } from './textures'
 import { cleanEdges } from '#/lib/edges'
+import { facesToPaint } from '#/lib/bookFaces'
 
 export interface InspectTarget {
   rotY: number
@@ -72,6 +73,8 @@ export function nearestTurn(angle: number, ref: number) {
 
 function useCoverTexture(url: string | undefined, bookAspect: number) {
   const [tex, setTex] = useState<THREE.Texture | null>(null)
+  // the url whose image could not be loaded (then the painted stand-in shows)
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
   useEffect(() => {
     if (!url) return
     let disposed = false
@@ -93,7 +96,11 @@ function useCoverTexture(url: string | undefined, bookAspect: number) {
         setTex(t)
       },
       undefined,
-      () => setTex(null),
+      () => {
+        if (disposed) return
+        setTex(null)
+        setFailedUrl(url)
+      },
     )
     return () => {
       disposed = true
@@ -101,7 +108,7 @@ function useCoverTexture(url: string | undefined, bookAspect: number) {
       setTex(null)
     }
   }, [url, bookAspect])
-  return tex
+  return { tex, failed: !!url && failedUrl === url }
 }
 
 export function BookMesh(props: BookMeshProps) {
@@ -123,24 +130,24 @@ export function BookMesh(props: BookMeshProps) {
   const group = useRef<THREE.Group>(null)
 
   // ---- textures ---------------------------------------------------------
-  const cover = useCoverTexture(book.coverUrl, dims.w / dims.h)
-  const painted = useMemo(
-    () => ({
-      spine: paintSpine(book, dims, sleep),
-      back: paintBack(book, dims),
-      fallback: paintFallbackCover(book, dims),
-    }),
-    // repaint only when something visible changes
-    [book.title, book.authors.join(), book.color, book.status, book.readCount, book.language, book.description, book.isbn, book.pages, book.minutes, book.formats, book.format, dims.w, dims.h, dims.t, sleep],
-  )
-  useEffect(
-    () => () => {
-      painted.spine.dispose()
-      painted.back.dispose()
-      painted.fallback.dispose()
-    },
-    [painted],
-  )
+  const { tex: cover, failed: coverFailed } = useCoverTexture(book.coverUrl, dims.w / dims.h)
+  // the back is painted once the book has been taken out, and kept after that
+  const [takenOut, setTakenOut] = useState(selected)
+  if (selected && !takenOut) setTakenOut(true)
+  const paint = facesToPaint({ coverUrl: book.coverUrl, coverFailed, takenOut })
+  // repaint only when something visible changes
+  const looks = [book.title, book.authors.join(), book.color, book.status, book.readCount, book.language, book.description, book.isbn, book.pages, book.minutes, book.formats, book.format, dims.w, dims.h, dims.t]
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const spineTex = useMemo(() => paintSpine(book, dims, sleep), [...looks, sleep])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const backTex = useMemo(() => (paint.back ? paintBack(book, dims) : null), [...looks, paint.back])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const fallbackTex = useMemo(() => (paint.fallback ? paintFallbackCover(book, dims) : null), [...looks, paint.fallback])
+  useEffect(() => () => spineTex.dispose(), [spineTex])
+  useEffect(() => () => backTex?.dispose(), [backTex])
+  useEffect(() => () => fallbackTex?.dispose(), [fallbackTex])
+  const plain = plainTexture(book.color)
+  const painted = { spine: spineTex, back: backTex ?? plain, fallback: fallbackTex ?? plain }
 
   // her own page edges (#98), or the plain paper every book shares
   const edgesKey = JSON.stringify(cleanEdges(book.edges) ?? null)
@@ -182,7 +189,9 @@ export function BookMesh(props: BookMeshProps) {
       back: [edge, edge, edge, edge, edge, back],
       spine: [edge, spine, edge, edge, edge, edge],
     }
-  }, [painted, cover, edges])
+    // painted is a new object every render: depend on the textures in it
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spineTex, backTex, fallbackTex, plain, cover, edges])
   useEffect(() => () => materials.all.forEach((m) => m.dispose()), [materials])
 
   // every book is a hardcover: two boards and a spine round a page block that

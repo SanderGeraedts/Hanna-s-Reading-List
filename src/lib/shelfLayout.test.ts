@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Book } from './library'
-import { FRAME, MAX_INNER_WIDTH, SHELF, bookDims, computeLayout, fitShelf, shelfFitFor } from './shelfLayout'
+import { CROWN_HEIGHT, FRAME, MAX_INNER_WIDTH, SHELF, bookDims, computeLayout, fitShelf, shelfFitFor, topGap } from './shelfLayout'
 import { arrangementSeparators } from './separators'
 
 const book = (id: string, title: string, extra: Partial<Book> = {}): Book => ({
@@ -119,5 +119,29 @@ describe('decorations: at most one per shelf, the koala always there', () => {
     const { decor } = computeLayout(books)
     expect(decor.map((d) => d.kind).slice(0, 4)).toEqual(['koala', 'cat', 'mug', 'ivy'])
     expect(decor.map((d) => d.row).slice(0, 4)).toEqual([0, 1, 2, 3])
+  })
+})
+
+describe('on a phone the header covers no books (#181)', () => {
+  // a phone held upright, 390 x 844 CSS px, framed to the case's width
+  const heightPx = 844
+  const viewH = 2.6
+  const worldPerPx = viewH / heightPx
+
+  it('keeps the crown and the top shelf below a tall header (title, buttons and tabs)', () => {
+    const headerPx = 170
+    const gap = topGap(viewH, worldPerPx, headerPx)
+    // what the header covers, plus the crown on top of the case
+    expect(gap).toBeGreaterThanOrEqual(headerPx * worldPerPx + CROWN_HEIGHT)
+    // the old fixed 14 % left the top of the case under such a header
+    expect(viewH * 0.14).toBeLessThan(headerPx * worldPerPx + CROWN_HEIGHT)
+  })
+
+  it('leaves desktops (no header height given) as before', () => {
+    expect(topGap(viewH, worldPerPx, 0)).toBeCloseTo(viewH * 0.14)
+  })
+
+  it('never comes closer to the top than before', () => {
+    expect(topGap(viewH, worldPerPx, 10)).toBeCloseTo(viewH * 0.14)
   })
 })
