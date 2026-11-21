@@ -7,7 +7,7 @@ depends_on: []
 decisions: [D-0001, D-0002, D-0003, D-0005, G-0004, G-0007, G-0011, G-0012, G-0016, G-0019, G-0023, G-0029]
 raised_on: 2026-11-21
 done_on: ""
-result: []
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/192"]
 ---
 
 # Goal
@@ -160,3 +160,21 @@ Nothing visible.
   before the guard stops it (npm 11 runs the root `preinstall` after reifying); `prepare`
   sets `core.hooksPath=.githooks` in the clone's shared git config, so the main clone has no
   hooks until it has `.githooks/` from `main`.
+- 2026-11-21 developer: Draft PR #192. CI on it: `checks / checks` passed (pnpm v10.34.9,
+  `harness check` the four ✓ lines as above, "Tests 279 passed (279)", build ✓);
+  `netlify/hannas-reading-list/deploy-preview` passed, "Deploy Preview ready!". **The preview
+  does not meet the Done-when:** it opens on the **sign-in screen** ("Sign in to open your
+  shelf"), not the shelf. Not caused by this change: the preview of #188 (from `main` before
+  this task) shows the same sign-in screen. The sign-in screen only appears when the server
+  has a `POCKETBASE_URL` (`src/server/pocketbase.ts`, `src/lib/session.ts`), so deploy
+  previews appear to get production's address, against G-0019 and D-0003. Not touched here
+  (Netlify environment settings are the Engineer's); for the architect and the Engineer.
+- Remaining: (1) Sander's code-owner review of #192 (the `main` ruleset requires it; not
+  bypassed). (2) At the merge, after the tester has passed it: in the ruleset `main` change
+  only the required check from `test` to `checks / checks`, then merge by hand with
+  `gh pr merge --squash`. (3) Q-003 (#190): whether `harness protect "checks / checks"` is run
+  now (it creates "harness: default branch" with no bypass actors, per its `--dry-run` in the
+  PR) and what happens to `main`'s code-owner review and bypass. Not run tonight. (4) Deploy
+  previews show the sign-in screen, which suggests `POCKETBASE_URL` is set for previews
+  (G-0019): for the Engineer to check on Netlify; the preview item of the Done-when waits on
+  it. (5) After the merge: the rulesets check and Netlify's production deploy.
