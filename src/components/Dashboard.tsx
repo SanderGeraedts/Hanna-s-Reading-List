@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Book, NewBook } from '#/lib/library'
+import { localDay } from '#/lib/library'
 import { formatDuration } from '#/lib/listening'
 import {
   BookLine,
@@ -24,6 +25,8 @@ import { WaitingCard } from './WaitingCard'
 import { BooksWorldMapCard, GenreFlowerCard, PagesPerMonthCard } from './PictureBlocks'
 import { WrapUpCard } from './WrapUpCard'
 import { wrapKey, wrapUpDue } from '#/lib/wrapup'
+import { cleanDustOff, dustOffDismiss, dustOffPick, dustOffSeen, waitedText, weekOf } from '#/lib/pile'
+import type { DustOffState } from '#/lib/pile'
 import { AgainCard } from './AgainCard'
 import { AlphabetCard } from './AlphabetCard'
 import { NewForYouCard } from './NewForYouCard'
@@ -60,6 +63,8 @@ import { badges, newBadges } from '#/lib/badges'
 const BADGES_SEEN = 'hannas-reading-list:badges-seen'
 /** the month whose wrap-up was opened or put away under Waiting for you (yyyy-mm) */
 const WRAP_SEEN = 'hannas-reading-list:wrapup-seen'
+/** the dust-off's week, its pick and the books she said Not now to (T-0014) */
+const DUST_OFF = 'hannas-reading-list:dust-off'
 import type { Period } from '#/lib/stats'
 
 /**
@@ -200,7 +205,32 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
           onDismiss: seeWrap,
         }
       : undefined
-  const nothingWaiting = toRate.length === 0 && questions.length === 0 && freshBadges.length === 0 && !wrapUp
+  // once a week, the want-to-read book that has waited longest, until Not now (on this device; T-0014)
+  const [dustState, setDustState] = useState<DustOffState>(() => {
+    try {
+      return cleanDustOff(JSON.parse(localStorage.getItem(DUST_OFF) ?? 'null'))
+    } catch {
+      return { dismissed: [] }
+    }
+  })
+  const today = localDay()
+  const dustBook = useMemo(() => dustOffPick(books, dustState, today), [books, dustState, today])
+  const keepDust = (next: DustOffState) => {
+    setDustState(next)
+    try {
+      localStorage.setItem(DUST_OFF, JSON.stringify(next))
+    } catch {
+      /* storage blocked: it still holds for this visit */
+    }
+  }
+  // remember the week's pick, so it stays the same all week
+  useEffect(() => {
+    if (dustBook && (dustState.week !== weekOf(today) || dustState.pick !== dustBook.id)) keepDust(dustOffSeen(dustState, dustBook, today))
+  }, [dustBook, dustState, today])
+  const dustOff = dustBook
+    ? { book: dustBook, waited: waitedText(dustBook, today), onDismiss: () => keepDust(dustOffDismiss(dustState, dustBook, today)) }
+    : undefined
+  const nothingWaiting = toRate.length === 0 && questions.length === 0 && freshBadges.length === 0 && !wrapUp && !dustOff
 
   const blocks: Record<BlockId, React.ReactNode> = {
     waiting: (
@@ -212,6 +242,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
         newBadges={freshBadges}
         onSeenBadge={seeBadge}
         wrapUp={wrapUp}
+        dustOff={dustOff}
       />
     ),
     badges: <BadgesCard books={books} />,

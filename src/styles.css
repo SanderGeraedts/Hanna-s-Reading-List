@@ -4414,3 +4414,144 @@ button.today-item:hover {
   overflow: hidden;
   clip-path: inset(50%);
 }
+
+/* ---- motivation for the pile (T-0014) --------------------------------------
+   In vs. out this month, the 6-month line and the two coin jars, under the
+   pile's numbers; the dust-off under Waiting for you; the Pile challenge button. */
+.pile-motivation {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: var(--space-3);
+}
+.pile-sentence {
+  margin: 0;
+  font-size: var(--fs-body);
+  color: var(--text);
+}
+.pile-line {
+  display: grid;
+  gap: var(--space-1);
+}
+.pile-spark {
+  display: block;
+  width: 100%;
+  max-width: 24rem;
+  height: auto;
+  overflow: visible;
+}
+.pile-spark .zero {
+  stroke: var(--border-strong);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+.pile-spark .trend {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+/* earlier months are rings, this month a filled dot: "now" differs by shape */
+.pile-spark .dot {
+  fill: var(--surface-solid);
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.pile-spark .dot.now {
+  fill: var(--accent);
+}
+.pile-spark .value {
+  fill: var(--text);
+  font-size: 10px;
+  font-weight: 600;
+}
+.pile-spark .axis {
+  fill: var(--muted);
+  font-size: 9px;
+}
+.pile-spark .axis.now {
+  fill: var(--text);
+  font-weight: 700;
+}
+/* two equal jars side by side; they stack only in a card narrower than about 18rem */
+.pile-jars {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.6rem, 1fr));
+  gap: var(--space-3);
+}
+.jar {
+  display: grid;
+  gap: var(--space-1);
+  align-content: start;
+  padding: var(--space-3);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-strong);
+  border-top: 4px solid var(--border-strong); /* the lid */
+  border-radius: var(--radius-small) var(--radius-small) var(--radius-card) var(--radius-card);
+}
+.jar p {
+  margin: 0;
+}
+.jar.treat {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+}
+.jar-name {
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--text);
+}
+.jar-coins {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--fs-large);
+  line-height: 1.2;
+  min-height: 1.4em;
+}
+/* an empty place: a dashed ring the size of a coin, so full and empty differ by shape */
+.jar-slot {
+  display: inline-block;
+  width: 1.1em;
+  height: 1.1em;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius-pill);
+}
+.jar-status {
+  font-size: var(--fs-small);
+}
+.jar-status.treat {
+  color: var(--text);
+  font-weight: 600;
+}
+/* the dust-off's cover is a 44 px target, the cover centred in it */
+.dust-off .cover-btn {
+  min-width: var(--tap);
+  min-height: var(--tap);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.waiting-card h2:focus {
+  outline: none;
+}
+.waiting-card h2:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* new buttons are a full finger high on a touch screen, not the 36 px of .btn.small */
+@media (pointer: coarse) {
+  .btn.small.tall {
+    min-height: var(--tap);
+  }
+}
+/* the Challenges bar wraps whole buttons on a phone, never the words inside them */
+.challenges-page .dashboard-bar-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.challenges-page .dashboard-bar-actions .btn {
+  white-space: nowrap;
+}

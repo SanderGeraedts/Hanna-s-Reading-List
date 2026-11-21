@@ -100,6 +100,7 @@ export function NewChallengeForm({
   books,
   year,
   start,
+  preset,
   onSave,
   onCancel,
 }: {
@@ -107,13 +108,15 @@ export function NewChallengeForm({
   year: number
   /** the challenge to change; none for a new one */
   start?: OwnChallenge
+  /** a new challenge filled in already (the Pile challenge button), still saved as a new one */
+  preset?: Omit<OwnChallenge, 'id' | 'year'>
   onSave: (c: OwnChallenge) => void
   onCancel: () => void
 }) {
-  const [name, setName] = useState(start?.name ?? '')
-  const [target, setTarget] = useState(String(start?.target ?? 5))
-  const [rule, setRule] = useState<RuleKind>(start?.rule ?? 'any')
-  const [value, setValue] = useState(start?.value ?? '')
+  const [name, setName] = useState(start?.name ?? preset?.name ?? '')
+  const [target, setTarget] = useState(String(start?.target ?? preset?.target ?? 5))
+  const [rule, setRule] = useState<RuleKind>(start?.rule ?? preset?.rule ?? 'any')
+  const [value, setValue] = useState(start?.value ?? preset?.value ?? '')
   const options = useMemo(() => ruleOptions(rule, books), [rule, books])
   const n = Number(target)
   const ok =

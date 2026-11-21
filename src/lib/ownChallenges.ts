@@ -70,7 +70,10 @@ export function cleanChallenges(raw: unknown): OwnChallenge[] {
   return out
 }
 
-export const newChallengeId = () => `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
+/** What the Pile challenge button fills in (T-0014): she can change anything before saving. */
+export const PILE_CHALLENGE: Omit<OwnChallenge, 'id' | 'year'> = { name: 'Pile challenge', target: 12, rule: 'pile' }
+
+export const newChallengeId =() => `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
 
 /** Whether a book fits the rule (sleep reads aside). */
 function fits(c: OwnChallenge, book: Book, series: ReturnType<typeof seriesGroups>) {

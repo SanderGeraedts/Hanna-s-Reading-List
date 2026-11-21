@@ -310,3 +310,30 @@ Sleep reads don't count.
 
 - 2026-11-21 architect: task written
 - 2026-11-21 ux-designer: designed
+- 2026-11-21 requester: Hanna confirmed the design, including the 14-day rule for the dust-off book
+- 2026-11-21 developer: built in a draft pull request. New `src/lib/pile.ts` (in vs. out per
+  month, the 6-month series and sentence, the two jar walk from 2026-11-01, the weekly dust-off
+  pick with its per-device state, the "Has waited …" text) with `src/lib/pile.test.ts` (19
+  tests); `PileCard` gets the sentence, the line and the jars; Waiting for you gets the dust-off
+  item (key `hannas-reading-list:dust-off`: the week, its pick and the books she said Not now
+  to), included in the dashboard's "nothing waiting" check; Challenges gets "📚 Pile challenge"
+  (`PILE_CHALLENGE` in `ownChallenges.ts`, tested), which opens the new-challenge form filled
+  in; `colours.test.ts` checks `--text` on `--accent-soft` over a card on both wallpapers.
+  Check: `pnpm test` → "Test Files 71 passed | 1 skipped (72), Tests 477 passed | 9 skipped
+  (486)"; `pnpm run build` → "✓ built"; `pnpm exec harness check` → tasks, decisions, engineers
+  and generated files all ✓. Clicked through on `vite dev --port 3124` with no backend and a
+  seeded shelf, screenshots in `T-0014-screens/` (390×844 and 1280×800, lavender and midnight):
+  sentence "This month you added 2 and read 6 from your pile: your pile shrank by 4 🎉", line
+  "June +2, July −1, August 0, September −3, October +1, November −4", jars "Buying jar: 4
+  coins, treat earned | Storytel jar: 2 coins", plus "2 of 3" / "0 coins" and the "Nothing
+  added or read from your pile yet this month." state; dust-off "Has waited 2 years — give it a
+  go?" on a book with no cover (its colour), Maybe opened the book panel, Not now hid it and the
+  block hid once nothing else waited; the Pile challenge form showed "New challenge for 2026 |
+  Pile challenge | 12 | From my pile", the button disabled while the form is open. Maybe and
+  Pile challenge measured 44 px high with a touch screen. Small additions beyond the design: the
+  pages · listening line is now left out when it's empty (the design's "left out when it's
+  empty"; before, an empty line was drawn), "＋ New challenge" and "⠿ Arrange" are 44 px high on
+  touch too so the bar stays even, and the Challenges bar wraps whole buttons instead of the
+  words in them. Noted for the architect: in `colours.test.ts` the `token()` pattern is a
+  template string, so `\s*` reaches the RegExp as `s*`; it still works only because the value is
+  trimmed afterwards.

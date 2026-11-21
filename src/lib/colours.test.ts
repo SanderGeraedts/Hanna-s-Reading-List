@@ -71,6 +71,8 @@ describe('colour check: everything stays readable', () => {
     ['danger on a card', c('danger'), cardsOnWall, 4.5],
     ['text on a gold button', c('accent-ink'), [c('accent')], 4.5],
     ['header text on the wallpaper', c('header-ink'), walls, 4.5],
+    // "Treat earned!" in the buying jar: a gold wash over a card (T-0014)
+    ['text on a gold wash over a card', c('text'), cardsOnWall.map((card) => over(c('accent-soft'), card)), 4.5],
     ['header helper text on the wallpaper', c('header-muted'), walls, 4.5],
   ]
   // on the midnight wallpaper: the text straight on it, and the cards on it
@@ -82,6 +84,7 @@ describe('colour check: everything stays readable', () => {
     ['text on a card on the midnight wallpaper', c('text'), midCards, 4.5],
     ['helper text on a card on the midnight wallpaper', c('muted'), midCards, 4.5],
     ['gold on a card on the midnight wallpaper', c('accent'), midCards, 3],
+    ['text on a gold wash over a card on the midnight wallpaper', c('text'), midCards.map((card) => over(c('accent-soft'), card)), 4.5],
     // the white round buttons in the header keep dark text on both wallpapers
     ['text on a header button (lavender)', c('pill-ink'), walls.map((w) => over([255, 255, 255, 0.72], w)), 4.5],
     ['text on a header button (midnight)', c('pill-ink'), midWalls.map((w) => over([255, 255, 255, 0.72], w)), 4.5],
