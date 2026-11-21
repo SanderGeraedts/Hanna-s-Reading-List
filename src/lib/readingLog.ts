@@ -34,8 +34,8 @@ export function progressPatch(book: Book, progress: number, day = localDay()): P
   return {
     progress: p,
     ...logPatch(book, day, (book.readingLog?.[day] ?? 0) + moved),
-    // reading on in a paused book picks it up again (#91)
-    ...(book.status === 'paused' && moved > 0 && statusPatch(book, 'reading', day)),
+    // reading on in a paused book, or one put aside (#187), picks it up again (#91)
+    ...((book.status === 'paused' || book.status === 'dnf') && moved > 0 && statusPatch(book, 'reading', day)),
   }
 }
 

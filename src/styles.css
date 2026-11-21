@@ -1750,6 +1750,42 @@ textarea.input {
   justify-self: start;
 }
 
+/* ---- give it another try (#187) ------------------------------------------ */
+.again-card .next-title .again-title {
+  font: inherit;
+  color: inherit;
+  margin: 0;
+  text-align: left;
+}
+.again-card .next-title .again-title:hover {
+  color: var(--accent);
+}
+.again-card .next-actions .btn {
+  min-height: 44px;
+  /* the buttons wrap onto two lines, not their words */
+  white-space: nowrap;
+}
+/* the line after "Try again" is announced; until then it takes no room */
+.again-status:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.again-card h2:focus {
+  outline: none;
+}
+.again-card h2:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* the book panel: how far a book she didn't finish got (#187) */
+.stopped-at {
+  margin: calc(var(--space-2) * -1) 0 0;
+}
+
 .calendar-card {
   align-self: stretch;
 }

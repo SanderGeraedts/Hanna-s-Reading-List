@@ -35,6 +35,7 @@ export const BLOCKS = {
   badges: 'Badges',
   covers: 'Cover wall',
   rhythm: 'When I read most',
+  again: 'Give it another try',
 } as const
 
 export type BlockId = keyof typeof BLOCKS
@@ -66,7 +67,7 @@ export interface DashboardLayout {
 export const DEFAULT_LAYOUT: DashboardLayout = {
   sections: {
     today: [
-      ['waiting', 'reading', 'pace', 'lent'],
+      ['waiting', 'reading', 'pace', 'lent', 'again'],
       ['challenge', 'next', 'recent'],
     ],
     challenges: [['goal', 'alphabet'], ['bingo']],

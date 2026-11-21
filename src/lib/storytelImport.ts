@@ -110,16 +110,18 @@ async function toNewBook(b: StorytelBook): Promise<NewBook> {
   }
 }
 
-const STATUS_RANK: Record<ReadingStatus, number> = { want: 0, paused: 1, reading: 2, read: 3 }
+const STATUS_RANK: Record<ReadingStatus, number> = { want: 0, paused: 1, dnf: 1, reading: 2, read: 3 }
 
 /**
  * Storytel has no "paused" (#60): a book Hanna paused stays paused until
  * Storytel says she finished it or she listened on, even a few minutes (#91).
+ * Nor has it "did not finish" (#187): a book she put aside stays put aside
+ * the same way.
  */
 function keepPaused(match: Book, item: StorytelBook): StorytelBook {
-  if (match.status !== 'paused' || item.status === 'read') return item
+  if ((match.status !== 'paused' && match.status !== 'dnf') || item.status === 'read') return item
   const listenedOn = item.progress !== undefined && item.progress > (match.progress ?? 0) + 0.00005
-  return { ...item, status: listenedOn ? 'reading' : 'paused' }
+  return { ...item, status: listenedOn ? 'reading' : match.status }
 }
 
 /** The day she was last listening or reading on Storytel, else today. */
