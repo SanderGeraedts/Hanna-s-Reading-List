@@ -2,11 +2,11 @@
 id: T-0007
 title: "Let a book hold a link to its e-book file, shown only when one is added"
 description: "#185: an optional link per book to where Hanna keeps the e-book (Google Drive, a server), with an open button in the book panel like \"Open in Storytel\", shown only when the link is set."
-status: Doing
+status: Done
 depends_on: [T-0001]
 decisions: [D-0002, D-0003]
 raised_on: 2026-11-21
-done_on: ""
+done_on: 2026-11-21
 result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/196"]
 ---
 
@@ -193,6 +193,105 @@ second theme to check.
 
 # Test
 
+Tester, 2026-11-21, head `fea956b`, in a fresh worktree from `origin/t-0007-ebook-link`. The
+repository is still on npm (harness adoption is PR #192), so `pnpm` in *Done when* ran as `npm`.
+The deploy-preview item ran on a local dev server instead (no backend, shelf in the browser),
+because previews may carry the live account server's address (#193).
+
+**Commands and their output**
+
+- `npm ci`: `added 654 packages, and audited 655 packages in 2m`
+- `npm test`: `Test Files  44 passed (44)`, `Tests  303 passed (303)`
+- `npm run build`: exit 0, `✓ built in 2.13s` (client) and `✓ built in 1.63s` (server)
+- CI on the pull request: `test` SUCCESS.
+- `harness check`: tasks and decisions pass; 6 "generated files ... stale" failures for
+  `.claude/` and `.githooks/`. `origin/main` shows the same 6. They belong to the harness
+  adoption (#192, code-owned paths) and this pull request doesn't touch them.
+- Code-owned paths: the diff touches none. The files are `docs/tasks/T-0007…`,
+  `docs/tasks/index.md`, `src/components/BookPanel.tsx`, `EbookLink.tsx` and its test,
+  `src/lib/ebookLink.ts` and its two tests, `src/lib/library.ts` (one optional field on `Book`,
+  no load/save/sync change), `src/lib/merge.ts` and `src/styles.css`. `shelfMerge.ts` and
+  `server/shelf.ts` are unchanged.
+
+**UI, local dev server with no backend, Chrome via Playwright, 1280 × 800 and 320 × 640 (touch).**
+Results were the same at both sizes:
+
+- Shelf saved before the change (books without `ebookUrl`): it loads. A book with Storytel shows
+  "Open in Storytel", no e-book button, only "+ Add e-book link". A book with neither shows no
+  button row, only "+ Add e-book link".
+- Added `  https://example.com/book.epub  `: it is trimmed. "Open e-book" appears with
+  `href=https://example.com/book.epub`, `target=_blank`, `rel=noopener noreferrer`, and the name
+  "Open e-book (example.com, opens in a new tab)". Clicking it opens a new tab at that address
+  with `window.opener === null`. The stored book keeps isbn, rating, storytelId and progress.
+- Enter, then blur again on the same value: saved once, no change.
+- `javascript:alert(1)` refused (on Enter) and `file:///C:/x.epub` refused (on blur). The text
+  stays in the field with `aria-invalid=true` and the hint reads exactly "Only links that start
+  with https:// or http:// can be opened here.". The button and the stored link stay on the last
+  good link.
+- A 20,020-character link saves and opens. After a reload the link and the button are still
+  there.
+- × removes it: the button is gone, "+ Add e-book link" is back, the key is gone from storage,
+  and Storytel is untouched. Clearing the field to spaces also removes it.
+- 320 × 640 with both links: Storytel at y 472 and e-book at y 515, both fully inside the
+  viewport (wrapped onto two lines).
+- No page errors and no dialogs.
+
+**Security: stored values that are not http(s)** (put straight into localStorage, as if from
+another device or an old shelf). The values were `javascript:alert(1)`, `JaVaScRiPt:alert(1)`,
+` \njavascript:alert(1)`, `java\nscript:alert(1)`, `data:text/html,<script>…`,
+`file:///C:/x.epub`, `//evil.com/x.epub` and `\u0000javascript:alert(1)`. For each one: no
+e-book button, and no `<a href>` on the page whose value isn't http(s) or same-origin. The field
+shows the value, and saving it is refused.
+
+At unit level (`ebookLink.ts` under Node 26) these were all refused, giving no href and no host:
+the same eight, plus tab tricks, a zero-width space, `javascript://example.com/%0aalert(1)`,
+`vbscript:`, `blob:`, `\\evil.com\x`, `https://`, `http://`, `https://ex ample.com` and
+`xxxhttps://a.b`. `https:evil.com`, `http:/evil.com` and `https:\\evil.com` are accepted.
+Their href is the URL parser's normalised `https://evil.com/`, so it is still http(s). Every
+accepted href comes from `new URL(...).href` with protocol `https:`/`http:` and a host. A
+protocol-relative link (`//evil.com`) is refused, because it isn't an absolute URL. Had it been
+let through, it would have taken the page's own scheme, http(s), never `javascript:`.
+
+**Account sync, local throwaway PocketBase 0.40.6** (a copy of the binary, the repo's migrations
+and hooks, `SIGNUP_EMAILS=test@example.com`), with `POCKETBASE_URL=http://127.0.0.1:8131` on a
+local dev server. Four browser contexts, read back from the server through the PocketBase API:
+
+- A: a shelf from before accounts (3 books, no link). After sign-up the server has b1, b2 and
+  b3, and b1 has no link.
+- C and C2 sign in now (stale copies without the link) and stay open.
+- A adds the link to b1. The server has `ebookUrl: https://example.com/book.epub` on b1.
+- B, a fresh browser, signs in: "Open e-book" has that href and the field shows it.
+- Stale C adds a link to **another** book (b2) and saves. The server's b1 is byte-identical to
+  A's save (the link and every other field kept). b2 has C's link, and b1, b2 and b3 are all
+  there. C then shows b1's link (it adopted the server's copy).
+- No page errors in any context.
+
+**Observation, not caused by this change:** stale C2 changed **the same book** (b1's language)
+without having seen the link. The server took C2's whole b1 (`ebookUrl` missing; rating, isbn
+and journal kept). That is the existing rule in `shelfMerge.ts` ("a book both have is taken from
+whichever edited it last"). It applies to every field the same way, e.g. a rating set on
+another device. The task asked for the link to travel like `storytelId` and for `shelfMerge.ts`
+to stay unchanged, and both hold. Field-level merging would be a change to a code-owned file,
+for the architect and the Engineer if it is wanted.
+
+**`merge.ts`:** `mergeBooks` already spreads `...other, ...keep`. The new
+`ebookUrl: keep.ebookUrl ?? other.ebookUrl` only matters when the kept copy holds an explicit
+`undefined` (right after × in the same session). Then the other copy's link is taken, as for
+pages, isbn and the rest. When neither copy has a link the result carries `ebookUrl: undefined`,
+which JSON drops, the same as for `pages`/`minutes`. No other effect. Covered by
+`ebookLink.sync.test.ts`.
+
+**Storytel refresh (↻) and the nightly sync:** not driven in the UI (they need a Storytel
+login). `ebookLink.sync.test.ts` covers both and passes. `storytelImport.ts` only patches
+progress/status/fields it owns, never `ebookUrl`.
+
+Data-store note: the nightly sync on the account server (`nightly.pb.js`) stores the books as
+sent, and the history hook copies them whole, so the field survives both.
+
+**Not checked:** the deploy preview itself (by rule, see above).
+
+**Verdict: passed.**
+
 # Log
 
 - 2026-11-21 architect: Task written from #185, with the assumptions in the Goal.
@@ -218,3 +317,8 @@ second theme to check.
   developer's screenshots and a local dev server (no backend) at 320 × 640 and 1280 × 800:
   words, refusal, focus after + and ×, Escape, 44 px × on touch. The e-book button also wraps on
   desktop (title column too narrow for both); both stay fully visible, accepted.
+- 2026-11-21 tester: passed. npm ci/test (303)/build green, CI green. UI checked locally at
+  1280 and 320. Stored javascript:/data:/file:/`//` values never become an href. Through a
+  local PocketBase the link reaches a second browser, and a stale device saving another book
+  keeps it. A stale device editing the same book replaces the whole book (existing
+  shelfMerge rule, not this change).

@@ -18,11 +18,11 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 
 ## Doing
 
-- [T-0007 Let a book hold a link to its e-book file, shown only when one is added](T-0007-link-to-the-ebook-file.md): #185: an optional link per book to where Hanna keeps the e-book (Google Drive, a server), with an open button in the book panel like "Open in Storytel", shown only when the link is set.
+None.
 
 ## Done
 
-None.
+- [T-0007 Let a book hold a link to its e-book file, shown only when one is added](T-0007-link-to-the-ebook-file.md): #185: an optional link per book to where Hanna keeps the e-book (Google Drive, a server), with an open button in the book panel like "Open in Storytel", shown only when the link is set.
 
 ## Dropped
 
