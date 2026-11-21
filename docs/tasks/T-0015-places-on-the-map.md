@@ -246,6 +246,25 @@ matches the design.
    - New screenshots of the map block (390×844 and 1280×800) showing "Hogwarts 4 · Narnia 2 · …"
      with the seeded shelf, and of the add row for "usa" (🌍 Add "USA").
 
+### Re-review (2026-11-21)
+
+Looked at: `git diff cf3c839..HEAD -- src` and the four new screenshots (`phone-map.jpg`,
+`desktop-map.jpg`, `phone-usa-row.jpg`, `desktop-usa-row.jpg`).
+
+**Verdict: matches the design. On to the tester.**
+
+1. *Typed country names spelled properly:* fixed. `countrySpelling` follows the rule as written
+   (capitals inside kept, short words and dotted letters in capitals, otherwise a capital per word),
+   only for names the map knows as a country; made-up places keep their rule. The add row reads
+   🌍 Add "USA" on phone and desktop, highlighted as the only row.
+2. *One imaginary land counts once:* fixed. The built-in list has a short name per land, other lands
+   merge by capitals/spacing with the first spelling winning, once per book, and the panel's
+   suggestions use the same key. The map reads "Imaginary lands: Hogwarts 4 · Narnia 2 · Velaris 2 ·
+   Middle Earth 1" on phone (wraps cleanly onto a second line) and desktop. Chips still show the
+   stored long name.
+
+No new differences.
+
 # Test
 
 # Log
@@ -298,3 +317,5 @@ matches the design.
   Hogwarts + the long name, Middle-earth, Velaris + velaris); no sideways scroll, no page errors. New
   screenshots `phone-map.jpg`/`desktop-map.jpg` and `phone-usa-row.jpg`/`desktop-usa-row.jpg`
   (390×844, 1280×800). Hand back to the UX designer for review.
+- 2026-11-21 ux-designer: reviewed: matches. Both must-fix items fixed ("usa" → 🌍 Add "USA";
+  map "Hogwarts 4 · Narnia 2 · Velaris 2 · Middle Earth 1"). Hand over to the tester.
