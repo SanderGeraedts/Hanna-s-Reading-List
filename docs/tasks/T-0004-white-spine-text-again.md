@@ -109,7 +109,7 @@ browser) or a local PocketBase, never from signing in or adding books on a deplo
 - 2026-11-21 developer: built in #195 (draft). `spineColours(bg)` in `textures.ts` gives the
   lettering `inkFor(bg)` (off-white `#f6efe1` on dark, near-black `#1d1a16` on light) and the
   bands gold / deep gold; the shadow under the letters is gone. New `textures.test.ts` (fails
-  on `main`: "spineColours is not a function"). `npm test`: "Tests 281 passed (281)";
+  on `main`: "spineColours is not a function"). `npm test`: "Tests 282 passed (282)" (after merging `main` with T-0002);
   `npm run build`: "built in 1.29s". Screenshots before (`main`) and after from a local dev
   server with no backend, at 320, 390 and 1280 px, for the UX designer's review; the medal,
   ribbon, bookmark and language tag show as before.
