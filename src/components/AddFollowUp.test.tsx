@@ -143,4 +143,31 @@ describe('the follow-up after adding a book (T-0016)', () => {
     second.handle.current!.flush()
     expect(second.state.book.price).toBeUndefined()
   })
+
+  it('unticking the last bought format drops a price saved in the follow-up (tester)', () => {
+    const { state } = setup({ formats: ['paperback'] }, 'scan')
+    fireEvent.change(price()!, { target: { value: '15' } })
+    fireEvent.blur(price()!)
+    expect(state.book.price).toBe(15)
+    fireEvent.click(chip('Storytel'))
+    expect(price()).not.toBeNull()
+    fireEvent.click(chip('Paperback'))
+    expect(price()).toBeNull()
+    expect(state.book.price).toBeUndefined()
+    expect(state.book.formats).toEqual(['storytel'])
+  })
+
+  it('switching the e-book off turns Next back into Done (tester)', () => {
+    setup({ formats: ['ebook', 'paperback'] })
+    fireEvent.change(price()!, { target: { value: '0' } })
+    expect(screen.getByRole('button', { name: 'Next' })).toBeTruthy()
+    fireEvent.click(chip('E-book'))
+    expect(screen.queryByRole('button', { name: 'Next' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Done' })).toBeTruthy()
+  })
+
+  it('never asks the price for a Storytel import, even with a paper format (tester)', () => {
+    setup({ formats: ['paperback'] }, 'storytel')
+    expect(price()).toBeNull()
+  })
 })

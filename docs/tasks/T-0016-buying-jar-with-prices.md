@@ -2,11 +2,11 @@
 id: T-0016
 title: "Make the buying jar spend what a book cost: ask the price of bought books, show the coin count, allow below zero"
 description: "The add dialog asks the price of a bought paperback, hardcover or e-book (and the file link for a free e-book), the book panel shows and edits it, and the 📚 buying jar spends €5 per coin exactly, shows just its count and may go below zero."
-status: Doing
+status: Done
 depends_on: [T-0014]
 decisions: [D-0002, D-0009, D-0010, D-0013, D-0014, D-0020, D-0022, D-0024]
 raised_on: 2026-11-21
-done_on: ""
+done_on: "2026-11-21"
 result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/225"]
 ---
 
@@ -424,7 +424,72 @@ Handover: to the tester.
 
 # Test
 
-To be written by the tester.
+## Test (2026-11-21, tester)
+
+**Verdict: passed.** Run on branch `t-0016-buying-jar-v2` after `pnpm install --frozen-lockfile`,
+with no backend and no production settings (no `POCKETBASE_URL`, no Netlify environment).
+
+**Commands and their output**
+
+- `pnpm test` (before my tests): `Test Files 75 passed | 1 skipped (76)`, `Tests 534 passed |
+  9 skipped (543)`.
+- `pnpm test` (with my tests): `Test Files 76 passed | 1 skipped (77)`, `Tests 547 passed |
+  9 skipped (556)`.
+- `pnpm exec tsc --noEmit` (the type check): no output, exit 0.
+- Lint: the project has no lint script and no linter installed (no ESLint, Biome or oxlint in
+  `node_modules/.bin`), so there was nothing to run; the type check stands in for it.
+- `pnpm run build`: `✓ built in 773ms`, `✓ built in 541ms`.
+- `pnpm exec harness check`: `✓ tasks: 16 tasks, index in step`, `✓ decisions: 27 records,
+  index complete, 3 overrules valid`, `✓ engineers: 2 listed`, `✓ generated files: current`.
+
+**Read in `git diff main...HEAD -- src`, case by case**
+
+- **€5 = 1 coin, exact decimals:** `pileJars` sums in whole cents (`+500` per owned finish from
+  the pile, `− priceCents(price)` per owned book added) and divides by 500 once at the end, so
+  €12 → 2.4, €7.99 → 1.598 and three books at €0.10 → 0.06 exactly (tests pass). `priceCents`
+  rounds `price * 100`, so 7.99 is 799, not 798.99. The coin text rounds the cents, not the
+  float, half away from zero; a count that rounds to 0 is "0 coins" and not below zero; the 🪙
+  is held to the number by a real no-break space (U+00A0, checked in the bytes).
+- **Below zero:** no threshold and no floor any more; "−1.4" uses U+2212 and the label says
+  "minus 1.4 coins".
+- **No price for library, borrowed or Storytel adds:** spending only counts `owned` books
+  (paperback, hardcover or e-book); a library, borrowed, audiobook or listen-only Storytel book
+  with a price spends nothing. The Storytel tab doesn't go through the follow-up (only Search,
+  Scan, ISBN and Manual call `addFrom`), and `asksPrice` refuses `from === 'storytel'`.
+- **The €0 e-book link step:** `asksEbookLink` needs E-book among the formats and a price of
+  exactly 0 (`=== 0`), so €0.01, no price and a paperback or hardcover at €0 never get there.
+  The link goes through `cleanEbookLink`, so `javascript:` is refused.
+- **Old books without a price:** `price` is optional; `priceCents(undefined)` is 0, and nothing
+  filters book fields on load or sync (no change to `shelfMerge.ts`, `src/server/shelf.ts` or
+  the load/save/sync parts of `library.ts`). A damaged value (text, negative, NaN, Infinity)
+  also counts as 0. `merge.ts` keeps `keep.price ?? other.price`.
+- **Her data:** the jar is worked out from the books and writes nothing. The only writes are
+  `price`, `formats` and `ebookUrl` on the book just added (or the book open in the panel),
+  through the existing `onUpdate`. Nothing deletes or rewrites existing books, so her shelf is
+  not at risk.
+
+**Tests I added** (all pass)
+
+- `src/lib/pile.test.ts`: a damaged price (text, negative, NaN, Infinity) spends nothing; a
+  paperback that is also on Storytel spends its price (D-0010); a book added after today and a
+  priced book moved to the library spend nothing.
+- `src/components/PriceField.test.tsx` (new; the panel's Price field had no test): shows
+  "12.50" for 12.5 with the decimal pad; an old book shows an empty field; "9,95" is saved on
+  leaving the field; emptying clears the price; Escape puts the saved price back without saving;
+  "-5", "7.999" and "10000" show their errors with `aria-invalid` and aren't saved; leaving an
+  unchanged field saves nothing.
+- `src/components/AddFollowUp.test.tsx`: unticking the last bought format (Paperback, with
+  Storytel still ticked) hides the field and drops the price saved in the follow-up; unticking
+  E-book at €0 turns Next back into Done; a Storytel import never asks the price, even with a
+  paper format.
+
+**Small things noticed, none blocking**
+
+- A price typed as ".50" or "12," is refused with "Try 12.50 or 12,50." (the error says how to
+  fix it). Choice taken while Hanna was asleep: keep it as built.
+- The clicked-through check and screenshots are the developer's (29 screens) with the UX
+  designer's review of them; I checked the same behaviour in the component tests above, not in
+  a browser again.
 
 # Log
 
@@ -461,3 +526,4 @@ To be written by the tester.
 - 2026-11-21 ux-designer: reviewed: matches the design, no must-fix items (29 screens and the
   `src` diff checked; three small differences noted under *Review after building*, none
   blocking); handed to the tester.
+- 2026-11-21 tester: passed (547 tests, type check, build and harness check green; added tests for damaged prices, paper+Storytel, the panel's Price field and three follow-up cases; no risk to her books found).

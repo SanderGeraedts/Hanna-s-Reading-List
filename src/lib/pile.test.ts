@@ -131,6 +131,25 @@ describe('the buying jar', () => {
     const shelf = [...three, book('a', '2026-11-05', { formats: ['paperback'] }), book('b', '2026-11-06', { format: 'hardcover' })]
     expect(pileJars(shelf, TODAY).buying).toBe(3)
   })
+
+  it('a damaged price (text, negative, NaN, Infinity) spends nothing (tester, T-0016)', () => {
+    const odd = [
+      book('s', '2026-11-05', { formats: ['paperback'], price: '12' as unknown as number }),
+      book('n', '2026-11-05', { formats: ['paperback'], price: -12 }),
+      book('x', '2026-11-05', { formats: ['paperback'], price: Number.NaN }),
+      book('i', '2026-11-05', { formats: ['paperback'], price: Number.POSITIVE_INFINITY }),
+    ]
+    expect(pileJars([...three, ...odd], TODAY).buying).toBe(3)
+  })
+
+  it('a paper copy that is also on Storytel spends its price (D-0010, tester, T-0016)', () => {
+    expect(pileJars([book('both', '2026-11-10', { formats: ['paperback', 'storytel'], price: 10 })], TODAY).buying).toBe(-2)
+  })
+
+  it('a book added after today, or a price on a book later moved to the library, spends nothing (tester, T-0016)', () => {
+    expect(pileJars([book('future', '2026-11-25', { formats: ['paperback'], price: 10 })], TODAY).buying).toBe(0)
+    expect(pileJars([book('moved', '2026-11-10', { formats: ['library'], price: 10 })], TODAY).buying).toBe(0)
+  })
 })
 
 describe('the Storytel jar', () => {
