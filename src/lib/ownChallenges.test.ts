@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Book } from './library'
-import { challengeBooks, cleanChallenges, ruleOptions, ruleText } from './ownChallenges'
+import { PILE_CHALLENGE, challengeBooks, cleanChallenges, ruleOptions, ruleText } from './ownChallenges'
 import type { OwnChallenge } from './ownChallenges'
 
 const book = (id: string, extra: Partial<Book> = {}): Book => ({
@@ -65,5 +65,13 @@ describe('her own challenges', () => {
       { id: 'p', name: 'Pile', target: 2, year: 2027, rule: 'pile' },
     ])
     expect(cleanChallenges(null)).toEqual([])
+  })
+})
+
+describe('the Pile challenge button (T-0014)', () => {
+  it('fills in "Pile challenge", From my pile, 12 books, which saves as a valid challenge', () => {
+    expect(PILE_CHALLENGE).toEqual({ name: 'Pile challenge', target: 12, rule: 'pile' })
+    const saved = { id: 'pile1', year: 2026, ...PILE_CHALLENGE }
+    expect(cleanChallenges([saved])).toEqual([saved])
   })
 })

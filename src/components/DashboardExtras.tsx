@@ -17,6 +17,9 @@ import {
   wantPile,
 } from '#/lib/insights'
 import { goalPace, goalPaceText } from '#/lib/insightsMore'
+import { localDay } from '#/lib/library'
+import { TREAT_COST, pileJars, pileMonths, pileSentence, signed } from '#/lib/pile'
+import type { PileMonth } from '#/lib/pile'
 import { goalForecast } from '#/lib/finishEstimate'
 import type { BreakdownKind } from '#/lib/insights'
 import { periodStats } from '#/lib/stats'
@@ -551,14 +554,16 @@ export function PileCard({ books }: { books: Book[] }) {
       <p className="big-number">
         <strong>{pile.books}</strong> {pile.books === 1 ? 'book' : 'books'} <span className="muted">waiting</span>
       </p>
-      <p className="muted small-text">
-        {[
-          pile.pages > 0 && `${pile.pages.toLocaleString('en-GB')} pages`,
-          pile.minutes > 0 && `${formatDuration(pile.minutes)} to listen`,
-        ]
-          .filter(Boolean)
-          .join(' · ')}
-      </p>
+      {(pile.pages > 0 || pile.minutes > 0) && (
+        <p className="muted small-text">
+          {[
+            pile.pages > 0 && `${pile.pages.toLocaleString('en-GB')} pages`,
+            pile.minutes > 0 && `${formatDuration(pile.minutes)} to listen`,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </p>
+      )}
       {time ? (
         <p>
           At your pace of {pile.perMonth.toFixed(1).replace(/\.0$/, '')} a month, that's {time} of reading.
@@ -570,7 +575,112 @@ export function PileCard({ books }: { books: Book[] }) {
           </p>
         )
       )}
+      <PileMotivation books={books} />
     </section>
+  )
+}
+
+/** In vs. out this month, the 6-month line and the two coin jars (T-0014). */
+function PileMotivation({ books }: { books: Book[] }) {
+  const today = localDay()
+  const months = useMemo(() => pileMonths(books, today), [books, today])
+  const jars = useMemo(() => pileJars(books, today), [books, today])
+  const now = months[months.length - 1]
+  const nothing = now.added === 0 && now.read === 0
+  return (
+    <div className="pile-motivation">
+      <p className={nothing ? 'muted small-text' : 'pile-sentence'}>{pileSentence(now)}</p>
+      <PileLine months={months} />
+      <div className="pile-jars">
+        <BuyingJar coins={jars.buying} />
+        <StorytelJar coins={jars.storytel} />
+      </div>
+    </div>
+  )
+}
+
+/** The net change per month as a small line: up is grew, down is shrank, each point with its number. */
+function PileLine({ months }: { months: PileMonth[] }) {
+  const W = 300
+  const H = 96
+  const pad = 18
+  const mid = 42
+  const half = 24
+  const scale = Math.max(2, ...months.map((m) => Math.abs(m.net)))
+  const x = (i: number) => pad + (i * (W - pad * 2)) / (months.length - 1)
+  const y = (v: number) => mid - (v / scale) * half
+  const last = months.length - 1
+  const points = months.map((m, i) => `${x(i)},${y(m.net)}`).join(' ')
+  return (
+    <div className="pile-line">
+      <p className="muted small-text">Last 6 months</p>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="pile-spark"
+        role="img"
+        aria-label={`Pile change per month: ${months.map((m) => `${monthName(m.month)} ${signed(m.net)}`).join(', ')}`}
+      >
+        <line className="zero" x1={4} x2={W - 4} y1={mid} y2={mid} />
+        <polyline className="trend" points={points} />
+        {months.map((m, i) => (
+          <g key={`${m.year}-${m.month}`}>
+            <circle className={i === last ? 'dot now' : 'dot'} cx={x(i)} cy={y(m.net)} r={i === last ? 4.5 : 3.2} />
+            <text className="value" x={x(i)} y={m.net >= 0 ? y(m.net) - 8 : y(m.net) + 15} textAnchor="middle">
+              {signed(m.net)}
+            </text>
+            <text className={i === last ? 'axis now' : 'axis'} x={x(i)} y={H - 4} textAnchor="middle">
+              {monthName(m.month, 'short').slice(0, 3)}
+            </text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  )
+}
+
+/** Coins as 🪙 per coin, "🪙 × 9" above 6, with empty slots up to `places`. */
+function Coins({ coins, places }: { coins: number; places: number }) {
+  return (
+    <p className="jar-coins" aria-hidden>
+      {coins > 6 ? (
+        <span>🪙 × {coins}</span>
+      ) : (
+        <>
+          {Array.from({ length: coins }, (_, i) => (
+            <span key={`c${i}`}>🪙</span>
+          ))}
+          {Array.from({ length: Math.max(0, places - coins) }, (_, i) => (
+            <span key={`e${i}`} className="jar-slot" />
+          ))}
+        </>
+      )}
+    </p>
+  )
+}
+
+function BuyingJar({ coins }: { coins: number }) {
+  const treat = coins >= TREAT_COST
+  return (
+    <div
+      className={treat ? 'jar treat' : 'jar'}
+      role="group"
+      aria-label={treat ? `Buying jar: ${coins} coins, treat earned` : `Buying jar: ${coins} of ${TREAT_COST} coins`}
+    >
+      <p className="jar-name">📚 Buying jar</p>
+      <Coins coins={coins} places={TREAT_COST} />
+      {treat ? <p className="jar-status treat">Treat earned! 🎁</p> : <p className="jar-status muted">{coins} of {TREAT_COST}</p>}
+    </div>
+  )
+}
+
+function StorytelJar({ coins }: { coins: number }) {
+  const label = `${coins} ${coins === 1 ? 'coin' : 'coins'}`
+  return (
+    <div className="jar" role="group" aria-label={`Storytel jar: ${label}`}>
+      <p className="jar-name">🎧 Storytel jar</p>
+      <Coins coins={coins} places={1} />
+      <p className="jar-status muted">{label}</p>
+    </div>
   )
 }
 

@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import type { Book } from '#/lib/library'
 import { timesRead } from '#/lib/library'
 import { askedPatch } from '#/lib/ratingAsk'
@@ -20,6 +21,8 @@ interface Props {
   onSeenBadge?: (id: string) => void
   /** in the first week of a month: last month's wrap-up, until opened or put away */
   wrapUp?: { label: string; onOpen: () => void; onDismiss: () => void }
+  /** once a week: the want-to-read book that has waited longest (T-0014), until Not now */
+  dustOff?: { book: Book; waited: string; onDismiss: () => void }
 }
 
 /**
@@ -28,11 +31,14 @@ interface Props {
  * takes a book off the list) and new books that might belong to a series.
  * The dashboard leaves the block out when nothing is waiting.
  */
-export function WaitingCard({ toRate, questions, onUpdate, onShowBook, newBadges = [], onSeenBadge, wrapUp }: Props) {
+export function WaitingCard({ toRate, questions, onUpdate, onShowBook, newBadges = [], onSeenBadge, wrapUp, dustOff }: Props) {
+  const heading = useRef<HTMLHeadingElement>(null)
   return (
     <section className="dash-card waiting-card" aria-labelledby="waiting-title">
-      <h2 id="waiting-title">Waiting for you</h2>
-      {toRate.length === 0 && questions.length === 0 && newBadges.length === 0 && !wrapUp && (
+      <h2 id="waiting-title" ref={heading} tabIndex={-1}>
+        Waiting for you
+      </h2>
+      {toRate.length === 0 && questions.length === 0 && newBadges.length === 0 && !wrapUp && !dustOff && (
         <p className="muted small-text">Nothing waiting.</p>
       )}
       {wrapUp && (
@@ -51,6 +57,43 @@ export function WaitingCard({ toRate, questions, onUpdate, onShowBook, newBadges
                 </button>
                 <button type="button" className="btn small" onClick={wrapUp.onDismiss}>
                   Later
+                </button>
+              </div>
+            </div>
+          </li>
+        </ul>
+      )}
+      {dustOff && (
+        <ul className="waiting-list dust-off">
+          <li>
+            <button className="cover-btn" aria-label={`Open ${dustOff.book.title}`} onClick={() => onShowBook(dustOff.book.id)}>
+              <Cover book={dustOff.book} small />
+            </button>
+            <div className="waiting-info">
+              <p className="waiting-title">
+                <strong>{dustOff.book.title}</strong>
+                {dustOff.book.authors.length > 0 && <span className="muted small-text"> · {dustOff.book.authors.join(', ')}</span>}
+              </p>
+              <p className="waiting-title">Has waited {dustOff.waited} — give it a go?</p>
+              <div className="chips">
+                <button
+                  type="button"
+                  className="btn small primary tall"
+                  aria-label={`Maybe, open ${dustOff.book.title}`}
+                  onClick={() => onShowBook(dustOff.book.id)}
+                >
+                  Maybe
+                </button>
+                <button
+                  type="button"
+                  className="btn small tall"
+                  aria-label={`Not now: ${dustOff.book.title}`}
+                  onClick={() => {
+                    heading.current?.focus()
+                    dustOff.onDismiss()
+                  }}
+                >
+                  Not now
                 </button>
               </div>
             </div>

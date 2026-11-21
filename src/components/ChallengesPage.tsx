@@ -12,6 +12,7 @@ import { useNarrow } from './Dashboard'
 import { cleanTwoColumns, showIn } from '#/lib/twoColumns'
 import type { TwoColumns } from '#/lib/twoColumns'
 import { NewChallengeForm, OwnChallengeCard, useOwnChallenges } from './OwnChallenges'
+import { PILE_CHALLENGE } from '#/lib/ownChallenges'
 
 export type ChallengeSection = 'goal' | 'monthly' | 'bingo' | 'alphabet'
 
@@ -76,7 +77,8 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
   // the order of the challenges, which she arranges like the dashboard (per device)
   const [savedLayout, setLayout] = useChallengeLayout(accountId)
   const [own, setOwn] = useOwnChallenges(accountId)
-  const [adding, setAdding] = useState(false)
+  // the new-challenge form: empty, or filled in by the Pile challenge button (T-0014)
+  const [adding, setAdding] = useState<false | 'new' | 'pile'>(false)
   const ownThisYear = useMemo(() => own.filter((c) => c.year === year), [own, year])
   const known = useMemo<ChallengeId[]>(() => [...CHALLENGE_IDS, ...ownThisYear.map((c) => `own:${c.id}` as const)], [ownThisYear])
   const layout = useMemo(() => cleanTwoColumns(savedLayout, known, DEFAULT_ORDER), [savedLayout, known])
@@ -147,11 +149,16 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
         ) : (
           <div className="dashboard-bar-actions">
             {year === thisYear && (
-              <button className="btn small" onClick={() => setAdding(true)} disabled={adding}>
-                ＋ New challenge
-              </button>
+              <>
+                <button className="btn small tall" onClick={() => setAdding('new')} disabled={!!adding}>
+                  ＋ New challenge
+                </button>
+                <button className="btn small tall" onClick={() => setAdding('pile')} disabled={!!adding}>
+                  <span aria-hidden>📚</span> Pile challenge
+                </button>
+              </>
             )}
-            <button className="btn small" onClick={() => setArranging(true)}>
+            <button className="btn small tall" onClick={() => setArranging(true)}>
               <span aria-hidden>⠿</span> Arrange
             </button>
           </div>
@@ -159,8 +166,10 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
       </div>
       {adding && (
         <NewChallengeForm
+          key={adding}
           books={books}
           year={year}
+          preset={adding === 'pile' ? PILE_CHALLENGE : undefined}
           onSave={(c) => {
             setOwn([...own, c])
             setAdding(false)
