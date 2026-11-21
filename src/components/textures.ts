@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import type { Book } from '#/lib/library'
+import { hasMedal, timesRead } from '#/lib/library'
 import type { BookDims } from '#/lib/shelfLayout'
 import { formatDuration, listenOnly } from '#/lib/listening'
 import type { PageEdges } from '#/lib/edges'
@@ -135,8 +136,8 @@ export function paintSpine(book: Book, dims: BookDims, sleep = false) {
   const c = canvas(W, H)
   const ctx = c.getContext('2d', { willReadFrequently: true })!
   const bg = book.color
-  const ink = inkFor(bg)
-  const accent = accentFor(bg)
+  // every book is a hardcover on the shelf, with gold bands and plain lettering
+  const { ink, bands: accent } = spineColours(bg)
 
   // rounded-spine shading: darker at the edges, a highlight just off-centre
   const grad = ctx.createLinearGradient(0, 0, W, 0)
@@ -148,7 +149,7 @@ export function paintSpine(book: Book, dims: BookDims, sleep = false) {
   ctx.fillRect(0, 0, W, H)
 
   // decorative bands (a finished book's medal takes the place of the bottom pair)
-  const read = book.status === 'read'
+  const read = hasMedal(book)
   ctx.fillStyle = accent
   for (const y of read ? [H * 0.05] : [H * 0.05, H * 0.9]) {
     ctx.fillRect(0, y, W, Math.max(2, H * 0.006))
@@ -199,8 +200,51 @@ export function paintSpine(book: Book, dims: BookDims, sleep = false) {
   ctx.restore()
 
   grain(ctx, W, H, 0.05)
+  paintWear(ctx, W, H, book)
   if (read) paintMedalRibbon(ctx, W, H, dims)
   return toTexture(c)
+}
+
+/** Gold leaf for the bands on a darker hardcover spine. */
+export const GOLD = '#dcb767'
+/** Gold leaf on a light spine: darker, so the bands stand out. */
+export const DEEP_GOLD = '#7a5a1c'
+
+/**
+ * The colours on a spine: the lettering (title, author, language tag) is the
+ * plain ink that reads on the spine, off-white on dark and near-black on light;
+ * the bands are gold, a deep gold on a light spine (#180).
+ */
+export function spineColours(bg: string) {
+  const ink = inkFor(bg)
+  return { ink, bands: ink === '#1d1a16' ? DEEP_GOLD : GOLD }
+}
+
+/**
+ * A little wear, the same every time for a book: rubbed ends on every spine,
+ * and a few scuffs, more the more often she read it.
+ */
+function paintWear(ctx: CanvasRenderingContext2D, W: number, H: number, book: Book) {
+  const rnd = seeded(`wear:${book.id}`)
+  const reads = timesRead(book)
+  ctx.save()
+  // rubbed top and bottom: paler towards the ends
+  for (const [y0, y1] of [
+    [0, H * 0.018],
+    [H, H * 0.982],
+  ]) {
+    const g = ctx.createLinearGradient(0, y0, 0, y1)
+    g.addColorStop(0, 'rgba(255, 248, 235, 0.32)')
+    g.addColorStop(1, 'rgba(255, 248, 235, 0)')
+    ctx.fillStyle = g
+    ctx.fillRect(0, Math.min(y0, y1), W, Math.abs(y1 - y0))
+  }
+  // a few small scuffs
+  for (let i = 0; i < 4 + reads * 2; i++) {
+    ctx.fillStyle = `rgba(255, 248, 235, ${0.05 + rnd() * 0.07})`
+    ctx.fillRect(rnd() * W, rnd() * H, 1 + rnd() * W * 0.08, 1 + rnd() * H * 0.004)
+  }
+  ctx.restore()
 }
 
 /** A small crescent moon, pale gold with a dark rim so it shows on light and dark spines. */
@@ -535,6 +579,28 @@ function paintPages(vertical: boolean) {
   return toTexture(c)
 }
 
+const plainCache = new Map<string, THREE.Texture>()
+/**
+ * A tiny texture in one colour, shared by every book of that colour. It stands
+ * in for a cover face that isn't painted (yet): the back until the book is taken
+ * out, the front while its cover image loads (see lib/bookFaces.ts, #181).
+ * Cached, never disposed.
+ */
+export function plainTexture(color: string) {
+  const cached = plainCache.get(color)
+  if (cached) return cached
+  const c = canvas(4, 4)
+  const ctx = c.getContext('2d')
+  if (ctx) {
+    ctx.fillStyle = color
+    ctx.fillRect(0, 0, 4, 4)
+  }
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  plainCache.set(color, t)
+  return t
+}
+
 let pagesCache: { fore: THREE.Texture; topBottom: THREE.Texture } | null = null
 /** Page-edge textures are shared by every book. */
 export function pageTextures() {
@@ -553,13 +619,13 @@ interface OakPalette {
   flecks: string
 }
 
-/** Grey "sonoma"-style oak, like a light grey laminate: beige with a cool grey cast. */
-const GREY_OAK: OakPalette = {
-  base: ['#cbc3b6', '#c0b8aa', '#d0c9bd', '#b8afa0', '#c7bfb2'],
-  late: '112, 102, 88',
-  early: '226, 221, 211',
-  pores: '96, 88, 76',
-  flecks: '238, 234, 226',
+/** Warm dark walnut, for the bookcase. */
+const WALNUT: OakPalette = {
+  base: ['#6b4630', '#61402b', '#734c34', '#5a3a26', '#684530'],
+  late: '42, 24, 14',
+  early: '138, 96, 64',
+  pores: '34, 20, 11',
+  flecks: '156, 112, 78',
 }
 
 /** Warm honey European oak (used for the floor). */
@@ -627,11 +693,12 @@ function paintOak(ctx: CanvasRenderingContext2D, W: number, H: number, p: OakPal
 }
 
 /** Grey oak for the bookcase. */
+/** The bookcase's wood: warm walnut (it was a grey oak before). */
 export function woodTexture() {
   const W = 2048
   const H = 512
   const c = canvas(W, H)
-  paintOak(c.getContext('2d', { willReadFrequently: true })!, W, H, GREY_OAK)
+  paintOak(c.getContext('2d', { willReadFrequently: true })!, W, H, WALNUT)
   const t = toTexture(c)
   t.wrapS = THREE.RepeatWrapping
   t.wrapT = THREE.RepeatWrapping

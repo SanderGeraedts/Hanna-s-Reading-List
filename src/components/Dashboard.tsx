@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { Book } from '#/lib/library'
+import type { Book, NewBook } from '#/lib/library'
 import { formatDuration } from '#/lib/listening'
 import {
   BookLine,
@@ -21,7 +21,9 @@ import { pickReadNext, readNextChoices } from '#/lib/readNext'
 import { pendingRatings } from '#/lib/ratingAsk'
 import { seriesQuestions } from '#/lib/sleepSeries'
 import { WaitingCard } from './WaitingCard'
+import { AgainCard } from './AgainCard'
 import { AlphabetCard } from './AlphabetCard'
+import { NewForYouCard } from './NewForYouCard'
 import { storytelLink } from '#/lib/storytelLink'
 import { ChallengeCard } from './ChallengeCard'
 import { OpenLink } from './OpenLink'
@@ -44,9 +46,15 @@ import {
   showBlock,
   singleColumn,
   toggleFold,
+  toggleFavourite,
+  favouriteColumns,
 } from '#/lib/dashboardLayout'
 import type { BlockId, DashboardLayout, SectionId } from '#/lib/dashboardLayout'
 import { TodayStrip } from './TodayStrip'
+import { BadgesCard, CoverWallCard, RhythmCard } from './NewBlocks'
+import { badges, newBadges } from '#/lib/badges'
+
+const BADGES_SEEN = 'hannas-reading-list:badges-seen'
 import type { Period } from '#/lib/stats'
 
 /**
@@ -74,6 +82,8 @@ interface DashboardProps extends Props {
   onOpenChallenges?: (section: ChallengeSection) => void
   /** "Open ›" on the calendar block: the Calendar page at that month (yyyy-mm) */
   onOpenCalendar?: (month: string) => void
+  /** put a suggested book on the shelf ("New for you") */
+  onAdd?: (book: NewBook) => void
 }
 
 export interface PeriodPick {
@@ -116,7 +126,7 @@ function useLayout(accountId: string | null) {
 
 const NARROW = '(max-width: 860px)'
 
-function useNarrow() {
+export function useNarrow() {
   const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia(NARROW).matches)
   useEffect(() => {
     const m = window.matchMedia(NARROW)
@@ -144,7 +154,7 @@ interface Drag {
   drop: Drop | null
 }
 
-export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChallenges, onOpenCalendar }: DashboardProps) {
+export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChallenges, onOpenCalendar, onAdd }: DashboardProps) {
   const open = (section: ChallengeSection) => (onOpenChallenges ? () => onOpenChallenges(section) : undefined)
   const now = new Date()
   // the period picked under "Books read"; the charts and records follow it
@@ -162,10 +172,41 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
   // finished books to rate and new books that might be in a series, instead of pop-ups
   const toRate = useMemo(() => pendingRatings(books), [books])
   const questions = useMemo(() => seriesQuestions(books), [books])
-  const nothingWaiting = toRate.length === 0 && questions.length === 0
+  // a new badge waits until "Nice!" (remembered on this device), or for a week
+  const [seenBadges, setSeenBadges] = useState<string[]>(() => {
+    try {
+      const v: unknown = JSON.parse(localStorage.getItem(BADGES_SEEN) ?? '[]')
+      return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+    } catch {
+      return []
+    }
+  })
+  const freshBadges = useMemo(() => newBadges(badges(books)).filter((b) => !seenBadges.includes(b.id)), [books, seenBadges])
+  const seeBadge = (id: string) => {
+    const next = [...seenBadges, id]
+    setSeenBadges(next)
+    try {
+      localStorage.setItem(BADGES_SEEN, JSON.stringify(next))
+    } catch {
+      /* storage blocked: it still holds for this visit */
+    }
+  }
+  const nothingWaiting = toRate.length === 0 && questions.length === 0 && freshBadges.length === 0
 
   const blocks: Record<BlockId, React.ReactNode> = {
-    waiting: <WaitingCard toRate={toRate} questions={questions} onUpdate={onUpdate} onShowBook={onShowBook} />,
+    waiting: (
+      <WaitingCard
+        toRate={toRate}
+        questions={questions}
+        onUpdate={onUpdate}
+        onShowBook={onShowBook}
+        newBadges={freshBadges}
+        onSeenBadge={seeBadge}
+      />
+    ),
+    badges: <BadgesCard books={books} />,
+    covers: <CoverWallCard books={books} onShowBook={onShowBook} />,
+    rhythm: <RhythmCard books={books} />,
     challenge: (
       <ChallengeCard
         books={books}
@@ -185,6 +226,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
     ),
     goal: <GoalCard books={books} accountId={accountId} onOpen={open('goal')} />,
     next: <ReadNextCard books={books} onShowBook={onShowBook} />,
+    newforyou: <NewForYouCard books={books} accountId={accountId} onAdd={onAdd ?? (() => {})} />,
     reading: <CurrentlyReadingCard books={books} onShowBook={onShowBook} />,
     series: <SeriesCard books={books} onShowBook={onShowBook} />,
     calendar: <Calendar books={books} onShowBook={onShowBook} onOpen={onOpenCalendar} />,
@@ -193,6 +235,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
     pile: <PileCard books={books} />,
     onthisday: <OnThisDayCard books={books} onShowBook={onShowBook} />,
     lent: <LentCard books={books} onShowBook={onShowBook} />,
+    again: <AgainCard books={books} onShowBook={onShowBook} onUpdate={onUpdate} />,
     // Top 5 and the spice meter in one block, with a switch
     top: <RatingsCard books={books} onShowBook={onShowBook} />,
     fact: <FactCard books={books} />,
@@ -306,6 +349,22 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
   })
 
   const shown = SECTION_IDS.some((s) => layout.sections[s].flat().some(showing))
+  const favFolded = layout.folded.includes('favourites') && !arranging
+  /** ☆ / ★ in the block tools while arranging: a favourite also shows on top */
+  const star = (id: BlockId) => {
+    const on = layout.favourites.includes(id)
+    return (
+      <button
+        className={`btn icon small block-star${on ? ' on' : ''}`}
+        aria-pressed={on}
+        aria-label={on ? `Take ${BLOCKS[id]} out of the favourites` : `Add ${BLOCKS[id]} to the favourites`}
+        title={on ? 'Favourite' : 'Make a favourite'}
+        onClick={() => setLayout(toggleFavourite(layout, id))}
+      >
+        {on ? '★' : '☆'}
+      </button>
+    )
+  }
   return (
     <div className="dashboard" ref={root}>
       <TodayStrip books={books} accountId={accountId} onShowBook={onShowBook} />
@@ -338,6 +397,40 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
         )}
       </div>
       {!shown && <p className="muted dashboard-empty">Every block is hidden. Press Arrange to add some back.</p>}
+      {(layout.favourites.length > 0 || arranging) && (
+        <section className="dash-section dash-favourites" aria-labelledby="section-favourites">
+          <button
+            type="button"
+            className="dash-section-head"
+            aria-expanded={!favFolded}
+            onClick={() => setLayout(toggleFold(layout, 'favourites'))}
+            disabled={arranging}
+          >
+            <h2 id="section-favourites">★ Favourites</h2>
+            <span className="dash-section-fold" aria-hidden>
+              {favFolded ? '▸' : '▾'}
+            </span>
+          </button>
+          {!favFolded &&
+            (layout.favourites.length === 0 ? (
+              <p className="muted small-text dash-favourites-empty">Star blocks with ☆ to see them here, on top.</p>
+            ) : (
+              // the favourites also stay in their own section; these are copies, not dragged from here
+              <div className={`dashboard-grid${arranging ? ' arranging' : ''}`}>
+                {(narrow ? [singleColumn(favouriteColumns(layout))] : favouriteColumns(layout)).map((col, visual) => (
+                  <div className="dash-column" key={visual}>
+                    {col.filter(showing).map((id) => (
+                      <div key={id} className="dash-block">
+                        {arranging && <div className="block-tools">{star(id)}</div>}
+                        {blocks[id]}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ))}
+        </section>
+      )}
       {SECTION_IDS.map((section) => {
         const ids = layout.sections[section].flat().filter(showing)
         // an empty section stays out of the way, except while arranging (to drop blocks into)
@@ -384,6 +477,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
                               >
                                 <span aria-hidden>⠿</span>
                               </button>
+                              {star(id)}
                               <button
                                 className="btn icon small"
                                 aria-label={`Hide ${BLOCKS[id]}`}

@@ -186,6 +186,19 @@ h2 {
   padding: 0.5rem 1rem;
   border-radius: var(--radius-pill);
 }
+/* the shelf can't be drawn (#181): like the empty-shelf note, with room for two lines */
+.shelf-error {
+  padding: 1rem;
+  text-align: center;
+}
+.shelf-error p {
+  max-width: 26rem;
+  border-radius: var(--radius);
+}
+.empty p.shelf-error-sub {
+  font-family: var(--sans);
+  font-size: var(--fs-small);
+}
 
 /* ---- controls ------------------------------------------------------- */
 /* buttons: .btn.primary is the main (gold) one, .btn the secondary (outlined),
@@ -645,6 +658,91 @@ textarea.input {
   background: #fff;
 }
 
+/* ---- the page tabs (Bookshelf, Dashboard, Challenges, Calendar) ------ */
+.page-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+/* on the lavender wall: light pills with dark plum text; the current page gold */
+.page-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 2.2rem;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid rgba(45, 32, 56, 0.2);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--header-ink);
+  font: inherit;
+  font-size: var(--fs-small);
+  cursor: pointer;
+}
+.page-tab:hover {
+  background: #fff;
+}
+.page-tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+.page-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (max-width: 720px) {
+  /* phones: the icons only, each big enough for a finger */
+  .page-tab-label {
+    display: none;
+  }
+  .page-tab {
+    min-width: var(--tap);
+    min-height: var(--tap);
+    justify-content: center;
+    padding: 0;
+    font-size: var(--fs-large);
+  }
+}
+
+/* ---- finding and zooming on the shelf -------------------------------- */
+/* on the lavender wall: light buttons with dark plum text, like ↻ */
+.zoom-controls .btn,
+.topbar .btn.search-clear {
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--header-ink);
+  border-color: rgba(45, 32, 56, 0.2);
+}
+.zoom-controls .btn:hover:not(:disabled),
+.topbar .btn.search-clear:hover:not(:disabled) {
+  background: #fff;
+}
+.zoom-controls {
+  position: absolute;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.zoom-controls .btn {
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-size: var(--fs-large);
+}
+.search-clear {
+  white-space: nowrap;
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ---- Storytel refresh ------------------------------------------------ */
 .topbar .btn.refresh {
   width: 2.4rem;
@@ -741,6 +839,10 @@ textarea.input {
 /* ---- search --------------------------------------------------------- */
 .search {
   position: relative;
+  /* the search button, and next to it the “…” ✕ chip while books are lit up */
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 .topbar .search-btn {
   width: 2.4rem;
@@ -1263,6 +1365,15 @@ textarea.input {
 .mobile-only {
   display: none;
 }
+/* the ☰ menu itself: only on a phone, where it holds the shelf's tools */
+.phone-menu {
+  display: none;
+}
+@media (max-width: 720px) {
+  .phone-menu {
+    display: block;
+  }
+}
 .menu-tools {
   gap: 0.15rem;
   margin-top: 0.3rem;
@@ -1316,6 +1427,19 @@ textarea.input {
     grid-column: 2;
     grid-row: 2;
   }
+  /* the page tabs: a full-width row of their own under the title and the
+     buttons, on one line, never moved by the search chip (#181) */
+  .topbar .page-tabs {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    flex-wrap: nowrap;
+    margin-top: 0;
+    pointer-events: none;
+  }
+  .topbar .page-tab {
+    pointer-events: auto;
+    flex-shrink: 0;
+  }
 }
 
 /* ---- dashboard (#59) ------------------------------------------------- */
@@ -1324,7 +1448,8 @@ textarea.input {
   inset: 0;
   z-index: 1;
   overflow-y: auto;
-  padding: 6.5rem 1.5rem 2rem;
+  /* starts under the header's real height (set on .app as --header-h), so the tabs cover nothing (#181) */
+  padding: max(6.5rem, calc(var(--header-h, 0px) + var(--space-3))) 1.5rem 2rem;
   /* the same lavender wallpaper as behind the shelf */
   background: var(--wallpaper);
   color: var(--header-ink);
@@ -1396,7 +1521,7 @@ textarea.input {
   border: 1px solid var(--accent);
   border-radius: var(--radius);
   position: sticky;
-  top: 5rem;
+  top: max(5rem, calc(var(--header-h, 0px) + var(--space-2)));
   z-index: 3;
 }
 .dashboard-bar p {
@@ -1625,6 +1750,42 @@ textarea.input {
   justify-self: start;
 }
 
+/* ---- give it another try (#187) ------------------------------------------ */
+.again-card .next-title .again-title {
+  font: inherit;
+  color: inherit;
+  margin: 0;
+  text-align: left;
+}
+.again-card .next-title .again-title:hover {
+  color: var(--accent);
+}
+.again-card .next-actions .btn {
+  min-height: 44px;
+  /* the buttons wrap onto two lines, not their words */
+  white-space: nowrap;
+}
+/* the line after "Try again" is announced; until then it takes no room */
+.again-status:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.again-card h2:focus {
+  outline: none;
+}
+.again-card h2:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* the book panel: how far a book she didn't finish got (#187) */
+.stopped-at {
+  margin: calc(var(--space-2) * -1) 0 0;
+}
+
 .calendar-card {
   align-self: stretch;
 }
@@ -1806,10 +1967,10 @@ textarea.input {
 }
 @media (max-width: 720px) {
   .dashboard {
-    padding: 5.25rem 0.75rem 1.5rem;
+    padding: max(5.25rem, calc(var(--header-h, 0px) + var(--space-2))) 0.75rem 1.5rem;
   }
   .dashboard-bar.arranging {
-    top: 4.75rem;
+    top: max(4.75rem, calc(var(--header-h, 0px) + var(--space-1)));
   }
   .dash-card {
     padding: 1rem;
@@ -2072,6 +2233,43 @@ textarea.input {
 }
 .next-actions .btn.storytel-link {
   margin-top: 0;
+}
+
+/* the book panel's open buttons: Storytel and her own e-book file (#185), wrapping on a phone */
+.open-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+.open-links .btn.storytel-link {
+  margin-top: 0;
+}
+.btn.ebook-link {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  width: fit-content;
+  text-decoration: none;
+}
+/* the e-book link field under "How I have it" */
+.link-btn.ebook-add {
+  justify-self: start;
+}
+.ebook-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+.ebook-row .input {
+  flex: 1;
+  min-width: 0;
+}
+@media (pointer: coarse) {
+  .btn.ebook-remove {
+    min-width: var(--tap);
+    min-height: var(--tap);
+  }
 }
 .book-list {
   list-style: none;
@@ -2808,6 +3006,151 @@ textarea.input {
   margin-top: 0.4rem;
 }
 
+/* ---- badges, the cover wall, when I read most ------------------------ */
+.badges {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: var(--space-2);
+}
+.badge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-small);
+  background: var(--surface-sunken);
+  opacity: 0.5;
+}
+.badge.earned {
+  opacity: 1;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+}
+/* Steam-like: locked badges grey, with their progress */
+.badge.locked {
+  opacity: 0.6;
+}
+.badge.locked .badge-icon {
+  filter: grayscale(1);
+}
+.badge-on {
+  color: var(--accent);
+}
+.badge-secret {
+  font-style: italic;
+}
+.badge-progress {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: 2px;
+}
+.badges-total {
+  margin: 0 0 var(--space-2);
+}
+.badges-hidden {
+  margin: var(--space-2) 0 0;
+}
+/* "Badge unlocked": slides in at the bottom right, like Steam */
+.badge-toast {
+  position: fixed;
+  z-index: 7;
+  right: 1rem;
+  bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: min(22rem, calc(100vw - 2rem));
+  padding: var(--space-3);
+  border-radius: var(--radius-card);
+  background: var(--surface-solid);
+  border: 1px solid var(--accent-line);
+  color: var(--text);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  animation: badge-in 5s ease both;
+}
+.badge-toast-icon {
+  font-size: 2.2rem;
+  line-height: 1;
+}
+.badge-toast-text {
+  display: grid;
+  min-width: 0;
+}
+.badge-toast-text > .small-text:first-child {
+  color: var(--accent);
+  font-weight: 600;
+}
+@keyframes badge-in {
+  0% {
+    transform: translateY(130%);
+    opacity: 0;
+  }
+  8%,
+  90% {
+    transform: none;
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(130%);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .badge-toast {
+    animation: none;
+  }
+}
+.badge-icon {
+  font-size: var(--fs-heading);
+  line-height: 1;
+}
+.badge-text {
+  display: grid;
+  min-width: 0;
+}
+.cover-wall {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(2.6rem, 1fr));
+  gap: var(--space-1);
+}
+.cover-wall .cover-btn,
+.cover-wall .dash-cover.small {
+  width: 100%;
+}
+.rhythm-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-1);
+  height: 7rem;
+}
+.rhythm-bar {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 2px;
+}
+.rhythm-fill {
+  width: 100%;
+  min-height: 2px;
+  border-radius: var(--radius-small) var(--radius-small) 0 0;
+  background: var(--accent);
+}
+.rhythm-label {
+  font-size: var(--fs-tiny);
+}
+
 /* ---- the Challenges page, and "Open ›" on the dashboard -------------- */
 .open-link {
   margin-left: auto;
@@ -2856,13 +3199,8 @@ textarea.input {
   background: var(--accent-soft);
   border-color: var(--accent-line);
 }
-.challenges-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-5);
-  align-items: start;
-}
-.challenges-grid > div {
+/* "Open ›" scrolls to a challenge: keep it clear of the top bar */
+.challenges-page .dash-block {
   scroll-margin-top: 6rem;
 }
 .alphabet-switch {
@@ -2887,10 +3225,41 @@ textarea.input {
 .bingo-mini .bingo-square {
   padding: 0;
 }
-@media (max-width: 720px) {
-  .challenges-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
+
+/* ---- the reading journal ------------------------------------------- */
+.journal-note {
+  display: block;
+  margin-top: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-left: 2px solid var(--accent-line);
+  background: var(--surface-sunken);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-small);
+  font-style: italic;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 0 var(--radius-small) var(--radius-small) 0;
+}
+.journal-edit {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+.journal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.journal-list p {
+  margin: 0;
+  font-style: italic;
+}
+.day-marks {
+  font-size: var(--fs-tiny);
 }
 
 /* ---- the Calendar page ----------------------------------------------- */
@@ -3073,6 +3442,19 @@ textarea.input {
   }
 }
 
+/* ---- favourites on top --------------------------------------------- */
+.block-star.on {
+  color: var(--accent);
+}
+.dash-favourites-empty {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  color: var(--muted);
+  justify-self: start;
+}
+
 /* ---- dashboard sections and the today strip -------------------------- */
 .dash-section {
   max-width: 68rem;
@@ -3196,4 +3578,54 @@ button.today-item:hover {
   margin: 0;
   padding: var(--space-2) var(--space-3);
   border-top: 1px solid var(--border);
+}
+
+/* ---- new for you (#186; "Recommended for you" before #123) ------------------- */
+.recommend-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+.recommend-list:empty {
+  display: none;
+}
+.recommend-list li {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+.recommend-list .dash-cover.small {
+  width: 3.2rem;
+}
+.recommend-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.recommend-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.recommend-actions .btn {
+  white-space: nowrap;
+}
+@media (pointer: coarse) {
+  .recommend-actions .btn,
+  .recommend-card .dash-card-head .btn {
+    min-height: 44px;
+  }
+}
+/* the line after "+ Want to read" is announced; until then it takes no room */
+.recommend-status:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }

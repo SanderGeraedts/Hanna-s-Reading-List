@@ -49,7 +49,7 @@ describe('dashboard layout with sections', () => {
   it('moves a block within its section and to another section', () => {
     const l = moveBlock(DEFAULT_LAYOUT, 'fact', 'today', 1, 0)
     expect(l.sections.today[1][0]).toBe('fact')
-    expect(l.sections.fun[0]).toEqual(['wrapped'])
+    expect(l.sections.fun[0]).toEqual(['badges', 'wrapped'])
     expect(placeOf(l, 'fact')).toEqual({ section: 'today', column: 1, index: 0 })
   })
 
@@ -79,5 +79,29 @@ describe('dashboard layout with sections', () => {
       'next',
       'calendar',
     ])
+  })
+})
+
+describe('favourites on top', async () => {
+  const { favouriteColumns, toggleFavourite } = await import('./dashboardLayout')
+
+  it('stars blocks in order, in two columns, and takes the star off again', () => {
+    let l = toggleFavourite(DEFAULT_LAYOUT, 'goal')
+    l = toggleFavourite(l, 'bingo')
+    l = toggleFavourite(l, 'fact')
+    expect(l.favourites).toEqual(['goal', 'bingo', 'fact'])
+    expect(favouriteColumns(l)).toEqual([['goal', 'fact'], ['bingo']])
+    // still in their own sections too
+    expect(placeOf(l, 'goal')?.section).toBe('challenges')
+    expect(toggleFavourite(l, 'bingo').favourites).toEqual(['goal', 'fact'])
+  })
+
+  it('drops a hidden block from the favourites, and keeps favourites when saved', () => {
+    const l = hideBlock(toggleFavourite(DEFAULT_LAYOUT, 'fact'), 'fact')
+    expect(l.favourites).toEqual([])
+    const saved = cleanLayout(JSON.parse(JSON.stringify(toggleFold(toggleFavourite(DEFAULT_LAYOUT, 'goal'), 'favourites'))))
+    expect(saved.favourites).toEqual(['goal'])
+    expect(saved.folded).toEqual(['favourites'])
+    expect(cleanLayout({ ...saved, favourites: ['goal', 'nonsense', 'goal'] }).favourites).toEqual(['goal'])
   })
 })

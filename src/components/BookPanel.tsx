@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { formatPublished, normalizeIsbn, parsePublished, publishedYear } from '#/lib/bookFacts'
 import { seriesGroups } from '#/lib/series'
 import { suggest } from '#/lib/suggest'
+import { notesOf } from '#/lib/journal'
 import { formatDuration, hasAudio, lengthPatch, linkOnFormatChange, listenOnly, parseDuration } from '#/lib/listening'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { Book, BookFormat, ReadingStatus } from '#/lib/library'
@@ -24,7 +25,10 @@ import { NO_SPICE, ratingText, spiceText } from '#/lib/ratings'
 import { backText } from './textures'
 import { MergeSection } from './MergeSection'
 import { EdgesField } from './EdgesField'
+import { EbookButton, EbookLinkField } from './EbookLink'
+import { ebookHref } from '#/lib/ebookLink'
 import { findBackText } from '#/lib/findBackText'
+import { stoppedAtText } from '#/lib/didNotFinish'
 
 export type Face = 'front' | 'spine' | 'back'
 
@@ -407,10 +411,15 @@ export function BookPanel({
               .filter(Boolean)
               .join(' · ')}
           </p>
-          {storytel && (
-            <a className="btn small storytel-link" href={storytel} target="_blank" rel="noopener noreferrer">
-              <span aria-hidden>▶</span> Open in Storytel
-            </a>
+          {(storytel || ebookHref(book.ebookUrl)) && (
+            <div className="open-links">
+              {storytel && (
+                <a className="btn small storytel-link" href={storytel} target="_blank" rel="noopener noreferrer">
+                  <span aria-hidden>▶</span> Open in Storytel
+                </a>
+              )}
+              <EbookButton link={book.ebookUrl} />
+            </div>
           )}
         </div>
         <button className="icon-btn" onClick={onClose} aria-label="Put back on the shelf">
@@ -444,6 +453,11 @@ export function BookPanel({
           ))}
         </select>
       </label>
+
+      {/* put aside (#187): how far she got; the progress is kept for when she tries again */}
+      {book.status === 'dnf' && stoppedAtText(book, true) && (
+        <p className="muted small-text stopped-at">{stoppedAtText(book, true)}</p>
+      )}
 
       {(book.status === 'reading' || book.status === 'paused') && (
         <div className="field" role="group" aria-labelledby="progress-label">
@@ -628,6 +642,8 @@ export function BookPanel({
         </div>
       </div>
 
+      <EbookLinkField link={book.ebookUrl} onChange={(ebookUrl) => onUpdate({ ebookUrl })} />
+
       <div className="field-row">
         <label className="field">
           <span>Language</span>
@@ -741,6 +757,20 @@ export function BookPanel({
           </label>
         )}
       </div>
+
+      {notesOf(book).length > 0 && (
+        <div className="field">
+          <span>Journal</span>
+          <ul className="journal-list">
+            {notesOf(book).map(({ day, note }) => (
+              <li key={day}>
+                <span className="muted small-text">{formatPublished(day)}</span>
+                <p>{note}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="field">
         <span>Series</span>

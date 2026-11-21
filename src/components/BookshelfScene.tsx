@@ -4,11 +4,11 @@ import * as THREE from 'three'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import type { Book, SortKey } from '#/lib/library'
-import { FRAME, SHELF, computeLayout, fitShelf, rowFloorY } from '#/lib/shelfLayout'
+import { FRAME, SHELF, computeLayout, fitShelf, rowFloorY, topGap } from '#/lib/shelfLayout'
 import { arrangementSeparators } from '#/lib/separators'
 import type { ShelfLayout } from '#/lib/shelfLayout'
 import { BookMesh, RAINBOW } from './BookMesh'
-import { Decorations } from './Decorations'
+import { Decorations, FairyLights } from './Decorations'
 import { BookNooks } from './BookNook'
 import { SeriesDividers } from './SeriesDivider'
 import { sleepReadIds } from '#/lib/sleepSeries'
@@ -25,40 +25,81 @@ export interface BookshelfSceneProps {
   arrangement?: SortKey | null
   /** share of the screen height covered by the details sheet on phones (0..1) */
   sheet?: RefObject<number>
+  /** a search is on: the ids of the books that match it (the rest dim) */
+  highlight?: Set<string> | null
+  /** how far zoomed in: 1 is the whole case, up to ZOOM_MAX */
+  zoom?: number
+  onZoom?: (zoom: number) => void
+  /** height of the header over the top of the scene, in CSS px (phones keep the case below it) */
+  topInset?: number
+  /** the browser dropped the 3D drawing (WebGL context lost), e.g. when a phone runs out of memory */
+  onContextLost?: () => void
 }
+
+export const ZOOM_MAX = 3
+export const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(1, z))
 
 const FOV = 35
 const DEFAULT_INSPECT = { fill: 0.6, yShift: 0 }
-/** share of a phone screen taken by the header at the top */
+/** share of a phone screen taken by the header at the top, until its real height is known */
 const HEADER_SHARE = 0.1
 
 /**
  * On a phone the details sheet covers the bottom of the screen: fit the
  * inspected book into the space between the header and the sheet.
  */
-function portraitInspect(frame: { fill: number; yShift: number }, sheet: number, aspect: number) {
+function portraitInspect(frame: { fill: number; yShift: number }, sheet: number, aspect: number, header = HEADER_SHARE) {
   const s = Math.min(0.9, Math.max(0, sheet))
-  const free = Math.max(0.15, 1 - s - HEADER_SHARE)
+  const free = Math.max(0.15, 1 - s - header)
   // also keep the widest books (cover aspect up to 0.82) inside the screen width
   const byWidth = (0.88 * aspect) / 0.82
   frame.fill = Math.min(0.6, free * 0.85, byWidth)
-  frame.yShift = (s - HEADER_SHARE) / 2
+  frame.yShift = (s - header) / 2
+}
+
+/** Phones get a lighter version of the room: smaller shadows, fewer pixels, so scrolling stays smooth. */
+function useLite() {
+  const [lite, setLite] = useState(false)
+  useEffect(() => {
+    const m = window.matchMedia('(max-width: 720px), (pointer: coarse)')
+    const on = () => setLite(m.matches)
+    on()
+    m.addEventListener('change', on)
+    return () => m.removeEventListener('change', on)
+  }, [])
+  return lite
 }
 
 export function BookshelfScene(props: BookshelfSceneProps) {
+  const lite = useLite()
   return (
     <Canvas
       shadows="soft"
-      dpr={[1, 2]}
+      dpr={lite ? [1, 1.5] : [1, 2]}
       camera={{ fov: FOV, near: 0.05, far: 60, position: [0, 0.7, 4] }}
       gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping }}
       style={{ touchAction: 'none' }}
     >
       <color attach="background" args={['#2a1f18']} />
       <fog attach="fog" args={['#2a1f18', 6, 14]} />
-      <Scene {...props} />
+      <ContextLoss onLost={props.onContextLost} />
+      <Scene {...props} lite={lite} />
     </Canvas>
   )
+}
+
+/** Tells the page when the browser drops the 3D drawing, so it can say so instead of showing an empty room. */
+function ContextLoss({ onLost }: { onLost?: () => void }) {
+  const gl = useThree((s) => s.gl)
+  useEffect(() => watchContextLoss(gl.domElement, () => onLost?.()), [gl, onLost])
+  return null
+}
+
+/** Calls `onLost` when the canvas loses its WebGL context; returns the clean-up. */
+export function watchContextLoss(canvas: HTMLCanvasElement, onLost: () => void) {
+  const lost = () => onLost()
+  canvas.addEventListener('webglcontextlost', lost)
+  return () => canvas.removeEventListener('webglcontextlost', lost)
 }
 
 interface DragState {
@@ -74,7 +115,12 @@ function Scene({
   onReorder,
   arrangement,
   sheet,
-}: BookshelfSceneProps) {
+  highlight = null,
+  zoom = 1,
+  onZoom,
+  topInset = 0,
+  lite = false,
+}: BookshelfSceneProps & { lite?: boolean }) {
   const [hovered, setHovered] = useState<string | null>(null)
   const [drag, setDrag] = useState<DragState | null>(null)
   // handlers read the ref so back-to-back pointer events never see stale state
@@ -100,7 +146,8 @@ function Scene({
   const portrait = aspect < 0.8
   // one object, updated in place every frame as the sheet is dragged
   const portraitFrame = useMemo(() => ({ fill: 0.4, yShift: 0.17 }), [])
-  useFrame(() => portraitInspect(portraitFrame, sheet?.current ?? 0.45, aspect))
+  const headerShare = topInset > 0 ? topInset / Math.max(1, size.height) : HEADER_SHARE
+  useFrame(() => portraitInspect(portraitFrame, sheet?.current ?? 0.45, aspect, headerShare))
   const separators = useMemo(() => arrangementSeparators(ordered, arrangement), [arrangement, ordered])
   // the case's width follows the screen, and widens on big screens so the books stay large (#39)
   const fit = useMemo(() => fitShelf(ordered, aspect, separators), [ordered, aspect, separators])
@@ -111,13 +158,34 @@ function Scene({
   if (!drag) stableLayout.current = layout
   const caseLayout = drag ? stableLayout.current : layout
 
-  const scroll = useRef<ScrollState>({ y: null, min: 0, max: 0, worldPerPx: 0 })
+  const scroll = useRef<ScrollState>({ y: null, min: 0, max: 0, worldPerPx: 0, x: 0, xMax: 0 })
   const cameraBase = useCameraRig(caseLayout.caseWidth, caseLayout.caseHeight, {
     parallax: !selectedId,
     portrait,
     scroll,
     dragging: !!drag,
+    zoom,
+    topInset,
   })
+  // the zoom as the input handlers see it, without re-adding them on every change
+  const zoomRef = useRef(zoom)
+  zoomRef.current = zoom
+  const onZoomRef = useRef(onZoom)
+  onZoomRef.current = onZoom
+
+  // a new search: scroll (and, zoomed in, pan) to the first book that matches
+  useEffect(() => {
+    if (!highlight || highlight.size === 0) return
+    const first = ordered.find((b) => highlight.has(b.id))
+    const slot = first && layout.slots.get(first.id)
+    const dims = first && layout.dims.get(first.id)
+    const s = scroll.current
+    if (!slot || !dims) return
+    if (s.max > s.min) s.y = THREE.MathUtils.clamp(slot.y + dims.h / 2, s.min, s.max)
+    if (s.xMax > 0) s.x = THREE.MathUtils.clamp(slot.x, -s.xMax, s.xMax)
+    // only when the search changes, not when the shelf moves under it
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlight])
 
   useEffect(() => {
     gl.domElement.style.cursor = drag ? 'grabbing' : hovered && !selectedId ? 'grab' : 'auto'
@@ -216,35 +284,82 @@ function Scene({
   useEffect(() => {
     if (selectedId) return
     const el = gl.domElement
-    let swipe: { id: number; y: number; t: number; scrolling: boolean } | null = null
+    let swipe: { id: number; x: number; y: number; t: number; scrolling: boolean } | null = null
+    // two fingers on the screen: pinch to zoom
+    const touches = new Map<number, { x: number; y: number }>()
+    let pinch: { dist: number; zoom: number } | null = null
+    const gap = () => {
+      const [a, b] = [...touches.values()]
+      return Math.hypot(a.x - b.x, a.y - b.y)
+    }
+    const zoomTo = (z: number) => onZoomRef.current?.(clampZoom(z))
     const scrollBy = (px: number) => {
       const s = scroll.current
       if (s.y === null || s.max <= s.min) return
       s.y = THREE.MathUtils.clamp(s.y + px * s.worldPerPx, s.min, s.max)
     }
+    // zoomed in: move sideways along the shelf
+    const panBy = (px: number) => {
+      const s = scroll.current
+      if (s.xMax <= 0) return
+      s.x = THREE.MathUtils.clamp(s.x - px * s.worldPerPx, -s.xMax, s.xMax)
+    }
     const wheel = (e: WheelEvent) => {
-      if (scroll.current.max <= scroll.current.min) return
-      e.preventDefault()
-      scrollBy(-(e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY))
+      const unit = e.deltaMode === 1 ? 16 : 1
+      // Ctrl+scroll, and a trackpad pinch (which comes as Ctrl+scroll): zoom
+      if (e.ctrlKey) {
+        e.preventDefault()
+        zoomTo(zoomRef.current * Math.exp(-e.deltaY * unit * 0.01))
+        return
+      }
+      const sideways = e.shiftKey ? e.deltaY : e.deltaX
+      if (sideways && scroll.current.xMax > 0) {
+        e.preventDefault()
+        panBy(sideways * unit)
+      }
+      if (!e.shiftKey && e.deltaY && scroll.current.max > scroll.current.min) {
+        e.preventDefault()
+        scrollBy(-e.deltaY * unit)
+      }
     }
     const down = (e: PointerEvent) => {
       if (e.pointerType === 'mouse') return
-      swipe = { id: e.pointerId, y: e.clientY, t: performance.now(), scrolling: false }
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (touches.size === 2) {
+        // a second finger: a pinch, not a swipe or moving a book
+        pinch = { dist: gap(), zoom: zoomRef.current }
+        swipe = null
+        pending.current = null
+        if (dragRef.current) updateDrag(null)
+        setHovered(null)
+        return
+      }
+      swipe = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), scrolling: false }
     }
     const move = (e: PointerEvent) => {
+      if (touches.has(e.pointerId)) touches.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (pinch && touches.size === 2) {
+        zoomTo(pinch.zoom * (gap() / Math.max(1, pinch.dist)))
+        return
+      }
       if (!swipe || e.pointerId !== swipe.id || dragRef.current) return
+      const dx = e.clientX - swipe.x
       const dy = e.clientY - swipe.y
       if (!swipe.scrolling) {
         // a press held still is the start of moving a book, not a swipe
-        if (Math.abs(dy) < 8 || performance.now() - swipe.t > LONG_PRESS_MS) return
+        if (Math.max(Math.abs(dx), Math.abs(dy)) < 8 || performance.now() - swipe.t > LONG_PRESS_MS) return
         swipe.scrolling = true
         pending.current = null // so lifting the finger doesn't open a book
         setHovered(null)
       }
       scrollBy(dy)
+      panBy(dx)
+      swipe.x = e.clientX
       swipe.y = e.clientY
     }
     const up = (e: PointerEvent) => {
+      touches.delete(e.pointerId)
+      if (touches.size < 2) pinch = null
       if (swipe && e.pointerId === swipe.id) swipe = null
     }
     el.addEventListener('wheel', wheel, { passive: false })
@@ -298,12 +413,13 @@ function Scene({
 
   return (
     <>
-      <Lights caseHeight={caseLayout.caseHeight} cameraBase={cameraBase} />
+      <Lights caseHeight={caseLayout.caseHeight} caseWidth={caseLayout.caseWidth} cameraBase={cameraBase} lite={lite} />
       <Room />
       <Bookcase layout={caseLayout} />
       <Decorations items={layout.decor} />
       <BookNooks items={layout.nooks} />
       <SeriesDividers items={layout.dividers} />
+      <FairyLights width={caseLayout.innerWidth} top={caseLayout.caseHeight} />
 
       {ordered.map((book) => {
         const slot = layout.slots.get(book.id)
@@ -320,6 +436,7 @@ function Scene({
             selected={book.id === selectedId}
             dragging={drag?.id === book.id}
             hovered={hovered === book.id}
+            match={highlight ? (highlight.has(book.id) ? 'glow' : 'dim') : null}
             dragPoint={dragPoint}
             inspect={inspect}
             cameraBase={cameraBase}
@@ -346,6 +463,9 @@ interface ScrollState {
   max: number
   /** world units per screen pixel at the bookcase, for 1:1 swiping */
   worldPerPx: number
+  /** zoomed in: how far the camera has moved sideways, and how far it may */
+  x: number
+  xMax: number
 }
 
 const LONG_PRESS_MS = 350
@@ -358,7 +478,7 @@ const LONG_PRESS_MS = 350
 function useCameraRig(
   caseWidth: number,
   caseHeight: number,
-  opts: { parallax: boolean; portrait: boolean; scroll: RefObject<ScrollState>; dragging: boolean },
+  opts: { parallax: boolean; portrait: boolean; scroll: RefObject<ScrollState>; dragging: boolean; zoom: number; topInset: number },
 ) {
   const camera = useThree((s) => s.camera)
   const size = useThree((s) => s.size)
@@ -376,12 +496,17 @@ function useCameraRig(
   // leave room for the header at the top
   const distH = (caseHeight * FRAME.vertical) / 2 / tan
   // desktops show the whole case; phones held upright scroll through it
-  const toCase = Math.max(distW, opts.portrait ? 0 : distH, 0.9)
+  const fitted = Math.max(distW, opts.portrait ? 0 : distH, 0.9)
+  // zooming in brings the camera closer (1: the whole case, as before)
+  const toCase = Math.max(0.35, fitted / Math.max(1, opts.zoom))
   base.z = toCase + SHELF.depth / 2
 
   const s = opts.scroll.current
   const viewH = 2 * toCase * tan
   s.worldPerPx = viewH / Math.max(1, size.height)
+  // zoomed in, the camera can move sideways as far as the case reaches
+  s.xMax = Math.max(0, caseWidth / 2 - (viewH * aspect) / 2 + 0.05)
+  s.x = THREE.MathUtils.clamp(s.x, -s.xMax, s.xMax)
   // the pages' wallpaper uses the same stripe width on screen as the 3D wall:
   // one stripe is half a repeat, seen at the wall (a little further than the case)
   const stripePx = ((WALLPAPER_REPEAT_M / 2) / s.worldPerPx) * (toCase / (toCase + SHELF.depth))
@@ -395,7 +520,8 @@ function useCameraRig(
     s.min = s.max = caseHeight / 2 + caseHeight * 0.04
   } else {
     s.min = viewH * 0.42 // bottom: a strip of floor below the case
-    s.max = caseHeight - viewH * 0.5 + viewH * 0.14 // top: clear of the header
+    // top: clear of the header (on a phone, of its real height: #181)
+    s.max = caseHeight - viewH * 0.5 + topGap(viewH, s.worldPerPx, opts.portrait ? opts.topInset : 0)
   }
   s.y = s.y === null ? s.max : THREE.MathUtils.clamp(s.y, s.min, s.max)
   base.set(0, s.y, base.z)
@@ -411,6 +537,7 @@ function useCameraRig(
       sc.y = THREE.MathUtils.clamp(sc.y + speed * 1.2 * d, sc.min, sc.max)
     }
     if (sc.y !== null) base.y = sc.y
+    base.x = sc.x
     // a touch of parallax following the mouse
     const px = opts.parallax ? state.pointer.x * 0.06 : 0
     const py = opts.parallax ? state.pointer.y * 0.04 : 0
@@ -435,7 +562,22 @@ function useCameraRig(
   return base
 }
 
-function Lights({ caseHeight, cameraBase }: { caseHeight: number; cameraBase: THREE.Vector3 }) {
+/**
+ * A cosy reading-room light: warm and soft, with gentle shadows, and a
+ * reading lamp at the top left that makes gold details (medals, gilded signs)
+ * catch the light. Phones get smaller, sharper-edged shadows (lite).
+ */
+function Lights({
+  caseHeight,
+  caseWidth,
+  cameraBase,
+  lite,
+}: {
+  caseHeight: number
+  caseWidth: number
+  cameraBase: THREE.Vector3
+  lite: boolean
+}) {
   const keyLight = useRef<THREE.DirectionalLight>(null)
   // the shadow frustum follows the bookcase height; three.js needs telling when it changes
   useEffect(() => {
@@ -443,15 +585,15 @@ function Lights({ caseHeight, cameraBase }: { caseHeight: number; cameraBase: TH
   }, [caseHeight])
   return (
     <>
-      <hemisphereLight args={['#fff1dc', '#5a3c26', 1.5]} />
-      <ambientLight intensity={0.35} color="#ffe9cf" />
+      <hemisphereLight args={['#ffe8cc', '#4a2f1e', 1.3]} />
+      <ambientLight intensity={0.28} color="#ffdcb4" />
       <directionalLight
         ref={keyLight}
         position={[0.9, caseHeight + 0.9, 4.2]}
-        intensity={2.6}
-        color="#ffe7c4"
+        intensity={2.4}
+        color="#ffdcae"
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={lite ? [1024, 1024] : [2048, 2048]}
         // Bias is a fraction of the shadow camera's depth range, so keep that range
         // tight around the bookcase: with the default 0.5–500 m, even a tiny bias
         // shifts shadows by decimetres and they float away from what casts them.
@@ -459,11 +601,19 @@ function Lights({ caseHeight, cameraBase }: { caseHeight: number; cameraBase: TH
         shadow-camera-far={10}
         shadow-bias={-0.0001}
         shadow-normalBias={0.01}
-        shadow-radius={3}
+        shadow-radius={lite ? 3 : 7}
         shadow-camera-left={-1.5}
         shadow-camera-right={1.5}
         shadow-camera-top={caseHeight + 0.6}
         shadow-camera-bottom={-1.2}
+      />
+      {/* the reading lamp: warm, from the top left, without shadows of its own */}
+      <pointLight
+        position={[-caseWidth / 2 - 0.25, caseHeight + 0.35, 1.1]}
+        intensity={2.2}
+        distance={5}
+        decay={1.6}
+        color="#ffc27a"
       />
       {/* soft light near the viewer so an inspected book is well lit */}
       <pointLight
@@ -532,10 +682,35 @@ function Bookcase({ layout }: { layout: ShelfLayout }) {
   const D = SHELF.depth
   const outer = W + SHELF.side * 2
 
-  // satin oil finish: fairly matte with a soft sheen
-  const mat = <meshStandardMaterial map={wood} color="#f6f4f0" roughness={0.62} />
+  // satin oil finish on walnut: fairly matte with a soft sheen
+  const mat = <meshStandardMaterial map={wood} color="#f3ece4" roughness={0.55} />
+  // the crown on top: stepped mouldings, a little wider each step (no moulding
+  // at the bottom: it stood in front of the bottom row of books)
+  const crown: Array<[number, number, number]> = [
+    // [extra width, height, extra depth]
+    [0.03, 0.022, 0.02],
+    [0.07, 0.016, 0.045],
+    [0.1, 0.03, 0.06],
+    [0.075, 0.012, 0.04],
+  ]
+  let crownY = caseHeight
   return (
     <group>
+      {crown.map(([w, h, d], i) => {
+        const y = crownY + h / 2
+        crownY += h
+        return (
+          <mesh key={`crown-${i}`} position={[0, y, d / 2 - 0.005]} castShadow receiveShadow>
+            <boxGeometry args={[outer + w, h, D + d]} />
+            {mat}
+          </mesh>
+        )
+      })}
+      {/* a thin gilded line along the crown, which catches the lamp */}
+      <mesh position={[0, caseHeight + 0.045, D / 2 + 0.034]}>
+        <boxGeometry args={[outer + 0.07, 0.004, 0.003]} />
+        <meshStandardMaterial color="#d9a85b" metalness={0.8} roughness={0.32} />
+      </mesh>
       {/* sides */}
       {[-1, 1].map((s) => (
         <mesh
@@ -563,7 +738,7 @@ function Bookcase({ layout }: { layout: ShelfLayout }) {
       {/* back panel */}
       <mesh position={[0, caseHeight / 2, -D / 2 + 0.005]} receiveShadow>
         <boxGeometry args={[W, caseHeight, 0.01]} />
-        <meshStandardMaterial map={backWood} color="#dedad2" roughness={0.75} />
+        <meshStandardMaterial map={backWood} color="#c9b6a3" roughness={0.75} />
       </mesh>
     </group>
   )

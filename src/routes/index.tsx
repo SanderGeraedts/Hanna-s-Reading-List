@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ClientOnly, createFileRoute, useNavigate } from '@tanstack/react-router'
-import { BookshelfScene } from '#/components/BookshelfScene'
+import { ZOOM_MAX, clampZoom } from '#/components/BookshelfScene'
+import { SafeBookshelf } from '#/components/SafeBookshelf'
 import { AddBookDialog } from '#/components/AddBookDialog'
 import { BookPanel } from '#/components/BookPanel'
 import { CoverPicker } from '#/components/CoverPicker'
@@ -19,6 +20,7 @@ import { SignIn } from '#/components/SignIn'
 import { detectSeries, seriesGroups } from '#/lib/series'
 import { pickReadNext, readNextChoices } from '#/lib/readNext'
 import { Dashboard } from '#/components/Dashboard'
+import { BadgeToasts } from '#/components/NewBlocks'
 import { ChallengesPage } from '#/components/ChallengesPage'
 import { ReminderToggle } from '#/components/ReminderToggle'
 import { CalendarPage } from '#/components/CalendarPage'
@@ -117,12 +119,18 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   // books not out yet are on the shelf too, as want-to-read
   const books = allBooks
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  // the 3D shelf: zoomed in (1 is the whole case) and what a search lights up
+  const [zoom, setZoom] = useState(1)
+  const [matches, setMatches] = useState<string[] | null>(null)
+  const highlight = useMemo(() => (matches ? new Set(matches) : null), [matches])
   const [adding, setAdding] = useState<Tab | null>(null)
   const [pickingCover, setPickingCover] = useState(false)
   /** the book just marked as read, to ask for a rating (#100) */
   const inspect = useRef<InspectTarget>({ rotY: 0, rotX: 0 })
   // share of the screen the details sheet covers on phones; the scene keeps the book above it
   const sheet = useRef(0.45)
+  // the header's real height: what's below it starts under it (#181)
+  const [header, headerPx] = useHeaderHeight()
   const onSheet = useCallback((share: number) => {
     sheet.current = share
   }, [])
@@ -332,11 +340,13 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   )
 
   return (
-    <div className="app">
-      <header className="topbar">
+    <div className="app" style={headerPx ? ({ '--header-h': `${headerPx}px` } as React.CSSProperties) : undefined}>
+      <header className="topbar" ref={header}>
         <div className="brand">
           <div className="brand-title">
-            <ViewMenu view={view} onView={showView}>
+            {/* the ☰ menu only holds the shelf's tools on a phone: elsewhere it would be empty */}
+            {!offShelf && (
+              <ViewMenu>
               {!offShelf &&
                 ((close) => (
                   <div className="menu-tools mobile-only">
@@ -361,7 +371,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
                     </button>
                   </div>
                 ))}
-            </ViewMenu>
+              </ViewMenu>
+            )}
             <h1>Hanna's Reading List</h1>
           </div>
           <p className="muted">
@@ -370,14 +381,16 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
               : activeGenre
                 ? `${shown.length} of ${books.length} books · ${genreChoices.find((g) => g.value === activeGenre)!.label}`
                 : `${books.length} book${books.length === 1 ? '' : 's'} · ` +
-                (['reading', 'paused', 'want', 'read'] as const)
+                (['reading', 'paused', 'want', 'read', 'dnf'] as const)
                   .filter((s) => counts[s])
                   .map((s) => `${counts[s]} ${STATUS_LABELS[s].toLowerCase()}`)
                   .join(' · ')}
           </p>
+          {/* on a phone the brand's children sit in the header's grid: the tabs get a row of their own (#181) */}
+          <PageTabs view={view} onView={showView} />
         </div>
         <div className="toolbar">
-          <SearchBox books={books} detectedSeries={seriesMap} onPick={showBook} />
+          <SearchBox books={books} detectedSeries={seriesMap} onPick={showBook} onMatches={setMatches} />
           {!offShelf && (
             // on a phone these are in the ☰ menu instead (#88)
             <>
@@ -427,7 +440,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
 
       <main className="stage">
         <ClientOnly fallback={<div className="stage-loading">Building the shelf…</div>}>
-          <BookshelfScene
+          <SafeBookshelf
             books={shown}
             selectedId={selectedId}
             inspect={inspect}
@@ -436,8 +449,25 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             // a shelf still arranged by genre or colour from before #41/#45 keeps its order, without those nooks
             arrangement={arrangement && MENU_SORT_KEYS.includes(arrangement) ? arrangement : null}
             sheet={sheet}
+            highlight={highlight}
+            zoom={zoom}
+            onZoom={setZoom}
+            topInset={headerPx}
           />
         </ClientOnly>
+        {!offShelf && !selected && books.length > 0 && (
+          <div className="zoom-controls" role="group" aria-label="Zoom">
+            <button className="btn icon" aria-label="Zoom in" title="Zoom in (Ctrl + scroll)" disabled={zoom >= ZOOM_MAX} onClick={() => setZoom(clampZoom(zoom * 1.4))}>
+              +
+            </button>
+            <button className="btn icon" aria-label="Zoom out" title="Zoom out" disabled={zoom <= 1} onClick={() => setZoom(clampZoom(zoom / 1.4))}>
+              −
+            </button>
+            <button className="btn icon" aria-label="Show the whole bookcase" title="Show the whole bookcase" disabled={zoom <= 1} onClick={() => setZoom(1)}>
+              ⤢
+            </button>
+          </div>
+        )}
 
         {loaded && books.length === 0 && (
           <div className="empty">
@@ -455,9 +485,10 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             accountId={account?.id ?? null}
             onOpenChallenges={openChallenges}
             onOpenCalendar={openCalendar}
+            onAdd={addBook}
           />
         )}
-        {view === 'calendar' && <CalendarPage books={books} onShowBook={showBook} startMonth={search.month} />}
+        {view === 'calendar' && <CalendarPage books={books} onShowBook={showBook} onUpdate={updateBook} startMonth={search.month} />}
         {view === 'challenges' && (
           <ChallengesPage
             books={books}
@@ -468,6 +499,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           />
         )}
       </main>
+
+      <BadgeToasts books={books} accountId={account?.id ?? null} ready={loaded} />
 
       {selected && (
         <BookPanel
@@ -584,14 +617,48 @@ const VIEWS = [
 
 const FOCUS: ChallengeSection[] = ['goal', 'monthly', 'bingo', 'alphabet']
 
-/** The menu to go between the shelf, the dashboard (#59) and the Challenges page. */
+/** The header's height in CSS px, kept up to date as it changes (search chip, wrapping, rotating the phone). */
+function useHeaderHeight() {
+  const [px, setPx] = useState(0)
+  const [el, setEl] = useState<HTMLElement | null>(null)
+  useEffect(() => {
+    if (!el) return
+    const measure = () => setPx(Math.round(el.getBoundingClientRect().height))
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [el])
+  return [setEl, px] as const
+}
+
+/** The pages, always in view as tabs: one tap to switch. On a phone just the icons. */
+function PageTabs({ view, onView }: { view: View; onView: (view: View) => void }) {
+  return (
+    <nav className="page-tabs" aria-label="Pages">
+      {VIEWS.map((v) => (
+        <button
+          key={v.view}
+          type="button"
+          className={v.view === view ? 'page-tab active' : 'page-tab'}
+          aria-current={v.view === view ? 'page' : undefined}
+          aria-label={v.label}
+          title={v.label}
+          onClick={() => onView(v.view)}
+        >
+          <span aria-hidden>{v.icon}</span>
+          <span className="page-tab-label">{v.label}</span>
+        </button>
+      ))}
+    </nav>
+  )
+}
+
+/** The ☰ menu: the shelf's tools on a phone (#88) and the reading reminder; the pages are tabs now. */
 function ViewMenu({
-  view,
-  onView,
   children,
 }: {
-  view: View
-  onView: (view: View) => void
   /** more in the menu, e.g. the shelf's tools on a phone (#88); `close` closes the menu */
   children?: false | ((close: () => void) => React.ReactNode)
 }) {
@@ -605,24 +672,11 @@ function ViewMenu({
     return () => document.removeEventListener('pointerdown', close)
   }, [])
   return (
-    <details className="view-menu" ref={menu}>
+    <details className="view-menu phone-menu" ref={menu}>
       <summary className="btn icon" aria-label="Menu" title="Menu">
         <span aria-hidden>☰</span>
       </summary>
-      <nav className="view-menu-list" aria-label="Views">
-        {VIEWS.map((v) => (
-          <button
-            key={v.view}
-            className={v.view === view ? 'active' : ''}
-            aria-current={v.view === view ? 'page' : undefined}
-            onClick={() => {
-              if (menu.current) menu.current.open = false
-              onView(v.view)
-            }}
-          >
-            <span aria-hidden>{v.icon}</span> {v.label}
-          </button>
-        ))}
+      <nav className="view-menu-list" aria-label="More">
         {children && children(() => menu.current && (menu.current.open = false))}
         <ReminderToggle />
       </nav>

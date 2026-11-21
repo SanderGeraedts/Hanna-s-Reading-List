@@ -53,17 +53,22 @@ export interface Slot {
   row: number
 }
 
-export type DecorKind = 'koala' | 'succulent' | 'frame' | 'candle' | 'vase'
+export type DecorKind = 'koala' | 'succulent' | 'frame' | 'candle' | 'vase' | 'cat' | 'mug' | 'ivy'
 
 /** Decorations in placement order (the koala always comes first) and their footprint width. */
 export const DECOR: Array<{ kind: DecorKind; width: number }> = [
   { kind: 'koala', width: 0.17 },
+  // the newer ones first, so they get a shelf before the older ones
+  { kind: 'cat', width: 0.18 },
+  { kind: 'mug', width: 0.1 },
+  { kind: 'ivy', width: 0.11 },
+  { kind: 'candle', width: 0.08 },
   { kind: 'succulent', width: 0.11 },
   { kind: 'frame', width: 0.15 },
-  { kind: 'candle', width: 0.08 },
   { kind: 'vase', width: 0.11 },
 ]
-const DECOR_PER_ROW = 2
+/** at most one decoration per shelf, so the books stay the main thing */
+const DECOR_PER_ROW = 1
 const DECOR_GAP = 0.05
 const DECOR_MARGIN = 0.035
 
@@ -142,6 +147,21 @@ export interface ShelfFit {
 /** Header room and side margin the camera keeps around the bookcase. */
 export const FRAME = { vertical: 1.28, horizontal: 1.12 }
 
+/** height of the crown moulding on top of the bookcase (BookshelfScene's Bookcase) */
+export const CROWN_HEIGHT = 0.08
+
+/**
+ * Scrolled to the top, how far the top of the view is above the top of the
+ * case (world units). Without a header height (desktops): 14% of the view, as
+ * before. On a phone the header's real height decides (#181): the crown and
+ * the top shelf start below it, so the header never covers the top shelf.
+ */
+export function topGap(viewH: number, worldPerPx: number, headerPx: number) {
+  const base = viewH * 0.14
+  if (!(headerPx > 0)) return base
+  return Math.max(base, (headerPx + 8) * worldPerPx + CROWN_HEIGHT)
+}
+
 /**
  * Shapes the bookcase to the screen: wide on desktop, narrow and taller on a
  * portrait phone so the camera can come closer and the books appear bigger.
@@ -197,8 +217,11 @@ export function computeLayout(
   }> = []
   let row = 0
   let x = 0
+  // every shelf keeps a spot at its right end for its decoration (one per
+  // shelf, in DECOR order), so full shelves still get their cat, mug or ivy
+  const roomFor = (r: number) => innerWidth - (r < DECOR.length ? DECOR[r].width + DECOR_MARGIN * 2 : 0)
   const fit = (width: number) => {
-    if (x > 0 && x + width > innerWidth) {
+    if (x > 0 && x + width > roomFor(row)) {
       row++
       x = 0
     }

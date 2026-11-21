@@ -7,8 +7,9 @@ import { tidyTitle } from './titles'
  * copy, or the same book listed twice by Storytel (two editions).
  */
 
-// a paused book has been started, but reading it now is further along
-const STATUS_RANK: Record<ReadingStatus, number> = { want: 0, paused: 1, reading: 2, read: 3 }
+// a paused book has been started, but reading it now is further along; a book
+// put aside (did not finish, #187) counts as started, like a paused one
+const STATUS_RANK: Record<ReadingStatus, number> = { want: 0, paused: 1, dnf: 1, reading: 2, read: 3 }
 
 const norm = (s: string | undefined) => (s ?? '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '')
 const surname = (b: Book) => norm((b.authors[0] ?? '').trim().split(/\s+/).pop())
@@ -44,6 +45,7 @@ export function mergeBooks(keep: Book, other: Book): Book {
         : undefined),
     pages: keep.pages ?? other.pages,
     minutes: keep.minutes ?? other.minutes,
+    ebookUrl: keep.ebookUrl ?? other.ebookUrl,
     isbn: keep.isbn ?? other.isbn,
     workKey: keep.workKey ?? other.workKey,
     coverUrl: keep.coverUrl ?? other.coverUrl,
@@ -59,6 +61,8 @@ export function mergeBooks(keep: Book, other: Book): Book {
     seriesAsked: keep.seriesAsked || other.seriesAsked || undefined,
     ratingAsked: [keep.ratingAsked, other.ratingAsked].filter(Boolean).sort().at(-1),
     challengeMonth: keep.challengeMonth ?? other.challengeMonth,
+    // both copies' journal notes; the kept copy's note wins on the same day
+    ...((keep.journal || other.journal) && { journal: { ...other.journal, ...keep.journal } }),
     ...((keep.alphabetPicks?.length || other.alphabetPicks?.length) && {
       alphabetPicks: [...new Set([...(keep.alphabetPicks ?? []), ...(other.alphabetPicks ?? [])])],
     }),
