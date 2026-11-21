@@ -25,6 +25,8 @@ import { NO_SPICE, ratingText, spiceText } from '#/lib/ratings'
 import { backText } from './textures'
 import { MergeSection } from './MergeSection'
 import { EdgesField } from './EdgesField'
+import { EbookButton, EbookLinkField } from './EbookLink'
+import { ebookHref } from '#/lib/ebookLink'
 import { findBackText } from '#/lib/findBackText'
 import { stoppedAtText } from '#/lib/didNotFinish'
 
@@ -409,10 +411,15 @@ export function BookPanel({
               .filter(Boolean)
               .join(' · ')}
           </p>
-          {storytel && (
-            <a className="btn small storytel-link" href={storytel} target="_blank" rel="noopener noreferrer">
-              <span aria-hidden>▶</span> Open in Storytel
-            </a>
+          {(storytel || ebookHref(book.ebookUrl)) && (
+            <div className="open-links">
+              {storytel && (
+                <a className="btn small storytel-link" href={storytel} target="_blank" rel="noopener noreferrer">
+                  <span aria-hidden>▶</span> Open in Storytel
+                </a>
+              )}
+              <EbookButton link={book.ebookUrl} />
+            </div>
           )}
         </div>
         <button className="icon-btn" onClick={onClose} aria-label="Put back on the shelf">
@@ -634,6 +641,8 @@ export function BookPanel({
           ))}
         </div>
       </div>
+
+      <EbookLinkField link={book.ebookUrl} onChange={(ebookUrl) => onUpdate({ ebookUrl })} />
 
       <div className="field-row">
         <label className="field">

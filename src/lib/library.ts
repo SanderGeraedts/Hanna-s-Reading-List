@@ -31,6 +31,8 @@ export interface Book {
   storytelId?: string
   /** more Storytel ids for the same book, from copies merged into this one */
   storytelIds?: string[]
+  /** where Hanna keeps the e-book file, an https:// or http:// link (#185); see ebookLink.ts */
+  ebookUrl?: string
   /** ids of the copies merged into this book, so they don't come back */
   mergedIds?: string[]
   /** books Hanna said are not the same book, so they aren't suggested for merging */
