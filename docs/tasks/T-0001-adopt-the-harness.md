@@ -38,6 +38,9 @@ anything Hanna sees in the app:
    - data safety: never run the dev server, a script or a test against the production
      `POCKETBASE_URL`, never pull Netlify environment variables (G-0019, D-0003, #96); new
      fields on `Book` are optional (D-0002);
+   - the dev server never loads Netlify's site environment (`environmentVariables: { enabled:
+     false }` in `vite.config.ts`, #156); never re-enable it or run `netlify link` (see
+     `docs/data-safety.md`). Added by the orchestrator on 2026-11-21, after T-0002 merged;
    - the backend deploys through the `Backend image` workflow and Watchtower; never run
      `harness infra up/down` (D-0005);
    - backups: the NAS snapshots the app's data every hour (G-0023), so a schema change needs
@@ -88,6 +91,8 @@ Run in a fresh worktree of the task's branch (no `.netlify/` folder in it):
   before this task.
 - `grep -rnE "\bnpm (install|ci|run|test)\b|\bnpx\b" README.md CLAUDE.md AGENTS.md docs/hanna-guardrails.md docs/hanna-setup.md .claude/skills deploy/nas/README.md netlify.toml`
   prints nothing.
+- `grep -n "environmentVariables" AGENTS.md vite.config.ts` shows the rule in *Project rules*
+  and `environmentVariables: { enabled: false }` in `vite.config.ts`.
 - `grep -n "harness" package.json .github/workflows/ci.yml .github/workflows/auto-merge.yml`
   shows `#v0.7.0` in `package.json` and `@v0.7.0` in both workflows; `auto-merge.yml` has
   `backend-workflow: backend.yml` and `wait-for: CI,Backend image`.
@@ -178,3 +183,15 @@ Nothing visible.
   previews show the sign-in screen, which suggests `POCKETBASE_URL` is set for previews
   (G-0019): for the Engineer to check on Netlify; the preview item of the Done-when waits on
   it. (5) After the merge: the rulesets check and Netlify's production deploy.
+- 2026-11-21 developer: At the orchestrator's request after T-0002 (#156) merged: merged
+  `origin/main` (conflict only in the generated task index, regenerated); `AGENTS.md` →
+  *Project rules* gains the rule that the dev server never loads Netlify's site environment
+  (`environmentVariables: { enabled: false }`, never re-enable it, never `netlify link`, see
+  `docs/data-safety.md`), and Goal step 4 and *Done when* gain it. `docs/data-safety.md` (from
+  T-0002) now says `pnpm run dev` and points at `AGENTS.md` → *Project rules* instead of
+  `CLAUDE.md` → *Data safety*, which this task moved. Checks: `pnpm install --frozen-lockfile`
+  done; `harness check` the four ✓ lines (10 tasks in step, 8 records, 3 overrules valid, 2
+  engineers, generated files current); `grep -n environmentVariables AGENTS.md vite.config.ts`
+  shows `AGENTS.md:38` and `vite.config.ts:22`; the npm/npx grep prints nothing; `pnpm test`
+  42 files, 280 tests passed (279 before plus the one in T-0002's `vite.config.test.ts`);
+  `pnpm run build` built.

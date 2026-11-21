@@ -34,6 +34,10 @@ Rules that hold only for this project. Each one points at the decision behind it
   environment variables (`netlify env:get`, `netlify link`, `netlify dev` linked to the site
   and the like). On 9 November 2026 a local test shelf overwrote Hanna's real shelf. Her shelf
   is one JSON record per person in PocketBase, merged on every save by `src/lib/shelfMerge.ts`.
+- **The dev server never loads Netlify's site environment** (G-0019, #156):
+  `vite.config.ts` passes `environmentVariables: { enabled: false }` to the Netlify plugin.
+  Never re-enable it, and never run `netlify link` (see
+  [`docs/data-safety.md`](docs/data-safety.md)).
 - **New fields on `Book` are optional** (D-0002), so shelves saved before them still load.
 - **The backend deploys through the `Backend image` workflow and Watchtower** (D-0005). A
   change in `deploy/nas/` (`Dockerfile`, `pb_migrations/`, `pb_hooks/`) rebuilds the

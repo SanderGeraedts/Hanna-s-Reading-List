@@ -38,6 +38,9 @@ with the matches standing out a little further from the shelf.
 - The glow and dim strengths are named constants, and a unit test pins the new values (or the
   function that computes a book's brightness from `glow`/`dim`), so they don't drift back.
 - `pnpm test` and `pnpm run build` pass; CI is green.
+- In the after screenshots, the matches stand visibly further forward than the books beside
+  them, and a match with a dark spine is still brighter than the books around it that don't
+  match.
 - The UX designer has reviewed the screenshots.
 
 # Notes
@@ -53,8 +56,54 @@ with the matches standing out a little further from the shelf.
 UX designer: choose the glow and dim values (and whether matches move forward a little) before
 it is built; review the screenshots after.
 
+## Design (2026-11-21, before the build)
+
+**What it looks like today** (`main`, local, 12 books, search "the" matching three of them, at
+390 × 844 and 1280 × 800): the three matches are only a little lighter than the rest. On the
+desktop they can hardly be told apart from their neighbours. The others are darker, but the
+shelf still looks evenly lit.
+
+**The new values** (in `BookMesh.tsx`, as named constants, e.g. `MATCH_GLOW`, `MATCH_DIM`,
+`MATCH_FORWARD`):
+
+| | Today | New |
+|---|---|---|
+| Glow of a match (`emissiveIntensity` added) | `0.22` | **`0.5`** |
+| Dimming of a book that doesn't match (`1 − x·dim`) | `0.65` (left at 35% brightness) | **`0.82`** (left at 18%) |
+| How far a match comes forward off the shelf | `0.03` | **`0.06`** |
+
+- **Matches come forward** twice as far as now. That is a little more than a hover (`0.035`),
+  so even at the phone's small scale a match stands proud of the row, and a dimmed book can't
+  be taken for one. They don't tilt and don't move up: the row stays tidy.
+- **The others at 18%:** dark enough that the matches are what the eye goes to, light enough
+  that the shelf, the spines and the decorations are still there and she knows where she is.
+- **Decorations, nooks and the bookcase don't change.** Only books dim and glow, as now.
+- **The animation doesn't change:** the same easing in and out (damped, about a quarter of a
+  second); clearing the search fades everything back.
+
+**When to adjust in the review:** if a match with a very dark spine (navy, black) is still not
+clearly brighter than the light books around it, raise the glow up to `0.7`, not higher. Above
+that the spine's lettering washes out. If 18% makes the shelf look switched off on a phone,
+the dimming may go back to `0.78` (22%). Both stay named constants.
+
+**Unchanged:** the lighting starts at two letters; which books match; the scroll to the first
+match; the chip in the header ("“the” · 3 ✕"), which also ends the search; a taken-out book
+lit evenly, without glow or dimming.
+
+**Accessibility:** the lighting is extra. The search list and its count (`role="status"`,
+"3 books") already tell a screen reader what matched, and that doesn't change. Brightness and
+the step forward both show the match, so it doesn't depend on colour alone.
+
+**Where to look (added 2026-11-21):** the deploy previews show the sign-in screen, so they may
+have the production account server's address. Until the Engineer has confirmed they don't, the
+review and the tester's screenshots come from a local dev server with no backend (shelf in the
+browser) or a local PocketBase, never from signing in or adding books on a deploy preview.
+
 # Test
 
 # Log
 
 - 2026-11-21 architect: Task written from #184.
+- 2026-11-21 ux-designer: design written. Glow 0.22 → 0.5, the other books from 35% to 18%
+  brightness, matches 0.06 forward instead of 0.03. The review may raise the glow to at most
+  0.7.
