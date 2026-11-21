@@ -1,6 +1,6 @@
 ---
 id: T-0012
-title: "Make the book nooks little 3D worlds, starting with the night alley and the castle"
+title: "Make the book nooks little 3D worlds: all ten scenes"
 description: "Hanna wants the nooks to look like real book nooks: tiny 3D houses, towers and lanterns with warm light, merged so each nook is cheap to draw; the alley and the castle first, the other eight scenes in later steps."
 status: Done
 depends_on: []
@@ -83,3 +83,4 @@ backend:
 - 2026-11-21 tester: passed locally. Remaining: Hanna checks the look on the preview and steers
   the style before the other eight scenes are built.
 - 2026-11-21 developer: Hanna on #211: "looks good, but make sure the name of a series is always in front". The sign now hangs right behind the opening (0.5 cm), in front of every house, tower and lantern; a test checks every scene and several variants. Screenshot updated.
+- 2026-11-21 developer: Hanna: "booknooks look good now, make the rest". All ten scenes are 3D now: forest (trees, fairy door, toadstools, fireflies), beach (pastel huts, boardwalk, lighthouse, umbrellas), snowy village (snowy roofs, snowman, pines, lamp), neon street (tall buildings, neon signs, cables, vending machine), library (bookcases of tiny books, ladder, armchair, reading lamp), meadow (cottages, fence, flowers, tree), space (spires, domes, rocket, antenna, crystals), northern lights (snowy cabins, pines, campfire). The box/sign tests caught three things poking out (forest tops and back crown, meadow tree) and the forest trees in front of the sign; all fixed. Screenshots: all-ten-1280.jpg, close-beach-space-neon-library-meadow.jpg.

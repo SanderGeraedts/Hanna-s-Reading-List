@@ -3,15 +3,16 @@ import { NOOK_3D, nookGeometry } from './nook3d'
 import { D, H, W } from './nookPaint'
 
 describe('3D book nooks (T-0012)', () => {
-  it('builds the night alley and the castle in 3D; the other scenes stay painted', () => {
-    expect(NOOK_3D).toEqual(['alley', 'castle'])
-    expect(nookGeometry('forest', 1)).toBeNull()
+  it('builds all ten scenes in 3D', () => {
+    expect(NOOK_3D.sort()).toEqual(['alley', 'aurora', 'castle', 'forest', 'library', 'meadow', 'neon', 'seaside', 'space', 'winter'])
     for (const theme of NOOK_3D) {
       const g = nookGeometry(theme, 7)!
-      expect(g.solid.attributes.position.count).toBeGreaterThan(100)
-      expect(g.glow.attributes.position.count).toBeGreaterThan(10)
+      expect(g.solid.attributes.position.count, theme).toBeGreaterThan(100)
       // one material each: the colours are in the geometry
       expect(g.solid.attributes.color.count).toBe(g.solid.attributes.position.count)
+      // everything glows a little, except the sunny meadow (daylight)
+      if (theme === 'meadow') continue
+      expect(g.glow.attributes.position.count, theme).toBeGreaterThan(10)
       expect(g.glow.attributes.color.count).toBe(g.glow.attributes.position.count)
     }
   })
@@ -21,12 +22,12 @@ describe('3D book nooks (T-0012)', () => {
       const g = nookGeometry(theme, 3)!
       g.solid.computeBoundingBox()
       const b = g.solid.boundingBox!
-      expect(b.min.x).toBeGreaterThanOrEqual(-W / 2 - 1e-6)
-      expect(b.max.x).toBeLessThanOrEqual(W / 2 + 1e-6)
+      expect(b.min.x, theme).toBeGreaterThanOrEqual(-W / 2 - 1e-6)
+      expect(b.max.x, theme).toBeLessThanOrEqual(W / 2 + 1e-6)
       expect(b.min.y).toBeGreaterThanOrEqual(-1e-6)
-      expect(b.max.y).toBeLessThanOrEqual(H + 1e-6)
-      expect(b.min.z).toBeGreaterThanOrEqual(-D / 2 - 1e-6)
-      expect(b.max.z).toBeLessThanOrEqual(D / 2 + 0.002)
+      expect(b.max.y, theme).toBeLessThanOrEqual(H + 1e-6)
+      expect(b.min.z, theme).toBeGreaterThanOrEqual(-D / 2 - 1e-6)
+      expect(b.max.z, theme).toBeLessThanOrEqual(D / 2 + 0.002)
     }
   })
 
@@ -47,6 +48,7 @@ describe('the name sign is always in front (T-0012, Hanna on #211)', () => {
         const g = nookGeometry(theme, variant)!
         for (const geo of [g.solid, g.glow]) {
           const pos = geo.attributes.position
+          if (!pos) continue
           let front = -Infinity
           for (let i = 0; i < pos.count; i++) {
             const x = pos.getX(i)
