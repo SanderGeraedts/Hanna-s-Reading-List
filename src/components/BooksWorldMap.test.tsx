@@ -133,6 +133,51 @@ describe('Where your books are set: covers, no numbers (T-0018)', () => {
     expect(tile.querySelector('rect')!.getAttribute('fill')).toBe('#aaaa00')
   })
 
+  // tester (T-0018): edge cases not in the developer's tests
+  it('a book set in several countries is a tile in each, once, even when a country is named twice', async () => {
+    const travels = [
+      book('tour', { title: 'Grand Tour', color: '#123456', finished: ['2026-04-01'], places: ['Paris (France)', 'France', 'Rome (Italy)', 'London (England)', 'England -- London'] }),
+      book('local', { title: 'Home Ground', color: '#654321', finished: ['2026-03-01'], places: ['England'] }),
+    ]
+    const { container } = render(<BooksWorldMapCard books={travels} />)
+    await screen.findByRole('img', { name: /^World map/ }, { timeout: 10000 })
+    const svg = container.querySelector('svg.world-map')!
+    const fills = (c: string) => tilesOf(svg, c).tiles.map((t) => t.querySelector('rect')!.getAttribute('fill'))
+    // one book: a 1 × 1 pattern
+    expect(fills('France')).toEqual(['#123456'])
+    expect(fills('Italy')).toEqual(['#123456'])
+    // two books: 2 columns, 1 row, the tour (latest) first, no duplicate
+    expect(fills('United Kingdom')).toEqual(['#123456', '#654321'])
+    expect(tilesOf(svg, 'France').path.querySelector('title')!.textContent).toBe('France\nGrand Tour')
+    expect(svg.getAttribute('aria-label')).toBe('World map of where your books are set: United Kingdom, France, Italy')
+  })
+
+  it('a land whose name has a digit shows that name (a name, not a count), merged across spellings', async () => {
+    const district = [
+      book('hg1', { title: 'The Hunger Games', color: '#aa5500', finished: ['2026-01-01'], places: ['District 12 (Imaginary place)'] }),
+      book('hg2', { title: 'Catching Fire', color: '#aa0055', finished: ['2026-02-01'], places: ['district 12 (Imaginary place)', 'District  12 (Imaginary place)'] }),
+    ]
+    render(<BooksWorldMapCard books={district} />)
+    await screen.findByRole('img', { name: 'World map' }, { timeout: 10000 })
+    const row = screen.getByRole('list', { name: 'District 12' })
+    expect(within(row).getAllByRole('img').map((c) => c.getAttribute('aria-label'))).toEqual(['Catching Fire', 'The Hunger Games'])
+    expect(screen.queryByRole('list', { name: 'district 12' })).toBeNull()
+    // the only digits in the block are the land's own name
+    expect(document.querySelector('.world-card')!.textContent!.replace(/District 12/g, '')).not.toMatch(/\d/)
+  })
+
+  it('a land with a dozen books shows all twelve covers in one wrapping row, no "more"', async () => {
+    const many = Array.from({ length: 12 }, (_, i) =>
+      book('l' + i, { title: 'Tale ' + String.fromCharCode(65 + i), places: ['Glimmerdale (Imaginary place)'], ...(i % 3 ? { coverUrl: `/api/cover/id/${i + 1}?size=L` } : {}) }),
+    )
+    const { container } = render(<BooksWorldMapCard books={many} />)
+    await screen.findByRole('img', { name: 'World map' }, { timeout: 10000 })
+    const row = screen.getByRole('list', { name: 'Glimmerdale' })
+    expect(within(row).getAllByRole('img')).toHaveLength(12)
+    expect(row.classList.contains('world-land-books')).toBe(true)
+    expect(container.textContent).not.toMatch(/\d|more/i)
+  })
+
   it('with no places yet: the plain map and the empty line', async () => {
     render(<BooksWorldMapCard books={[book('x', { title: 'Nowhere', places: [] })]} />)
     const svg = await screen.findByRole('img', { name: 'World map' }, { timeout: 10000 })

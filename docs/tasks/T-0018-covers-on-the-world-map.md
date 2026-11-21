@@ -2,11 +2,11 @@
 id: T-0018
 title: "Fill the countries on the world map with her covers, show imaginary lands as rows of covers, and drop every number from the block"
 description: "Each lit country on Where your books are set becomes a patchwork of the covers of all finished books set there (spine colour for a book without a cover), imaginary lands get one row per land with tiny covers, and the block shows no counts anywhere: list, hover text, lands, screen-reader label and waiting line."
-status: Doing
+status: Done
 depends_on: [T-0015]
 decisions: [D-0002, D-0014, D-0020, D-0022, D-0023, D-0026]
 raised_on: 2026-11-22
-done_on: ""
+done_on: 2026-11-22
 result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/227"]
 ---
 
@@ -418,6 +418,56 @@ land of a dozen books at 390.
 
 # Test
 
+Tester, 2026-11-22, branch `t-0018-map-covers` after `9d24eaf`, from a clean
+`pnpm install --frozen-lockfile`.
+
+Commands, before the tester's tests were added:
+
+- `pnpm test`: `Tests 601 passed | 9 skipped (610)`
+- `pnpm exec tsc --noEmit`: no output, exit 0
+- `pnpm run build`: `✓ built`, exit 0
+- `pnpm exec harness check`: `✓ tasks: 18 tasks, index in step`, `✓ decisions: 29 records, index
+  complete, 3 overrules valid`, `✓ engineers: 2 listed`, `✓ generated files: current`
+
+Read `git diff main...HEAD -- src` for edge cases:
+
+- **Books in several countries or lands:** `placesOf` gives each country once per book and
+  `worldMap`'s `add` skips a book already in a place, so a book is one tile in every country it
+  is set in and one cover per land. Already in `places.test.ts` ("once per country and once per
+  land"); added a component test: a book in France, Italy and twice in the United Kingdom
+  ("London (England)", "England -- London") is one tile in each, the UK pattern 2 × 1 with no
+  duplicate.
+- **Books without a cover:** spine-colour rect only (map) and `cover-chip` (lands); covered.
+- **A failed cover:** map tile leaves out its `<image>` (keyed by URL), lands cover becomes a chip;
+  both covered by the developer's tests.
+- **A name with a digit:** no country name in `world-atlas/countries-110m.json` contains a digit
+  (177 names checked), so the map's titles, label and list can't get one from the map data. A land
+  can ("District 12"): it shows as its name, which is fine like a title. Added a test: "District 12"
+  and "district 12" are one land with both books, and the only digits in the block are that name.
+- **Imaginary-land merging:** `landKey` and first spelling unchanged; the Hogwarts, Middle-earth
+  and Velaris tests in `places.test.ts`/`setIn.test.ts` still pass on the new shape.
+- **Unfinished books not on the map:** `finished(b)` is still the first check; the component test's
+  unread Japan book leaves Japan plain.
+- **No numbers anywhere:** the old count spans, `n book(s)` titles, count label and the number in
+  the waiting line are all gone; the component test checks text, every `<title>`, `aria-label`,
+  `title` and `alt`. Pattern ids hold digits but are not shown or read out.
+- **Her data:** the change only reads books; `worldMap` sorts its own new arrays, never a `Book`
+  or the shelf, and nothing touches saving or syncing. No risk to her shelf.
+
+Wrapping at 390 px (the reviewer's note): no-backend dev server (`vite dev --port 3129`, no
+`POCKETBASE_URL`), headless Chrome at 390 × 844, shelf seeded in localStorage with 12 finished books
+in "Glimmerdale (Imaginary place)" (3 without a cover) and one in England. Measured: 12 covers on
+**2 lines (8 + 4)**, every cover 35 × 53 px, none past the card's edge, page `scrollWidth` 390 =
+window width. Screenshot `T-0018-screens/lands-wrap-390-tester.png` (the app's fixed top bar covers
+the card's head in it). Added a component test that a dozen books give twelve covers in one
+`world-land-books` row with no "more" and no digit.
+
+After adding 3 tests to `src/components/BooksWorldMap.test.tsx`: `pnpm test`
+`Tests 604 passed | 9 skipped (613)`, `pnpm exec tsc --noEmit` exit 0.
+
+Verdict: **passed.** Nothing left for a human; Russia's date-line wedge is from before this change
+and is the architect's follow-up.
+
 # Log
 
 - 2026-11-22 architect: task written from Hanna's feature chat of 2026-11-22; D-0026 records that
@@ -450,3 +500,5 @@ land of a dozen books at 390.
 - 2026-11-22 ux-designer: reviewed: matches the design, no must-fix (all 32 screenshots and the
   `src` diff; failed map covers left out accepted, it gives the designed spine colour; Russia's
   pale wedge is from before this change, follow-up task for the architect); handed to the tester.
+- 2026-11-22 tester: passed (tests, tsc, build and harness check green; 3 edge-case tests added;
+  a dozen lands covers wrap 8 + 4 at 390 px without overflow; see *Test*).

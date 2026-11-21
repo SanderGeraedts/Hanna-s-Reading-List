@@ -13,7 +13,6 @@ None.
 - [T-0001 Adopt the harness at v0.7.0](T-0001-adopt-the-harness.md): D-0001: switch to pnpm, install the harness at v0.7.0 with harness adopt, thin AGENTS.md and CLAUDE.md, CI and auto-merge as callers of the harness's workflows with the backend workflow wired in, and the harness's ruleset on main.
 - [T-0003 Show the bookshelf again on a phone](T-0003-show-the-shelf-on-a-phone.md): #181: the shelf isn't shown in the mobile version; find what broke it on narrow screens and fix it, with a test that keeps it fixed.
 - [T-0009 Keep the dashboard's favourites with the account, so every device shows the same ones](T-0009-favourites-follow-her-across-devices.md): #182: the starred dashboard blocks are saved per device today; keep them on the account's shelf record on the server, saved on their own like the reading goals.
-- [T-0018 Fill the countries on the world map with her covers, show imaginary lands as rows of covers, and drop every number from the block](T-0018-covers-on-the-world-map.md): Each lit country on Where your books are set becomes a patchwork of the covers of all finished books set there (spine colour for a book without a cover), imaginary lands get one row per land with tiny covers, and the block shows no counts anywhere: list, hover text, lands, screen-reader label and waiting line.
 
 ## Done
 
@@ -31,6 +30,7 @@ None.
 - [T-0015 Let Hanna set where a book is set, and count the imaginary lands on the map](T-0015-places-on-the-map.md): The book panel gets a Set in field (places as chips with ×, add map countries from a list or type a made-up place), her places replace Open Library's and are never looked up again, and the world map shows imaginary lands with counts, most first.
 - [T-0016 Make the buying jar spend what a book cost: ask the price of bought books, show the coin count, allow below zero](T-0016-buying-jar-with-prices.md): The add dialog asks the price of a bought paperback, hardcover or e-book (and the file link for a free e-book), the book panel shows and edits it, and the 📚 buying jar spends €5 per coin exactly, shows just its count and may go below zero.
 - [T-0017 Suggest a book for an empty bingo square, keep A–Z tips to the series order and never recommend sleep reads](T-0017-bingo-suggestions.md): Tapping an empty square on the bingo card being played shows one fitting book from her pile (cover, title, Open, Another one), A–Z tips only offer want-to-read books she can start next, and readNextChoices leaves out sleep reads everywhere.
+- [T-0018 Fill the countries on the world map with her covers, show imaginary lands as rows of covers, and drop every number from the block](T-0018-covers-on-the-world-map.md): Each lit country on Where your books are set becomes a patchwork of the covers of all finished books set there (spine colour for a book without a cover), imaginary lands get one row per land with tiny covers, and the block shows no counts anywhere: list, hover text, lands, screen-reader label and waiting line.
 
 ## Dropped
 
