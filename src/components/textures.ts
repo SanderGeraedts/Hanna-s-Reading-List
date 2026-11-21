@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import type { Book } from '#/lib/library'
+import type { Wallpaper, Wood } from '#/lib/room'
 import { hasMedal, timesRead } from '#/lib/library'
 import type { BookDims } from '#/lib/shelfLayout'
 import { formatDuration, listenOnly } from '#/lib/listening'
@@ -25,6 +26,25 @@ export function toTexture(c: HTMLCanvasElement) {
   const t = new THREE.CanvasTexture(c)
   t.colorSpace = THREE.SRGBColorSpace
   t.anisotropy = 8
+  return t
+}
+
+/**
+ * A book's own picture (spine, back, stand-in front), painted afresh whenever
+ * the shelf is drawn. On a phone its canvas is freed once it's on the graphics
+ * chip: Android's Chrome caps the memory of all canvases on a page, and a full
+ * shelf has hundreds of them (#181, T-0003). Not for shared, cached pictures,
+ * which may have to be sent to a new drawing again.
+ */
+function bookTexture(c: HTMLCanvasElement) {
+  const t = toTexture(c)
+  if (onPhone()) {
+    t.onUpdate = () => {
+      c.width = 1
+      c.height = 1
+      t.onUpdate = null
+    }
+  }
   return t
 }
 
@@ -57,6 +77,9 @@ function accentFor(bg: string) {
 
 /** Subtle cloth/paper grain so flat colours don't look plasticky. */
 function grain(ctx: CanvasRenderingContext2D, w: number, h: number, strength = 0.06) {
+  // too fine to see on a phone, and reading every pixel back is slow there:
+  // it made taking a book out stutter (T-0003)
+  if (onPhone()) return
   const img = ctx.getImageData(0, 0, w, h)
   const d = img.data
   for (let i = 0; i < d.length; i += 4) {
@@ -119,6 +142,14 @@ function authorLine(book: Book) {
 
 const PX_PER_UNIT = 2400
 
+/** the back and the stand-in front on a phone: 384 px wide instead of 640 */
+const PHONE_COVER_SCALE = 0.6
+
+/** A phone (or anything with a small screen or a touch screen): the lighter shelf. */
+export function onPhone() {
+  return typeof window !== 'undefined' && !!window.matchMedia?.('(max-width: 720px), (pointer: coarse)').matches
+}
+
 /**
  * Size and height of the medal on a finished book's spine (book units).
  * Shared by the spine texture (which paints the ribbon) and the 3D medal.
@@ -131,6 +162,7 @@ export function medalLayout(dims: BookDims) {
 }
 
 export function paintSpine(book: Book, dims: BookDims, sleep = false) {
+  // spines stay sharp on phones too: painting them at half the sharpness made the titles blurry (T-0003)
   const H = Math.min(1024, Math.round(dims.h * PX_PER_UNIT * 1.3))
   const W = Math.max(40, Math.round((H * dims.t) / dims.h))
   const c = canvas(W, H)
@@ -202,7 +234,7 @@ export function paintSpine(book: Book, dims: BookDims, sleep = false) {
   grain(ctx, W, H, 0.05)
   paintWear(ctx, W, H, book)
   if (read) paintMedalRibbon(ctx, W, H, dims)
-  return toTexture(c)
+  return bookTexture(c)
 }
 
 /** Gold leaf for the bands on a darker hardcover spine. */
@@ -455,8 +487,11 @@ export function medalFaceTexture(tier: MedalTier, count: number) {
 export function paintBack(book: Book, dims: BookDims) {
   const W = 640
   const H = Math.round((W * dims.h) / dims.w)
-  const c = canvas(W, H)
+  // on a phone a smaller picture, drawn with the same layout: quicker to paint when a book is taken out
+  const px = onPhone() ? PHONE_COVER_SCALE : 1
+  const c = canvas(W * px, H * px)
   const ctx = c.getContext('2d', { willReadFrequently: true })!
+  ctx.scale(px, px)
   const bg = book.color
   const ink = inkFor(bg)
   const accent = accentFor(bg)
@@ -528,15 +563,18 @@ export function paintBack(book: Book, dims: BookDims) {
   }
 
   grain(ctx, W, H, 0.04)
-  return toTexture(c)
+  return bookTexture(c)
 }
 
 /** Used when Open Library has no cover for the book. */
 export function paintFallbackCover(book: Book, dims: BookDims) {
   const W = 640
   const H = Math.round((W * dims.h) / dims.w)
-  const c = canvas(W, H)
+  // on a phone a smaller picture, drawn with the same layout: quicker to paint when a book is taken out
+  const px = onPhone() ? PHONE_COVER_SCALE : 1
+  const c = canvas(W * px, H * px)
   const ctx = c.getContext('2d', { willReadFrequently: true })!
+  ctx.scale(px, px)
   const bg = book.color
   const ink = inkFor(bg)
   const accent = accentFor(bg)
@@ -560,7 +598,7 @@ export function paintFallbackCover(book: Book, dims: BookDims) {
   ctx.font = `italic 400 30px ${SERIF}`
   ctx.fillText(ellipsize(ctx, authorLine(book), W - 160), W / 2, H * 0.78)
   grain(ctx, W, H, 0.05)
-  return toTexture(c)
+  return bookTexture(c)
 }
 
 function paintPages(vertical: boolean) {
@@ -637,6 +675,42 @@ const HONEY_OAK: OakPalette = {
   flecks: '240, 222, 186',
 }
 
+/** White-washed oak: pale, the grain showing through. */
+const WHITEWASH: OakPalette = {
+  base: ['#e6e0d6', '#ddd6cb', '#ece6dc', '#d6cfc3', '#e3dcd1'],
+  late: '150, 140, 125',
+  early: '245, 240, 232',
+  pores: '130, 120, 105',
+  flecks: '250, 247, 240',
+}
+
+/** Dark ebony: nearly black, with a faint warm grain. */
+const EBONY: OakPalette = {
+  base: ['#2a211c', '#241c18', '#30261f', '#1f1814', '#2b221c'],
+  late: '10, 8, 6',
+  early: '70, 56, 46',
+  pores: '8, 6, 5',
+  flecks: '90, 74, 60',
+}
+
+/** Cherry: warm reddish brown. */
+const CHERRY: OakPalette = {
+  base: ['#8a4a32', '#7f432d', '#93513a', '#763d29', '#8a4b33'],
+  late: '60, 26, 14',
+  early: '170, 100, 70',
+  pores: '50, 22, 12',
+  flecks: '190, 120, 88',
+}
+
+/** The bookcase's woods she can pick from (Make the room yours). */
+const WOOD_PALETTES: Record<Wood, OakPalette> = {
+  walnut: WALNUT,
+  honey: HONEY_OAK,
+  whitewash: WHITEWASH,
+  ebony: EBONY,
+  cherry: CHERRY,
+}
+
 /**
  * Paints European oak: straight, fairly tight grain, open pores and the ray
  * flecks typical of quarter-sawn oak. Grain runs along u (horizontal).
@@ -692,13 +766,12 @@ function paintOak(ctx: CanvasRenderingContext2D, W: number, H: number, p: OakPal
   grain(ctx, W, H, 0.035)
 }
 
-/** Grey oak for the bookcase. */
-/** The bookcase's wood: warm walnut (it was a grey oak before). */
-export function woodTexture() {
+/** The bookcase's wood: warm walnut by default, or the one she picked. */
+export function woodTexture(wood: Wood = 'walnut') {
   const W = 2048
   const H = 512
   const c = canvas(W, H)
-  paintOak(c.getContext('2d', { willReadFrequently: true })!, W, H, WALNUT)
+  paintOak(c.getContext('2d', { willReadFrequently: true })!, W, H, WOOD_PALETTES[wood])
   const t = toTexture(c)
   t.wrapS = THREE.RepeatWrapping
   t.wrapT = THREE.RepeatWrapping
@@ -745,7 +818,8 @@ export const WALLPAPER_REPEAT_M = 0.24
  * the top, a deeper lilac near the floor (Hanna's favourite colour). This paints one repeat
  * (two stripes) the full height of the wall; the scene repeats it sideways.
  */
-export function wallTexture() {
+export function wallTexture(wallpaper: Wallpaper = 'lavender') {
+  if (wallpaper === 'midnight') return midnightWall()
   const W = 48
   const H = 1024
   const c = canvas(W, H)
@@ -768,6 +842,49 @@ export function wallTexture() {
   ctx.fillStyle = 'rgba(90, 60, 140, 0.12)'
   ctx.fillRect(W / 2 - 1, 0, 1, H)
   ctx.fillRect(W - 1, 0, 1, H)
+  const t = toTexture(c)
+  t.wrapS = THREE.RepeatWrapping
+  return t
+}
+
+/**
+ * Midnight blue wallpaper with little gold stars (Make the room yours): the
+ * colours of --wall-* under html[data-wallpaper="midnight"] in styles.css.
+ * One repeat, the full height of the wall; the scene repeats it sideways.
+ */
+function midnightWall() {
+  const W = 96
+  const H = 2048
+  const c = canvas(W, H)
+  const ctx = c.getContext('2d')!
+  const at = (metres: number) => 1 - metres / WALL_HEIGHT_M
+  const g = ctx.createLinearGradient(0, 0, 0, H)
+  g.addColorStop(at(WALL_HEIGHT_M), '#2a3670')
+  g.addColorStop(at(3.2), '#222d62')
+  g.addColorStop(at(2), '#1b2552')
+  g.addColorStop(at(0.9), '#151d44')
+  g.addColorStop(at(0), '#0f1536')
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, W, H)
+  // a faint stripe, as on the lavender paper
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.025)'
+  ctx.fillRect(W / 2, 0, W / 2, H)
+  // little gold stars, scattered the same in every repeat
+  const rnd = seeded('midnight-stars')
+  for (let i = 0; i < 70; i++) {
+    const x = rnd() * W
+    const y = rnd() * H
+    const r = 0.8 + rnd() * 1.8
+    ctx.fillStyle = `rgba(244, 214, 140, ${0.45 + rnd() * 0.5})`
+    if (rnd() < 0.25) {
+      // a four-pointed twinkle
+      ctx.fillRect(x - r * 2, y - 0.5, r * 4, 1)
+      ctx.fillRect(x - 0.5, y - r * 2, 1, r * 4)
+    }
+    ctx.beginPath()
+    ctx.arc(x, y, r, 0, Math.PI * 2)
+    ctx.fill()
+  }
   const t = toTexture(c)
   t.wrapS = THREE.RepeatWrapping
   return t

@@ -3,6 +3,7 @@ import type { Book } from '#/lib/library'
 import { readingStreak } from '#/lib/insights'
 import { periodStats } from '#/lib/stats'
 import { Cover } from './Dashboard'
+import { dayText, daysToFinish } from '#/lib/finishEstimate'
 import { useYearGoal } from './useYearGoal'
 
 /**
@@ -32,6 +33,7 @@ export function TodayStrip({
     <div className="today-strip" role="group" aria-label="Today">
       {reading.map((b) => {
         const pct = Math.round((b.progress ?? 0) * 100)
+        const eta = daysToFinish(b)
         return (
           <button key={b.id} className="today-item today-book" onClick={() => onShowBook(b.id)} aria-label={`${b.title}, ${pct}%`}>
             <Cover book={b} small />
@@ -40,7 +42,9 @@ export function TodayStrip({
               <span className="today-progress" aria-hidden>
                 <span style={{ width: `${pct}%` }} />
               </span>
-              <span className="muted small-text">{pct}%</span>
+              <span className="muted small-text">
+                {pct}%{eta !== null && <> · ≈ {dayText(eta)}</>}
+              </span>
             </span>
           </button>
         )

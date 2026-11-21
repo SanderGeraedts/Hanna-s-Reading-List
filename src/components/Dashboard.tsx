@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Book } from '#/lib/library'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Book, NewBook } from '#/lib/library'
 import { formatDuration } from '#/lib/listening'
 import {
@@ -23,6 +21,9 @@ import { pickReadNext, readNextChoices } from '#/lib/readNext'
 import { pendingRatings } from '#/lib/ratingAsk'
 import { seriesQuestions } from '#/lib/sleepSeries'
 import { WaitingCard } from './WaitingCard'
+import { BooksWorldMapCard, GenreFlowerCard, PagesPerMonthCard } from './PictureBlocks'
+import { WrapUpCard } from './WrapUpCard'
+import { wrapKey, wrapUpDue } from '#/lib/wrapup'
 import { AgainCard } from './AgainCard'
 import { AlphabetCard } from './AlphabetCard'
 import { NewForYouCard } from './NewForYouCard'
@@ -57,6 +58,8 @@ import { BadgesCard, CoverWallCard, RhythmCard } from './NewBlocks'
 import { badges, newBadges } from '#/lib/badges'
 
 const BADGES_SEEN = 'hannas-reading-list:badges-seen'
+/** the month whose wrap-up was opened or put away under Waiting for you (yyyy-mm) */
+const WRAP_SEEN = 'hannas-reading-list:wrapup-seen'
 import type { Period } from '#/lib/stats'
 
 /**
@@ -167,7 +170,37 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
       /* storage blocked: it still holds for this visit */
     }
   }
-  const nothingWaiting = toRate.length === 0 && questions.length === 0 && freshBadges.length === 0
+  // last month's wrap-up waits for the first week of a new month, until opened or put away (on this device)
+  const due = wrapUpDue()
+  const [wrapSeen, setWrapSeen] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(WRAP_SEEN)
+    } catch {
+      return null
+    }
+  })
+  const [wrapOpen, setWrapOpen] = useState<{ year: number; month: number } | null>(null)
+  const seeWrap = () => {
+    if (!due) return
+    setWrapSeen(wrapKey(due.year, due.month))
+    try {
+      localStorage.setItem(WRAP_SEEN, wrapKey(due.year, due.month))
+    } catch {
+      /* storage blocked: it still holds for this visit */
+    }
+  }
+  const wrapUp =
+    due && wrapSeen !== wrapKey(due.year, due.month)
+      ? {
+          label: `Your ${monthName(due.month)} wrap-up is ready`,
+          onOpen: () => {
+            setWrapOpen(due)
+            seeWrap()
+          },
+          onDismiss: seeWrap,
+        }
+      : undefined
+  const nothingWaiting = toRate.length === 0 && questions.length === 0 && freshBadges.length === 0 && !wrapUp
 
   const blocks: Record<BlockId, React.ReactNode> = {
     waiting: (
@@ -178,11 +211,15 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
         onShowBook={onShowBook}
         newBadges={freshBadges}
         onSeenBadge={seeBadge}
+        wrapUp={wrapUp}
       />
     ),
     badges: <BadgesCard books={books} />,
     covers: <CoverWallCard books={books} onShowBook={onShowBook} />,
     rhythm: <RhythmCard books={books} />,
+    flower: <GenreFlowerCard books={books} />,
+    months: <PagesPerMonthCard books={books} />,
+    world: <BooksWorldMapCard books={books} />,
     challenge: (
       <ChallengeCard
         books={books}
@@ -343,6 +380,9 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
   }
   return (
     <div className="dashboard" ref={root}>
+      {wrapOpen && (
+        <WrapUpCard books={books} year={wrapOpen.year} month={wrapOpen.month} onShowBook={onShowBook} onClose={() => setWrapOpen(null)} />
+      )}
       <TodayStrip books={books} accountId={accountId} onShowBook={onShowBook} />
       <div className={`dashboard-bar${arranging ? ' arranging' : ''}`}>
         {arranging ? (

@@ -11,17 +11,20 @@ import { joinSeries, markSleepSeries, notInSeries, seriesQuestions, sleepSeriesK
 import type { Face } from '#/components/BookPanel'
 import { nearestTurn } from '#/components/BookMesh'
 import type { InspectTarget } from '#/components/BookMesh'
-import { SORT_LABELS, STATUS_LABELS, statusPatch, useLibrary } from '#/lib/library'
+import { SORT_LABELS, STATUS_LABELS, inStatusOrder, statusPatch, useLibrary } from '#/lib/library'
 import { progressPatch } from '#/lib/readingLog'
 import type { SortKey, SyncStatus } from '#/lib/library'
 import { useSession } from '#/lib/session'
 import type { Account } from '#/lib/session'
 import { SignIn } from '#/components/SignIn'
 import { detectSeries, seriesGroups } from '#/lib/series'
-import { pickReadNext, readNextChoices } from '#/lib/readNext'
+import { readNextChoices } from '#/lib/readNext'
 import { Dashboard } from '#/components/Dashboard'
 import { BadgeToasts } from '#/components/NewBlocks'
 import { QuickUpdate } from '#/components/QuickUpdate'
+import { SparkleLayer, sparkle } from '#/components/Sparkles'
+import { WishCard } from '#/components/WishCard'
+import { RoomPanel, useRoom } from '#/components/RoomPanel'
 import { ChallengesPage } from '#/components/ChallengesPage'
 import { CalendarPage } from '#/components/CalendarPage'
 import type { ChallengeSection } from '#/components/ChallengesPage'
@@ -31,7 +34,7 @@ import { SearchBox } from '#/components/SearchBox'
 import { genreSuggestions } from '#/lib/genres'
 import { useBookDetails } from '#/lib/useBookDetails'
 import type { Book } from '#/lib/library'
-import { filterByGenre, genreOptions as shelfGenres, reorderShown } from '#/lib/genreFilter'
+import { NO_GENRE, filterByGenre, genreOptions as shelfGenres, reorderShown } from '#/lib/genreFilter'
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -139,6 +142,12 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   const { state: syncState, dismiss: dismissSync } = storytel
 
   // the result message fades by itself
+  // arranged by reading status: a book that changes status (finished, put aside as DNF, picked up
+  // again) moves to its group straight away, from wherever it was changed; DNF books stay last
+  useEffect(() => {
+    if (arrangement === 'status' && !inStatusOrder(books)) sortBy('status')
+  }, [arrangement, books, sortBy])
+
   useEffect(() => {
     if (syncState.kind !== 'done') return
     const t = setTimeout(dismissSync, 5000)
@@ -219,11 +228,11 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     [reorder, books, activeGenre],
   )
 
-  // what to read next (#58): from the genre shown, if one is picked
-  const readNext = useMemo(() => {
-    const shownIds = new Set(shown.map((b) => b.id))
-    return readNextChoices(books).filter((b) => shownIds.has(b.id))
-  }, [books, shown])
+  // what she could read next (#58): Make a wish grants from these; a genre picked at the top starts the wish
+  const wishChoices = useMemo(() => readNextChoices(books), [books])
+  // her room: wood, wallpaper and decorations (Make the room yours), on this device
+  const [room, setRoom] = useRoom()
+  const [roomOpen, setRoomOpen] = useState(false)
 
   const select = useCallback((id: string | null) => {
     if (id) inspect.current = { rotY: 0, rotX: 0 }
@@ -301,7 +310,9 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     return acc
   }, {})
 
-  const pickNext = () => select(pickReadNext(readNext, selectedId)?.id ?? null)
+  // make a wish (version 2): she wishes for a length, genre or language, and the star grants three books
+  const [wishing, setWishing] = useState(false)
+  const pickNext = () => setWishing(true)
   const sortSelect = (done?: () => void) => (
     <select
       className="input"
@@ -361,13 +372,13 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
                       </label>
                     )}
                     <button
-                      disabled={readNext.length === 0}
+                      disabled={wishChoices.length === 0}
                       onClick={() => {
                         close()
                         pickNext()
                       }}
                     >
-                      <span aria-hidden>🎲</span> What next?
+                      <span aria-hidden>⭐</span> Make a wish
                     </button>
                   </div>
                 ))}
@@ -407,16 +418,16 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
               <button
                 className="btn read-next desktop-only"
                 aria-label="What to read next"
-                disabled={readNext.length === 0}
+                disabled={wishChoices.length === 0}
                 // pressing again shows another one
                 onClick={pickNext}
                 title={
-                  readNext.length
-                    ? 'Pick a book to read next: no re-reads, and only the next book of a series'
-                    : 'Nothing to read next: no unread books waiting on the shelf'
+                  wishChoices.length
+                    ? 'Make a wish: a book to read next from your pile (no re-reads, only the next book of a series)'
+                    : 'No wishes left: no unread books waiting on the shelf'
                 }
               >
-                <span aria-hidden>🎲</span> What next?
+                <span aria-hidden>⭐</span> Make a wish
               </button>
             </>
           )}
@@ -453,6 +464,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             zoom={zoom}
             onZoom={setZoom}
             topInset={headerPx}
+            paused={offShelf}
+            room={room}
           />
         </ClientOnly>
         {!offShelf && !selected && books.length > 0 && (
@@ -466,8 +479,12 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             <button className="btn icon" aria-label="Show the whole bookcase" title="Show the whole bookcase" disabled={zoom <= 1} onClick={() => setZoom(1)}>
               ⤢
             </button>
+            <button className="btn icon" aria-label="Your room" title="Your room: wood, wallpaper, decorations" aria-expanded={roomOpen} onClick={() => setRoomOpen(!roomOpen)}>
+              🎨
+            </button>
           </div>
         )}
+        {roomOpen && !offShelf && <RoomPanel room={room} onRoom={setRoom} onClose={() => setRoomOpen(false)} />}
 
         {loaded && books.length === 0 && (
           <div className="empty">
@@ -501,6 +518,20 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
       </main>
 
       <BadgeToasts books={books} accountId={account?.id ?? null} ready={loaded} />
+      <SparkleLayer />
+      {wishing && (
+        <WishCard
+          books={books}
+          choices={wishChoices}
+          startGenre={activeGenre && activeGenre !== NO_GENRE ? activeGenre : undefined}
+          onPick={(id) => {
+            setWishing(false)
+            select(id)
+            sparkle()
+          }}
+          onClose={() => setWishing(false)}
+        />
+      )}
       <QuickUpdate books={books} onUpdate={updateBook} onShowBook={showBook} hidden={!loaded || !!selected} />
 
       {selected && (
@@ -512,6 +543,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           onStatus={(status) => {
             // no pop-up: a finished book waits under "Waiting for you" on the dashboard
             updateBook(selected.id, statusPatch(selected, status))
+            // a little magic when she finishes it
+            if (status === 'read' && selected.status !== 'read') sparkle()
           }}
           // what she read today goes in the reading log (#76)
           onProgress={(progress) => updateBook(selected.id, (b) => progressPatch(b, progress))}

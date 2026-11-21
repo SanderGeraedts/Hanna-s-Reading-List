@@ -17,6 +17,7 @@ import {
   wantPile,
 } from '#/lib/insights'
 import { goalPace, goalPaceText } from '#/lib/insightsMore'
+import { goalForecast } from '#/lib/finishEstimate'
 import type { BreakdownKind } from '#/lib/insights'
 import { periodStats } from '#/lib/stats'
 import { amountText } from '#/lib/readingLog'
@@ -232,6 +233,7 @@ export function GoalCard({
         <div>
           <p className="goal-pace">{pace}</p>
           {toGo && <p className="goal-to-go">{toGo}</p>}
+          {!past && goalForecast(done, goal, year) && <p className="goal-forecast">{goalForecast(done, goal, year)}</p>}
           {!past && <p className="muted small-text">By now {Math.floor(p.expected)} at an even pace</p>}
         </div>
       </div>
