@@ -3053,7 +3053,70 @@ textarea.input {
   margin: 0 0 var(--space-2);
 }
 .badges-hidden {
-  margin: var(--space-2) 0 0;
+  margin: var(--space-3) 0 var(--space-2);
+}
+.hidden-badges {
+  list-style: none;
+}
+/* a block's title that folds it away (Badges) */
+.card-fold {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.card-fold h2 {
+  margin: 0;
+}
+.card-fold-mark {
+  color: var(--accent);
+  font-size: var(--fs-small);
+}
+.card-fold:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: var(--radius-small);
+}
+.dash-card.folded .badges-total {
+  margin-bottom: 0;
+}
+/* a hidden badge: a locked tile with a "?", its riddle when tapped */
+.secret-tile {
+  width: 100%;
+  border: 1px dashed var(--accent-line);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  opacity: 0.75;
+}
+.secret-tile .badge-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 1.6em;
+  height: 1.6em;
+  border-radius: 50%;
+  background: var(--surface-solid);
+  color: var(--accent);
+  font-family: var(--serif);
+  font-weight: 700;
+}
+.secret-tile.open {
+  opacity: 1;
+  border-style: solid;
+}
+.secret-tile.open .small-text {
+  font-style: italic;
+  color: var(--text);
+}
+.secret-tile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 /* "Badge unlocked": slides in at the bottom right, like Steam */
 .badge-toast {
@@ -3653,6 +3716,155 @@ textarea.input {
   background: var(--surface-sunken);
   overflow-wrap: anywhere;
   user-select: all;
+}
+
+/* ---- little magic moments: sparkles, once upon a time ---------------- */
+.sparkle-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  pointer-events: none;
+  overflow: hidden;
+}
+.sparkle-burst {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+.sparkle-glow {
+  position: absolute;
+  left: -70px;
+  top: -70px;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 226, 150, 0.55), rgba(255, 226, 150, 0) 70%);
+  animation: sparkle-glow 1.2s ease-out forwards;
+}
+.sparkle-bit {
+  position: absolute;
+  left: calc(var(--size) / -2);
+  top: calc(var(--size) / -2);
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff8dc 0%, #f3cf72 45%, rgba(243, 207, 114, 0) 72%);
+  opacity: 0;
+  animation: sparkle-fly 1.2s ease-out forwards;
+}
+/* every third one a little four-pointed star */
+.sparkle-bit.star {
+  border-radius: 0;
+  background: #fff3c4;
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+  filter: drop-shadow(0 0 4px #f3cf72);
+}
+@keyframes sparkle-fly {
+  0% {
+    transform: translate(0, 0) scale(0.3) rotate(0deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(1) rotate(160deg);
+    opacity: 0;
+  }
+}
+@keyframes sparkle-glow {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* only a soft glow, nothing flying */
+  .sparkle-bit {
+    display: none;
+  }
+  .sparkle-glow {
+    animation-duration: 0.8s;
+  }
+}
+.story-line {
+  margin: 0;
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--accent);
+}
+.story-line.end {
+  text-align: right;
+}
+
+/* ---- make a wish: wishes, then three books ---------------------------- */
+.wish-form {
+  display: grid;
+  gap: var(--space-3);
+}
+.wish-row {
+  display: grid;
+  gap: var(--space-1);
+}
+.wish-row .segmented {
+  flex-wrap: wrap;
+}
+.wish-grant {
+  justify-self: stretch;
+  min-height: var(--tap);
+  font-size: var(--fs-large);
+}
+.wish-granted {
+  display: grid;
+  gap: var(--space-3);
+}
+.wish-granted > p {
+  margin: 0;
+}
+.wish-books {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.wish-book {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  width: 100%;
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.wish-book:hover,
+.wish-book:focus-visible {
+  border-color: var(--accent);
+}
+.wish-book .dash-cover {
+  width: 3rem;
+  height: 4.5rem;
+  flex: none;
+}
+.wish-book-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.wish-reason {
+  color: var(--accent);
 }
 
 /* ---- favourites on top --------------------------------------------- */

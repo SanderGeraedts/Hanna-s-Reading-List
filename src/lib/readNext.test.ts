@@ -50,6 +50,26 @@ describe('what to read next (#58)', () => {
     expect(readNextChoices([percy(1, { status: 'read' }), percy(2, { status: 'read' })])).toEqual([])
   })
 
+  it('never offers a book whose earlier books are not all read, also when they are not on the shelf', () => {
+    // book 2 isn't on the shelf: book 3 waits
+    expect(readNextChoices([percy(1, { status: 'read' }), percy(3)])).toEqual([])
+    // only book 3 of a series: not offered
+    expect(readNextChoices([percy(3)])).toEqual([])
+    // once 1 and 2 are read, book 3 can come up
+    expect(ids(readNextChoices([percy(1, { status: 'read' }), percy(2, { readCount: 1, status: 'want' }), percy(3)]))).toEqual(['p3'])
+    // book 1 of a series, alone on the shelf: fine
+    expect(ids(readNextChoices([percy(1)]))).toEqual(['p1'])
+  })
+
+  it('a book numbered before it on the shelf (a novella) must be read too', () => {
+    const shelf = [
+      book('a1', { series: 'Saga', seriesIndex: 1, status: 'read' }),
+      book('a15', { series: 'Saga', seriesIndex: 1.5 }),
+      book('a2', { series: 'Saga', seriesIndex: 2 }),
+    ]
+    expect(ids(readNextChoices(shelf))).toEqual(['a15'])
+  })
+
   it('leaves out books that are not out yet', () => {
     const shelf = [book('out', { published: '2020' }), book('soon', { published: '2099-01-01' }), book('ry', { releaseDate: '2099-05-01' })]
     expect(ids(readNextChoices(shelf, '2026-11-13'))).toEqual(['out'])
