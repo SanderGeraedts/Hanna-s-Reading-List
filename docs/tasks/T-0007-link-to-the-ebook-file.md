@@ -2,7 +2,7 @@
 id: T-0007
 title: "Let a book hold a link to its e-book file, shown only when one is added"
 description: "#185: an optional link per book to where Hanna keeps the e-book (Google Drive, a server), with an open button in the book panel like \"Open in Storytel\", shown only when the link is set."
-status: Open
+status: Doing
 depends_on: [T-0001]
 decisions: [D-0002, D-0003]
 raised_on: 2026-11-21
@@ -158,3 +158,17 @@ browser) or a local PocketBase, never from signing in or adding books on a deplo
   "Open in Storytel", only with a link. "+ Add e-book link" under *How I have it* opens an
   "E-book link" field with ×. A refused link stays in the field with "Only links that start
   with https:// or http:// can be opened here."
+- 2026-11-21 developer: built on branch `t-0007-ebook-link`. `ebookUrl?: string` on `Book`
+  (optional; old shelves load). `src/lib/ebookLink.ts` accepts only https:// and http:// (trimmed)
+  and re-checks the stored link on every render, so only a web address ever reaches an `href`.
+  `src/components/EbookLink.tsx`: "📖 Open e-book" (`btn small`, `target="_blank"`,
+  `rel="noopener noreferrer"`, tooltip/name with the host) beside "Open in Storytel" in a wrapping
+  row, and "+ Add e-book link" / the "E-book link" field with × under *How I have it*, saved on
+  Enter or blur, Escape restores, refusal kept in the field with `aria-invalid`. The field travels
+  with the book: `shelfMerge.ts` and `server/shelf.ts` are unchanged (tests prove a stale device or
+  an older app can't drop it). `merge.ts` (merging two copies) now keeps the other copy's link.
+  Checks: `npm test` 44 files, 303 tests passed; `npm run build` built; `tsc --noEmit` clean.
+  Local dev server, no backend, 320×640 and 1280×800: both open buttons fully visible (the e-book
+  button wraps onto a second line at both widths: the panel's title column is narrower than the
+  two buttons together, as the design allows); refusal shows the exact note; add, reload, remove
+  all work; no page errors.
