@@ -2,11 +2,11 @@
 id: T-0005
 title: "Make the books that match a search stand out much more from the rest"
 description: "#184: while searching, the matching books light up and the rest dim; make the difference between the two clearly bigger."
-status: Doing
+status: Done
 depends_on: [T-0001]
 decisions: [D-0002]
 raised_on: 2026-11-21
-done_on: ""
+done_on: "2026-11-21"
 result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/197"]
 ---
 
@@ -170,6 +170,72 @@ forward are unchanged.
 
 # Test
 
+Tester, 2026-11-21, on `705fbdc` in a fresh worktree of `origin/t-0005-search-highlight`, then
+again after merging `origin/main` (T-0004 #195 and T-0007 #196 had merged meanwhile; the only
+conflict was the generated `docs/tasks/index.md`, regenerated with `harness tasks-index`).
+
+**Commands, with their output**
+
+- `npm ci`: installed without errors (on `705fbdc` and again on the merge).
+- `npm test` on `705fbdc`: "Tests  285 passed (285)". After merging `main`: "Test Files  47
+  passed (47)", "Tests  311 passed (311)".
+- `npm run build` on `705fbdc`: "✓ built in 990ms". After merging `main`: "✓ built in 1.18s".
+- `harness check` (local harness, as the repository is not on the harness yet): tasks and
+  decisions pass; "generated files … missing or stale" for `.claude/agents/*`,
+  `.githooks/pre-push` and `.claude/settings.json`. `main` gives exactly the same output: those
+  files arrive with T-0001 (#192), and they are code-owned. Not caused by this change.
+- CI on the pull request: `test` pass (re-checked after the push below).
+
+**On the deploy preview → done locally instead** (#193: nothing signed in or entered on a
+preview). Two local dev servers, no `POCKETBASE_URL`, no Netlify link, shelf in the browser,
+the same 12 books seeded in local storage: `main` for "before", this branch for "after". The
+only outside requests were Google Fonts. No page errors anywhere. Screenshots at 390 × 844 and
+1280 × 800 of the searches "the" (3 matches: The Night Circus, The Hobbit, The Name of the
+Wind), "circ" (2: The Night Circus, Circe), "mistb" and "dune" (one black or navy match).
+
+- **Two matches ("circ") are clearly the brightest on the shelf** at both sizes. Measured spine
+  brightness (mean luminance, 0 to 255) at 1280 px: Circe 204 and The Night Circus 212; the
+  others drop from before to after (Emma 132 → 101, Piranesi 117 → 89, Dracula 73 → 59).
+- **The rest is clearly darker than today:** every non-matching spine is 15–25% darker on
+  screen than on `main` (the colour is at 18% instead of 35%; tone mapping softens the
+  on-screen ratio). The shelf, koala, cat and bookcase are still clearly visible.
+- **Matches stand forward:** at both sizes all matches stand visibly proud of the row and cast
+  a shadow on their neighbours.
+- **A dark-spined match:** The Hobbit (purple) and Mistborn (near-black) read as the lit book
+  among their neighbours. Measured, their spine *colour* stays darker on average than a dimmed
+  light neighbour (The Hobbit 98 against Circe 122; the glow comes from the spine's own colour,
+  so a dark spine can't get light), but their lettering is by far the brightest part: the
+  brightest 5% of The Hobbit is 231, of Circe 143 and Piranesi 109; of Mistborn 213, of
+  Piranesi 101 and Rebecca 107. With T-0004's off-white lettering merged in, this is very clear
+  in the close-ups. The UX designer judged the same case in the second review.
+
+**What I tried to break**
+
+- **No matches ("zzqx"):** the status reads "No book on the shelf matches", the chip shows
+  "· 0", and every book dims (to 18% now, 35% on `main`). That is how `main` already behaves
+  (an empty match list dims all); only the strength changed. The shelf is still readable.
+- **Every book matches ("fantasy", 12 books):** all glow and step forward, nothing dims; it
+  looks tidy, no book overlaps another.
+- **One letter ("t"):** no lighting, as before.
+- **Clearing the search:** after "the" and then an empty box, the shelf matches the first
+  screenshot (0.26% of pixels differ at 1280 px, from the steaming mug and the search chip).
+- **Fast typing:** "the hobbit" at 5 ms a key, ten backspaces, then "dra": status "1 book",
+  only Dracula lit, no stuck glow on The Hobbit. The same search twice in a row: unchanged.
+- **Taking out a matching book while searching:** The Hobbit, from the search list at 390 px
+  and by clicking its spine at 1280 px: it comes out lit evenly, without glow or dimming;
+  put back, it returns to the row as a match while the search is still on.
+- **Performance:** materials are still written only when the glow or shade changes by more
+  than 0.001 (`BookMesh.tsx`, unchanged guard); `bookLight` is a pure function, no new
+  allocations per frame beyond one small object, as the old two numbers.
+- **Unit test:** `BookMesh.test.ts` pins `MATCH_GLOW` 0.6, `MATCH_DIM` 0.82, `MATCH_FORWARD`
+  0.06 and the taken-out case.
+- **Code-owned paths:** the diff touches `src/components/BookMesh.tsx`, a new
+  `src/components/BookMesh.test.ts`, `docs/lessons.md`, the task file and the index. None is
+  code-owned.
+- Not in this task (UX review): the 320 px top row under the header fade belongs to T-0003.
+
+**Verdict: passed.**
+
 # Log
 
 - 2026-11-21 architect: Task written from #184.
@@ -195,3 +261,7 @@ forward are unchanged.
   "built in 1.37s".
 - 2026-11-21 ux-designer: reviewed: passes. At `MATCH_GLOW` 0.6 The Hobbit is the lit book next
   to Circe and Piranesi, and The Night Circus is still readable (1280 and 390 px).
+- 2026-11-21 tester: passed. `npm test` 311 passed and `npm run build` built after merging `main`;
+  before/after screenshots of "the", "circ" and dark single matches at 390 and 1280 px from
+  local dev servers (not the preview, #193); no matches, all matching, clearing, fast typing
+  and taking out a match all behave.
