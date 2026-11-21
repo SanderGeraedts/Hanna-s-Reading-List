@@ -200,6 +200,109 @@ whether the shelf now shows on Hanna's own phone.
 
 # Test
 
+Tester, 2026-11-21, in a fresh worktree of `origin/t-0003-phone-shelf` (`e8e423c`).
+
+**Merging `main` first.** `main` had moved on by T-0004 (`e0ab043`, #195), which also changes
+`src/components/textures.ts`. `git merge origin/main`: `textures.ts` merged by itself (T-0004
+changes `paintSpine`, this branch adds `plainTexture` further down), and the only conflict was
+the generated `docs/tasks/index.md`, which I regenerated with `harness tasks-index`. No code
+conflict. Everything below ran on the merged tree.
+
+**Commands, with their output**
+
+- `npm ci`: installed (one warning: esbuild's install script isn't in `allowScripts`).
+- `npm test`, five full runs: three "Tests 293 passed (293)", one "Tests 1 failed | 292 passed
+  (293)", the first run "2 failed | 291 passed". The failure I could see is
+  `shelfLayout.test.ts > is quick enough to run on every change` ("expected 274.16 to be less
+  than 250", once "322.38"). It's a timing test on `fitShelf`, which this branch doesn't change.
+  It's flaky on `main` too: alone on `origin/main` it failed 1 in 6 runs ("expected 297.99 to be
+  less than 250"), and on this branch 2 in 5. **This change didn't cause it.** It needs a
+  task of its own (architect), or CI can turn red at random.
+- `npm run build`: built. `npx tsc --noEmit`: clean.
+- `harness check`: tasks ✓ (index in step), decisions ✓, engineers ✓. Six "generated files ...
+  missing or stale" lines (`.claude/agents/*`, `.githooks/pre-push`, `.claude/settings.json`).
+  `main` shows the same six. They wait for the harness adoption (#192), a code-owned change,
+  and this pull request doesn't touch them.
+- CI on the pull request: see the pull request after the merge commit was pushed.
+
+**The Done-when, locally instead of on the deploy preview** (#193: nothing signed in or added
+on the preview). I used a local dev server (`vite dev`, no `POCKETBASE_URL`, no `.netlify` link,
+shelf in the browser) and headless Chrome with phone emulation (touch, `isMobile`).
+
+- Added the two books through the app at 390 × 844: search "Dune" → "Dune, Frank Herbert", Add;
+  ISBN `9780140328721` → "Added to the shelf." (Fantastic Mr. Fox). Both show on the top
+  shelf, spines readable, the crown and top shelf below the header (162 px), and the zoom
+  buttons bottom right. The same at 360 × 800 and 320 × 640. Screenshots:
+  [390](T-0003-screens/shelf-390x844.jpg), [360](T-0003-screens/shelf-360x800.jpg),
+  [320](T-0003-screens/shelf-320x640.jpg), [1280](T-0003-screens/shelf-1280x800.jpg),
+  [a book taken out at 390](T-0003-screens/book-out-390x844.jpg),
+  [the error note at 390](T-0003-screens/error-note-390x844.jpg).
+- Swiping: a touch swipe (fast pointer events) scrolls the shelves at 390 × 844 with 40 books:
+  up, up again, back down. Note on the method: Chrome's own slow touch emulation (CDP, one
+  event per frame under software drawing) didn't scroll on this branch *or* on `main`. On
+  `main` it even turned into a long-press that moved a book. So that method can't tell, and I
+  used the fast one. The mouse wheel scrolls on both.
+- A tap takes a book out at 390, 360 and 320 ("Details for Dune"; the book stays above the
+  sheet, below the header). Esc puts it back, and so does a tap on the room. At 1280 a click
+  takes Dune out; Esc and a click on the room put it back.
+- 1280 × 800: the same as `main`, side by side with the same two books (crown, shelves,
+  koala, toolbar, all in the same place; the pixel differences are the twinkling lights).
+- The cause is named in the pull request and in the *Log* (memory, and the signed-in header).
+- Tests that fail before and pass after: `SafeBookshelf.test.tsx`, `contextLoss.test.ts`,
+  `bookFaces.test.ts`, `topGap` in `shelfLayout.test.ts`, all in the 293.
+- The UX designer's review is there (passed).
+- Header, signed out, with search on (typed "the", closed the box, the chip "the" · 12 ✕
+  stays): the four tabs are on one row (all at y = 109) at 390 and 320, header 162 px, no book
+  covered. **Signed in** on a local throwaway PocketBase (0.40.6, copied binary, account
+  `test@example.com`, two books added there): with the account button, one row of tabs at 390,
+  360 and 320, header 162 px, also with the search chip; at 1280 one row as before. The only
+  outside addresses the browser contacted were the font servers.
+- Dashboard at 390, 320 and 1280: the strip with the books being read starts fully below the
+  tabs, and nothing overlaps.
+
+**What I tried to break**
+
+- *WebGL switched off* (`--disable-webgl --disable-3d-apis`) at 320, 390 and 1280: the note
+  shows with the Design's words, `role="status"`. "Try again" brings the note back (WebGL is
+  still off), and the Dashboard still works. Keyboard order: tabs, 🔍, ↻, + Add, then "Try
+  again" (as the designer accepted).
+- *Lost drawing while the shelf is open* (`WEBGL_lose_context.loseContext()`), twice in a row:
+  the note shows each time. "Try again" draws the shelf again with a live context, and after
+  two rounds a tap still takes a book out.
+- *Lost drawing while a book is taken out* (the moment the back gets painted, so a likely
+  moment on a phone): the note shows, but the details sheet stays open over its lower half,
+  and at 390 and 320 "Try again" is under the sheet and can't be tapped. Esc or the sheet's ✕
+  closes it, and then "Try again" works and the shelf comes back. **Doesn't block** (she can
+  still get out, in one more tap), but better: close the sheet when the shelf fails. A
+  follow-up for the architect, together with the designer's (zoom buttons next to the note,
+  "on this phone" on a computer).
+- *Take out, turn round, put back, take out again* at 390: the back (blurb, barcode) shows
+  when turned with "Back" and with →. The 640 px pictures went 8 → 11 when taken out, stayed 11
+  when put back and when taken out again, so the back is painted once and kept. At 1280:
+  2 → 3, the back is painted.
+- *A cover that fails to load* (a cover address that gives 404), next to a book with a cover and
+  one without: two stand-in fronts get painted (the failing one and the one without). The book
+  with a cover gets none.
+- *Memory*, measured like the developer (2D canvas pixels × 4, at 390 × 844), branch vs `main`:
+  12 books 46 vs 74 MB; 150 books with covers **88 vs 798 MB**; 200 with covers 113 vs
+  1060 MB; 150 books *without* covers 443 vs 798 MB. Each book without a cover still paints a
+  640 px stand-in front, so a big shelf of coverless books stays heavy. Most of her books come
+  from Open Library with a cover, so it doesn't block. Worth knowing if her phone still fails.
+- *Rotating and resizing* one page: 390×844 → 844×390 → 390×844 → 320×640 → 1280×800 →
+  390×844. The canvas follows each size, `--header-h` follows (193, 162, 162, 189, 162 px),
+  and no note shows.
+- *Switching pages* back and forth (Dashboard, Challenges, Calendar, Bookshelf, Dashboard,
+  Bookshelf) at 390, 320 and 1280: the shelf is back each time, with no note.
+- *T-0004 after the merge*: the lettering on dark spines is light (white) and on light spines
+  dark, with gold bands (zoomed screenshot at 390). `textures.test.ts` from T-0004 passes.
+- *Code-owned paths*: the diff with `main` touches none of them (`.github/`, `netlify/`,
+  `netlify.toml`, `deploy/nas/`, `CLAUDE.md`, `.claude/`, `docs/hanna-guardrails.md`,
+  `src/lib/shelfMerge.ts`, `src/server/shelf.ts`).
+
+**Verdict: passed.** Nothing remains for the team. Still open, and Hanna's to check: that the
+bookshelf now shows on her own phone. So the task stays *Doing*, and #181 stays open
+(`Refs #181`).
+
 # Log
 
 - 2026-11-21 architect: Task written from #181; the report is one line, so the assumption is
@@ -249,4 +352,11 @@ whether the shelf now shows on Hanna's own phone.
   error note as designed; plain-colour covers not visible on the shelf. Not blocking: keyboard
   reaches the header buttons before "Try again"; zoom buttons and "on this phone" in the note;
   the desktop toolbar over the crown (also on `main`), proposed as a separate task.
+  Remaining: Hanna checks on her own phone that the bookshelf shows with her books.
+- 2026-11-21 tester: passed. Merged `main` (T-0004) in: only the generated index conflicted,
+  regenerated; T-0004's white spine lettering still shows. Done-when run locally (no preview
+  sign-in, #193), signed in on a local throwaway PocketBase; WebGL off, lost context twice,
+  rotating and 150 books (88 MB, was 798) tried. For the architect: the flaky timing test
+  `is quick enough to run on every change` (also on `main`), and "Try again" lying under an
+  open details sheet when the drawing is lost while a book is out (Esc or ✕ gets her out).
   Remaining: Hanna checks on her own phone that the bookshelf shows with her books.
