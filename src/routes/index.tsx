@@ -24,6 +24,7 @@ import { BadgeToasts } from '#/components/NewBlocks'
 import { QuickUpdate } from '#/components/QuickUpdate'
 import { SparkleLayer, sparkle } from '#/components/Sparkles'
 import { WishCard } from '#/components/WishCard'
+import { RoomPanel, useRoom } from '#/components/RoomPanel'
 import { ChallengesPage } from '#/components/ChallengesPage'
 import { CalendarPage } from '#/components/CalendarPage'
 import type { ChallengeSection } from '#/components/ChallengesPage'
@@ -229,6 +230,9 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
 
   // what she could read next (#58): Make a wish grants from these; a genre picked at the top starts the wish
   const wishChoices = useMemo(() => readNextChoices(books), [books])
+  // her room: wood, wallpaper and decorations (Make the room yours), on this device
+  const [room, setRoom] = useRoom()
+  const [roomOpen, setRoomOpen] = useState(false)
 
   const select = useCallback((id: string | null) => {
     if (id) inspect.current = { rotY: 0, rotX: 0 }
@@ -461,6 +465,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             onZoom={setZoom}
             topInset={headerPx}
             paused={offShelf}
+            room={room}
           />
         </ClientOnly>
         {!offShelf && !selected && books.length > 0 && (
@@ -474,8 +479,12 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             <button className="btn icon" aria-label="Show the whole bookcase" title="Show the whole bookcase" disabled={zoom <= 1} onClick={() => setZoom(1)}>
               ⤢
             </button>
+            <button className="btn icon" aria-label="Your room" title="Your room: wood, wallpaper, decorations" aria-expanded={roomOpen} onClick={() => setRoomOpen(!roomOpen)}>
+              🎨
+            </button>
           </div>
         )}
+        {roomOpen && !offShelf && <RoomPanel room={room} onRoom={setRoom} onClose={() => setRoomOpen(false)} />}
 
         {loaded && books.length === 0 && (
           <div className="empty">

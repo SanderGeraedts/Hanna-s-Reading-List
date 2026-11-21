@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import type { Book } from '#/lib/library'
+import type { Wallpaper, Wood } from '#/lib/room'
 import { hasMedal, timesRead } from '#/lib/library'
 import type { BookDims } from '#/lib/shelfLayout'
 import { formatDuration, listenOnly } from '#/lib/listening'
@@ -674,6 +675,42 @@ const HONEY_OAK: OakPalette = {
   flecks: '240, 222, 186',
 }
 
+/** White-washed oak: pale, the grain showing through. */
+const WHITEWASH: OakPalette = {
+  base: ['#e6e0d6', '#ddd6cb', '#ece6dc', '#d6cfc3', '#e3dcd1'],
+  late: '150, 140, 125',
+  early: '245, 240, 232',
+  pores: '130, 120, 105',
+  flecks: '250, 247, 240',
+}
+
+/** Dark ebony: nearly black, with a faint warm grain. */
+const EBONY: OakPalette = {
+  base: ['#2a211c', '#241c18', '#30261f', '#1f1814', '#2b221c'],
+  late: '10, 8, 6',
+  early: '70, 56, 46',
+  pores: '8, 6, 5',
+  flecks: '90, 74, 60',
+}
+
+/** Cherry: warm reddish brown. */
+const CHERRY: OakPalette = {
+  base: ['#8a4a32', '#7f432d', '#93513a', '#763d29', '#8a4b33'],
+  late: '60, 26, 14',
+  early: '170, 100, 70',
+  pores: '50, 22, 12',
+  flecks: '190, 120, 88',
+}
+
+/** The bookcase's woods she can pick from (Make the room yours). */
+const WOOD_PALETTES: Record<Wood, OakPalette> = {
+  walnut: WALNUT,
+  honey: HONEY_OAK,
+  whitewash: WHITEWASH,
+  ebony: EBONY,
+  cherry: CHERRY,
+}
+
 /**
  * Paints European oak: straight, fairly tight grain, open pores and the ray
  * flecks typical of quarter-sawn oak. Grain runs along u (horizontal).
@@ -729,13 +766,12 @@ function paintOak(ctx: CanvasRenderingContext2D, W: number, H: number, p: OakPal
   grain(ctx, W, H, 0.035)
 }
 
-/** Grey oak for the bookcase. */
-/** The bookcase's wood: warm walnut (it was a grey oak before). */
-export function woodTexture() {
+/** The bookcase's wood: warm walnut by default, or the one she picked. */
+export function woodTexture(wood: Wood = 'walnut') {
   const W = 2048
   const H = 512
   const c = canvas(W, H)
-  paintOak(c.getContext('2d', { willReadFrequently: true })!, W, H, WALNUT)
+  paintOak(c.getContext('2d', { willReadFrequently: true })!, W, H, WOOD_PALETTES[wood])
   const t = toTexture(c)
   t.wrapS = THREE.RepeatWrapping
   t.wrapT = THREE.RepeatWrapping
@@ -782,7 +818,8 @@ export const WALLPAPER_REPEAT_M = 0.24
  * the top, a deeper lilac near the floor (Hanna's favourite colour). This paints one repeat
  * (two stripes) the full height of the wall; the scene repeats it sideways.
  */
-export function wallTexture() {
+export function wallTexture(wallpaper: Wallpaper = 'lavender') {
+  if (wallpaper === 'midnight') return midnightWall()
   const W = 48
   const H = 1024
   const c = canvas(W, H)
@@ -805,6 +842,49 @@ export function wallTexture() {
   ctx.fillStyle = 'rgba(90, 60, 140, 0.12)'
   ctx.fillRect(W / 2 - 1, 0, 1, H)
   ctx.fillRect(W - 1, 0, 1, H)
+  const t = toTexture(c)
+  t.wrapS = THREE.RepeatWrapping
+  return t
+}
+
+/**
+ * Midnight blue wallpaper with little gold stars (Make the room yours): the
+ * colours of --wall-* under html[data-wallpaper="midnight"] in styles.css.
+ * One repeat, the full height of the wall; the scene repeats it sideways.
+ */
+function midnightWall() {
+  const W = 96
+  const H = 2048
+  const c = canvas(W, H)
+  const ctx = c.getContext('2d')!
+  const at = (metres: number) => 1 - metres / WALL_HEIGHT_M
+  const g = ctx.createLinearGradient(0, 0, 0, H)
+  g.addColorStop(at(WALL_HEIGHT_M), '#2a3670')
+  g.addColorStop(at(3.2), '#222d62')
+  g.addColorStop(at(2), '#1b2552')
+  g.addColorStop(at(0.9), '#151d44')
+  g.addColorStop(at(0), '#0f1536')
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, W, H)
+  // a faint stripe, as on the lavender paper
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.025)'
+  ctx.fillRect(W / 2, 0, W / 2, H)
+  // little gold stars, scattered the same in every repeat
+  const rnd = seeded('midnight-stars')
+  for (let i = 0; i < 70; i++) {
+    const x = rnd() * W
+    const y = rnd() * H
+    const r = 0.8 + rnd() * 1.8
+    ctx.fillStyle = `rgba(244, 214, 140, ${0.45 + rnd() * 0.5})`
+    if (rnd() < 0.25) {
+      // a four-pointed twinkle
+      ctx.fillRect(x - r * 2, y - 0.5, r * 4, 1)
+      ctx.fillRect(x - 0.5, y - r * 2, 1, r * 4)
+    }
+    ctx.beginPath()
+    ctx.arc(x, y, r, 0, Math.PI * 2)
+    ctx.fill()
+  }
   const t = toTexture(c)
   t.wrapS = THREE.RepeatWrapping
   return t
