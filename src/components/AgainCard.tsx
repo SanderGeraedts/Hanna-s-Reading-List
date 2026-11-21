@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Book } from '#/lib/library'
 import { localDay, statusPatch } from '#/lib/library'
-import { bookOfTheDay, putAside, stoppedAtText } from '#/lib/didNotFinish'
+import { bookOfTheDay, stoppedAtText } from '#/lib/didNotFinish'
 import { Cover } from './Dashboard'
 
 interface Props {
@@ -19,7 +19,6 @@ interface Props {
 export function AgainCard({ books, onShowBook, onUpdate, day }: Props) {
   const today = day ?? localDay()
   const book = useMemo(() => bookOfTheDay(books, today), [books, today])
-  const count = useMemo(() => putAside(books).length, [books])
   const [backTitle, setBackTitle] = useState<string | null>(null)
   // after "Try again", focus moves to the next book's button, or to the heading
   const [moveFocus, setMoveFocus] = useState(false)
@@ -74,7 +73,6 @@ export function AgainCard({ books, onShowBook, onUpdate, day }: Props) {
               </div>
             </div>
           </div>
-          {count > 1 && <p className="muted small-text">{count} books put aside. Another one tomorrow.</p>}
         </>
       ) : (
         <p className="muted small-text">No books put aside.</p>

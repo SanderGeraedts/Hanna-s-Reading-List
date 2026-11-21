@@ -50,7 +50,6 @@ describe('Give it another try (#187)', () => {
   it('"Try again" sets the book back to Reading with its progress, says so and moves focus', () => {
     render(<Shelf start={[book('circe', { title: 'Circe', progress: 0.42 })]} />)
     expect(screen.getByText('Stopped at 42%')).toBeTruthy()
-    expect(screen.queryByText(/books put aside/)).toBeNull()
     act(() => fireEvent.click(screen.getByRole('button', { name: 'Try again' })))
     expect(screen.getByRole('status').textContent).toBe('“Circe” is back in Currently reading.')
     expect(screen.getByText('No books put aside.')).toBeTruthy()
@@ -58,11 +57,12 @@ describe('Give it another try (#187)', () => {
     expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Give it another try' }))
   })
 
-  it('with more books, counts them and shows the next one after "Try again"', () => {
+  it('with more books, shows the next one after "Try again", with no explanation line (D-0014)', () => {
     render(<Shelf start={[book('a'), book('b'), book('c')]} />)
-    expect(screen.getByText('3 books put aside. Another one tomorrow.')).toBeTruthy()
+    expect(screen.queryByText(/put aside/)).toBeNull()
+    const first = screen.getByRole('button', { name: /^Open Book / }).getAttribute('aria-label')
     act(() => fireEvent.click(screen.getByRole('button', { name: 'Try again' })))
-    expect(screen.getByText('2 books put aside. Another one tomorrow.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Open Book / }).getAttribute('aria-label')).not.toBe(first)
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Try again' }))
   })
 
