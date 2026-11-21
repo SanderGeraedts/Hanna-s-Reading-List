@@ -2,11 +2,11 @@
 id: T-0008
 title: "Bring back a dashboard block with new books she might like that aren't on her shelf"
 description: "#186: a dashboard block of new releases by her favourite authors and in her favourite genres, from Open Library, leaving out books already on the shelf; built from the Recommended for you block removed in #123."
-status: Doing
+status: Done
 depends_on: [T-0001]
 decisions: [D-0002, D-0003, D-0014, D-0017, D-0018, D-0021]
 raised_on: 2026-11-21
-done_on: ""
+done_on: 2026-11-21
 result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/202"]
 ---
 
@@ -200,6 +200,78 @@ block.
 
 # Test
 
+Tester, 2026-11-21, on a fresh worktree of `t-0008-new-for-you` (head `f8da555`) after
+T-0006 merged (#199, `22d8ee7`). I merged `origin/main` into the branch first: conflicts were
+only the T-0006 task file and the generated index (taken from main, index regenerated) and the
+Today line in `dashboardLayout.ts`, where main's line was the branch's without `newforyou` (kept
+the branch's). The diff against main now shows only T-0008. The deploy-preview items were done
+on a local dev server with no backend instead (issue #193).
+
+**Records:** D-0021 is in, `replaces: [D-0016]`; D-0016 is `status: Replaced`,
+`replaced_by: [D-0021]`; the index lists D-0021 under *Accepted* and D-0016 under *Replaced*.
+`harness check`: `✓ tasks: 10 tasks, index in step`, `✓ decisions: 24 records, index complete,
+3 overrules valid`; the `✗ generated files` lines are the same as on main, because the harness
+adoption (T-0001) hasn't merged.
+
+**Commands**
+
+- `npm ci`: `added 654 packages, and audited 655 packages in 37s`.
+- `npm test`: `Test Files 54 passed (54)`, `Tests 362 passed (362)` (includes `recommend.test.ts`
+  and `NewForYouCard.test.tsx`, with the unreachable-note test).
+- `npm run build`: `✓ built in 793ms` / `✓ built in 558ms`.
+- Code-owned paths in the diff: none. No new package.
+
+**No AI, no Google, no key (D-0017, D-0018):** the only new outside call is `browseBooks` in
+`src/server/openLibrary.ts`, `https://openlibrary.org/search.json?author=…|subject=…&sort=new`,
+with no key. The browser's requests: opening the dashboard makes only the existing
+`getSession` and `storytelLoginStatus` calls, no search. Pressing *Suggest books* makes two
+`browseBooks` calls (author "Sarah J. Maas", subject "Fantasy") and six `/api/cover/id/…`
+calls (the app's own cover route); the browser never contacts openlibrary.org itself. A reload
+with suggestions kept makes no `browseBooks` call.
+
+**Done when, run locally** (shelf: three read and rated Sarah J. Maas books, two more of hers
+on the shelf as want-to-read):
+
+- Place: "Monthly challenge | What next? | New for you | Newly added". A layout saved before
+  the block (`today` right column `challenge, next, recent`) also shows "Monthly challenge |
+  What next? | New for you | Newly added". In Arrange, the arrow key moved it above *What next?*
+  and *Hide New for you* hid it (`"hidden":["newforyou"]`).
+- Before: "New for you / Suggest books / New books by your favourite authors and in your
+  favourite genres." After *Suggest books*: six lines, e.g. "A Court of Forgotten Melody /
+  Sarah J. Maas · 2027 / More by Sarah J. Maas, whose books you rate ★4½" and "You are the
+  Soul / Marie Graßhoff · 2027 / New in Fantasy". None of them was on the shelf (A Court of
+  Silver Flames and House of Earth and Blood, which are on it, didn't come up).
+- *+ Want to read* (one click, 1.5 s): the shelf gains "A Court of Forgotten Melody:want", the
+  status line says "“A Court of Forgotten Melody” is on your shelf.", and the line leaves the
+  list. *New suggestions* afterwards doesn't bring it back.
+- *Not for me*: the line leaves, `not-for-me:local` holds "A Court of Forgotten Melody — Sarah
+  J. Maas"; after a reload it's still gone, and *New suggestions* doesn't bring it back.
+- Open Library unreachable: a dev server whose outgoing requests all fail (`HTTPS_PROXY` to a
+  closed port), with `*openlibrary.org*` also blocked in the browser. *Suggest books* then shows
+  "Open Library can't be reached right now. Try again later." in helper text (no `.error`), and
+  all 26 dashboard blocks are still there. With earlier suggestions kept, they stay under the
+  note.
+- 320 × 640: for all six lines the cover, title, reason and both buttons are within the screen,
+  buttons 44/44 px high, page scroll width 320.
+
+**Tried to break it**
+
+- Empty results (an author and genre Open Library doesn't know): "Nothing new found just now.
+  Try again later." Nothing to go on (only a want-to-read book): "Finish and rate a few books
+  first, so there is something to go on."
+- A book that isn't out yet: "A Court of Forgotten Melody" (2027) and "You are the Soul"
+  (published 2027-06-28) went on the shelf as want-to-read, as D-0021 says. A kept suggestion
+  for 2027 did too.
+- Already on the shelf: suggestions whose title is on the shelf are never shown, so there is
+  no button that could add a copy. Double-click on *+ Want to read*: one copy.
+- *+ Want to read* and *Not for me* pressed on the same line at once: the book is added and
+  also not suggested again; both of her presses are honoured, nothing breaks.
+- Seen, not a defect: the very first add of a session, while Open Library was slow, took over
+  4 s; the line stays (button disabled) until it's done, and the book arrived once.
+- No page errors.
+
+**Verdict: passed.**
+
 # Log
 
 - 2026-11-21 architect: Task written from #186; found the removed block (#111, #117, #123) and
@@ -252,3 +324,6 @@ block.
 - 2026-11-21 ux-designer: reviewed: passes. Name, place, lines, buttons, notes and the 320 px
   layout match the Design; the dropped hint (D-0014) and placement after *What next?* in saved
   layouts are accepted. Next: the tester, after T-0006.
+- 2026-11-21 tester: passed. Merged main (T-0006) in first; Done-when items run locally: Open
+  Library only, no search on opening, unreachable note with the dashboard intact, no duplicate,
+  Not for me kept after a reload, all lines visible at 320 × 640; 362 tests pass. Merged #202.
