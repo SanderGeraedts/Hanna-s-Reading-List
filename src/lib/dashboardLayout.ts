@@ -38,6 +38,7 @@ export const BLOCKS = {
   rhythm: 'When I read most',
   flower: 'Genre flower',
   months: 'Pages per month',
+  world: 'Where your books are set',
   again: 'Give it another try',
 } as const
 
@@ -80,7 +81,7 @@ export const DEFAULT_LAYOUT: DashboardLayout = {
     ],
     fun: [
       ['badges', 'fact', 'wrapped'],
-      ['covers', 'top', 'onthisday'],
+      ['covers', 'world', 'top', 'onthisday'],
     ],
   },
   hidden: [],

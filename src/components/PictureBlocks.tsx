@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Book } from '#/lib/library'
 import { genrePetals, petalLength } from '#/lib/genreFlower'
 import { monthlyAmounts, niceMax } from '#/lib/monthlyPages'
 import type { MonthAmount } from '#/lib/monthlyPages'
 import { monthName } from './Dashboard'
+import { worldMap } from '#/lib/places'
 
 /** Petal colours: soft and warm, readable on the walnut cards, one per genre. */
 export const PETAL_COLOURS = ['#e8a0b4', '#f2c46d', '#9fc9e6', '#b8d98f', '#c9a6e6', '#f2a37a', '#8fd1c4', '#d9c9a6']
@@ -131,6 +132,117 @@ export function PagesPerMonthCard({ books }: { books: Book[] }) {
       <p className="months-key small-text">
         <span className="months-swatch now" aria-hidden /> {year} <span className="months-swatch last" aria-hidden /> {year - 1}
       </p>
+    </section>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Where your books are set (reading in pictures, part 4)
+// ---------------------------------------------------------------------------
+
+interface CountryShape {
+  name: string
+  d: string
+}
+
+/**
+ * The world as SVG paths (equirectangular, Antarctica left out), loaded once when the block first shows.
+ * The far north and south fall outside the picture's frame (cut off, not squashed onto its edge).
+ */
+let worldShapes: Promise<CountryShape[]> | null = null
+const MAP_W = 360
+const LAT_TOP = 84
+const LAT_BOTTOM = -58
+const MAP_H = LAT_TOP - LAT_BOTTOM
+
+function loadWorld(): Promise<CountryShape[]> {
+  worldShapes ??= Promise.all([import('world-atlas/countries-110m.json'), import('topojson-client')]).then(([data, topo]) => {
+    const world = (data as { default?: unknown }).default ?? data
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fc = topo.feature(world as any, (world as any).objects.countries) as unknown as {
+      features: Array<{ properties: { name: string }; geometry: { type: string; coordinates: number[][][] | number[][][][] } | null }>
+    }
+    // a ring that crosses the date line (Russia, Fiji) jumps across the map: lift the pen there
+    const ring = (pts: number[][]) =>
+      pts
+        .map(([lon, lat], k) => {
+          const jump = k > 0 && Math.abs(lon - pts[k - 1][0]) > 180
+          return `${k === 0 || jump ? 'M' : 'L'}${(lon + 180).toFixed(1)},${(LAT_TOP - lat).toFixed(1)}`
+        })
+        .join('') + 'Z'
+    return fc.features
+      .filter((f) => f.geometry && f.properties.name !== 'Antarctica')
+      .map((f) => {
+        const g = f.geometry!
+        const polys = (g.type === 'Polygon' ? [g.coordinates] : g.coordinates) as number[][][][]
+        return { name: f.properties.name, d: polys.map((poly) => poly.map(ring).join('')).join('') }
+      })
+  })
+  return worldShapes
+}
+
+export function BooksWorldMapCard({ books }: { books: Book[] }) {
+  const [shapes, setShapes] = useState<CountryShape[] | null>(null)
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    let live = true
+    loadWorld()
+      .then((s) => live && setShapes(s))
+      .catch(() => live && setFailed(true))
+    return () => {
+      live = false
+    }
+  }, [])
+  const known = useMemo(() => new Set((shapes ?? []).map((s) => s.name)), [shapes])
+  const map = useMemo(() => worldMap(books, known), [books, known])
+  const max = Math.max(1, ...map.countries.values())
+  const top = [...map.countries].sort((a, b) => b[1] - a[1]).slice(0, 6)
+  const lands = [...map.imaginary].sort((a, b) => b[1] - a[1])
+  const shade = (n: number) => 0.3 + 0.7 * Math.sqrt(n / max)
+
+  return (
+    <section className="dash-card world-card" aria-labelledby="world-title">
+      <div className="dash-card-head">
+        <h2 id="world-title">Where your books are set</h2>
+      </div>
+      {failed ? (
+        <p className="muted small-text">The map couldn't be loaded right now.</p>
+      ) : !shapes ? (
+        <p className="muted small-text">Unfolding the map…</p>
+      ) : (
+        <>
+          <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} className="world-map" role="img" aria-label={top.map(([c, n]) => `${c}: ${n}`).join(', ') || 'World map'}>
+            {shapes.map((s) => {
+              const n = map.countries.get(s.name)
+              return (
+                <path key={s.name} d={s.d} className={n ? 'world-country lit' : 'world-country'} style={n ? { fillOpacity: shade(n) } : undefined}>
+                  <title>{n ? `${s.name}: ${n} ${n === 1 ? 'book' : 'books'}` : s.name}</title>
+                </path>
+              )
+            })}
+          </svg>
+          {top.length > 0 && (
+            <ul className="world-top">
+              {top.map(([c, n]) => (
+                <li key={c}>
+                  <span>{c}</span>
+                  <span className="muted small-text">{n}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {lands.length > 0 && (
+            <p className="world-lands">
+              <span aria-hidden>🗺️ </span>
+              <strong>Imaginary lands:</strong> {lands.map(([l]) => l).join(', ')}
+            </p>
+          )}
+          {map.waiting > 0 && <p className="muted small-text">Looking up where {map.waiting} more {map.waiting === 1 ? 'book is' : 'books are'} set…</p>}
+          {map.waiting === 0 && top.length === 0 && lands.length === 0 && (
+            <p className="muted small-text">Open Library doesn't know where your finished books are set yet.</p>
+          )}
+        </>
+      )}
     </section>
   )
 }

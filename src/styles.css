@@ -4020,6 +4020,40 @@ textarea.input {
   background: rgba(217, 168, 91, 0.32);
 }
 
+/* ---- reading in pictures: where your books are set -------------------- */
+.world-map {
+  width: 100%;
+  height: auto;
+  margin: var(--space-2) 0;
+  border-radius: var(--radius-small);
+  background: rgba(120, 160, 200, 0.12);
+}
+.world-country {
+  fill: rgba(255, 255, 255, 0.1);
+  stroke: rgba(0, 0, 0, 0.35);
+  stroke-width: 0.25;
+}
+.world-country.lit {
+  fill: var(--accent);
+}
+.world-top {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: var(--space-1) var(--space-3);
+}
+.world-top li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.world-lands {
+  margin: var(--space-2) 0 0;
+  font-size: var(--fs-small);
+}
+
 /* ---- favourites on top --------------------------------------------- */
 .block-star.on {
   color: var(--accent);
