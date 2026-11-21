@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import type { Book, SortKey } from '#/lib/library'
-import { FRAME, SHELF, computeLayout, fitShelf, rowFloorY } from '#/lib/shelfLayout'
+import { FRAME, SHELF, computeLayout, fitShelf, rowFloorY, topGap } from '#/lib/shelfLayout'
 import { arrangementSeparators } from '#/lib/separators'
 import type { ShelfLayout } from '#/lib/shelfLayout'
 import { BookMesh, RAINBOW } from './BookMesh'
@@ -30,6 +30,10 @@ export interface BookshelfSceneProps {
   /** how far zoomed in: 1 is the whole case, up to ZOOM_MAX */
   zoom?: number
   onZoom?: (zoom: number) => void
+  /** height of the header over the top of the scene, in CSS px (phones keep the case below it) */
+  topInset?: number
+  /** the browser dropped the 3D drawing (WebGL context lost), e.g. when a phone runs out of memory */
+  onContextLost?: () => void
 }
 
 export const ZOOM_MAX = 3
@@ -37,20 +41,20 @@ export const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(1, z))
 
 const FOV = 35
 const DEFAULT_INSPECT = { fill: 0.6, yShift: 0 }
-/** share of a phone screen taken by the header at the top */
+/** share of a phone screen taken by the header at the top, until its real height is known */
 const HEADER_SHARE = 0.1
 
 /**
  * On a phone the details sheet covers the bottom of the screen: fit the
  * inspected book into the space between the header and the sheet.
  */
-function portraitInspect(frame: { fill: number; yShift: number }, sheet: number, aspect: number) {
+function portraitInspect(frame: { fill: number; yShift: number }, sheet: number, aspect: number, header = HEADER_SHARE) {
   const s = Math.min(0.9, Math.max(0, sheet))
-  const free = Math.max(0.15, 1 - s - HEADER_SHARE)
+  const free = Math.max(0.15, 1 - s - header)
   // also keep the widest books (cover aspect up to 0.82) inside the screen width
   const byWidth = (0.88 * aspect) / 0.82
   frame.fill = Math.min(0.6, free * 0.85, byWidth)
-  frame.yShift = (s - HEADER_SHARE) / 2
+  frame.yShift = (s - header) / 2
 }
 
 /** Phones get a lighter version of the room: smaller shadows, fewer pixels, so scrolling stays smooth. */
@@ -78,9 +82,24 @@ export function BookshelfScene(props: BookshelfSceneProps) {
     >
       <color attach="background" args={['#2a1f18']} />
       <fog attach="fog" args={['#2a1f18', 6, 14]} />
+      <ContextLoss onLost={props.onContextLost} />
       <Scene {...props} lite={lite} />
     </Canvas>
   )
+}
+
+/** Tells the page when the browser drops the 3D drawing, so it can say so instead of showing an empty room. */
+function ContextLoss({ onLost }: { onLost?: () => void }) {
+  const gl = useThree((s) => s.gl)
+  useEffect(() => watchContextLoss(gl.domElement, () => onLost?.()), [gl, onLost])
+  return null
+}
+
+/** Calls `onLost` when the canvas loses its WebGL context; returns the clean-up. */
+export function watchContextLoss(canvas: HTMLCanvasElement, onLost: () => void) {
+  const lost = () => onLost()
+  canvas.addEventListener('webglcontextlost', lost)
+  return () => canvas.removeEventListener('webglcontextlost', lost)
 }
 
 interface DragState {
@@ -99,6 +118,7 @@ function Scene({
   highlight = null,
   zoom = 1,
   onZoom,
+  topInset = 0,
   lite = false,
 }: BookshelfSceneProps & { lite?: boolean }) {
   const [hovered, setHovered] = useState<string | null>(null)
@@ -126,7 +146,8 @@ function Scene({
   const portrait = aspect < 0.8
   // one object, updated in place every frame as the sheet is dragged
   const portraitFrame = useMemo(() => ({ fill: 0.4, yShift: 0.17 }), [])
-  useFrame(() => portraitInspect(portraitFrame, sheet?.current ?? 0.45, aspect))
+  const headerShare = topInset > 0 ? topInset / Math.max(1, size.height) : HEADER_SHARE
+  useFrame(() => portraitInspect(portraitFrame, sheet?.current ?? 0.45, aspect, headerShare))
   const separators = useMemo(() => arrangementSeparators(ordered, arrangement), [arrangement, ordered])
   // the case's width follows the screen, and widens on big screens so the books stay large (#39)
   const fit = useMemo(() => fitShelf(ordered, aspect, separators), [ordered, aspect, separators])
@@ -144,6 +165,7 @@ function Scene({
     scroll,
     dragging: !!drag,
     zoom,
+    topInset,
   })
   // the zoom as the input handlers see it, without re-adding them on every change
   const zoomRef = useRef(zoom)
@@ -456,7 +478,7 @@ const LONG_PRESS_MS = 350
 function useCameraRig(
   caseWidth: number,
   caseHeight: number,
-  opts: { parallax: boolean; portrait: boolean; scroll: RefObject<ScrollState>; dragging: boolean; zoom: number },
+  opts: { parallax: boolean; portrait: boolean; scroll: RefObject<ScrollState>; dragging: boolean; zoom: number; topInset: number },
 ) {
   const camera = useThree((s) => s.camera)
   const size = useThree((s) => s.size)
@@ -498,7 +520,8 @@ function useCameraRig(
     s.min = s.max = caseHeight / 2 + caseHeight * 0.04
   } else {
     s.min = viewH * 0.42 // bottom: a strip of floor below the case
-    s.max = caseHeight - viewH * 0.5 + viewH * 0.14 // top: clear of the header
+    // top: clear of the header (on a phone, of its real height: #181)
+    s.max = caseHeight - viewH * 0.5 + topGap(viewH, s.worldPerPx, opts.portrait ? opts.topInset : 0)
   }
   s.y = s.y === null ? s.max : THREE.MathUtils.clamp(s.y, s.min, s.max)
   base.set(0, s.y, base.z)

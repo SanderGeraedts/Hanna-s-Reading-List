@@ -578,6 +578,28 @@ function paintPages(vertical: boolean) {
   return toTexture(c)
 }
 
+const plainCache = new Map<string, THREE.Texture>()
+/**
+ * A tiny texture in one colour, shared by every book of that colour. It stands
+ * in for a cover face that isn't painted (yet): the back until the book is taken
+ * out, the front while its cover image loads (see lib/bookFaces.ts, #181).
+ * Cached, never disposed.
+ */
+export function plainTexture(color: string) {
+  const cached = plainCache.get(color)
+  if (cached) return cached
+  const c = canvas(4, 4)
+  const ctx = c.getContext('2d')
+  if (ctx) {
+    ctx.fillStyle = color
+    ctx.fillRect(0, 0, 4, 4)
+  }
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  plainCache.set(color, t)
+  return t
+}
+
 let pagesCache: { fore: THREE.Texture; topBottom: THREE.Texture } | null = null
 /** Page-edge textures are shared by every book. */
 export function pageTextures() {

@@ -2,7 +2,7 @@
 id: T-0003
 title: "Show the bookshelf again on a phone"
 description: "#181: the shelf isn't shown in the mobile version; find what broke it on narrow screens and fix it, with a test that keeps it fixed."
-status: Open
+status: Doing
 depends_on: [T-0001]
 decisions: [D-0002, G-0019]
 raised_on: 2026-11-21
@@ -147,3 +147,39 @@ browser) or a local PocketBase, never from signing in or adding books on a deplo
   (390, 360 and 320 px; 12 and 300 books): the shelf showed. Found the page tabs covering
   content on phones, and the Dashboard strip at every width. The design says how to fix that if
   it is the cause, and adds an error note in case the cause is the 3D drawing failing.
+- 2026-11-21 developer: Built in a draft pull request. **Cause, as far as it can be found
+  without her phone:** not reproduced in headless Chrome (390, 360, 320 px). Two things only
+  her real phone does, both new or made worse by the evening's merges:
+  1. *Memory (most likely the main cause).* Every book painted three pictures for its covers
+     (spine, back, and a stand-in front, the last two 640 px wide), whether they could be seen
+     or not: about 5 MB per book. Measured in Chrome: 12 books 74 MB, 150 books 798 MB of
+     painted pictures, plus as much again on the graphics chip. A phone's browser drops the
+     3D drawing (WebGL context lost) or refuses new pictures long before that, and the app had
+     no handling for either: the shelf area just stays empty. The evening's merges (#175,
+     #176, #179: four parts per book, softer shadows, decorations) added load on top, which
+     plausibly tipped her shelf over. With WebGL switched off, the whole page went blank.
+  2. *The header when signed in.* The designer's runs had no account button; hers do. With it,
+     the page tabs from #172 wrap to two rows at 390, 360 and 320 px (header 218 px), over the
+     top shelf.
+  **Fixed:** the back is painted only once a book is taken out, the stand-in front only when
+  a book has no cover image or it failed (a plain colour until then): 150 books with covers
+  now take 88 MB instead of 798 MB. The shelf is wrapped so a failure to start WebGL, a
+  painting error or a lost context shows the Design's note ("The bookshelf can't be drawn on
+  this phone right now." / "Your books are safe. The Dashboard, Challenges and Calendar still
+  work." / "Try again", `role="status"`); "Try again" draws it from scratch. Phone header as
+  designed: the tabs are a full-width row of their own, one line, also with the search chip
+  and the account button (header 162 px at 390, 360 and 320); the camera keeps the crown and
+  top shelf below the header's measured height; the Dashboard, Challenges and Calendar start
+  under it at every width. Desktop shelf unchanged (compared with the designer's 1280 shot).
+  Tests: `src/components/SafeBookshelf.test.tsx` (WebGL creation throws: note shown; Try
+  again; context lost), `src/components/contextLoss.test.ts`, `src/lib/bookFaces.test.ts`,
+  `topGap` in `src/lib/shelfLayout.test.ts`. Checks: `npm test`: 44 files, 290 tests passed;
+  `npm run build`: built; `tsc --noEmit`: clean. Screenshots from a local dev server with no
+  backend (320, 360, 390 px, search on, Dashboard, error note with WebGL off).
+  **Unproven without her phone:** that memory was what her phone ran out of, and that the
+  shelf now shows there. Deviation from the Design for the designer to judge: the keyboard
+  reaches 🔍, ↻ and + Add between the tabs and "Try again" (the tabs stay inside the title
+  block in the page's order, so desktop stays exactly as it is); the zoom buttons stay
+  visible next to the note. Seen, not fixed (for the architect): at 1280 × 800 the desktop
+  toolbar wraps under the title and sits over the top of the bookcase (also on `main`).
+  Remaining: Hanna checks on her own phone that the bookshelf shows with her books.

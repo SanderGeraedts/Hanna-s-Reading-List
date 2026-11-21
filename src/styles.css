@@ -186,6 +186,19 @@ h2 {
   padding: 0.5rem 1rem;
   border-radius: var(--radius-pill);
 }
+/* the shelf can't be drawn (#181): like the empty-shelf note, with room for two lines */
+.shelf-error {
+  padding: 1rem;
+  text-align: center;
+}
+.shelf-error p {
+  max-width: 26rem;
+  border-radius: var(--radius);
+}
+.empty p.shelf-error-sub {
+  font-family: var(--sans);
+  font-size: var(--fs-small);
+}
 
 /* ---- controls ------------------------------------------------------- */
 /* buttons: .btn.primary is the main (gold) one, .btn the secondary (outlined),
@@ -1414,6 +1427,19 @@ textarea.input {
     grid-column: 2;
     grid-row: 2;
   }
+  /* the page tabs: a full-width row of their own under the title and the
+     buttons, on one line, never moved by the search chip (#181) */
+  .topbar .page-tabs {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    flex-wrap: nowrap;
+    margin-top: 0;
+    pointer-events: none;
+  }
+  .topbar .page-tab {
+    pointer-events: auto;
+    flex-shrink: 0;
+  }
 }
 
 /* ---- dashboard (#59) ------------------------------------------------- */
@@ -1422,7 +1448,8 @@ textarea.input {
   inset: 0;
   z-index: 1;
   overflow-y: auto;
-  padding: 6.5rem 1.5rem 2rem;
+  /* starts under the header's real height (set on .app as --header-h), so the tabs cover nothing (#181) */
+  padding: max(6.5rem, calc(var(--header-h, 0px) + var(--space-3))) 1.5rem 2rem;
   /* the same lavender wallpaper as behind the shelf */
   background: var(--wallpaper);
   color: var(--header-ink);
@@ -1494,7 +1521,7 @@ textarea.input {
   border: 1px solid var(--accent);
   border-radius: var(--radius);
   position: sticky;
-  top: 5rem;
+  top: max(5rem, calc(var(--header-h, 0px) + var(--space-2)));
   z-index: 3;
 }
 .dashboard-bar p {
@@ -1904,10 +1931,10 @@ textarea.input {
 }
 @media (max-width: 720px) {
   .dashboard {
-    padding: 5.25rem 0.75rem 1.5rem;
+    padding: max(5.25rem, calc(var(--header-h, 0px) + var(--space-2))) 0.75rem 1.5rem;
   }
   .dashboard-bar.arranging {
-    top: 4.75rem;
+    top: max(4.75rem, calc(var(--header-h, 0px) + var(--space-1)));
   }
   .dash-card {
     padding: 1rem;
