@@ -4,11 +4,11 @@ import { beforeAll, describe, expect, it } from 'vitest'
 /**
  * The favourites (#182) against a real, local, throwaway PocketBase started
  * with this repo's migrations and hooks (docs/hanna-guardrails.md). Skipped
- * unless PB_TEST_URL is set, so `npm test` and CI never need a server:
+ * unless PB_TEST_URL is set, so `pnpm test` and CI never need a server:
  *
  *   SIGNUP_EMAILS=fav-a@example.com,fav-b@example.com pocketbase serve --dir=<empty dir> \
  *     --migrationsDir=deploy/nas/pb_migrations --hooksDir=deploy/nas/pb_hooks
- *   PB_TEST_URL=http://127.0.0.1:8090 npx vitest run src/server/favourites.pocketbase.test.ts
+ *   PB_TEST_URL=http://127.0.0.1:8090 pnpm exec vitest run src/server/favourites.pocketbase.test.ts
  *
  * PB_TEST_OLD_URL (optional): a second one started without the favourites
  * migration, to check the app leaves a server without the field alone.

@@ -143,7 +143,7 @@ From a device that's **not** on your tailnet, `https://reading-list.<tailnet>.ts
 Set `POCKETBASE_URL` to your address, with no slash at the end, then start a new deploy. From the project folder:
 
 ```powershell
-npx --yes --dangerously-allow-all-scripts netlify-cli@latest env:set POCKETBASE_URL "https://reading-list.<tailnet>.ts.net" --context production
+pnpm dlx netlify-cli@latest env:set POCKETBASE_URL "https://reading-list.<tailnet>.ts.net" --context production
 ```
 
 Then redeploy, either with **Deploys → Trigger deploy** on Netlify or by pushing to `main`.
@@ -174,7 +174,7 @@ Nobody is signed in at night, so the app reads and saves the shelves through two
 3. On Netlify, set the same secret and redeploy:
 
    ```powershell
-   npx --yes --dangerously-allow-all-scripts netlify-cli@latest env:set NIGHTLY_SECRET "<the secret>" --context production
+   pnpm dlx netlify-cli@latest env:set NIGHTLY_SECRET "<the secret>" --context production
    ```
 
 4. Check it the next morning: on Netlify, **Logs → Functions → nightly-storytel** shows the run at 23:00 (a run an hour earlier or later just says it isn't 23:00 in Amsterdam). It lists how many shelves were synced. To try it straight away, call it by hand:

@@ -1,0 +1,29 @@
+# G-0011: every green pull request that isn't a draft merges itself, through the harness's
+# reusable workflow. Keep the tag the same as the harness dependency in package.json (D-0001).
+#
+# GitHub runs workflow_run workflows from the default branch, so a pull request can't change
+# how its own merge is decided. A pull request touching a path in .github/CODEOWNERS still
+# needs Sander's review under the ruleset main (Q-003).
+name: Auto-merge
+
+on:
+  workflow_run:
+    workflows: [CI, Backend image]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write # to start CI and backend.yml on main after a merge
+
+jobs:
+  merge:
+    uses: SanderGeraedts/harness/.github/workflows/auto-merge.yml@v0.7.0
+    with:
+      # A merge made with GITHUB_TOKEN starts no push workflows, so backend.yml wouldn't
+      # publish the PocketBase image. These are the paths its push trigger watches. The
+      # workflow stays the project's own (D-0005).
+      backend-workflow: backend.yml
+      backend-paths: '^(deploy/nas/(Dockerfile|pb_migrations/|pb_hooks/)|\.github/workflows/backend\.yml)'
+      # Wait for the backend image check too, when it ran for the pull request's head.
+      wait-for: CI,Backend image

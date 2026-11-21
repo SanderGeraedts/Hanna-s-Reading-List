@@ -22,6 +22,7 @@ Open **PowerShell** (Start → type *PowerShell*) and run these one at a time. A
 winget install --id Git.Git -e
 winget install --id OpenJS.NodeJS.LTS -e
 winget install --id GitHub.cli -e
+winget install --id pnpm.pnpm -e
 ```
 
 Then install Claude Code:
@@ -35,7 +36,7 @@ And **Orca**: download `orca-windows-setup.exe` from <https://orca.dev> (or the 
 **Close PowerShell and open a new one**, so it finds the new programs. Check:
 
 ```powershell
-git --version; node --version; gh --version; claude --version; orca --version
+git --version; node --version; pnpm --version; gh --version; claude --version; orca --version
 ```
 
 Each should print a version. Node must be 22 or later.
@@ -61,11 +62,11 @@ git config --global user.email "<her GitHub email, or the noreply address from g
 mkdir $HOME\projects -Force; cd $HOME\projects
 gh repo clone SanderGeraedts/Hanna-s-Reading-List hannas-reading-list
 cd hannas-reading-list
-npm install
-npm test
+pnpm install
+pnpm test
 ```
 
-`npm test` should end with every test passing.
+`pnpm test` should end with every test passing.
 
 Then, in **Orca**: add a repository → choose the `hannas-reading-list` folder.
 
