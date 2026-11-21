@@ -279,3 +279,22 @@ matches the design.
   items under *Review after building*: typed country names spelled properly ("usa" → "USA",
   "new york" → "New York"), and the same imaginary land counted once ("Hogwarts School of
   Witchcraft and Wizardry" counts as Hogwarts). The "Add "Fra" as a made-up place" row stays.
+- 2026-11-21 developer: fixed both must-fix items. (1) `countrySpelling` in `setIn.ts`, used by
+  `placeFromTyped` for a name the map knows as a country but not by its own name: kept as typed when
+  it has capitals inside ("USA", "McLean"), all capitals for one word of at most 3 letters or letters
+  with dots ("usa" → USA, "uk" → UK, "u.s." → U.S.), otherwise a capital at the start of every word
+  ("new york" → New York, "st. petersburg" → St. Petersburg); made-up places unchanged; the add row
+  shows the same spelling. (2) `places.ts`: the built-in list now has a display name per land
+  (`middle earth`/`middle-earth` → Middle Earth, Hogwarts, Narnia, Oz, …); `placesOf` counts a name
+  containing one under that short name and merges other lands by `landKey` (capitals, spaces and
+  hyphens; first spelling wins), once per book; `worldMap` and `landsOn` merge across books the same
+  way; chips still show the stored name. Tests added: usa/uk/new york/england/USA (+ u.s., saint/st.
+  petersburg), made-up spelling unchanged, add row 🌍 Add "USA"; 3× Hogwarts + 1× long name →
+  Hogwarts 4; one book with both → 1; Middle-earth + Middle Earth → one land; Velaris + velaris → one
+  land; long name stays on the chip. Checks: `pnpm test` → 73 files passed, 1 skipped; 506 passed,
+  9 skipped; `pnpm run build` → built; `pnpm exec harness check` → all ✓. Clicked through on `vite
+  dev` with no backend, shelf seeded in localStorage: "usa" on Babel → only row 🌍 Add "USA", Enter
+  stored `["USA"]`; map "Imaginary lands: Hogwarts 4 · Narnia 2 · Velaris 2 · Middle Earth 1" (from
+  Hogwarts + the long name, Middle-earth, Velaris + velaris); no sideways scroll, no page errors. New
+  screenshots `phone-map.jpg`/`desktop-map.jpg` and `phone-usa-row.jpg`/`desktop-usa-row.jpg`
+  (390×844, 1280×800). Hand back to the UX designer for review.

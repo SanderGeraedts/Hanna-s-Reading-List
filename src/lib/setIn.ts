@@ -1,5 +1,5 @@
 import { MAP_COUNTRIES, MAP_COUNTRY_SET } from './mapCountries'
-import { placesOf } from './places'
+import { landKey, placesOf } from './places'
 
 /**
  * "Set in" in the book panel (T-0015): the places of one book as chips, and
@@ -46,14 +46,27 @@ export function landsOn(placeLists: Array<readonly string[] | undefined>): strin
   const lands = new Map<string, string>()
   for (const list of placeLists)
     for (const land of placesOf([...(list ?? [])], MAP_COUNTRY_SET).imaginary)
-      if (!lands.has(land.toLowerCase())) lands.set(land.toLowerCase(), land)
+      if (!lands.has(landKey(land))) lands.set(landKey(land), land)
   return [...lands.values()]
 }
 
 /**
+ * A name the map knows as a country, spelled properly (T-0015 review): kept
+ * as typed when she typed capitals inside it ("USA", "McLean"); in capitals
+ * when it is an abbreviation, one word of at most 3 letters or letters with
+ * dots ("usa" → USA, "u.s." → U.S.); otherwise a capital at the start of every
+ * word ("new york" → New York).
+ */
+export function countrySpelling(name: string): string {
+  if (/\p{Lu}/u.test(name.slice(1))) return name
+  if (/^\p{L}{1,3}$/u.test(name) || /^(\p{L}\.)+$/u.test(name)) return name.toUpperCase()
+  return name.replace(/(^|\s)(\p{Ll})/gu, (_, space: string, letter: string) => space + letter.toUpperCase())
+}
+
+/**
  * What she typed, as it would be stored: a map country by the map's name
- * ("france" → France); a name the map knows as a country ("England", "Paris")
- * as typed, with a capital; anything else as a made-up place, spelled like the
+ * ("france" → France); a name the map knows as a country ("England", "usa")
+ * in her words, spelled properly (`countrySpelling`: "USA"); anything else as a made-up place, spelled like the
  * same land on another book ("narnia" → Narnia), or with a capital.
  */
 export function placeFromTyped(typed: string, lands: readonly string[]): { place: string; kind: 'country' | 'imaginary' } | null {
@@ -61,9 +74,9 @@ export function placeFromTyped(typed: string, lands: readonly string[]): { place
   if (!name) return null
   const country = MAP_COUNTRIES.find((c) => same(c, name))
   if (country) return { place: country, kind: 'country' }
+  if (placeKind(name) === 'country') return { place: countrySpelling(name), kind: 'country' }
   const capital = name.charAt(0).toUpperCase() + name.slice(1)
-  if (placeKind(capital) === 'country') return { place: capital, kind: 'country' }
-  const land = lands.find((l) => same(l, name)) ?? capital
+  const land = lands.find((l) => landKey(l) === landKey(name)) ?? capital
   return { place: land + SUFFIX, kind: 'imaginary' }
 }
 

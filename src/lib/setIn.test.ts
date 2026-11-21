@@ -64,6 +64,28 @@ describe('Set in: what she typed', () => {
     expect(placeFromTyped('Paris', [])).toEqual({ place: 'Paris', kind: 'country' })
   })
 
+  it('spells a name the map knows as a country properly: every word capitalised, abbreviations in capitals', () => {
+    expect(placeFromTyped('usa', [])).toEqual({ place: 'USA', kind: 'country' })
+    expect(placeFromTyped('uk', [])).toEqual({ place: 'UK', kind: 'country' })
+    expect(placeFromTyped('new york', [])).toEqual({ place: 'New York', kind: 'country' })
+    expect(placeFromTyped('england', [])).toEqual({ place: 'England', kind: 'country' })
+    expect(placeFromTyped('USA', [])).toEqual({ place: 'USA', kind: 'country' })
+    expect(placeFromTyped('u.s.', [])!.place).toBe('U.S.')
+    expect(placeFromTyped('saint petersburg', [])!.place).toBe('Saint Petersburg')
+    expect(placeFromTyped('st. petersburg', [])!.place).toBe('St. Petersburg')
+    // all of them still light up the right country on the map
+    expect(placesOf(['USA', 'U.S.', 'New York'], MAP_COUNTRY_SET).countries).toEqual(['United States of America'])
+  })
+
+  it('keeps a made-up place’s spelling rule: only a capital first letter', () => {
+    expect(placeFromTyped('the night court', [])!.place).toBe('The night court (Imaginary place)')
+    expect(placeFromTyped('abc', [])!.place).toBe('Abc (Imaginary place)')
+  })
+
+  it('shows that spelling in the add row', () => {
+    expect(placeSuggestions('usa', [], []).at(-1)).toEqual({ place: 'USA', label: 'USA', kind: 'country', add: true })
+  })
+
   it('stores a made-up place so the map counts it as imaginary, also one it has never heard of', () => {
     const prythian = placeFromTyped('prythian', [])!
     expect(prythian).toEqual({ place: 'Prythian (Imaginary place)', kind: 'imaginary' })
@@ -119,7 +141,7 @@ describe('Set in: suggestions while typing', () => {
   it('finds the lands on other books once, by name', () => {
     expect(landsOn([['Narnia (Imaginary place)', 'England'], ['narnia'], undefined, ['Hogwarts School of Witchcraft and Wizardry']])).toEqual([
       'Narnia',
-      'Hogwarts School of Witchcraft and Wizardry',
+      'Hogwarts',
     ])
   })
 })
@@ -144,6 +166,36 @@ describe('the map: imaginary lands with counts', () => {
       ['Atlantis', 1],
       ['Middle Earth', 1],
     ])
+  })
+
+  it('counts the long Hogwarts name as Hogwarts', () => {
+    const books = [
+      book('a', { places: ['Hogwarts (Imaginary place)'] }),
+      book('b', { places: ['Hogwarts (Imaginary place)'] }),
+      book('c', { places: ['Hogwarts (Imaginary place)'] }),
+      book('d', { places: ['Hogwarts School of Witchcraft and Wizardry (Imaginary place)'] }),
+    ]
+    expect(byCount(worldMap(books, MAP_COUNTRY_SET).imaginary)).toEqual([['Hogwarts', 4]])
+  })
+
+  it('counts a book with both Hogwarts names once', () => {
+    const both = book('a', { places: ['Hogwarts (Imaginary place)', 'Hogwarts School of Witchcraft and Wizardry (Imaginary place)'] })
+    expect(byCount(worldMap([both], MAP_COUNTRY_SET).imaginary)).toEqual([['Hogwarts', 1]])
+  })
+
+  it('counts Middle-earth and Middle Earth as one land', () => {
+    const books = [book('a', { places: ['Middle-earth (Imaginary place)'] }), book('b', { places: ['Middle Earth'] })]
+    expect(byCount(worldMap(books, MAP_COUNTRY_SET).imaginary)).toEqual([['Middle Earth', 2]])
+  })
+
+  it('counts the same other land in other capitals as one, under the first spelling', () => {
+    const books = [book('a', { places: ['Velaris (Imaginary place)'] }), book('b', { places: ['velaris (Imaginary place)'] })]
+    expect(byCount(worldMap(books, MAP_COUNTRY_SET).imaginary)).toEqual([['Velaris', 2]])
+    expect(placesOf(['Velaris (Imaginary place)', 'velaris (imaginary place)'], MAP_COUNTRY_SET).imaginary).toEqual(['Velaris'])
+  })
+
+  it('keeps the stored name on the chip', () => {
+    expect(placeLabel('Hogwarts School of Witchcraft and Wizardry (Imaginary place)')).toBe('Hogwarts School of Witchcraft and Wizardry')
   })
 
   it('counts a made-up place she added on a finished book', () => {
