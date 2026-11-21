@@ -2,11 +2,11 @@
 id: T-0002
 title: "Stop the local dev server from loading production's environment through the Netlify plugin"
 description: "#156: turn off the Netlify Vite plugin's environment variables in vite.config.ts, so a checkout linked to the Netlify site never reaches the production account server."
-status: Doing
+status: Done
 depends_on: []
 decisions: [G-0019, D-0003]
 raised_on: 2026-11-21
-done_on: ""
+done_on: 2026-11-21
 result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/191"]
 ---
 
@@ -59,6 +59,95 @@ Nothing visible.
 
 # Test
 
+Tester, 2026-11-21, on `fa2c3de` in a fresh worktree (not the developer's, not the main clone).
+
+**Two Done-when lines can't pass as written; the orchestrator accepted these corrected checks:**
+
+1. Not "the log does not contain `Netlify Environment loaded`": the plugin always prints that
+   line. Instead: `environmentVariables` is absent from the `Emulating features` line on this
+   branch and present with main's `vite.config.ts`.
+2. With the Netlify CLI logged in on this machine, a made-up `siteId` stops the dev server
+   (and sends a request to Netlify). So every dev-server run below had `APPDATA` pointed at an
+   empty scratch folder: no stored login was found, and nothing reached Netlify.
+
+**Setup:** `.netlify/state.json` held only `{"siteId":"00000000-fake-0000-0000-t0002tester0"}`;
+no `netlify link`, no `.env` files, and `POCKETBASE_URL` and all `NETLIFY*` variables unset.
+
+**Install, tests, build**
+
+- `npm ci`: OK.
+- `npm test`: `Test Files  42 passed (42)`, `Tests  280 passed (280)`.
+- `npm run build`: exit 0, `✓ built in 716ms`, `✓ built in 512ms`.
+
+**Diff:** `vite.config.ts` passes `environmentVariables: { enabled: false }` in the Netlify
+plugin's `dev` options, next to `edgeFunctions: { enabled: false }`.
+
+**Dev server, no `POCKETBASE_URL`**
+
+- This branch: `⬥ Netlify Environment loaded`, then
+  `⬥ Netlify Middleware loaded. Emulating features: aiGateway, blobs, database, functions, geolocation, headers, images, redirects, server, static.`
+  `http://localhost:3000`, rendered in headless Chrome, showed the shelf ("An empty shelf,
+  waiting for stories … + Add book") with no sign-in screen.
+- Main's `vite.config.ts` (swapped in temporarily):
+  `⬥ Netlify Middleware loaded. Emulating features: aiGateway, blobs, database, environmentVariables, functions, geolocation, headers, images, redirects, server, static.`
+
+**Does a site variable really reach the dev server, and does the fix stop it?** Without the
+real site, I added a harmless variable to the site's own config instead: a temporary
+`POCKETBASE_URL = "http://127.0.0.1:8090"` line in `netlify.toml` `[build.environment]` (a
+local address only, reverted afterwards, not committed). The plugin feeds this config into the
+same injection path as the site's environment variables (`injectEnvVariables`, gated by
+`features.environmentVariables` in `@netlify/dev`).
+
+- Main's config: the page showed "Sign in to open your shelf." The variable reached
+  `process.env`: this is the #156 route.
+- This branch: the page showed the shelf with no sign-in screen. The variable did not get
+  through.
+
+**With a local PocketBase.** I used PocketBase 0.40.6, the same version as
+`deploy/nas/Dockerfile`, with a fresh data folder, `SIGNUP_EMAILS=test@example.com`, the repo's
+`pb_migrations` and `pb_hooks`, and `POCKETBASE_URL=http://127.0.0.1:8090 npm run dev`. The
+Emulating line again had no `environmentVariables`. I drove headless Chrome over the DevTools
+protocol:
+
+- The sign-in screen appeared: "Sign in to open your shelf. Email Password Sign in New here?
+  Create an account".
+- I signed up as `test@example.com` (name "Tester") and the shelf opened.
+- I added "T0002 Tester Book" by Test Author on the Manual tab. Read back from the local
+  PocketBase as that user, `libraries` had `records: 1` and `has T0002 Tester Book: true`.
+
+**Trying to break it**
+
+- **Other ways Netlify's environment could reach dev:**
+  - Every `process.env` read in `src/` is server code: `POCKETBASE_URL`, `NIGHTLY_SECRET`,
+    `STORYTEL_COOKIE_SECRET` and `NODE_ENV`. It runs in the Vite process, which the plugin's
+    injection fills.
+  - `netlify/functions/nightly-storytel.mts` reads `NIGHTLY_SECRET` and `URL` from the same
+    `process.env`.
+  - In `@netlify/dev`, `injectEnvVariables` is the only code that copies site or config
+    variables into `process.env`. AI Gateway setup is also gated on `environmentVariables`.
+  - No `.env` files are in the repository or the worktree.
+- **The new unit test fails on main:**
+  - With main's `vite.config.ts`, `npx vitest run vite.config.test.ts` gave
+    `× never loads the Netlify site environment into the dev server (#156)` and
+    `AssertionError: expected undefined to deeply equal { enabled: false }`.
+  - With this branch's config: `Tests  1 passed (1)`.
+- **The production build is unaffected:**
+  - `@netlify/vite-plugin-tanstack-start` spreads `options.dev` into the plugin options, and
+    the plugin reads them only in `configureServer` (dev).
+  - I built on this branch and on main's config: the md5 of all 23 files in `dist/` matched
+    (`IDENTICAL`).
+- **Code-owned paths:** the PR touches `README.md`, `docs/data-safety.md`, this task,
+  `docs/tasks/index.md`, `vite.config.ts` and `vite.config.test.ts`. None of them is
+  code-owned.
+- **Data-safety rules:** the mention is in a new `docs/data-safety.md`, linked from the
+  README's local-development section. It is not in `CLAUDE.md` → *Data safety*, which is
+  code-owned and would need Sander's approval. The line for `AGENTS.md` still has to be added
+  in T-0001. T-0001's task doesn't list it yet.
+- **CI on `fa2c3de`:** `test` SUCCESS, Netlify deploy preview SUCCESS. I did not use the
+  deploy preview.
+
+**Verdict: passed.**
+
 # Log
 
 - 2026-11-21 architect: Task written from #156, ordered right after the adoption and without a
@@ -87,3 +176,4 @@ Nothing visible.
   (`Failed retrieving site data for site …: Not Found`, from `@netlify/config` resolving the
   site), independent of this change; the checks above ran with `APPDATA` pointed at an empty
   scratch folder so no stored Netlify login was found and nothing reached Netlify.
+- 2026-11-21 tester: passed. Two Done-when lines were corrected (the plugin always logs `Netlify Environment loaded`; a made-up `siteId` needs an empty `APPDATA` on a logged-in machine). The `AGENTS.md` data-safety line goes in with T-0001.
