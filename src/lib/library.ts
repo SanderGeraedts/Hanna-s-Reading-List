@@ -101,6 +101,8 @@ export interface Book {
   language?: string
   /** shelf genres; an empty list means "looked them up, found none" */
   genres?: string[]
+  /** where the story is set, from Open Library (looked up once for finished books; an empty list means none known) */
+  places?: string[]
   /** lent to a friend: to whom, and since when (yyyy-mm-dd) */
   lent?: { to: string; since?: string }
   /** book bingo cards this book filled (#119), kept so a full card stays full; see bingo.ts */

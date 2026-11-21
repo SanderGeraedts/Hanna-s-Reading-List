@@ -31,6 +31,8 @@ export interface SearchResult {
 export interface WorkDetails {
   description?: string
   genres: string[]
+  /** where the story is set, as Open Library lists it ("London (England)") */
+  places?: string[]
 }
 
 export interface IsbnLookup extends SearchResult {
@@ -150,8 +152,12 @@ export const getWorkDetails = createServerFn({ method: 'GET' })
     return { workKey }
   })
   .handler(async ({ data }): Promise<WorkDetails> => {
-    const work = await getJson<{ description?: unknown; subjects?: unknown }>(`${OL}${data.workKey}.json`)
-    return { description: cleanDescription(work?.description), genres: genresFromSubjects(subjectsOf(work)) }
+    const work = await getJson<{ description?: unknown; subjects?: unknown; subject_places?: unknown }>(`${OL}${data.workKey}.json`)
+    // where the story is set ("London (England)"), for the map of her books (reading in pictures)
+    const places = Array.isArray(work?.subject_places)
+      ? work.subject_places.filter((x): x is string => typeof x === 'string').slice(0, 12)
+      : []
+    return { description: cleanDescription(work?.description), genres: genresFromSubjects(subjectsOf(work)), places }
   })
 
 export const lookupIsbn = createServerFn({ method: 'GET' })
