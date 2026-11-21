@@ -162,6 +162,93 @@ it needs to run again after the fix.
   silent loss as the failure above, though, so fix it in the same pass: keep unsent changes on
   the device and send them before taking over the account's list.
 
+## Second run (tester, 2026-11-21, on `02de8e4`)
+
+**Verdict: sent back, for one reason only.** `npm test`, a *Done when* item, failed in 6 of 7
+full runs on this machine. Each time the failures were in the new `src/lib/favouritesSync.test.ts`.
+Everything about the feature itself passed: the fix works, the data is safe, and the
+two-profile check passed.
+
+**Failed: `npm test` is flaky because of the new hook tests.**
+
+- Full runs 1 to 5 and 6 to 7, from a fresh `npm ci`:
+  - `Tests 4 failed | 336 passed`
+  - `2 failed | 338 passed`, five times
+  - `340 passed`, once
+- What failed:
+  - `a star made before the first account read returns is kept`: `expected [ 'reading' ] to deeply equal [ 'reading', 'goal' ]`
+  - `signed out, favourites stay on the device and the server is never asked`: one stray `GET .../libraries/records?...fields=id,favourites`, left over from the previous test's device
+  - Once each: `shows blocks starred on one device...`, `the first time, ...`, `ignores junk...`
+- The file run alone failed 1 of 5 times.
+- The cause is in the test, not the app:
+  - `settle()` waits a fixed 60 ms. The stand-in server takes 3 ms per call, and a device now chains several calls.
+  - On a busy machine (CPU 24–61% from other work) 60 ms isn't enough. The chain of the previous test is then still running when the next test starts.
+  - Lengthening the wait didn't make it reliable: 250 ms still failed once in three runs.
+  - My own cases wait for a condition instead of a fixed time, and passed 3 of 3 runs on the same machine (below).
+- The fix: wait for the condition (`vi.waitFor`, or poll until the server or the device has the expected list), and let each device's queue drain or unmount before the next test.
+- CI `test` was green on `02de8e4`, but a required check on `main` that depends on timing will fail other pull requests at random.
+
+**Passed:**
+
+- `npm ci`: `added 654 packages`. `npm run build`: `✓ built in 1.34s`.
+- Developer's real-PocketBase test, on two local PocketBase 0.40.6 instances:
+  - The new one had all the migrations and hooks. The old one had neither `1795737600_favourites.js` nor `favourites.pb.js`.
+  - Command: `PB_TEST_URL=http://127.0.0.1:8611 PB_TEST_OLD_URL=http://127.0.0.1:8612 npm exec vitest -- run src/server/favourites.pocketbase.test.ts`
+  - Result: `Tests 7 passed (7)`.
+- My race and data-safety test from the first run, unchanged except the ports:
+  - `simultaneous star from two devices: lost one star in 0 of 20 rounds` (it was 20 of 20).
+  - `no-shelf: nothing created OK`.
+  - Favourites saves: books, arrangement and goals intact, `library_versions 0 -> 0`.
+  - An old app's shelf save keeps the favourites.
+  - Other user: isolated, and re-owning their record onto mine gave `404`.
+  - Old server: `updated 09:56:43.894Z -> 09:56:43.894Z`, with no `favourites` key.
+- My sync test, adapted to the new route:
+  - The developer's stand-in, plus a whole-record PATCH (what the old store sent) and a switch that turns the route into read, wait, write, without a transaction.
+  - It waits for conditions, not fixed times.
+  - New code, 3 of 3 runs passed:
+    - Quick taps: server `["goal","reading"]`, and the device still has them after coming back.
+    - Two devices at once: server `["goal","calendar"]`.
+    - Route without a transaction, one device: `["goal","reading"]`, with at most 1 save in flight. So the device queue alone protects quick taps.
+  - The old hook and store from `054e69e`, swapped in: **3 of 3 cases failed** (`["reading"]`, `["calendar"]`, `["reading"]`). So the test still catches the old bug.
+- The hook's security, probed with curl against the local server:
+  - Who can call it:
+    - Signed out: `401`. A made-up token: `401`.
+    - A superuser token: `403`, because the route is limited to `requireAuth('users')`.
+    - GET on the route: `404`.
+  - Whose record it writes:
+    - It only finds the record by `owner = {:owner}`, taken from the signed-in user, with the value bound.
+    - Another user starring, while passing `owner` and `id` for my record in the body, changed only their own list. Mine stayed `[]`.
+    - `books` and `favourites` sent in the body were ignored.
+  - Input checks:
+    - A body that isn't JSON: `400`.
+    - Non-list `add` and `remove`: ignored.
+    - Ids that aren't lowercase letters, longer than 30 characters, non-strings or duplicates were dropped.
+    - A 1.4 MB body with 200,000 ids was answered quickly, and the list stays capped at 50.
+  - Size: 50 ids of 30 characters take 1,606 bytes, under the field's 4 KB `maxSize`. The app's read cleans unknown ids (`constructor` was stored, but the app drops it).
+- Funnel: `serve.json` is unchanged. The route `/api/collections/libraries/favourites` falls under the existing `/api/collections/libraries/` handler, and no new path opens.
+- Old server, without the hook: the route answers `404 The requested resource wasn't found.`, which the app takes as "keep them on this device".
+- Down migration with the new hook still present:
+  - `Reverted 1795737600_favourites.js`.
+  - The route then answers `404`, because the field is gone. All three books are intact.
+- Two-profile check, scripted, with Playwright. It ran on a local dev server (`localhost:3611`, `POCKETBASE_URL` pointed at the local 8611, no Netlify site link). Each profile is a separate browser context. I signed up `test@example.com`. The app didn't make the shelf record itself, so I made it the way `saveShelf` does.
+  - Profile 1 starred Reading goal and Calendar; the server had `["goal","calendar"]`.
+  - Profile 2 already had its own favourite for the account (Finish by). After signing in and reloading it showed `["Reading goal","Calendar"]`, so the account wins.
+  - Profile 2 unstarred Reading goal. Profile 1 showed `["Calendar"]` after `visibilitychange`.
+  - Two quick taps in profile 1 (both clicks at once): server `["calendar","heatmap","pace"]`, also after coming back. Profile 2 showed them after a reload.
+  - A star in each profile at the same moment: server `[...,"badges","authors"]`, both kept.
+  - Offline: an unstar of Calendar stayed on the device while offline, also after coming back into view. Back online, the server had `["heatmap","pace","badges","authors"]`.
+  - Reset while arranging kept the favourites on the device and on the server.
+  - Writes after the app opened, from the server log:
+    - Only the app's two initial shelf saves, which filled in my hand-made books (`editedAt`, `language`, `genres`) and made the one `library_versions` copy.
+    - After that, only `POST /api/collections/libraries/favourites`. The book ids, titles and statuses never changed.
+- Signed out: on a local dev server with no backend (`localhost:3612`), a star stayed after a reload, under `hannas-reading-list:dashboard:local`. No favourites server function was called; the only calls were to `auth.ts` and `storytel.ts`.
+
+**Not blocking, for the developer or the architect:**
+
+- The hook keeps ids it doesn't know (up to 50) and adds new stars at the end. So if something other than the app filled the list with 50 junk ids, a real star would be cut off. I tried it: with 50 stored, `add: ["calendar"]` answered 50 entries without Calendar. The app never writes junk.
+- The hook only accepts lowercase letters for block ids. All 25 block ids are like that today, but a new id such as `finishBy` would be dropped without a word.
+- Two tabs on one device share the unsent list. If both send it at the same moment, one tab's newer change can be removed from the list by the other. This needs two open tabs with near-simultaneous taps, so it is unlikely.
+
 # Log
 
 - 2026-11-21 architect: Task written from #182, following the reading-goals pattern (#66).
@@ -195,4 +282,5 @@ it needs to run again after the fix.
     - Reset in profile 2 cleared its hidden block and kept `["goal","pace"]`, on the server too.
     - A star of Records in profile 2 reached profile 1 when its `visibilitychange` handler ran. I fired that event in the page, because the browser tool doesn't switch tabs.
     - The books stayed `b1, b2` throughout.
+- 2026-11-21 tester: sent back: `npm test` failed in 6 of 7 full runs on this machine. The new hook tests in `favouritesSync.test.ts` wait a fixed 60 ms (`settle`), and one test's leftover queue leaks into the next. They need to wait for a condition instead. Everything else passed on `02de8e4`: 0 of 20 races lost on a real PocketBase; my adapted sync test passes on the new code and fails on the old; the hook is owner-only, cleans its input and is capped; the route is reachable through the existing Funnel path and opens no new one; data safety holds; and the two-profile, offline, Reset and signed-out checks pass (see Second run).
 
