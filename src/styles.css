@@ -3741,6 +3741,69 @@ textarea.input {
   text-align: right;
 }
 
+/* ---- make a wish: wishes, then three books ---------------------------- */
+.wish-form {
+  display: grid;
+  gap: var(--space-3);
+}
+.wish-row {
+  display: grid;
+  gap: var(--space-1);
+}
+.wish-row .segmented {
+  flex-wrap: wrap;
+}
+.wish-grant {
+  justify-self: stretch;
+  min-height: var(--tap);
+  font-size: var(--fs-large);
+}
+.wish-granted {
+  display: grid;
+  gap: var(--space-3);
+}
+.wish-granted > p {
+  margin: 0;
+}
+.wish-books {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.wish-book {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  width: 100%;
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.wish-book:hover,
+.wish-book:focus-visible {
+  border-color: var(--accent);
+}
+.wish-book .dash-cover {
+  width: 3rem;
+  height: 4.5rem;
+  flex: none;
+}
+.wish-book-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.wish-reason {
+  color: var(--accent);
+}
+
 /* ---- favourites on top --------------------------------------------- */
 .block-star.on {
   color: var(--accent);
