@@ -3226,194 +3226,6 @@ textarea.input {
   padding: 0;
 }
 
-/* ---- quick update: the 📖 button and its card (T-0011) ------------------ */
-/* bottom left: the shelf's zoom buttons and the badge toast are on the right */
-.quick-fab {
-  position: fixed;
-  z-index: 6;
-  left: 1rem;
-  bottom: 1rem;
-  width: calc(var(--tap) + 0.5rem);
-  height: calc(var(--tap) + 0.5rem);
-  border: 0;
-  border-radius: 50%;
-  background: var(--accent);
-  color: var(--accent-ink);
-  font-size: var(--fs-large);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-  cursor: pointer;
-}
-.quick-fab:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-}
-.quick-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 8;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.35);
-}
-.quick-sheet {
-  width: min(26rem, 100%);
-  max-height: 85vh;
-  overflow-y: auto;
-  padding: var(--space-3) var(--space-3) calc(var(--space-4) + env(safe-area-inset-bottom));
-  border-radius: var(--radius-card) var(--radius-card) 0 0;
-  background: var(--surface-solid);
-  color: var(--text);
-  box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.35);
-}
-@media (min-width: 721px) {
-  /* on a computer: a card in the bottom left corner instead of a sheet */
-  .quick-backdrop {
-    align-items: flex-end;
-    justify-content: flex-start;
-    padding: 1rem;
-    background: rgba(0, 0, 0, 0.15);
-  }
-  .quick-sheet {
-    border-radius: var(--radius-card);
-  }
-}
-.quick-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
-}
-.quick-head h2 {
-  margin: 0;
-  font-size: var(--fs-large);
-}
-.quick-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
-  gap: var(--space-3);
-}
-.quick-pick {
-  display: grid;
-  gap: var(--space-1);
-  width: 100%;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.quick-pick .dash-cover {
-  width: 100%;
-  height: auto;
-  aspect-ratio: 2 / 3;
-}
-.quick-pick-title {
-  font-size: var(--fs-small);
-  font-weight: 600;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-.quick-card {
-  display: grid;
-  gap: var(--space-3);
-}
-.quick-book {
-  display: flex;
-  gap: var(--space-3);
-  align-items: center;
-}
-.quick-book .dash-cover {
-  width: 4rem;
-  height: 6rem;
-  flex: none;
-}
-.quick-book-text {
-  display: grid;
-  gap: var(--space-1);
-  min-width: 0;
-  flex: 1;
-}
-.quick-bar {
-  display: block;
-  height: 6px;
-  border-radius: var(--radius-pill);
-  background: var(--surface-hover);
-  overflow: hidden;
-}
-.quick-bar span {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-}
-.quick-position {
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  border: 1px dashed var(--accent-line);
-  border-radius: var(--radius-small);
-  background: none;
-  color: inherit;
-  font: inherit;
-  cursor: text;
-}
-.quick-number {
-  font-size: var(--fs-number);
-  font-weight: 700;
-  line-height: 1;
-}
-.quick-type {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-}
-.quick-input {
-  width: 6rem;
-  font-size: var(--fs-large);
-  text-align: center;
-}
-.quick-input[aria-invalid='true'] {
-  border-color: var(--danger);
-}
-.quick-steps {
-  display: grid;
-  grid-template-columns: 1fr 1.6fr 1fr;
-  gap: var(--space-2);
-}
-.quick-step,
-.quick-ten {
-  min-height: calc(var(--tap) + 0.75rem);
-  font-size: var(--fs-heading);
-  touch-action: manipulation;
-  user-select: none;
-  -webkit-user-select: none;
-}
-.quick-step.big {
-  background: var(--accent);
-  color: var(--accent-ink);
-  border-color: var(--accent);
-}
-.quick-ten {
-  font-size: var(--fs-large);
-}
-.quick-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-2);
-}
-
 /* ---- the reading journal ------------------------------------------- */
 .journal-note {
   display: block;
@@ -3628,6 +3440,194 @@ textarea.input {
     min-width: 0;
     flex: 1;
   }
+}
+
+/* ---- quick update: the 📖 button and its card (T-0011) ------------------ */
+/* bottom left: the shelf's zoom buttons and the badge toast are on the right */
+.quick-fab {
+  position: fixed;
+  z-index: 6;
+  left: 1rem;
+  bottom: 1rem;
+  width: calc(var(--tap) + 0.5rem);
+  height: calc(var(--tap) + 0.5rem);
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: var(--fs-large);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+.quick-fab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.quick-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+}
+.quick-sheet {
+  width: min(26rem, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: var(--space-3) var(--space-3) calc(var(--space-4) + env(safe-area-inset-bottom));
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+  background: var(--surface-solid);
+  color: var(--text);
+  box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.35);
+}
+@media (min-width: 721px) {
+  /* on a computer: a card in the bottom left corner instead of a sheet */
+  .quick-backdrop {
+    align-items: flex-end;
+    justify-content: flex-start;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.15);
+  }
+  .quick-sheet {
+    border-radius: var(--radius-card);
+  }
+}
+.quick-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.quick-head h2 {
+  margin: 0;
+  font-size: var(--fs-large);
+}
+.quick-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  gap: var(--space-3);
+}
+.quick-pick {
+  display: grid;
+  gap: var(--space-1);
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.quick-pick .dash-cover {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2 / 3;
+}
+.quick-pick-title {
+  font-size: var(--fs-small);
+  font-weight: 600;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.quick-card {
+  display: grid;
+  gap: var(--space-3);
+}
+.quick-book {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+.quick-book .dash-cover {
+  width: 4rem;
+  height: 6rem;
+  flex: none;
+}
+.quick-book-text {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  flex: 1;
+}
+.quick-bar {
+  display: block;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-hover);
+  overflow: hidden;
+}
+.quick-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.quick-position {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px dashed var(--accent-line);
+  border-radius: var(--radius-small);
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: text;
+}
+.quick-number {
+  font-size: var(--fs-number);
+  font-weight: 700;
+  line-height: 1;
+}
+.quick-type {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+.quick-input {
+  width: 6rem;
+  font-size: var(--fs-large);
+  text-align: center;
+}
+.quick-input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+.quick-steps {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr 1fr;
+  gap: var(--space-2);
+}
+.quick-step,
+.quick-ten {
+  min-height: calc(var(--tap) + 0.75rem);
+  font-size: var(--fs-heading);
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.quick-step.big {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+.quick-ten {
+  font-size: var(--fs-large);
+}
+.quick-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 /* ---- favourites on top --------------------------------------------- */
