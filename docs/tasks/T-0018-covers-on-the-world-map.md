@@ -360,6 +360,62 @@ Middle-earth
   `own-challenge-books` cover sizes.
 - The ` · ` separators and the hidden commas of the old lands line go (each land is its own row).
 
+## Review after building (2026-11-22)
+
+**Verdict: matches the design. Nothing must be fixed; on to the tester.**
+
+Looked at all 32 screenshots in `T-0018-screens/` and at `git diff main...HEAD -- src`
+(`PictureBlocks.tsx`, `styles.css`, `cover.ts`, `places.ts`), state by state.
+
+What matches:
+
+- **Cover-filled countries:** the USA (with Alaska), the UK, France, Italy, Romania, Russia, Japan
+  and the Netherlands are patchworks of covers, tiles touching, no seam, no shading by count; every
+  lit country is fully opaque. One `<pattern>` per country (`userSpaceOnUse`, starting at the
+  top-left corner of its bounding box, `ceil(√n)` columns, last row continued from the first book),
+  tile 8 × 12 map units as one constant pair. The Netherlands shows mostly outline with a sliver of
+  cover, as the design expected.
+- **Outline:** gold `--accent` 1.25 px over `--bg` 2.5 px, `non-scaling-stroke`, round joins, in
+  its own group after all countries and `pointer-events: none` (so the hover still reaches the
+  country). Readable on lavender and midnight, about the same thickness at 390 and 1280
+  (`map-zoom-*`).
+- **Loading and failed covers:** in `waiting-*` the USA shows spine colours where covers are still
+  loading; in `covers-failed-*` every map tile and every lands cover is its spine colour. No holes,
+  no broken-image sign, no error text.
+- **Country list:** names only, `--fs-body` `--text`, top 6, most books first; "United States of
+  America" wraps inside its cell at both widths; 2 columns on the phone, 3 on the computer.
+- **Imaginary lands:** "🗺️ Imaginary lands" as an `h3` (emoji hidden from screen readers), one row
+  per land with its name above its covers, most books first and ties alphabetical (Hogwarts,
+  Middle Earth, then Glimmerdale, Narnia, Prythian). Covers 2.2 × 3.3 rem through the shared
+  `own-challenge-books` rule; a book without a cover is a spine-colour chip (Hogwarts' first,
+  Glimmerdale); the long Glimmerdale name wraps at 390 without overflowing. `<img loading="lazy"
+  alt title>` with the spine colour behind it, chip with `role="img"` and `aria-label`.
+- **Hover:** a lit country's `<title>` is its name, then its book titles one per line, in tile order
+  (`hover-*`, UK with eight titles); a plain country's is its name.
+- **Lines under the map:** `Unfolding the map…`, `The map couldn't be loaded right now.`,
+  `Looking up where more of your books are set…` and the empty line, each as designed and alone.
+- **No number anywhere:** list, hover text, lands, `aria-label` ("World map of where your books are
+  set: …", or "World map") and the waiting line.
+
+The developer's deviations:
+
+1. **Failed map covers are left out** (the block remembers a cover that fails and draws no
+   `<image>` for it any more). *Accepted, not a deviation from the design.* The design asks that a
+   failed cover shows its spine colour; Chrome draws a broken-image sign over the rect instead, so
+   leaving the image out is the way to get exactly what the design describes, and
+   `covers-failed-*` shows it does. Keyed by cover URL, so one failure clears that cover in every
+   country at once.
+2. **Pale wedge on Russia's far east**, where its shape crosses the date line. *Not a must-fix for
+   this task.* It is in the plain map too (`empty-*`, no country lit), so it comes from the map
+   shapes, not from this change; the covers only fill the shape that was already there (the gold
+   fill did the same before). Recommended, and taken: leave T-0018 as it is and have the architect
+   raise a small follow-up task to split rings that cross the date line in `loadWorld`, so Russia
+   draws without the wedge.
+
+Small notes, not must-fix: the seeded lands have at most three covers, so wrapping onto a second
+line isn't in a screenshot; the CSS (`flex-wrap: wrap`) gives it, and the tester can check it with a
+land of a dozen books at 390.
+
 # Test
 
 # Log
@@ -391,3 +447,6 @@ Middle-earth
   blocks, the same without places); long tasks and click-to-frame times (130–263 ms) the same as
   the same shelf without places (130–241 ms), so no extra in-view logic. Draft PR #227; handed
   to the UX designer for the design checks.
+- 2026-11-22 ux-designer: reviewed: matches the design, no must-fix (all 32 screenshots and the
+  `src` diff; failed map covers left out accepted, it gives the designed spine colour; Russia's
+  pale wedge is from before this change, follow-up task for the architect); handed to the tester.
