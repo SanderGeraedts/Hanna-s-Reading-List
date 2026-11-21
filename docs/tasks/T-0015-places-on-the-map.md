@@ -186,3 +186,26 @@ The existing line, now with a count after each land, most first, ties alphabetic
 
 - 2026-11-21 architect: task written
 - 2026-11-21 ux-designer: designed
+- 2026-11-21 requester: Hanna confirmed the design, including the designer's four choices
+- 2026-11-21 developer: built in a draft pull request (see `result`). New `src/lib/mapCountries.ts`
+  (the 176 country names the map draws: world-atlas without Antarctica, which the map leaves out)
+  and `src/lib/setIn.ts` (chip kind and label, `addPlace`/`removePlace` that always return an array,
+  `placeFromTyped`: map country by the map's name, a name the map knows as a country kept as typed
+  with a capital, anything else stored as `"<name> (Imaginary place)"` spelled like the same land on
+  another book; `placeSuggestions`: up to 5 matches, starting ones first then alphabetical, then the
+  add row). `places.ts`: `byCount` (most first, ties alphabetical) and `placesPatch` (the lookup
+  writes only while `places` is still undefined), used by `useBookDetails.ts` through the function
+  form of `updateBook`. `SetInField.tsx` under Genres for every book (combobox, 🌍/🗺️ marks,
+  visually hidden "country"/"made-up place", leaving the box adds nothing, × focuses the box,
+  44 px chips, × and rows on `pointer: coarse` only for this field). Map line: "Hogwarts 3 · Narnia 2
+  · …" with muted counts, non-breaking space before each count, `aria-hidden` dots plus a hidden
+  comma for screen readers. Checks: `pnpm test` → 74 files, 498 passed, 9 skipped (new
+  `setIn.test.ts` 20 tests, `mapCountries.test.ts` 1); `pnpm run build` → built; `pnpm exec harness
+  check` → all ✓. Clicked through on `vite dev` with no backend, shelf seeded in localStorage
+  (`docs/tasks/T-0015-screens/`, 390×844 `phone-*` and 1280×800 `desktop-*`): chips with × incl.
+  "4 Privet Drive" (removing it worked, focus went to the box), "fra" → 🌍 France first, Enter
+  added it; "Prythian" → only row 🗺️ Add "Prythian" as a made-up place, Enter added it, stored as
+  `["France","Prythian (Imaginary place)"]`; "Velar" + Tab added nothing and stayed in the box;
+  phone chip/×/row heights 44 px; map "Hogwarts 3 · Narnia 2 · Hogwarts School of Witchcraft and
+  Wizardry 1 · Middle Earth 1 · Prythian 1" on lavender and midnight; no sideways scroll; no page
+  errors. Hand over to the UX designer for review.

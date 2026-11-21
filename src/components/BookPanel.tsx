@@ -25,6 +25,7 @@ import { NO_SPICE, ratingText, spiceText } from '#/lib/ratings'
 import { backText } from './textures'
 import { MergeSection } from './MergeSection'
 import { EdgesField } from './EdgesField'
+import { SetInField } from './SetInField'
 import { EbookButton, EbookLinkField } from './EbookLink'
 import { ebookHref } from '#/lib/ebookLink'
 import { findBackText } from '#/lib/findBackText'
@@ -702,6 +703,8 @@ export function BookPanel({
           />
         )}
       </div>
+
+      <SetInField book={book} shelf={shelf} onUpdate={onUpdate} />
 
       <div className="field">
         <label className="check">

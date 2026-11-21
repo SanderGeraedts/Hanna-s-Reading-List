@@ -219,3 +219,17 @@ export function worldMap(books: Book[], known: ReadonlySet<string>): WorldMap {
 
 /** Which books still need their places looked up: finished ones that have none yet. */
 export const needsPlaces = (b: Book) => finished(b) && b.places === undefined
+
+/** A count list most first, ties alphabetical: "Hogwarts 4 · Narnia 2 · Middle Earth 1". */
+export const byCount = (counts: Map<string, number>): Array<[string, number]> =>
+  [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+
+/**
+ * What a places lookup writes, decided at the moment it writes (D-0023): only
+ * when the book still has no places. A list Hanna set or emptied while the
+ * lookup was under way stays hers.
+ */
+export const placesPatch =
+  (found: string[]) =>
+  (b: Book): Partial<Book> =>
+    b.places === undefined ? { places: found } : {}
