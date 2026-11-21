@@ -2,12 +2,12 @@
 id: T-0005
 title: "Make the books that match a search stand out much more from the rest"
 description: "#184: while searching, the matching books light up and the rest dim; make the difference between the two clearly bigger."
-status: Open
+status: Doing
 depends_on: [T-0001]
 decisions: [D-0002]
 raised_on: 2026-11-21
 done_on: ""
-result: []
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/197"]
 ---
 
 # Goal
@@ -107,3 +107,11 @@ browser) or a local PocketBase, never from signing in or adding books on a deplo
 - 2026-11-21 ux-designer: design written. Glow 0.22 → 0.5, the other books from 35% to 18%
   brightness, matches 0.06 forward instead of 0.03. The review may raise the glow to at most
   0.7.
+- 2026-11-21 developer: built in #197 (draft). `MATCH_GLOW` 0.5, `MATCH_DIM` 0.82 (18%),
+  `MATCH_FORWARD` 0.06 in `BookMesh.tsx`, with `bookLight(fly, glow, dim)`; materials still
+  only update when the values change. New `BookMesh.test.ts` (fails on `main`: "bookLight is
+  not a function"). `npm test`: "Tests 285 passed (285)"; `npm run build`: "built in 15.81s".
+  Before (`main`) and after screenshots of the search "the" (3 of 12 books) at 320, 390 and
+  1280 px from a local dev server with no backend, for the UX designer's review. For the
+  architect, not fixed here: at 320 px the top shelf row sits under the header's light fade and
+  the view buttons cover its left end, so a match there (The Night Circus) is hard to see.
