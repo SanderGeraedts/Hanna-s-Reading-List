@@ -7,7 +7,7 @@ depends_on: [T-0001]
 decisions: [D-0002, D-0003]
 raised_on: 2026-11-21
 done_on: ""
-result: []
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/202"]
 ---
 
 # Goal
@@ -186,6 +186,8 @@ browser) or a local PocketBase, never from signing in or adding books on a deplo
   by Sarah J. Maas, whose books you rate ★4½", "New in Fantasy"), every line fully visible at
   320 px, buttons 44 px on touch; *+ Want to read* put the book on the shelf as want-to-read
   and it left the list; *Not for me* kept it gone after a reload. No code-owned path touched.
-  Note for the architect: two timing-based tests (`shelfLayout.test.ts` "is quick enough",
+  Note for the architect: three timing-based tests (`shelfLayout.test.ts` "is quick enough",
   `library.sync.test.ts` first sign-in, `vite.config.test.ts`) failed once each on this busy
   machine and passed on a rerun.
+- 2026-11-21 developer: draft PR #202, based on #199 (merge that first). Screens in the
+  developer's scratch folder (320 px and 1280 px). Next: the UX designer's review.
