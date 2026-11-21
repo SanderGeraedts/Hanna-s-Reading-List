@@ -3,6 +3,7 @@ import type { Book } from '#/lib/library'
 import { finishPatch, parsePosition, position, quickBooks, stepOf, stepPatch } from '#/lib/quickUpdate'
 import { Cover } from './Dashboard'
 import { sparkle } from './Sparkles'
+import { daysLeftText, daysToFinish } from '#/lib/finishEstimate'
 
 type Update = (id: string, patch: Partial<Book> | ((book: Book) => Partial<Book>)) => void
 
@@ -117,6 +118,8 @@ function QuickCard({
   onFinished: () => void
 }) {
   const at = position(book)
+  // at her pace over the last two weeks; nothing when there's too little to go on
+  const eta = daysToFinish(book)
   const unit = stepOf(book).unit
   const word = unit === 'pages' ? 'page' : unit === 'time' ? 'minute' : 'percent'
   const [typing, setTyping] = useState<string | null>(null)
@@ -177,6 +180,7 @@ function QuickCard({
           <button className="btn small primary">Save</button>
         </form>
       )}
+      {eta !== null && <p className="quick-eta muted small-text">{daysLeftText(eta)}</p>}
 
       <div className="quick-steps">
         <HoldButton label={`Back one ${word}`} onStep={() => step(-1)}>
