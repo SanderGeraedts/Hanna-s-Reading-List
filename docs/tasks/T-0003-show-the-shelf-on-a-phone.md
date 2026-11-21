@@ -208,6 +208,15 @@ changes `paintSpine`, this branch adds `plainTexture` further down), and the onl
 the generated `docs/tasks/index.md`, which I regenerated with `harness tasks-index`. No code
 conflict. Everything below ran on the merged tree.
 
+**Merging `main` a second time** (`7218df3`). While I tested, T-0005 (#197, search matches),
+T-0007 (#196, e-book link) and D-0006 to D-0020 merged. T-0005 changes `BookMesh.tsx` too,
+but in other places (the match glow and `bookLight`), so it merged by itself, and again
+only the generated index conflicted (regenerated). On that tree: `npm ci`; `npm test` "Test
+Files 50 passed (50)", "Tests 322 passed (322)"; `npm run build` "✓ built in 1.79s";
+`tsc --noEmit` clean. On the dev server at 390, 320 and 1280: search "dune" lights up Dune
+and dims the rest (T-0005), the tabs stay on one row, a book taken out shows its painted
+back, no note.
+
 **Commands, with their output**
 
 - `npm ci`: installed (one warning: esbuild's install script isn't in `allowScripts`).
@@ -354,7 +363,8 @@ bookshelf now shows on her own phone. So the task stays *Doing*, and #181 stays 
   the desktop toolbar over the crown (also on `main`), proposed as a separate task.
   Remaining: Hanna checks on her own phone that the bookshelf shows with her books.
 - 2026-11-21 tester: passed. Merged `main` (T-0004) in: only the generated index conflicted,
-  regenerated; T-0004's white spine lettering still shows. Done-when run locally (no preview
+  regenerated, twice (T-0004, then T-0005 and T-0007); T-0004's white spine lettering and
+  T-0005's search glow still show. Done-when run locally (no preview
   sign-in, #193), signed in on a local throwaway PocketBase; WebGL off, lost context twice,
   rotating and 150 books (88 MB, was 798) tried. For the architect: the flaky timing test
   `is quick enough to run on every change` (also on `main`), and "Try again" lying under an
