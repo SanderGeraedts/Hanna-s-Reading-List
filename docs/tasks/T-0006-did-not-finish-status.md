@@ -191,6 +191,46 @@ have the production account server's address. Until the Engineer has confirmed t
 review and the tester's screenshots come from a local dev server with no backend (shelf in the
 browser) or a local PocketBase, never from signing in or adding books on a deploy preview.
 
+## Review after building (2026-11-21)
+
+Looked at the developer's screens from a local dev server with no backend, at 320 px and
+1280 px (shelf by reading status, search "dnf", the panel, the block with a book, the block
+after *Try again*, the dashboard), and read the texts in `AgainCard.tsx`, `didNotFinish.ts`
+and `BookPanel.tsx` on the branch. The app has one look (D-0020), no light/dark switch.
+
+**Matches the Design:**
+
+- "Did not finish" is the label everywhere: last in the panel's *Status* list, last in the
+  header line ("5 books · 1 reading · 1 want to read · 1 read · 2 did not finish"), and as the
+  hint under the title in search. Searching "dnf" finds both DNF books ("2 books"). No colour of
+  its own.
+- The panel replaces the slider with one quiet line, "Stopped at 42% · page 100 of 237";
+  *Started on* stays; nothing else changes.
+- The nook sign is the usual walnut sign with "Did not finish" in the italic serif, fully
+  readable at 320 px, and the group comes last on the shelf. No bookmark on DNF spines.
+- The block "Give it another try" sits at the bottom of *Today*'s left column, after *Lent
+  out*. Large cover (the stand-in colour when there's no cover), title, author, "Stopped at
+  10%", gold *Try again* and secondary *Show on the shelf*. At 320 px the cover stays left, a
+  very long title wraps without being cut, and the two buttons wrap onto two lines, each at
+  least 44 px high. After *Try again*: "“Circe” is back in Currently reading." at the top,
+  then the next book or "No books put aside.", and the block stays small.
+
+**Differs, all accepted (no fix needed):**
+
+- *No "3 books put aside. Another one tomorrow."* It explained how the block works, which
+  D-0014 rules out; the decision wins over my Design. The remaining texts pass D-0014: "No books
+  put aside." is an empty-block message, the "is back in Currently reading" line is feedback on
+  her own action, and "Stopped at N%" is her own data. Nothing opens by itself, so D-0013 holds.
+- *"page 100 of 237"* instead of the Design's example "page 99", and the listening time as
+  "3 h 10 min" instead of "3:10": the app's own rounding and duration format (`percentText`,
+  `formatDuration`), so it reads the same as the rest of the panel. Better than my example. The
+  listening case I checked in the code only; there's no screen of a listen-only DNF book, so the
+  tester should look at one.
+- *Medal:* a DNF spine has a medal when the book was read before, as the Goal says and the
+  orchestrator confirmed in the Log, not my "like Reading and Paused".
+
+**Verdict: passes.** On to the tester.
+
 # Test
 
 # Log
@@ -233,3 +273,6 @@ browser) or a local PocketBase, never from signing in or adding books on a deplo
   (decision over Design). Kept: "No books put aside." (an empty-block message, allowed), the
   "“…” is back in Currently reading." confirmation after *Try again* (feedback on her own
   action, not an explanation), and "Stopped at N%" (her data).
+- 2026-11-21 ux-designer: reviewed: passes. Status, nook sign, panel line and block match the
+  Design at 320 px and 1280 px; the dropped explanation line (D-0014), the app's page and time
+  format, and the medal when read before are accepted. Next: the tester.
