@@ -145,6 +145,29 @@ and after at 320, 390 and 1280 px. I also read the change in `BookMesh.tsx`.
 updated, new screenshots at 1280 and 390 px). After that I only need to look at the new
 screenshots.
 
+## Second review (2026-11-21, `MATCH_GLOW` 0.6)
+
+Looked at the new screenshots of "the" at 1280 px (whole shelf and close-up) and 390 px, and at
+the close-up at 0.5 for comparison. The code has `MATCH_GLOW` 0.6, and the test pins it; dim and
+forward are unchanged.
+
+- **The Hobbit against Circe and Piranesi (difference 1):** fixed. In the close-up The Hobbit's
+  purple is lighter than at 0.5, and its lettering is crisp and bright. Circe and Piranesi
+  beside it look dull and dimmed, so The Hobbit is now the lit book among them, and it steps
+  forward too. The step from 0.5 to 0.6 is small to the eye; going on to 0.7 would add little
+  and would bring The Night Circus close to washing out, so 0.6 is the right value.
+- **The Night Circus:** its lettering can still be read at 0.6, in the close-up and at 390 px.
+- **At 390 px:** all three matches stand out clearly; The Hobbit is brighter than its
+  neighbours, The Name of the Wind than Emma and Dracula. The shelf still doesn't look switched
+  off.
+- These screenshots still have gold lettering, because this branch doesn't have T-0004 (#195).
+  Off-white lettering on dark spines only makes a lit dark match easier to see. If both are
+  merged, the tester's after screenshots will show that combination; nothing here depends on
+  it.
+- The 320 px top row stays with T-0003, as in the first review.
+
+**Verdict: passes.** On to the tester.
+
 # Test
 
 # Log
@@ -170,3 +193,5 @@ screenshots.
   390 and 1280 px (local dev server, no backend), The Hobbit is brighter than Circe and
   Piranesi beside it and stands forward. `npm test`: "Tests 285 passed (285)"; `npm run build`:
   "built in 1.37s".
+- 2026-11-21 ux-designer: reviewed: passes. At `MATCH_GLOW` 0.6 The Hobbit is the lit book next
+  to Circe and Piranesi, and The Night Circus is still readable (1280 and 390 px).
