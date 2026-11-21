@@ -1,5 +1,6 @@
 import type { Book } from './library'
 import { localDay } from './library'
+import { readNextChoices } from './readNext'
 import { sleepReadIds } from './sleepSeries'
 import { notOutYet } from './upcoming'
 
@@ -120,10 +121,13 @@ export function alphabetYear(
         ? `${n} of 26 · on track`
         : `${n} of 26 · behind: ${perMonth(left / monthsLeft)} a month to go`
 
-  // a book from her pile for each missing letter: being read first, then wanted
+  // a book from her pile for each missing letter: being read first, then wanted; a wanted
+  // book only when she could start it next (series in order, D-0025)
   const rank = { reading: 0, paused: 1, want: 2, read: 3, dnf: 4 } as const
+  const startable = new Set(readNextChoices(books, today).map((b) => b.id))
   const pile = books
     .filter((b) => b.status !== 'read' && !sleep.has(b.id) && !notOutYet(b, today))
+    .filter((b) => b.status !== 'want' || startable.has(b.id))
     .sort((a, b) => rank[a.status] - rank[b.status] || a.title.localeCompare(b.title))
   const tips: AlphabetYear['tips'] = []
   for (const letter of LETTERS) {

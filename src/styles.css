@@ -2931,6 +2931,82 @@ textarea.input {
 .bingo-cover .dash-cover.small {
   width: 1.4rem;
 }
+/* an empty square of the card being played suggests a book (T-0017) */
+.bingo-square.tappable {
+  border-color: var(--border-strong);
+  cursor: pointer;
+}
+.bingo-square.tappable:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent-line);
+}
+.bingo-square.tappable.chosen {
+  border: 1px solid var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+  background: var(--surface-sunken);
+  color: var(--text);
+}
+.bingo-square.tappable:focus-visible,
+#bingo-title:focus-visible,
+.bingo-suggest h3:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+#bingo-title:focus,
+.bingo-suggest h3:focus {
+  outline: none;
+}
+.bingo-suggest {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  background: var(--surface-sunken);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius-card);
+  position: relative;
+}
+/* the heading row leaves room for the ×, which comes last in tab order but sits top right */
+.bingo-suggest-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 1.9rem;
+  padding-right: calc(1.9rem + var(--space-2));
+}
+.bingo-suggest .bingo-suggest-close {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+}
+.bingo-suggest h3 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--text);
+}
+.bingo-suggest .next-book > div {
+  min-width: 0;
+}
+.bingo-suggest-title {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.bingo-suggest-actions .btn {
+  white-space: nowrap;
+}
+@media (pointer: coarse) {
+  .bingo-suggest .btn.icon.small.bingo-suggest-close {
+    min-width: var(--tap);
+    min-height: var(--tap);
+  }
+  .bingo-suggest-top {
+    min-height: var(--tap);
+    padding-right: calc(var(--tap) + var(--space-2));
+  }
+}
 
 @media (max-width: 720px) {
   .bingo {

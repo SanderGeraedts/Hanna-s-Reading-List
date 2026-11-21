@@ -212,7 +212,7 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
               year={year}
             />
           ) : id === 'bingo' ? (
-            <BingoCard key={`bingo-${year}`} books={books} onUpdate={onUpdate} year={year} />
+            <BingoCard key={`bingo-${year}`} books={books} onUpdate={onUpdate} year={year} onShowBook={onShowBook} />
           ) : (
             <AlphabetCard key={`alphabet-${year}`} books={books} onShowBook={onShowBook} onUpdate={onUpdate} year={year} />
           )

@@ -289,7 +289,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
     wrapped: <WrappedCard books={books} onShowBook={onShowBook} />,
     recent: <RecentCard books={books} onShowBook={onShowBook} />,
     alphabet: <AlphabetCard books={books} onShowBook={onShowBook} onUpdate={onUpdate} compact onOpen={open('alphabet')} />,
-    bingo: <BingoCard books={books} onUpdate={onUpdate} compact onOpen={open('bingo')} />,
+    bingo: <BingoCard books={books} onUpdate={onUpdate} compact onOpen={open('bingo')} onShowBook={onShowBook} />,
   }
 
   /** a block that has nothing to say right now stays out of the way (still shown while arranging) */

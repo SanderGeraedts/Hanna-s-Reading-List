@@ -63,7 +63,7 @@ export function yearFinishes(books: Book[], year: number): BingoFinish[] {
 // ---- the squares --------------------------------------------------------------------
 
 /** What a square knows about the shelf. */
-interface Shelf {
+export interface Shelf {
   year: number
   /** the first day she finished anything by each author; undated reads count as long ago */
   firstByAuthor: Map<string, string>
@@ -72,6 +72,8 @@ interface Shelf {
   seriesSize: Map<string, number>
   /** series she has read every book of */
   readSeries: Set<string>
+  /** the year's finishes before this card started (Same author twice counts the whole year, T-0017) */
+  before: BingoFinish[]
 }
 
 /** The book that ticks a square from the finishes so far, or true when no single book did. */
@@ -84,11 +86,28 @@ const findIn = (test: (b: Book, f: BingoFinish, shelf: Shelf) => boolean): Tick 
  * A book's pages for the page squares: its own page count, or for a book she
  * only listens to the shelf's estimate, a minute counting as a page (#140).
  */
-const pagesOf = (b: Book) => thicknessPages(b) ?? 0
-const genre = (re: RegExp) => findIn((b) => !!b.genres?.some((g) => re.test(g)))
-const has = (format: string) => findIn((b) => formatsOf(b).some((f) => f === format))
-const authorKey = (a: string) => a.trim().toLowerCase()
-const pubYear = (b: Book) => b.year ?? (b.published ? Number(b.published.slice(0, 4)) || undefined : undefined)
+export const pagesOf = (b: Book) => thicknessPages(b) ?? 0
+/** The genre squares' tests; the bingo suggestions use them too (T-0017). */
+export const GENRE_SQUARES = {
+  romance: /romance/i,
+  mystery: /myster|thriller|crime/i,
+  nonfiction: /non-?fiction|biograph|memoir|self-help/i,
+  scifi: /science fiction|dystop/i,
+} as const
+export const hasGenre = (b: Book, re: RegExp) => !!b.genres?.some((g) => re.test(g))
+export const notFantasy = (b: Book) => !!b.genres?.length && !b.genres.some((g) => /fantas/i.test(g))
+export const hasFormat = (b: Book, format: string) => formatsOf(b).some((f) => f === format)
+const genre = (re: RegExp) => findIn((b) => hasGenre(b, re))
+const has = (format: string) => findIn((b) => hasFormat(b, format))
+export const authorKey = (a: string) => a.trim().toLowerCase()
+export const pubYear = (b: Book) => b.year ?? (b.published ? Number(b.published.slice(0, 4)) || undefined : undefined)
+/** A listen over 15 hours. */
+export const longListen = (b: Book) => hasAudio(b) && (b.minutes ?? 0) > 15 * 60
+/** In a series of 5 or more books on the shelf, or numbered 5 or higher. */
+export const inLongSeries = (b: Book, s: Pick<Shelf, 'groups' | 'seriesSize'>) => {
+  const g = s.groups.get(b.id)
+  return !!g?.key && ((s.seriesSize.get(g.key) ?? 0) >= 5 || (g.index ?? 0) >= 5)
+}
 const dayNumber = (day: string) =>
   Date.UTC(Number(day.slice(0, 4)), Number(day.slice(5, 7)) - 1, Number(day.slice(8, 10))) / 86_400_000
 
@@ -150,7 +169,7 @@ export const SQUARES: Record<string, { label: string; tick: Tick }> = {
     tick: findIn((b, f, s) => !f.reread && b.authors.some((a) => s.firstByAuthor.get(authorKey(a)) === f.day)),
   },
   three: { label: '3 books in one month', tick: inOneMonth(3) },
-  genre: { label: 'Not fantasy', tick: findIn((b) => !!b.genres?.length && !b.genres.some((g) => /fantas/i.test(g))) },
+  genre: { label: 'Not fantasy', tick: findIn(notFantasy) },
   spicy: { label: 'A spicy read (4+ 🌶️)', tick: findIn((b) => (cleanSpice(b.spice) ?? 0) >= 4) },
   // new for #119
   huge: { label: 'Over 700 pages', tick: findIn((b) => pagesOf(b) > 700) },
@@ -165,27 +184,28 @@ export const SQUARES: Record<string, { label: string; tick: Tick }> = {
   },
   longseries: {
     label: 'From a series of 5+',
-    tick: findIn((b, _, s) => {
-      const g = s.groups.get(b.id)
-      return !!g?.key && ((s.seriesSize.get(g.key) ?? 0) >= 5 || (g.index ?? 0) >= 5)
-    }),
+    tick: findIn((b, _, s) => inLongSeries(b, s)),
   },
-  longlisten: { label: 'A listen over 15 hours', tick: findIn((b) => hasAudio(b) && (b.minutes ?? 0) > 15 * 60) },
+  longlisten: { label: 'A listen over 15 hours', tick: findIn(longListen) },
   fast: { label: 'Gone in 2 days', tick: startedWithin(1) },
   fivemonth: { label: '5 books in one month', tick: inOneMonth(5) },
-  romance: { label: 'A romance', tick: genre(/romance/i) },
-  mystery: { label: 'A mystery or thriller', tick: genre(/myster|thriller|crime/i) },
-  nonfiction: { label: 'Not fiction', tick: genre(/non-?fiction|biograph|memoir|self-help/i) },
-  scifi: { label: 'Science fiction or dystopian', tick: genre(/science fiction|dystop/i) },
+  romance: { label: 'A romance', tick: genre(GENRE_SQUARES.romance) },
+  mystery: { label: 'A mystery or thriller', tick: genre(GENRE_SQUARES.mystery) },
+  nonfiction: { label: 'Not fiction', tick: genre(GENRE_SQUARES.nonfiction) },
+  scifi: { label: 'Science fiction or dystopian', tick: genre(GENRE_SQUARES.scifi) },
   sameauthor: {
     label: 'Same author twice',
-    tick: (win) => {
-      const seen = new Map<string, string>()
+    // a finish on this card by an author she finished another book by earlier this year,
+    // on this card or an older one (Hanna's decision, T-0017)
+    tick: (win, shelf) => {
+      const seen = new Map<string, Set<string>>()
+      const add = (a: string, id: string) => seen.set(authorKey(a), (seen.get(authorKey(a)) ?? new Set<string>()).add(id))
+      for (const f of shelf.before) for (const a of f.book.authors) add(a, f.book.id)
       for (const f of win)
         for (const a of f.book.authors) {
           const prev = seen.get(authorKey(a))
-          if (prev !== undefined && prev !== f.book.id) return f.book
-          if (prev === undefined) seen.set(authorKey(a), f.book.id)
+          if (prev && [...prev].some((id) => id !== f.book.id)) return f.book
+          add(a, f.book.id)
         }
       return undefined
     },
@@ -203,7 +223,7 @@ const FIRST_CARD: Array<string | null> = [
 ]
 const NEW_SQUARES = SQUARE_IDS.filter((id) => !FIRST_CARD.includes(id))
 
-function shelfFacts(books: Book[], year: number): Shelf {
+export function shelfFacts(books: Book[], year: number): Shelf {
   const firstByAuthor = new Map<string, string>()
   for (const f of allFinishes(books))
     for (const a of f.book.authors) {
@@ -220,7 +240,7 @@ function shelfFacts(books: Book[], year: number): Shelf {
       const key = groups.get(s.books[0].id)?.key
       if (key) readSeries.add(key)
     }
-  return { year, firstByAuthor, groups, seriesSize, readSeries }
+  return { year, firstByAuthor, groups, seriesSize, readSeries, before: [] }
 }
 
 // ---- random but fixed ---------------------------------------------------------------
@@ -371,7 +391,7 @@ export function bingoYear(books: Book[], year: number, today = localDay()): Bing
 
   for (;;) {
     const played = playCard(
-      shelf,
+      { ...shelf, before: finishes.filter((f) => f.key <= after) },
       finishes.filter((f) => f.key > after),
       cardSquares(year, card),
       startDay,

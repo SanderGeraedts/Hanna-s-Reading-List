@@ -215,3 +215,149 @@ describe('squares that stay open swap (#119)', () => {
     expect(b.squares.map((s) => s.id)).toEqual(cardSquares(2026, 1).squares)
   })
 })
+
+describe('Same author twice counts the whole year (T-0017, Hanna 2026-11-21)', () => {
+  // card 1 of 2026, filled in February; every author but the saga's and the new writer's appears once
+  const d = (n: number) => `2026-02-${String(n).padStart(2, '0')}`
+  const card1: Book[] = [
+    ...[1, 2, 3, 4, 5].map((i) => read(`saga${i}`, d(i), { series: 'Saga', seriesIndex: i, authors: ['Saga Writer'] })),
+    read('big', d(10), {
+      pages: 800,
+      language: 'nl',
+      genres: ['Romance'],
+      rating: 5,
+      spice: 4,
+      year: 2026,
+      formats: ['hardcover', 'library'],
+      started: [d(9)],
+      authors: ['New Writer'],
+    }),
+    read('small', d(11), { pages: 150, formats: ['borrowed'], genres: ['Mystery'], authors: ['New Writer'] }),
+    read('listen', d(12), { formats: ['audiobook'], minutes: 1000, genres: ['Biography'], authors: ['Listen Writer'] }),
+    read('space', d(13), { genres: ['Science fiction'], year: 1900, authors: ['Space Writer'] }),
+    book('again', { status: 'read', readCount: 2, finished: ['2020-01-01', d(14)], authors: ['Again Writer'] }),
+  ]
+  const sameAuthor = (shelf: Book[]) => {
+    const b = bingoYear(shelf, 2026, '2026-04-30')
+    expect(b.card).toBe(2)
+    return b.squares.find((s) => s.id === 'sameauthor')!
+  }
+
+  it('card 1 fills, and card 2 has the square open', () => {
+    expect(cardSquares(2026, 2).squares).toContain('sameauthor')
+    expect(sameAuthor(card1).ticked).toBe(false)
+  })
+
+  it('ticks card 2 with another book by an author finished on card 1', () => {
+    const sq = sameAuthor([...card1, read('listen2', '2026-04-01', { authors: ['Listen Writer'] })])
+    expect(sq.ticked).toBe(true)
+    expect(sq.book!.id).toBe('listen2')
+  })
+
+  it('does not tick for an author finished only last year', () => {
+    const shelf = [
+      ...card1,
+      read('old', '2025-06-01', { authors: ['Old Writer'] }),
+      read('old2', '2026-04-01', { authors: ['Old Writer'] }),
+    ]
+    expect(sameAuthor(shelf).ticked).toBe(false)
+  })
+
+  it('does not tick for the same book finished twice', () => {
+    const twice = card1.map((b) =>
+      b.id === 'space' ? { ...b, readCount: 2, finished: [d(13), '2026-04-01'] } : b,
+    )
+    expect(sameAuthor(twice).ticked).toBe(false)
+  })
+
+  it('still ticks with two books by one author on one card', () => {
+    const shelf = [
+      ...card1,
+      read('fresh1', '2026-04-01', { authors: ['Fresh Writer'] }),
+      read('fresh2', '2026-04-05', { authors: ['Fresh Writer'] }),
+    ]
+    const sq = sameAuthor(shelf)
+    expect(sq.ticked).toBe(true)
+    expect(sq.book!.id).toBe('fresh2')
+  })
+})
+
+describe('Same author twice: saved cards stay, ticks are only added (tester, T-0017)', () => {
+  const d = (n: number) => `2026-02-${String(n).padStart(2, '0')}`
+  const card1: Book[] = [
+    ...[1, 2, 3, 4, 5].map((i) => read(`saga${i}`, d(i), { series: 'Saga', seriesIndex: i, authors: ['Saga Writer'] })),
+    read('big', d(10), {
+      pages: 800,
+      language: 'nl',
+      genres: ['Romance'],
+      rating: 5,
+      spice: 4,
+      year: 2026,
+      formats: ['hardcover', 'library'],
+      started: [d(9)],
+      authors: ['New Writer'],
+    }),
+    read('small', d(11), { pages: 150, formats: ['borrowed'], genres: ['Mystery'], authors: ['New Writer'] }),
+    read('listen', d(12), { formats: ['audiobook'], minutes: 1000, genres: ['Biography'], authors: ['Listen Writer'] }),
+    read('space', d(13), { genres: ['Science fiction'], year: 1900, authors: ['Space Writer'] }),
+    book('again', { status: 'read', readCount: 2, finished: ['2020-01-01', d(14)], authors: ['Again Writer'] }),
+  ]
+  /** card 1 as it would be saved on the book that filled it */
+  const saved = () => {
+    const first = bingoYear(card1, 2026, '2026-03-01')
+    expect(first.toRemember).toHaveLength(1)
+    const { bookId, card } = first.toRemember[0]
+    return { shelf: card1.map((b) => (b.id === bookId ? { ...b, ...rememberCard(b, card) } : b)), card }
+  }
+
+  it('a saved full card keeps its squares and ticks, and is not saved again', () => {
+    const { shelf, card } = saved()
+    const b = bingoYear([...shelf, read('listen2', '2026-04-01', { authors: ['Listen Writer'] })], 2026, '2026-04-30')
+    expect(b.finished).toEqual([card])
+    expect(b.toRemember).toEqual([])
+  })
+
+  it('on the card being played, only Same author twice changes; every other square and its book stays', () => {
+    const { shelf } = saved()
+    // the same April finish, once by a writer from card 1 and once by a stranger
+    const known = bingoYear([...shelf, read('x', '2026-04-01', { authors: ['Listen Writer'] })], 2026, '2026-04-30')
+    const stranger = bingoYear([...shelf, read('x', '2026-04-01', { authors: ['Listen Writer Two'] })], 2026, '2026-04-30')
+    const view = (s: typeof known.squares) => s.filter((q) => q.id !== 'sameauthor' && q.id !== 'author').map((q) => [q.id, q.ticked, q.book?.id])
+    expect(view(known.squares)).toEqual(view(stranger.squares))
+    expect(known.squares.find((q) => q.id === 'sameauthor')!.ticked).toBe(true)
+    expect(stranger.squares.find((q) => q.id === 'sameauthor')!.ticked).toBe(false)
+  })
+
+  it('never takes away a tick the old rule (this card only) gave', async () => {
+    const { SQUARES } = await import('./bingo')
+    const old = (win: Array<{ book: Book }>) => {
+      const seen = new Map<string, string>()
+      for (const f of win)
+        for (const a of f.book.authors) {
+          const k = a.trim().toLowerCase()
+          const prev = seen.get(k)
+          if (prev !== undefined && prev !== f.book.id) return f.book
+          if (prev === undefined) seen.set(k, f.book.id)
+        }
+      return undefined
+    }
+    let seed = 7
+    const random = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646
+    const pick = <T,>(xs: T[]) => xs[Math.floor(random() * xs.length)]
+    for (let run = 0; run < 500; run++) {
+      const books = Array.from({ length: 6 }, (_, i) =>
+        book(`b${i}`, { authors: random() < 0.3 ? [pick(['A', 'B', 'C'])!, pick(['A', 'B', 'C'])!] : [pick(['A', 'B', 'C', 'D'])!] }),
+      )
+      const finish = (i: number) => ({ book: pick(books)!, day: '2026-05-01', reread: false, key: `k${i}` })
+      const before = Array.from({ length: Math.floor(random() * 4) }, (_, i) => finish(i))
+      const win = Array.from({ length: 1 + Math.floor(random() * 4) }, (_, i) => finish(10 + i))
+      const tick = SQUARES.sameauthor.tick as unknown as (w: unknown, s: unknown) => Book | undefined
+      const now = tick(win, { before })
+      if (old(win)) expect(now, `run ${run}`).toBeTruthy()
+      // without earlier finishes it is exactly the old rule
+      expect(tick(win, { before: [] })?.id).toBe(old(win)?.id)
+      // the book that ticks is always a finish on this card, by an author with another book
+      if (now) expect(win.map((f) => f.book.id)).toContain(now.id)
+    }
+  })
+})
