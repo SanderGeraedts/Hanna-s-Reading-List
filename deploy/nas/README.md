@@ -28,7 +28,7 @@ Every record is limited to its owner by PocketBase's rules. Only the email addre
 | --- | --- |
 | `compose.yaml` | Pasted into TrueNAS when you install the app (step 3) |
 | `serve.json` | `<dataset>/serve.json` on the NAS |
-| `pb_hooks/*.pb.js` | Nowhere by hand. Built into the image; `signup.pb.js` checks new accounts against `SIGNUP_EMAILS`, `nightly.pb.js` serves the nightly Storytel sync. |
+| `pb_hooks/*.pb.js` | Nowhere by hand. Built into the image; `signup.pb.js` checks new accounts against `SIGNUP_EMAILS`, `nightly.pb.js` serves the nightly Storytel sync, `favourites.pb.js` stars and unstars dashboard favourites in one transaction. |
 | `pb_migrations/*.js` | Nowhere by hand. This is the database schema. It's built into the PocketBase image, and PocketBase applies it on start-up. |
 | `Dockerfile` | Built by GitHub Actions (`.github/workflows/backend.yml`) into `ghcr.io/sandergeraedts/reading-list-pocketbase` |
 

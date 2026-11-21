@@ -6,7 +6,8 @@
  * comes from the shelf, so nothing is lost while one is hidden.
  *
  * On a narrow screen each section's two columns are shown as one, taking turns.
- * The layout is remembered per device.
+ * The layout is remembered per device; signed in, the favourites follow the
+ * account (#182, see favourites.ts).
  */
 
 export const BLOCKS = {
@@ -209,6 +210,14 @@ export function showBlock(layout: DashboardLayout, id: BlockId): DashboardLayout
   const [a, b] = next.sections[section]
   const column = a.length <= b.length ? 0 : 1
   return { ...moveBlock(next, id, section, column, 0), folded: next.folded.filter((s) => s !== section) }
+}
+
+/**
+ * "Reset" while arranging: the default order, nothing hidden or folded. The
+ * favourites stay as they are: they follow the account, on every device (#182).
+ */
+export function resetLayout(layout: DashboardLayout): DashboardLayout {
+  return { ...structuredClone(DEFAULT_LAYOUT), favourites: [...layout.favourites] }
 }
 
 /** Folds a section shut, or opens it. */
