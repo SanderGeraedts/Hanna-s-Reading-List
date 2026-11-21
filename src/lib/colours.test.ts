@@ -50,6 +50,14 @@ const contrast = (a: RGBA, b: RGBA) => {
 }
 const c = (name: string) => parse(token(name))
 
+// the midnight wallpaper (Make the room yours): its own wallpaper tokens over the :root ones
+const midStart = css.indexOf("html[data-wallpaper='midnight'] {")
+const midnight = css.slice(midStart, css.indexOf('}', midStart))
+const mid = (name: string): RGBA => {
+  const m = midnight.match(new RegExp(`--${name}:\\s*([^;]+);`))
+  return m ? parse(m[1]) : c(name)
+}
+
 // the backgrounds: the wallpaper from top to bottom, and a card on it
 const walls = ['wall-top', 'wall-page-bottom'].map(c)
 const cardsOnWall = walls.map((w) => over(c('surface'), w))
@@ -65,6 +73,26 @@ describe('colour check: everything stays readable', () => {
     ['header text on the wallpaper', c('header-ink'), walls, 4.5],
     ['header helper text on the wallpaper', c('header-muted'), walls, 4.5],
   ]
+  // on the midnight wallpaper: the text straight on it, and the cards on it
+  const midWalls = ['wall-top', 'wall-page-bottom'].map(mid)
+  const midCards = midWalls.map((w) => over(c('surface'), w))
+  cases.push(
+    ['header text on the midnight wallpaper', mid('header-ink'), midWalls, 4.5],
+    ['header helper text on the midnight wallpaper', mid('header-muted'), midWalls, 4.5],
+    ['text on a card on the midnight wallpaper', c('text'), midCards, 4.5],
+    ['helper text on a card on the midnight wallpaper', c('muted'), midCards, 4.5],
+    ['gold on a card on the midnight wallpaper', c('accent'), midCards, 3],
+    // the white round buttons in the header keep dark text on both wallpapers
+    ['text on a header button (lavender)', c('pill-ink'), walls.map((w) => over([255, 255, 255, 0.72], w)), 4.5],
+    ['text on a header button (midnight)', c('pill-ink'), midWalls.map((w) => over([255, 255, 255, 0.72], w)), 4.5],
+    // the header text over the header's haze, on the midnight wallpaper
+    ['header text over the midnight haze', mid('header-ink'), midWalls.map((w) => over([30, 40, 88, 0.92], w)), 4.5],
+  )
+  it('reads the midnight wallpaper’s own colours', () => {
+    expect(midStart).toBeGreaterThan(0)
+    expect(mid('header-ink')).not.toEqual(c('header-ink'))
+    expect(mid('wall-top')).not.toEqual(c('wall-top'))
+  })
   for (const [what, fg, bgs, min] of cases) {
     it(`${what} (at least ${min}:1)`, () => {
       for (const bg of bgs) expect(Math.round(contrast(fg, bg) * 100) / 100).toBeGreaterThanOrEqual(min)

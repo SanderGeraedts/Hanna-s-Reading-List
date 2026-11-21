@@ -23,6 +23,10 @@
   --danger: #ea8670; /* remove, wrong: 4.5:1 on a card (colours.test.ts) */
   --header-ink: #2d2038; /* text straight on the wallpaper: deep plum */
   --header-muted: #54456a;
+  /* text on the white round buttons in the header: always dark, whatever the wallpaper */
+  --pill-ink: #2d2038;
+  /* the haze behind the header, as r, g, b: pale on the lavender, dark on the midnight wallpaper */
+  --header-fade: 246, 248, 255;
 
   /* the wallpaper: soft lavender stripes, behind the shelf and every page.
      The 3D wall (wallTexture in textures.ts) uses the same colours, down to
@@ -73,6 +77,40 @@
   color-scheme: dark;
 }
 
+/* Make the room yours: midnight blue with little gold stars instead of the
+   lavender (D-0022). Only the wallpaper tokens change; the text straight on
+   it turns light. colours.test.ts checks this block as well. */
+html[data-wallpaper='midnight'] {
+  --wall-top: #2a3670;
+  --wall-2: #222d62;
+  --wall-mid: #1b2552;
+  --wall-4: #151d44;
+  --wall-floor: #0f1536;
+  --wall-page-bottom: #1c2654;
+  --wall-stripe: rgba(255, 255, 255, 0.025);
+  --header-ink: #f4ecdc;
+  --header-muted: #c9c3e3;
+  --header-fade: 30, 40, 88;
+  --wallpaper: radial-gradient(circle at 18% 22%, rgba(244, 214, 140, 0.9) 0 1.2px, transparent 2px),
+    radial-gradient(circle at 63% 48%, rgba(244, 214, 140, 0.7) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 82% 12%, rgba(244, 214, 140, 0.8) 0 1.4px, transparent 2.2px),
+    radial-gradient(circle at 38% 78%, rgba(244, 214, 140, 0.6) 0 1px, transparent 1.6px),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 var(--wall-stripe-px),
+      var(--wall-stripe) var(--wall-stripe-px) calc(var(--wall-stripe-px) * 2)
+    ),
+    linear-gradient(to bottom, var(--wall-top), var(--wall-page-bottom));
+  background-size:
+    140px 140px,
+    140px 140px,
+    140px 140px,
+    140px 140px,
+    auto,
+    auto;
+}
+
+
 * {
   box-sizing: border-box;
 }
@@ -119,9 +157,9 @@ h2 {
   padding: 1rem 1.5rem;
   background: linear-gradient(
     to bottom,
-    rgba(246, 248, 255, 0.92) 0%,
-    rgba(246, 248, 255, 0.75) 60%,
-    rgba(246, 248, 255, 0) 100%
+    rgba(var(--header-fade), 0.92) 0%,
+    rgba(var(--header-fade), 0.75) 60%,
+    rgba(var(--header-fade), 0) 100%
   );
   color: var(--header-ink);
   pointer-events: none;
@@ -132,7 +170,7 @@ h2 {
 /* the sort menu sits on the light band, so give it light styling too */
 .topbar .input {
   background: rgba(255, 255, 255, 0.75);
-  color: var(--header-ink);
+  color: var(--pill-ink);
   border-color: rgba(40, 50, 90, 0.2);
   color-scheme: light;
 }
@@ -650,7 +688,7 @@ textarea.input {
 .topbar .btn.read-next {
   height: 2.4rem;
   background: rgba(255, 255, 255, 0.75);
-  color: var(--header-ink);
+  color: var(--pill-ink);
   border-color: rgba(40, 50, 90, 0.2);
   white-space: nowrap;
 }
@@ -675,7 +713,7 @@ textarea.input {
   border: 1px solid rgba(45, 32, 56, 0.2);
   border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.72);
-  color: var(--header-ink);
+  color: var(--pill-ink);
   font: inherit;
   font-size: var(--fs-small);
   cursor: pointer;
@@ -712,7 +750,7 @@ textarea.input {
 .zoom-controls .btn,
 .topbar .btn.search-clear {
   background: rgba(255, 255, 255, 0.78);
-  color: var(--header-ink);
+  color: var(--pill-ink);
   border-color: rgba(45, 32, 56, 0.2);
 }
 .zoom-controls .btn:hover:not(:disabled),
@@ -753,7 +791,7 @@ textarea.input {
   font-size: var(--fs-heading);
   line-height: 1;
   background: rgba(255, 255, 255, 0.75);
-  color: var(--header-ink);
+  color: var(--pill-ink);
   border-color: rgba(40, 50, 90, 0.2);
 }
 .topbar .btn.refresh:hover:not(:disabled) {
@@ -851,7 +889,7 @@ textarea.input {
   display: grid;
   place-items: center;
   background: rgba(255, 255, 255, 0.75);
-  color: var(--header-ink);
+  color: var(--pill-ink);
   border-color: rgba(40, 50, 90, 0.2);
 }
 .topbar .search-btn:hover {
@@ -1085,7 +1123,7 @@ textarea.input {
   font-size: var(--fs-large);
   font-weight: 600;
   background: rgba(255, 255, 255, 0.75);
-  color: var(--header-ink);
+  color: var(--pill-ink);
   border-color: rgba(40, 50, 90, 0.2);
 }
 .topbar .account-btn:hover {
@@ -1317,7 +1355,7 @@ textarea.input {
 .topbar .view-menu > summary {
   font-size: var(--fs-large);
   background: rgba(255, 255, 255, 0.75);
-  color: var(--header-ink);
+  color: var(--pill-ink);
   border-color: rgba(40, 50, 90, 0.2);
 }
 .topbar .view-menu > summary:hover {
@@ -4052,6 +4090,110 @@ textarea.input {
 .world-lands {
   margin: var(--space-2) 0 0;
   font-size: var(--fs-small);
+}
+
+/* ---- make the room yours: the 🎨 Room panel ------------------------------ */
+.room-sheet {
+  position: fixed;
+  z-index: 8;
+  right: 1rem;
+  bottom: calc(1rem + 4 * (var(--tap) + var(--space-1)));
+  width: min(22rem, calc(100vw - 2rem));
+  max-height: 70vh;
+  border-radius: var(--radius-card);
+  display: grid;
+  gap: var(--space-3);
+}
+@media (max-width: 720px) {
+  .room-sheet {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-height: 60vh;
+    border-radius: var(--radius-card) var(--radius-card) 0 0;
+  }
+}
+.room-row {
+  display: grid;
+  gap: var(--space-1);
+}
+.room-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.room-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 2.2rem;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-small);
+  cursor: pointer;
+}
+.room-choice.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.room-swatch {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+}
+.wood-walnut {
+  background: #6b4630;
+}
+.wood-honey {
+  background: #bda283;
+}
+.wood-whitewash {
+  background: #e6e0d6;
+}
+.wood-ebony {
+  background: #2a211c;
+}
+.wood-cherry {
+  background: #8a4a32;
+}
+.paper-lavender {
+  background: repeating-linear-gradient(90deg, #ece4f5 0 3px, #d9cbec 3px 6px);
+}
+.paper-midnight {
+  background: radial-gradient(circle at 35% 35%, #f4d68c 0 1px, transparent 1.6px), #1b2552;
+}
+.room-decor {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.room-decor li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.room-decor li.off .room-toggle span {
+  color: var(--muted);
+}
+.room-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap);
+  cursor: pointer;
+}
+.room-move {
+  display: inline-flex;
+  gap: 2px;
 }
 
 /* ---- favourites on top --------------------------------------------- */
