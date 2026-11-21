@@ -700,7 +700,14 @@ export function hexToHsl(hex: string): [number, number, number] {
 }
 
 // books she put aside (did not finish) come last (#187)
+/** The order of "Reading status": reading, paused, want to read, read, and the books she didn't finish last. */
 const STATUS_ORDER: Record<ReadingStatus, number> = { reading: 0, paused: 1, want: 2, read: 3, dnf: 4 }
+
+/** Whether the books stand in reading-status order (when arranged by it, a changed status means sorting again). */
+export function inStatusOrder(books: Book[]): boolean {
+  for (let i = 1; i < books.length; i++) if (STATUS_ORDER[books[i - 1].status] > STATUS_ORDER[books[i].status]) return false
+  return true
+}
 
 export function sortBooks(books: Book[], key: SortKey): Book[] {
   const copy = [...books]

@@ -11,7 +11,7 @@ import { joinSeries, markSleepSeries, notInSeries, seriesQuestions, sleepSeriesK
 import type { Face } from '#/components/BookPanel'
 import { nearestTurn } from '#/components/BookMesh'
 import type { InspectTarget } from '#/components/BookMesh'
-import { SORT_LABELS, STATUS_LABELS, statusPatch, useLibrary } from '#/lib/library'
+import { SORT_LABELS, STATUS_LABELS, inStatusOrder, statusPatch, useLibrary } from '#/lib/library'
 import { progressPatch } from '#/lib/readingLog'
 import type { SortKey, SyncStatus } from '#/lib/library'
 import { useSession } from '#/lib/session'
@@ -139,6 +139,12 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   const { state: syncState, dismiss: dismissSync } = storytel
 
   // the result message fades by itself
+  // arranged by reading status: a book that changes status (finished, put aside as DNF, picked up
+  // again) moves to its group straight away, from wherever it was changed; DNF books stay last
+  useEffect(() => {
+    if (arrangement === 'status' && !inStatusOrder(books)) sortBy('status')
+  }, [arrangement, books, sortBy])
+
   useEffect(() => {
     if (syncState.kind !== 'done') return
     const t = setTimeout(dismissSync, 5000)
