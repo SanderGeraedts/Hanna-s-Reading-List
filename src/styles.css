@@ -3878,6 +3878,64 @@ textarea.input {
   font-size: var(--fs-small);
 }
 
+/* ---- the monthly wrap-up ------------------------------------------------ */
+.wrapup-sheet {
+  display: grid;
+  gap: var(--space-3);
+  width: min(30rem, 100%);
+}
+.wrapup-covers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.2rem, 1fr));
+  gap: var(--space-2);
+}
+.wrapup-covers .cover-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+}
+/* every cover the same size, with or without a picture */
+.wrapup-covers .dash-cover,
+.wrapup-covers .dash-cover.blank {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+}
+.wrapup-numbers {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: var(--fs-large);
+  color: var(--accent);
+}
+.wrapup-top {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+.wrapup-top .dash-cover {
+  width: 3.6rem;
+  height: 5.4rem;
+}
+.wrapup-top p {
+  margin: 0;
+}
+.wrapup-fact {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-small);
+  background: var(--surface-sunken);
+}
+.wrapup-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 /* ---- favourites on top --------------------------------------------- */
 .block-star.on {
   color: var(--accent);
