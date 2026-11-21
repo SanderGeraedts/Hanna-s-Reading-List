@@ -7,7 +7,7 @@ depends_on: [T-0001]
 decisions: [D-0002, G-0019]
 raised_on: 2026-11-21
 done_on: ""
-result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/198"]
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/198", "https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/206"]
 ---
 
 # Goal
@@ -369,4 +369,6 @@ bookshelf now shows on her own phone. So the task stays *Doing*, and #181 stays 
   rotating and 150 books (88 MB, was 798) tried. For the architect: the flaky timing test
   `is quick enough to run on every change` (also on `main`), and "Try again" lying under an
   open details sheet when the drawing is lost while a book is out (Esc or ✕ gets her out).
+  Remaining: Hanna checks on her own phone that the bookshelf shows with her books.
+- 2026-11-21 developer: Hanna checked on her own phone (Android, Chrome): still the "can't be drawn" note, so the phone still runs out of graphics memory with her real shelf. Second fix: cover images are loaded only once a book is taken out (they face the next book on the shelf), shrunk to at most 512 px; the stand-in front is painted only then too; spines are painted at 0.55 of the sharpness on phones. Checked locally (no backend) at 390 × 844, touch, 2.6× pixels, 400 books with covers: the shelf draws, no cover is fetched until a book is taken out, then its cover shows sharp; no page errors.
   Remaining: Hanna checks on her own phone that the bookshelf shows with her books.

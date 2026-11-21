@@ -9,7 +9,7 @@ import { hasMedal, timesRead } from '#/lib/library'
 import type { BookDims, Slot } from '#/lib/shelfLayout'
 import { METALS, medalFaceTexture, medalLayout, medalTier, pageTextures, paintBack, paintEdges, paintFallbackCover, paintSpine, plainTexture } from './textures'
 import { cleanEdges } from '#/lib/edges'
-import { facesToPaint } from '#/lib/bookFaces'
+import { coverSize, facesToPaint } from '#/lib/bookFaces'
 
 export interface InspectTarget {
   rotY: number
@@ -72,6 +72,7 @@ export function nearestTurn(angle: number, ref: number) {
 }
 
 function useCoverTexture(url: string | undefined, bookAspect: number) {
+  // url is only set once the book has been taken out (see facesToPaint)
   const [tex, setTex] = useState<THREE.Texture | null>(null)
   // the url whose image could not be loaded (then the painted stand-in shows)
   const [failedUrl, setFailedUrl] = useState<string | null>(null)
@@ -82,8 +83,19 @@ function useCoverTexture(url: string | undefined, bookAspect: number) {
     new THREE.TextureLoader().load(
       url,
       (t) => {
+        // big covers are drawn smaller first, so each takes little picture memory
+        const src = t.image as HTMLImageElement
+        const size = coverSize(src.width, src.height)
+        if (size.width < src.width && typeof document !== 'undefined') {
+          const c = document.createElement('canvas')
+          c.width = size.width
+          c.height = size.height
+          c.getContext('2d')?.drawImage(src, 0, 0, size.width, size.height)
+          // three.js uploads a canvas just like an image
+          t.image = c as unknown as HTMLImageElement
+        }
         t.colorSpace = THREE.SRGBColorSpace
-        t.anisotropy = 8
+        t.anisotropy = 4
         // centre-crop covers that are wider than the book (e.g. square audiobook art)
         const img = t.image as { width: number; height: number }
         const imgAspect = img.width / img.height
@@ -130,10 +142,10 @@ export function BookMesh(props: BookMeshProps) {
   const group = useRef<THREE.Group>(null)
 
   // ---- textures ---------------------------------------------------------
-  const { tex: cover, failed: coverFailed } = useCoverTexture(book.coverUrl, dims.w / dims.h)
-  // the back is painted once the book has been taken out, and kept after that
+  // the back and the cover are only needed once the book has been taken out, and kept after that
   const [takenOut, setTakenOut] = useState(selected)
   if (selected && !takenOut) setTakenOut(true)
+  const { tex: cover, failed: coverFailed } = useCoverTexture(takenOut ? book.coverUrl : undefined, dims.w / dims.h)
   const paint = facesToPaint({ coverUrl: book.coverUrl, coverFailed, takenOut })
   // repaint only when something visible changes
   const looks = [book.title, book.authors.join(), book.color, book.status, book.readCount, book.language, book.description, book.isbn, book.pages, book.minutes, book.formats, book.format, dims.w, dims.h, dims.t]
