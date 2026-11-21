@@ -3058,6 +3058,33 @@ textarea.input {
 .hidden-badges {
   list-style: none;
 }
+/* a block's title that folds it away (Badges) */
+.card-fold {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.card-fold h2 {
+  margin: 0;
+}
+.card-fold-mark {
+  color: var(--accent);
+  font-size: var(--fs-small);
+}
+.card-fold:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: var(--radius-small);
+}
+.dash-card.folded .badges-total {
+  margin-bottom: 0;
+}
 /* a hidden badge: a locked tile with a "?", its riddle when tapped */
 .secret-tile {
   width: 100%;

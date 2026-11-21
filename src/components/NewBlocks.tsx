@@ -24,11 +24,24 @@ export function BadgesCard({ books }: { books: Book[] }) {
     .sort((a, b) => share(b) - share(a))
   const hidden = all.filter((b) => !b.earned && b.secret)
   const [shownRiddle, setShownRiddle] = useState<string | null>(null)
+  const [folded, setFolded] = useFolded('badges')
   const percent = Math.round((earned.length / Math.max(1, all.length)) * 100)
   return (
-    <section className="dash-card" aria-labelledby="badges-title">
+    <section className={`dash-card${folded ? ' folded' : ''}`} aria-labelledby="badges-title">
       <div className="dash-card-head">
-        <h2 id="badges-title">Badges</h2>
+        {/* the title folds the list away; the count and the bar stay */}
+        <button
+          type="button"
+          className="card-fold"
+          aria-expanded={!folded}
+          aria-controls="badges-list"
+          onClick={() => setFolded(!folded)}
+        >
+          <h2 id="badges-title">Badges</h2>
+          <span className="card-fold-mark" aria-hidden>
+            {folded ? '▸' : '▾'}
+          </span>
+        </button>
         <span className="muted small-text">
           {earned.length} of {all.length} unlocked ({percent}%)
         </span>
@@ -43,6 +56,7 @@ export function BadgesCard({ books }: { books: Book[] }) {
       >
         <span style={{ width: `${percent}%` }} />
       </div>
+      <div id="badges-list" hidden={folded}>
       <ul className="badges">
         {earned.map((b) => (
           <li key={b.id} className="badge earned" title={b.how}>
@@ -112,8 +126,31 @@ export function BadgesCard({ books }: { books: Book[] }) {
           </ul>
         </>
       )}
+      </div>
     </section>
   )
+}
+
+/** Whether a block is folded, remembered on this device (like the dashboard's folded sections). */
+function useFolded(id: string) {
+  const key = `hannas-reading-list:folded-block:${id}`
+  const [folded, setState] = useState(() => {
+    try {
+      return localStorage.getItem(key) === '1'
+    } catch {
+      return false
+    }
+  })
+  const set = (next: boolean) => {
+    setState(next)
+    try {
+      if (next) localStorage.setItem(key, '1')
+      else localStorage.removeItem(key)
+    } catch {
+      /* storage blocked: it still holds for this visit */
+    }
+  }
+  return [folded, set] as const
 }
 
 /** How close a locked badge is to done, 0 to 1. */
