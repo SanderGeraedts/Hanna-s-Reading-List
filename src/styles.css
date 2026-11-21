@@ -3358,6 +3358,8 @@ textarea.input {
 }
 .calendar-year > li {
   display: grid;
+  /* a month next to a taller one (six weeks) keeps its days right under its name */
+  align-content: start;
   gap: var(--space-2);
   padding: var(--space-3);
   border-radius: var(--radius-card);
@@ -3366,6 +3368,7 @@ textarea.input {
 }
 .calendar-mini {
   display: grid;
+  align-content: start;
   gap: var(--space-2);
   padding: 0;
   border: 0;
