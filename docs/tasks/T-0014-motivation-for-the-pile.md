@@ -7,7 +7,7 @@ depends_on: []
 decisions: [D-0008, D-0010, D-0013, D-0014, D-0020, D-0022]
 raised_on: 2026-11-21
 done_on: ""
-result: []
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/222"]
 ---
 
 # Goal
@@ -311,7 +311,7 @@ Sleep reads don't count.
 - 2026-11-21 architect: task written
 - 2026-11-21 ux-designer: designed
 - 2026-11-21 requester: Hanna confirmed the design, including the 14-day rule for the dust-off book
-- 2026-11-21 developer: built in a draft pull request. New `src/lib/pile.ts` (in vs. out per
+- 2026-11-21 developer: built in draft pull request #222. New `src/lib/pile.ts` (in vs. out per
   month, the 6-month series and sentence, the two jar walk from 2026-11-01, the weekly dust-off
   pick with its per-device state, the "Has waited …" text) with `src/lib/pile.test.ts` (19
   tests); `PileCard` gets the sentence, the line and the jars; Waiting for you gets the dust-off
