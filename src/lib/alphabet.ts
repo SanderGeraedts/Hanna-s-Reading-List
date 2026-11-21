@@ -121,7 +121,7 @@ export function alphabetYear(
         : `${n} of 26 · behind: ${perMonth(left / monthsLeft)} a month to go`
 
   // a book from her pile for each missing letter: being read first, then wanted
-  const rank = { reading: 0, paused: 1, want: 2, read: 3 } as const
+  const rank = { reading: 0, paused: 1, want: 2, read: 3, dnf: 4 } as const
   const pile = books
     .filter((b) => b.status !== 'read' && !sleep.has(b.id) && !notOutYet(b, today))
     .sort((a, b) => rank[a.status] - rank[b.status] || a.title.localeCompare(b.title))

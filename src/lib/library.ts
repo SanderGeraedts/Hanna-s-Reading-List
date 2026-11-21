@@ -7,7 +7,8 @@ import { languageName } from './languages'
 import { isSortKey, type SortKey } from './sortKeys'
 import { mergeBooks } from './merge'
 
-export type ReadingStatus = 'want' | 'reading' | 'paused' | 'read'
+/** 'dnf': did not finish (#187), a book she put aside; it keeps its progress */
+export type ReadingStatus = 'want' | 'reading' | 'paused' | 'read' | 'dnf'
 
 export interface Book {
   id: string
@@ -200,6 +201,7 @@ export const STATUS_LABELS: Record<ReadingStatus, string> = {
   reading: 'Reading',
   paused: 'Paused',
   read: 'Read',
+  dnf: 'Did not finish',
 }
 
 const STORAGE_KEY = 'hannas-reading-list:v1'
@@ -237,6 +239,14 @@ export function localDay(d = new Date(), timeZone?: string) {
 /** Times a book has been read: finished books count at least once. */
 export function timesRead(book: Book) {
   return Math.max(book.readCount ?? 0, book.status === 'read' ? 1 : 0)
+}
+
+/**
+ * A finished book has a medal on its spine; so has a book she put aside
+ * (did not finish, #187) that she had read before.
+ */
+export function hasMedal(book: Book) {
+  return book.status === 'read' || (book.status === 'dnf' && timesRead(book) > 0)
 }
 
 /**
@@ -687,7 +697,8 @@ export function hexToHsl(hex: string): [number, number, number] {
   return [h * 60, s, l]
 }
 
-const STATUS_ORDER: Record<ReadingStatus, number> = { reading: 0, paused: 1, want: 2, read: 3 }
+// books she put aside (did not finish) come last (#187)
+const STATUS_ORDER: Record<ReadingStatus, number> = { reading: 0, paused: 1, want: 2, read: 3, dnf: 4 }
 
 export function sortBooks(books: Book[], key: SortKey): Book[] {
   const copy = [...books]

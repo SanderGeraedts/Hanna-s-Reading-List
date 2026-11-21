@@ -26,6 +26,7 @@ import { backText } from './textures'
 import { MergeSection } from './MergeSection'
 import { EdgesField } from './EdgesField'
 import { findBackText } from '#/lib/findBackText'
+import { stoppedAtText } from '#/lib/didNotFinish'
 
 export type Face = 'front' | 'spine' | 'back'
 
@@ -445,6 +446,11 @@ export function BookPanel({
           ))}
         </select>
       </label>
+
+      {/* put aside (#187): how far she got; the progress is kept for when she tries again */}
+      {book.status === 'dnf' && stoppedAtText(book, true) && (
+        <p className="muted small-text stopped-at">{stoppedAtText(book, true)}</p>
+      )}
 
       {(book.status === 'reading' || book.status === 'paused') && (
         <div className="field" role="group" aria-labelledby="progress-label">

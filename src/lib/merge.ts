@@ -7,8 +7,9 @@ import { tidyTitle } from './titles'
  * copy, or the same book listed twice by Storytel (two editions).
  */
 
-// a paused book has been started, but reading it now is further along
-const STATUS_RANK: Record<ReadingStatus, number> = { want: 0, paused: 1, reading: 2, read: 3 }
+// a paused book has been started, but reading it now is further along; a book
+// put aside (did not finish, #187) counts as started, like a paused one
+const STATUS_RANK: Record<ReadingStatus, number> = { want: 0, paused: 1, dnf: 1, reading: 2, read: 3 }
 
 const norm = (s: string | undefined) => (s ?? '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '')
 const surname = (b: Book) => norm((b.authors[0] ?? '').trim().split(/\s+/).pop())

@@ -2,7 +2,7 @@
 id: T-0006
 title: "Add a \"Did not finish\" reading status, and a dashboard block that brings one back now and then"
 description: "#187: books Hanna gave up on can be marked DNF; a dashboard block shows one of them at a time as a reminder to try again."
-status: Open
+status: Doing
 depends_on: [T-0001]
 decisions: [D-0002]
 raised_on: 2026-11-21
@@ -202,3 +202,20 @@ browser) or a local PocketBase, never from signing in or adding books on a deplo
   Two choices for the architect to confirm: no medal on a DNF spine (like Reading and Paused),
   and the days already read stay in the streak and Calendar (the *Done when* line on the streak
   reads as removing them).
+- 2026-11-21 orchestrator (recorded by the developer): the two open points. **Streak:** the days
+  she already read a book stay in the streak and the Calendar after it is marked *Did not
+  finish*; the designer's added *Done when* line replaces "left out of … the streak".
+  **Medal:** none on a *Did not finish* spine unless the book was read before, as the Goal
+  says (not the designer's "like Reading and Paused").
+- 2026-11-21 developer: built on branch `t-0006-did-not-finish`. `'dnf'` in `ReadingStatus`
+  ("Did not finish", last in the panel's list, the header line and *Arrange by → Reading
+  status*, where its walnut sign comes from the existing status grouping); search finds it by
+  "dnf" too; the panel shows "Stopped at N% · page X of Y" (or the listening time) instead of
+  the slider; no bookmark, a medal only when read before (`hasMedal`, used by the spine and the
+  3D medal). Storytel and the reading log treat it like *Paused* (`keepPaused`,
+  `progressPatch`). New block "Give it another try" (`AgainCard.tsx`, `didNotFinish.ts`) at the
+  bottom of Today's left column, one book a day in a fixed rotation. `shelfMerge.ts` and
+  `server/shelf.ts` are unchanged: the status is a value of the book's existing `status`
+  field, which the merge carries whole; tests prove the save merge, the nightly sync and the
+  Storytel refresh keep it without changing other books. `npm test`: 45 files, 309 tests
+  passed (27 new in `didNotFinish.test.ts` and `AgainCard.test.tsx`); `npm run build`: built.

@@ -21,6 +21,7 @@ import { pickReadNext, readNextChoices } from '#/lib/readNext'
 import { pendingRatings } from '#/lib/ratingAsk'
 import { seriesQuestions } from '#/lib/sleepSeries'
 import { WaitingCard } from './WaitingCard'
+import { AgainCard } from './AgainCard'
 import { AlphabetCard } from './AlphabetCard'
 import { storytelLink } from '#/lib/storytelLink'
 import { ChallengeCard } from './ChallengeCard'
@@ -230,6 +231,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
     pile: <PileCard books={books} />,
     onthisday: <OnThisDayCard books={books} onShowBook={onShowBook} />,
     lent: <LentCard books={books} onShowBook={onShowBook} />,
+    again: <AgainCard books={books} onShowBook={onShowBook} onUpdate={onUpdate} />,
     // Top 5 and the spice meter in one block, with a switch
     top: <RatingsCard books={books} onShowBook={onShowBook} />,
     fact: <FactCard books={books} />,

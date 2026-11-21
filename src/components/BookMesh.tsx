@@ -5,7 +5,7 @@ import { useFrame } from '@react-three/fiber'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import type { ThreeEvent } from '@react-three/fiber'
 import type { Book } from '#/lib/library'
-import { timesRead } from '#/lib/library'
+import { hasMedal, timesRead } from '#/lib/library'
 import type { BookDims, Slot } from '#/lib/shelfLayout'
 import { METALS, medalFaceTexture, medalLayout, medalTier, pageTextures, paintBack, paintEdges, paintFallbackCover, paintSpine } from './textures'
 import { cleanEdges } from '#/lib/edges'
@@ -290,7 +290,7 @@ export function BookMesh(props: BookMeshProps) {
       {(book.status === 'reading' || book.status === 'paused') && (
         <Bookmark dims={dims} progress={book.progress ?? 0} color={props.clipColor ?? RAINBOW[0]} />
       )}
-      {book.status === 'read' && <Medal dims={dims} count={timesRead(book)} />}
+      {hasMedal(book) && <Medal dims={dims} count={timesRead(book)} />}
       <SpineRidges dims={dims} read={book.status === 'read'} />
     </group>
   )
