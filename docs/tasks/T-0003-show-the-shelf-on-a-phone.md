@@ -7,7 +7,7 @@ depends_on: [T-0001]
 decisions: [D-0002, G-0019]
 raised_on: 2026-11-21
 done_on: ""
-result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/198"]
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/198", "https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/206", "https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/207", "https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/208"]
 ---
 
 # Goal
@@ -370,3 +370,13 @@ bookshelf now shows on her own phone. So the task stays *Doing*, and #181 stays 
   `is quick enough to run on every change` (also on `main`), and "Try again" lying under an
   open details sheet when the drawing is lost while a book is out (Esc or ✕ gets her out).
   Remaining: Hanna checks on her own phone that the bookshelf shows with her books.
+- 2026-11-21 developer: Hanna checked on her own phone (Android, Chrome): still the "can't be drawn" note, so the phone still runs out of graphics memory with her real shelf. Second fix: cover images are loaded only once a book is taken out (they face the next book on the shelf), shrunk to at most 512 px; the stand-in front is painted only then too; spines are painted at 0.55 of the sharpness on phones. Checked locally (no backend) at 390 × 844, touch, 2.6× pixels, 400 books with covers: the shelf draws, no cover is fetched until a book is taken out, then its cover shows sharp; no page errors.
+  Remaining: Hanna checks on her own phone that the bookshelf shows with her books.
+- 2026-11-21 developer: after #206 Hanna still sees the note on her phone (Android, Chrome). Third change: on phones no shadows, 1× pixels, no antialiasing, and each book's spine/back/stand-in canvas is freed once it is on the graphics chip (Chrome on Android caps all canvases on a page). The note gets a "Details" line saying how it failed (the error, or "lost after N s"), the number of books, the screen, the largest texture and the graphics chip, so the next step is based on her phone, not a guess. Checked locally at 390 × 844 with 400 books: the shelf draws, a lost context shows the Details line.
+  Remaining: Hanna opens the shelf on her phone; if the note still shows, she sends the Details line.
+- 2026-11-21 developer: Hanna asked for the old version on the phone, since that worked. On phones each book is one simple block again, as before the hardcovers of 19 November (one piece to draw instead of about nine: pages, two boards, spine and four ridges); the computer keeps the hardcovers. Checked locally: phone size shows the blocks with 400 books, desktop the hardcovers.
+  Remaining: Hanna opens the shelf on her phone; if the note still shows, she sends the Details line.
+- 2026-11-21 developer: with #207 the note's Details on Hanna's phone said "Error creating WebGL context … no WebGL": Chrome had blocked WebGL after the earlier crashes. After force-stopping Chrome the shelf showed, but it lagged and stuttered when turning a book. Fourth change, for smoothness: the shelf stops drawing while another page lies over it (it drew about 25,000 calls a second behind the Dashboard); on phones only the main light, still decorations, and on the shelf each book is drawn in two parts (paper and spine) instead of six, medals without their rim; fairy-light bulbs and ivy leaves are instanced (all phones and computers); on phones the back and stand-in front are painted at 0.6 of the size and without grain. Built app, 114 books at 443 × 824: draw calls on the shelf down from about 78,600 to 32,000 per 3 s, 0 behind the Dashboard.
+  Remaining: Hanna checks on her phone that the shelf scrolls and turns books smoothly.
+- 2026-11-21 developer: Hanna saw blurry spine titles on her phone. Undone two savings from #206/#207 that were only needed while the cause looked like memory: spines are painted at full sharpness again, and phones draw at up to 1.5 pixels per screen point instead of 1. Side-by-side close-ups: titles clearly sharper; draw calls unchanged (~34,000 per 3 s).
+  Remaining: Hanna checks on her phone that the shelf is smooth and the titles sharp.

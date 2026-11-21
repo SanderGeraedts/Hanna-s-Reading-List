@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import type { Book } from '#/lib/library'
 import { mergeIntoServer } from '#/lib/shelfMerge'
 import { isSortKey, type SortKey } from '#/lib/sortKeys'
+import { MAX_CHALLENGES, cleanChallenges, type OwnChallenge } from '#/lib/ownChallenges'
 import { asUser, pb, tokenUserId } from './pocketbase'
 
 /**
@@ -148,6 +149,47 @@ export const saveGoal = createServerFn({ method: 'POST' })
         if (data.goal === null) delete goals[String(data.year)]
         else goals[String(data.year)] = data.goal
         await pb(`/api/collections/libraries/records/${record.id}`, { method: 'PATCH', token, body: { goals } })
+        return true
+      }),
+  )
+
+/**
+ * Her own challenges, kept on the same record as the shelf but saved on their
+ * own (like the goals), so a challenge and a shelf save never overwrite each
+ * other. The whole list is saved at once.
+ */
+export const loadChallenges = createServerFn({ method: 'GET' }).handler(
+  (): Promise<OwnChallenge[] | null> =>
+    asUser(async (token) => {
+      const list = await pb<{ items: Array<{ id: string; challenges?: unknown }> }>(
+        '/api/collections/libraries/records?perPage=1&skipTotal=1&fields=id,challenges',
+        { token },
+      )
+      return list.items[0] ? cleanChallenges(list.items[0].challenges) : null
+    }),
+)
+
+/** Saves the whole list. False when there is no shelf on the server yet. */
+export const saveChallenges = createServerFn({ method: 'POST' })
+  .validator((input: { challenges: unknown }) => {
+    if (!Array.isArray(input?.challenges) || input.challenges.length > MAX_CHALLENGES) throw new Error('Invalid challenges.')
+    return { challenges: cleanChallenges(input.challenges) }
+  })
+  .handler(
+    ({ data }): Promise<boolean> =>
+      asUser(async (token) => {
+        const list = await pb<{ items: Array<{ id: string }> }>(
+          '/api/collections/libraries/records?perPage=1&skipTotal=1&fields=id',
+          { token },
+        )
+        const record = list.items[0]
+        // the shelf record is made by the first shelf save; don't make an empty one here
+        if (!record) return false
+        await pb(`/api/collections/libraries/records/${record.id}`, {
+          method: 'PATCH',
+          token,
+          body: { challenges: data.challenges },
+        })
         return true
       }),
   )

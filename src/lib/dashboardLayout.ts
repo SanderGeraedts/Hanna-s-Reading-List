@@ -36,6 +36,9 @@ export const BLOCKS = {
   badges: 'Badges',
   covers: 'Cover wall',
   rhythm: 'When I read most',
+  flower: 'Genre flower',
+  months: 'Pages per month',
+  world: 'Where your books are set',
   again: 'Give it another try',
 } as const
 
@@ -73,12 +76,12 @@ export const DEFAULT_LAYOUT: DashboardLayout = {
     ],
     challenges: [['goal', 'alphabet'], ['bingo']],
     stats: [
-      ['count', 'heatmap', 'breakdown', 'authors'],
-      ['calendar', 'records', 'rhythm', 'series', 'pile'],
+      ['count', 'heatmap', 'breakdown', 'flower', 'authors'],
+      ['calendar', 'months', 'records', 'rhythm', 'series', 'pile'],
     ],
     fun: [
       ['badges', 'fact', 'wrapped'],
-      ['covers', 'top', 'onthisday'],
+      ['covers', 'world', 'top', 'onthisday'],
     ],
   },
   hidden: [],

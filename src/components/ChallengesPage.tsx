@@ -11,17 +11,20 @@ import { ArrangeGrid } from './ArrangeGrid'
 import { useNarrow } from './Dashboard'
 import { cleanTwoColumns, showIn } from '#/lib/twoColumns'
 import type { TwoColumns } from '#/lib/twoColumns'
+import { NewChallengeForm, OwnChallengeCard, useOwnChallenges } from './OwnChallenges'
 
 export type ChallengeSection = 'goal' | 'monthly' | 'bingo' | 'alphabet'
 
 const CHALLENGE_IDS: readonly ChallengeSection[] = ['goal', 'monthly', 'bingo', 'alphabet']
+/** a block on the page: one of the fixed challenges, or one of her own ("own:<id>") */
+type ChallengeId = ChallengeSection | `own:${string}`
 const CHALLENGE_NAMES: Record<ChallengeSection, string> = {
   goal: 'Reading goal',
   monthly: 'Monthly challenge',
   bingo: 'Book bingo',
   alphabet: 'A–Z challenge',
 }
-const DEFAULT_ORDER: TwoColumns<ChallengeSection> = {
+const DEFAULT_ORDER: TwoColumns<ChallengeId> = {
   columns: [
     ['goal', 'bingo'],
     ['monthly', 'alphabet'],
@@ -32,14 +35,15 @@ const DEFAULT_ORDER: TwoColumns<ChallengeSection> = {
 /** The Challenges page's arrangement, remembered on this device for this account. */
 function useChallengeLayout(accountId: string | null) {
   const key = `hannas-reading-list:challenges-layout:${accountId ?? 'local'}`
-  const [layout, setState] = useState<TwoColumns<ChallengeSection>>(() => {
+  // kept as saved; cleaned against the challenges shown when it is used
+  const [layout, setState] = useState<unknown>(() => {
     try {
-      return cleanTwoColumns(JSON.parse(localStorage.getItem(key) ?? 'null'), CHALLENGE_IDS, DEFAULT_ORDER)
+      return JSON.parse(localStorage.getItem(key) ?? 'null')
     } catch {
-      return DEFAULT_ORDER
+      return null
     }
   })
-  const setLayout = (next: TwoColumns<ChallengeSection>) => {
+  const setLayout = (next: TwoColumns<ChallengeId>) => {
     setState(next)
     try {
       localStorage.setItem(key, JSON.stringify(next))
@@ -70,7 +74,14 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
   const [year, setYear] = useState(thisYear)
   const [editing, setEditing] = useState(false)
   // the order of the challenges, which she arranges like the dashboard (per device)
-  const [layout, setLayout] = useChallengeLayout(accountId)
+  const [savedLayout, setLayout] = useChallengeLayout(accountId)
+  const [own, setOwn] = useOwnChallenges(accountId)
+  const [adding, setAdding] = useState(false)
+  const ownThisYear = useMemo(() => own.filter((c) => c.year === year), [own, year])
+  const known = useMemo<ChallengeId[]>(() => [...CHALLENGE_IDS, ...ownThisYear.map((c) => `own:${c.id}` as const)], [ownThisYear])
+  const layout = useMemo(() => cleanTwoColumns(savedLayout, known, DEFAULT_ORDER), [savedLayout, known])
+  const nameOf = (id: ChallengeId) =>
+    id.startsWith('own:') ? (ownThisYear.find((c) => `own:${c.id}` === id)?.name ?? 'Challenge') : CHALLENGE_NAMES[id as ChallengeSection]
   const [arranging, setArranging] = useState(false)
   const narrow = useNarrow()
   const goal = useYearGoal(accountId, year)
@@ -127,27 +138,59 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
                 <span className="muted small-text">Hidden:</span>
                 {layout.hidden.map((id) => (
                   <button key={id} className="btn small" onClick={() => setLayout(showIn(layout, id))}>
-                    + {CHALLENGE_NAMES[id]}
+                    + {nameOf(id)}
                   </button>
                 ))}
               </div>
             )}
           </>
         ) : (
-          <button className="btn small" onClick={() => setArranging(true)}>
-            <span aria-hidden>⠿</span> Arrange
-          </button>
+          <div className="dashboard-bar-actions">
+            {year === thisYear && (
+              <button className="btn small" onClick={() => setAdding(true)} disabled={adding}>
+                ＋ New challenge
+              </button>
+            )}
+            <button className="btn small" onClick={() => setArranging(true)}>
+              <span aria-hidden>⠿</span> Arrange
+            </button>
+          </div>
         )}
       </div>
+      {adding && (
+        <NewChallengeForm
+          books={books}
+          year={year}
+          onSave={(c) => {
+            setOwn([...own, c])
+            setAdding(false)
+          }}
+          onCancel={() => setAdding(false)}
+        />
+      )}
       <ArrangeGrid
         layout={layout}
         onLayout={setLayout}
         arranging={arranging}
         narrow={narrow}
-        label={(id) => CHALLENGE_NAMES[id]}
+        label={nameOf}
         anchor={(id) => `challenge-${id}`}
         render={(id) =>
-          id === 'goal' ? (
+          id.startsWith('own:') ? (
+            (() => {
+              const c = ownThisYear.find((x) => `own:${x.id}` === id)
+              return c ? (
+                <OwnChallengeCard
+                  challenge={c}
+                  books={books}
+                  onShowBook={onShowBook}
+                  editable={year === thisYear}
+                  onChange={(next) => setOwn(own.map((x) => (x.id === c.id ? next : x)))}
+                  onDelete={() => setOwn(own.filter((x) => x.id !== c.id))}
+                />
+              ) : null
+            })()
+          ) : id === 'goal' ? (
             <GoalCard key={`goal-${year}`} books={books} accountId={accountId} year={year} />
           ) : id === 'monthly' ? (
             <ChallengeCard

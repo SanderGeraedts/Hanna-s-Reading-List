@@ -23,6 +23,10 @@
   --danger: #ea8670; /* remove, wrong: 4.5:1 on a card (colours.test.ts) */
   --header-ink: #2d2038; /* text straight on the wallpaper: deep plum */
   --header-muted: #54456a;
+  /* text on the white round buttons in the header: always dark, whatever the wallpaper */
+  --pill-ink: #2d2038;
+  /* the haze behind the header, as r, g, b: pale on the lavender, dark on the midnight wallpaper */
+  --header-fade: 246, 248, 255;
 
   /* the wallpaper: soft lavender stripes, behind the shelf and every page.
      The 3D wall (wallTexture in textures.ts) uses the same colours, down to
@@ -73,6 +77,40 @@
   color-scheme: dark;
 }
 
+/* Make the room yours: midnight blue with little gold stars instead of the
+   lavender (D-0022). Only the wallpaper tokens change; the text straight on
+   it turns light. colours.test.ts checks this block as well. */
+html[data-wallpaper='midnight'] {
+  --wall-top: #2a3670;
+  --wall-2: #222d62;
+  --wall-mid: #1b2552;
+  --wall-4: #151d44;
+  --wall-floor: #0f1536;
+  --wall-page-bottom: #1c2654;
+  --wall-stripe: rgba(255, 255, 255, 0.025);
+  --header-ink: #f4ecdc;
+  --header-muted: #c9c3e3;
+  --header-fade: 30, 40, 88;
+  --wallpaper: radial-gradient(circle at 18% 22%, rgba(244, 214, 140, 0.9) 0 1.2px, transparent 2px),
+    radial-gradient(circle at 63% 48%, rgba(244, 214, 140, 0.7) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 82% 12%, rgba(244, 214, 140, 0.8) 0 1.4px, transparent 2.2px),
+    radial-gradient(circle at 38% 78%, rgba(244, 214, 140, 0.6) 0 1px, transparent 1.6px),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 var(--wall-stripe-px),
+      var(--wall-stripe) var(--wall-stripe-px) calc(var(--wall-stripe-px) * 2)
+    ),
+    linear-gradient(to bottom, var(--wall-top), var(--wall-page-bottom));
+  background-size:
+    140px 140px,
+    140px 140px,
+    140px 140px,
+    140px 140px,
+    auto,
+    auto;
+}
+
+
 * {
   box-sizing: border-box;
 }
@@ -119,9 +157,9 @@ h2 {
   padding: 1rem 1.5rem;
   background: linear-gradient(
     to bottom,
-    rgba(246, 248, 255, 0.92) 0%,
-    rgba(246, 248, 255, 0.75) 60%,
-    rgba(246, 248, 255, 0) 100%
+    rgba(var(--header-fade), 0.92) 0%,
+    rgba(var(--header-fade), 0.75) 60%,
+    rgba(var(--header-fade), 0) 100%
   );
   color: var(--header-ink);
   pointer-events: none;
@@ -132,7 +170,7 @@ h2 {
 /* the sort menu sits on the light band, so give it light styling too */
 .topbar .input {
   background: rgba(255, 255, 255, 0.75);
-  color: var(--header-ink);
+  color: var(--pill-ink);
   border-color: rgba(40, 50, 90, 0.2);
   color-scheme: light;
 }
@@ -650,7 +688,7 @@ textarea.input {
 .topbar .btn.read-next {
   height: 2.4rem;
   background: rgba(255, 255, 255, 0.75);
-  color: var(--header-ink);
+  color: var(--pill-ink);
   border-color: rgba(40, 50, 90, 0.2);
   white-space: nowrap;
 }
@@ -675,7 +713,7 @@ textarea.input {
   border: 1px solid rgba(45, 32, 56, 0.2);
   border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.72);
-  color: var(--header-ink);
+  color: var(--pill-ink);
   font: inherit;
   font-size: var(--fs-small);
   cursor: pointer;
@@ -712,7 +750,7 @@ textarea.input {
 .zoom-controls .btn,
 .topbar .btn.search-clear {
   background: rgba(255, 255, 255, 0.78);
-  color: var(--header-ink);
+  color: var(--pill-ink);
   border-color: rgba(45, 32, 56, 0.2);
 }
 .zoom-controls .btn:hover:not(:disabled),
@@ -753,7 +791,7 @@ textarea.input {
   font-size: var(--fs-heading);
   line-height: 1;
   background: rgba(255, 255, 255, 0.75);
-  color: var(--header-ink);
+  color: var(--pill-ink);
   border-color: rgba(40, 50, 90, 0.2);
 }
 .topbar .btn.refresh:hover:not(:disabled) {
@@ -851,7 +889,7 @@ textarea.input {
   display: grid;
   place-items: center;
   background: rgba(255, 255, 255, 0.75);
-  color: var(--header-ink);
+  color: var(--pill-ink);
   border-color: rgba(40, 50, 90, 0.2);
 }
 .topbar .search-btn:hover {
@@ -1085,7 +1123,7 @@ textarea.input {
   font-size: var(--fs-large);
   font-weight: 600;
   background: rgba(255, 255, 255, 0.75);
-  color: var(--header-ink);
+  color: var(--pill-ink);
   border-color: rgba(40, 50, 90, 0.2);
 }
 .topbar .account-btn:hover {
@@ -1317,7 +1355,7 @@ textarea.input {
 .topbar .view-menu > summary {
   font-size: var(--fs-large);
   background: rgba(255, 255, 255, 0.75);
-  color: var(--header-ink);
+  color: var(--pill-ink);
   border-color: rgba(40, 50, 90, 0.2);
 }
 .topbar .view-menu > summary:hover {
@@ -3053,7 +3091,70 @@ textarea.input {
   margin: 0 0 var(--space-2);
 }
 .badges-hidden {
-  margin: var(--space-2) 0 0;
+  margin: var(--space-3) 0 var(--space-2);
+}
+.hidden-badges {
+  list-style: none;
+}
+/* a block's title that folds it away (Badges) */
+.card-fold {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.card-fold h2 {
+  margin: 0;
+}
+.card-fold-mark {
+  color: var(--accent);
+  font-size: var(--fs-small);
+}
+.card-fold:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: var(--radius-small);
+}
+.dash-card.folded .badges-total {
+  margin-bottom: 0;
+}
+/* a hidden badge: a locked tile with a "?", its riddle when tapped */
+.secret-tile {
+  width: 100%;
+  border: 1px dashed var(--accent-line);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  opacity: 0.75;
+}
+.secret-tile .badge-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 1.6em;
+  height: 1.6em;
+  border-radius: 50%;
+  background: var(--surface-solid);
+  color: var(--accent);
+  font-family: var(--serif);
+  font-weight: 700;
+}
+.secret-tile.open {
+  opacity: 1;
+  border-style: solid;
+}
+.secret-tile.open .small-text {
+  font-style: italic;
+  color: var(--text);
+}
+.secret-tile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 /* "Badge unlocked": slides in at the bottom right, like Steam */
 .badge-toast {
@@ -3226,6 +3327,50 @@ textarea.input {
   padding: 0;
 }
 
+/* ---- her own challenges ---------------------------------------------- */
+.own-challenge-form {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.own-challenge-form .field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.own-challenge-form label {
+  display: grid;
+  gap: var(--space-1);
+  flex: 1 1 10rem;
+}
+.own-challenge-count {
+  font-size: var(--fs-number);
+  font-weight: 700;
+  line-height: 1;
+}
+.own-challenge-books {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.own-challenge-books button {
+  border: 0;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+}
+.own-challenge-books img,
+.own-challenge-books .cover-chip {
+  display: block;
+  width: 2.2rem;
+  height: 3.3rem;
+  border-radius: 3px;
+  object-fit: cover;
+}
+
 /* ---- the reading journal ------------------------------------------- */
 .journal-note {
   display: block;
@@ -3358,6 +3503,8 @@ textarea.input {
 }
 .calendar-year > li {
   display: grid;
+  /* a month next to a taller one (six weeks) keeps its days right under its name */
+  align-content: start;
   gap: var(--space-2);
   padding: var(--space-3);
   border-radius: var(--radius-card);
@@ -3366,6 +3513,7 @@ textarea.input {
 }
 .calendar-mini {
   display: grid;
+  align-content: start;
   gap: var(--space-2);
   padding: 0;
   border: 0;
@@ -3440,6 +3588,656 @@ textarea.input {
     min-width: 0;
     flex: 1;
   }
+}
+
+/* ---- quick update: the 📖 button and its card (T-0011) ------------------ */
+/* bottom left: the shelf's zoom buttons and the badge toast are on the right */
+.quick-fab {
+  position: fixed;
+  z-index: 6;
+  left: 1rem;
+  bottom: 1rem;
+  width: calc(var(--tap) + 0.5rem);
+  height: calc(var(--tap) + 0.5rem);
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: var(--fs-large);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+.quick-fab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.quick-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+}
+.quick-sheet {
+  width: min(26rem, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: var(--space-3) var(--space-3) calc(var(--space-4) + env(safe-area-inset-bottom));
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+  background: var(--surface-solid);
+  color: var(--text);
+  box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.35);
+}
+@media (min-width: 721px) {
+  /* on a computer: a card in the bottom left corner instead of a sheet */
+  .quick-backdrop {
+    align-items: flex-end;
+    justify-content: flex-start;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.15);
+  }
+  .quick-sheet {
+    border-radius: var(--radius-card);
+  }
+}
+.quick-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.quick-head h2 {
+  margin: 0;
+  font-size: var(--fs-large);
+}
+.quick-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  gap: var(--space-3);
+}
+.quick-pick {
+  display: grid;
+  gap: var(--space-1);
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.quick-pick .dash-cover {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2 / 3;
+}
+.quick-pick-title {
+  font-size: var(--fs-small);
+  font-weight: 600;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.quick-card {
+  display: grid;
+  gap: var(--space-3);
+}
+.quick-book {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+.quick-book .dash-cover {
+  width: 4rem;
+  height: 6rem;
+  flex: none;
+}
+.quick-book-text {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  flex: 1;
+}
+.quick-bar {
+  display: block;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-hover);
+  overflow: hidden;
+}
+.quick-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.quick-position {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px dashed var(--accent-line);
+  border-radius: var(--radius-small);
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: text;
+}
+.quick-number {
+  font-size: var(--fs-number);
+  font-weight: 700;
+  line-height: 1;
+}
+.quick-type {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+.quick-input {
+  width: 6rem;
+  font-size: var(--fs-large);
+  text-align: center;
+}
+.quick-input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+.quick-steps {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr 1fr;
+  gap: var(--space-2);
+}
+.quick-step,
+.quick-ten {
+  min-height: calc(var(--tap) + 0.75rem);
+  font-size: var(--fs-heading);
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.quick-step.big {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+.quick-ten {
+  font-size: var(--fs-large);
+}
+.quick-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ---- why the shelf couldn't be drawn (T-0003) ------------------------ */
+.shelf-error-details {
+  margin-top: var(--space-2);
+  max-width: min(32rem, calc(100vw - 2rem));
+  font-size: var(--fs-tiny);
+  color: var(--muted);
+  text-align: left;
+}
+.shelf-error-details summary {
+  cursor: pointer;
+  text-align: center;
+}
+.shelf-error-details code {
+  display: block;
+  margin-top: var(--space-1);
+  padding: var(--space-2);
+  border-radius: var(--radius-small);
+  background: var(--surface-sunken);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+/* ---- little magic moments: sparkles, once upon a time ---------------- */
+.sparkle-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  pointer-events: none;
+  overflow: hidden;
+}
+.sparkle-burst {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+.sparkle-glow {
+  position: absolute;
+  left: -70px;
+  top: -70px;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 226, 150, 0.55), rgba(255, 226, 150, 0) 70%);
+  animation: sparkle-glow 1.2s ease-out forwards;
+}
+.sparkle-bit {
+  position: absolute;
+  left: calc(var(--size) / -2);
+  top: calc(var(--size) / -2);
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff8dc 0%, #f3cf72 45%, rgba(243, 207, 114, 0) 72%);
+  opacity: 0;
+  animation: sparkle-fly 1.2s ease-out forwards;
+}
+/* every third one a little four-pointed star */
+.sparkle-bit.star {
+  border-radius: 0;
+  background: #fff3c4;
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+  filter: drop-shadow(0 0 4px #f3cf72);
+}
+@keyframes sparkle-fly {
+  0% {
+    transform: translate(0, 0) scale(0.3) rotate(0deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(1) rotate(160deg);
+    opacity: 0;
+  }
+}
+@keyframes sparkle-glow {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* only a soft glow, nothing flying */
+  .sparkle-bit {
+    display: none;
+  }
+  .sparkle-glow {
+    animation-duration: 0.8s;
+  }
+}
+.story-line {
+  margin: 0;
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--accent);
+}
+.story-line.end {
+  text-align: right;
+}
+
+/* ---- make a wish: wishes, then three books ---------------------------- */
+.wish-form {
+  display: grid;
+  gap: var(--space-3);
+}
+.wish-row {
+  display: grid;
+  gap: var(--space-1);
+}
+.wish-row .segmented {
+  flex-wrap: wrap;
+}
+.wish-grant {
+  justify-self: stretch;
+  min-height: var(--tap);
+  font-size: var(--fs-large);
+}
+.wish-granted {
+  display: grid;
+  gap: var(--space-3);
+}
+.wish-granted > p {
+  margin: 0;
+}
+.wish-books {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.wish-book {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  width: 100%;
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.wish-book:hover,
+.wish-book:focus-visible {
+  border-color: var(--accent);
+}
+.wish-book .dash-cover {
+  width: 3rem;
+  height: 4.5rem;
+  flex: none;
+}
+.wish-book-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.wish-reason {
+  color: var(--accent);
+}
+
+/* ---- finish estimates -------------------------------------------------- */
+.quick-eta {
+  margin: calc(var(--space-2) * -1) 0 0;
+  text-align: center;
+}
+.goal-forecast {
+  margin: var(--space-1) 0 0;
+  color: var(--accent);
+  font-size: var(--fs-small);
+}
+
+/* ---- the monthly wrap-up ------------------------------------------------ */
+.wrapup-sheet {
+  display: grid;
+  gap: var(--space-3);
+  width: min(30rem, 100%);
+}
+.wrapup-covers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.2rem, 1fr));
+  gap: var(--space-2);
+}
+.wrapup-covers .cover-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+}
+/* every cover the same size, with or without a picture */
+.wrapup-covers .dash-cover,
+.wrapup-covers .dash-cover.blank {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+}
+.wrapup-numbers {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: var(--fs-large);
+  color: var(--accent);
+}
+.wrapup-top {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+.wrapup-top .dash-cover {
+  width: 3.6rem;
+  height: 5.4rem;
+}
+.wrapup-top p {
+  margin: 0;
+}
+.wrapup-fact {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-small);
+  background: var(--surface-sunken);
+}
+.wrapup-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ---- reading in pictures: the genre flower ---------------------------- */
+.flower-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: center;
+}
+@media (max-width: 420px) {
+  .flower-body {
+    grid-template-columns: 1fr;
+  }
+}
+.flower {
+  width: 100%;
+  max-width: 14rem;
+  justify-self: center;
+}
+.flower-count {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 700;
+  fill: #3a2614;
+}
+.flower-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+.flower-legend li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--space-2);
+  align-items: center;
+}
+.flower-dot {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+}
+
+/* ---- reading in pictures: pages per month ----------------------------- */
+.months-chart {
+  width: 100%;
+  height: auto;
+  margin-top: var(--space-2);
+}
+.months-grid {
+  stroke: var(--border);
+  stroke-dasharray: 2 3;
+}
+.months-scale,
+.months-label {
+  fill: var(--muted);
+  font-size: 9px;
+}
+.months-now {
+  fill: var(--accent);
+}
+.months-last {
+  fill: rgba(217, 168, 91, 0.32);
+}
+.months-key {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: var(--space-1) 0 0;
+  color: var(--muted);
+}
+.months-swatch {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 2px;
+  margin-left: var(--space-2);
+}
+.months-swatch.now {
+  background: var(--accent);
+}
+.months-swatch.last {
+  background: rgba(217, 168, 91, 0.32);
+}
+
+/* ---- reading in pictures: where your books are set -------------------- */
+.world-map {
+  width: 100%;
+  height: auto;
+  margin: var(--space-2) 0;
+  border-radius: var(--radius-small);
+  background: rgba(120, 160, 200, 0.12);
+}
+.world-country {
+  fill: rgba(255, 255, 255, 0.1);
+  stroke: rgba(0, 0, 0, 0.35);
+  stroke-width: 0.25;
+}
+.world-country.lit {
+  fill: var(--accent);
+}
+.world-top {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: var(--space-1) var(--space-3);
+}
+.world-top li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.world-lands {
+  margin: var(--space-2) 0 0;
+  font-size: var(--fs-small);
+}
+
+/* ---- make the room yours: the 🎨 Room panel ------------------------------ */
+.room-sheet {
+  position: fixed;
+  z-index: 8;
+  right: 1rem;
+  bottom: calc(1rem + 4 * (var(--tap) + var(--space-1)));
+  width: min(22rem, calc(100vw - 2rem));
+  max-height: 70vh;
+  border-radius: var(--radius-card);
+  display: grid;
+  gap: var(--space-3);
+}
+@media (max-width: 720px) {
+  .room-sheet {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-height: 60vh;
+    border-radius: var(--radius-card) var(--radius-card) 0 0;
+  }
+}
+.room-row {
+  display: grid;
+  gap: var(--space-1);
+}
+.room-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.room-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 2.2rem;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-small);
+  cursor: pointer;
+}
+.room-choice.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.room-swatch {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+}
+.wood-walnut {
+  background: #6b4630;
+}
+.wood-honey {
+  background: #bda283;
+}
+.wood-whitewash {
+  background: #e6e0d6;
+}
+.wood-ebony {
+  background: #2a211c;
+}
+.wood-cherry {
+  background: #8a4a32;
+}
+.paper-lavender {
+  background: repeating-linear-gradient(90deg, #ece4f5 0 3px, #d9cbec 3px 6px);
+}
+.paper-midnight {
+  background: radial-gradient(circle at 35% 35%, #f4d68c 0 1px, transparent 1.6px), #1b2552;
+}
+.room-decor {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.room-decor li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.room-decor li.off .room-toggle span {
+  color: var(--muted);
+}
+.room-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap);
+  cursor: pointer;
+}
+.room-move {
+  display: inline-flex;
+  gap: 2px;
 }
 
 /* ---- favourites on top --------------------------------------------- */

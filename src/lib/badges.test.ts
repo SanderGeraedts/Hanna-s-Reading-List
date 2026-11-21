@@ -82,6 +82,19 @@ describe('more badges, progress and secrets', () => {
   })
 })
 
+describe('riddles for the hidden badges', () => {
+  it('every secret badge has a riddle, and the riddle never gives its name away', () => {
+    const all = badges([read('a', '2026-01-02')], '2026-11-20')
+    const secrets = all.filter((b) => b.secret)
+    expect(secrets.length).toBe(11)
+    for (const b of secrets) {
+      expect(b.riddle, b.id).toBeTruthy()
+      expect(b.riddle!.toLowerCase()).not.toContain(b.name.toLowerCase())
+    }
+    expect(all.filter((b) => !b.secret).every((b) => b.riddle === undefined)).toBe(true)
+  })
+})
+
 describe('when I read most', () => {
   it('finds the weekday with the most reading days', () => {
     // 2026-11-01 and 2026-11-08 are Sundays, 2026-11-03 a Tuesday

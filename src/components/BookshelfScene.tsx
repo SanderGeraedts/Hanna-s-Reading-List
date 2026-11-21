@@ -8,12 +8,14 @@ import { FRAME, SHELF, computeLayout, fitShelf, rowFloorY, topGap } from '#/lib/
 import { arrangementSeparators } from '#/lib/separators'
 import type { ShelfLayout } from '#/lib/shelfLayout'
 import { BookMesh, RAINBOW } from './BookMesh'
-import { Decorations, FairyLights } from './Decorations'
+import { Decorations, FairyLights, StillDecorations } from './Decorations'
 import { BookNooks } from './BookNook'
 import { SeriesDividers } from './SeriesDivider'
 import { sleepReadIds } from '#/lib/sleepSeries'
 import type { InspectTarget } from './BookMesh'
 import { FLOOR_TILE_METRES, WALLPAPER_REPEAT_M, floorTexture, wallTexture, woodTexture } from './textures'
+import { DEFAULT_ROOM, shownDecor } from '#/lib/room'
+import type { Room as RoomChoice, Wallpaper, Wood } from '#/lib/room'
 
 export interface BookshelfSceneProps {
   books: Book[]
@@ -32,6 +34,10 @@ export interface BookshelfSceneProps {
   onZoom?: (zoom: number) => void
   /** height of the header over the top of the scene, in CSS px (phones keep the case below it) */
   topInset?: number
+  /** her room: the wood, the wallpaper and the decorations (Make the room yours) */
+  room?: RoomChoice
+  /** another page lies over the shelf: stop drawing it until it's shown again */
+  paused?: boolean
   /** the browser dropped the 3D drawing (WebGL context lost), e.g. when a phone runs out of memory */
   onContextLost?: () => void
 }
@@ -57,7 +63,11 @@ function portraitInspect(frame: { fill: number; yShift: number }, sheet: number,
   frame.yShift = (s - header) / 2
 }
 
-/** Phones get a lighter version of the room: smaller shadows, fewer pixels, so scrolling stays smooth. */
+/**
+ * Phones get a lighter version of the room: no shadows and at most 1.5
+ * pixels per screen point, so a full shelf fits in a phone's graphics memory (#181) and
+ * scrolling stays smooth.
+ */
 function useLite() {
   const [lite, setLite] = useState(false)
   useEffect(() => {
@@ -74,10 +84,13 @@ export function BookshelfScene(props: BookshelfSceneProps) {
   const lite = useLite()
   return (
     <Canvas
-      shadows="soft"
+      // another page (Dashboard, Challenges, Calendar) covers the shelf: don't keep drawing it
+      frameloop={props.paused ? 'never' : 'always'}
+      shadows={lite ? false : 'soft'}
+      // 1.5 pixels per screen point on a phone: sharp titles, still much lighter than the screen's own 2–3
       dpr={lite ? [1, 1.5] : [1, 2]}
       camera={{ fov: FOV, near: 0.05, far: 60, position: [0, 0.7, 4] }}
-      gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping }}
+      gl={{ antialias: !lite, toneMapping: THREE.ACESFilmicToneMapping }}
       style={{ touchAction: 'none' }}
     >
       <color attach="background" args={['#2a1f18']} />
@@ -119,6 +132,7 @@ function Scene({
   zoom = 1,
   onZoom,
   topInset = 0,
+  room: roomChoice,
   lite = false,
 }: BookshelfSceneProps & { lite?: boolean }) {
   const [hovered, setHovered] = useState<string | null>(null)
@@ -151,7 +165,9 @@ function Scene({
   const separators = useMemo(() => arrangementSeparators(ordered, arrangement), [arrangement, ordered])
   // the case's width follows the screen, and widens on big screens so the books stay large (#39)
   const fit = useMemo(() => fitShelf(ordered, aspect, separators), [ordered, aspect, separators])
-  const layout = useMemo(() => computeLayout(ordered, fit, separators), [ordered, fit, separators])
+  const room = roomChoice ?? DEFAULT_ROOM
+  const decorKinds = useMemo(() => shownDecor(room), [room])
+  const layout = useMemo(() => computeLayout(ordered, fit, separators, decorKinds), [ordered, fit, separators, decorKinds])
 
   // keep the case size stable while dragging so the camera doesn't jump around
   const stableLayout = useRef<ShelfLayout>(layout)
@@ -198,7 +214,7 @@ function Scene({
   const insertionOrder = useCallback(
     (id: string, x: number, y: number): string[] => {
       const others = books.filter((b) => b.id !== id)
-      const lay = computeLayout(others, { innerWidth: fit.innerWidth, minRows: caseLayout.rows })
+      const lay = computeLayout(others, { innerWidth: fit.innerWidth, minRows: caseLayout.rows }, undefined, decorKinds)
       // which shelf is the pointer over?
       let row = 0
       for (let r = 0; r < lay.rows; r++) {
@@ -414,12 +430,16 @@ function Scene({
   return (
     <>
       <Lights caseHeight={caseLayout.caseHeight} caseWidth={caseLayout.caseWidth} cameraBase={cameraBase} lite={lite} />
-      <Room />
-      <Bookcase layout={caseLayout} />
-      <Decorations items={layout.decor} />
-      <BookNooks items={layout.nooks} />
+      <Room wallpaper={room.wallpaper} />
+      <Bookcase layout={caseLayout} wood={room.wood} />
+      <StillDecorations.Provider value={lite}>
+        <Decorations items={layout.decor} />
+      <StillDecorations.Provider value={lite}>
+        <BookNooks items={layout.nooks} />
+      </StillDecorations.Provider>
       <SeriesDividers items={layout.dividers} />
-      <FairyLights width={caseLayout.innerWidth} top={caseLayout.caseHeight} />
+        <FairyLights width={caseLayout.innerWidth} top={caseLayout.caseHeight} />
+      </StillDecorations.Provider>
 
       {ordered.map((book) => {
         const slot = layout.slots.get(book.id)
@@ -429,6 +449,7 @@ function Scene({
           <BookMesh
             key={book.id}
             book={book}
+            simple={lite}
             clipColor={clipColors.get(book.id)}
             sleep={sleepIds.has(book.id)}
             dims={dims}
@@ -607,21 +628,26 @@ function Lights({
         shadow-camera-top={caseHeight + 0.6}
         shadow-camera-bottom={-1.2}
       />
-      {/* the reading lamp: warm, from the top left, without shadows of its own */}
-      <pointLight
-        position={[-caseWidth / 2 - 0.25, caseHeight + 0.35, 1.1]}
-        intensity={2.2}
-        distance={5}
-        decay={1.6}
-        color="#ffc27a"
-      />
-      {/* soft light near the viewer so an inspected book is well lit */}
-      <pointLight
-        position={[cameraBase.x - 0.4, cameraBase.y + 0.5, cameraBase.z - 0.2]}
-        intensity={1.6}
-        distance={4}
-        color="#fff4e6"
-      />
+      {/* on a phone every light costs work on every pixel: only the main light there */}
+      {!lite && (
+        <>
+          {/* the reading lamp: warm, from the top left, without shadows of its own */}
+          <pointLight
+            position={[-caseWidth / 2 - 0.25, caseHeight + 0.35, 1.1]}
+            intensity={2.2}
+            distance={5}
+            decay={1.6}
+            color="#ffc27a"
+          />
+          {/* soft light near the viewer so an inspected book is well lit */}
+          <pointLight
+            position={[cameraBase.x - 0.4, cameraBase.y + 0.5, cameraBase.z - 0.2]}
+            intensity={1.6}
+            distance={4}
+            color="#fff4e6"
+          />
+        </>
+      )}
     </>
   )
 }
@@ -631,13 +657,13 @@ const WALL_HEIGHT = 8
 const WALL_WIDTH = 30
 const FLOOR_SIZE = 30
 
-function Room() {
+function Room({ wallpaper }: { wallpaper: Wallpaper }) {
   const wall = useMemo(() => {
-    const t = wallTexture()
+    const t = wallTexture(wallpaper)
     // the striped wallpaper repeats sideways along the whole wall
     t.repeat.set(WALL_WIDTH / WALLPAPER_REPEAT_M, 1)
     return t
-  }, [])
+  }, [wallpaper])
   const floor = useMemo(() => {
     const t = floorTexture()
     // boards run away from the viewer
@@ -667,8 +693,8 @@ function Room() {
   )
 }
 
-function Bookcase({ layout }: { layout: ShelfLayout }) {
-  const wood = useMemo(() => woodTexture(), [])
+function Bookcase({ layout, wood: woodKind }: { layout: ShelfLayout; wood: Wood }) {
+  const wood = useMemo(() => woodTexture(woodKind), [woodKind])
   // the texture tile is 1.6 m x 0.4 m of wood; repeat it on the tall back panel so grain isn't stretched
   const backWood = useMemo(() => {
     const t = wood.clone()
