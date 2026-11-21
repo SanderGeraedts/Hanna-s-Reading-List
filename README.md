@@ -63,7 +63,7 @@ SIGNUP_EMAILS=test@example.com .pocketbase/pocketbase serve --dir=.pocketbase/pb
 POCKETBASE_URL=http://127.0.0.1:8090 npm run dev
 ```
 
-Never point a local dev server at the production `POCKETBASE_URL` (see #96).
+Never point a local dev server at the production `POCKETBASE_URL` (see #96). The dev server never loads the Netlify site's environment variables, even on a checkout linked with `netlify link` (#156); why, and what that looks like in the log, is in [`docs/data-safety.md`](docs/data-safety.md).
 
 ## Working on it with Claude
 
