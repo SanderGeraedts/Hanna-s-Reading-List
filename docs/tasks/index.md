@@ -13,6 +13,7 @@ None.
 - [T-0001 Adopt the harness at v0.7.0](T-0001-adopt-the-harness.md): D-0001: switch to pnpm, install the harness at v0.7.0 with harness adopt, thin AGENTS.md and CLAUDE.md, CI and auto-merge as callers of the harness's workflows with the backend workflow wired in, and the harness's ruleset on main.
 - [T-0003 Show the bookshelf again on a phone](T-0003-show-the-shelf-on-a-phone.md): #181: the shelf isn't shown in the mobile version; find what broke it on narrow screens and fix it, with a test that keeps it fixed.
 - [T-0009 Keep the dashboard's favourites with the account, so every device shows the same ones](T-0009-favourites-follow-her-across-devices.md): #182: the starred dashboard blocks are saved per device today; keep them on the account's shelf record on the server, saved on their own like the reading goals.
+- [T-0014 Motivate reading from the pile: in vs. out, two coin jars, dust off the oldest and a pile challenge button](T-0014-motivation-for-the-pile.md): The want-to-read block shows this month's books in vs. out with a 6-month line and two coin jars (buying and Storytel), Waiting for you offers the longest-waiting book once a week, and Challenges gets a Pile challenge button.
 
 ## Done
 
