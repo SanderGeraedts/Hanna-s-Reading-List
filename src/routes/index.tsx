@@ -453,6 +453,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             zoom={zoom}
             onZoom={setZoom}
             topInset={headerPx}
+            paused={offShelf}
           />
         </ClientOnly>
         {!offShelf && !selected && books.length > 0 && (

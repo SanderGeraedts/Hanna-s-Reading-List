@@ -7,7 +7,7 @@ depends_on: [T-0001]
 decisions: [D-0002, G-0019]
 raised_on: 2026-11-21
 done_on: ""
-result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/198", "https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/206", "https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/207"]
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/198", "https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/206", "https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/207", "PR_PLACEHOLDER"]
 ---
 
 # Goal
@@ -376,3 +376,5 @@ bookshelf now shows on her own phone. So the task stays *Doing*, and #181 stays 
   Remaining: Hanna opens the shelf on her phone; if the note still shows, she sends the Details line.
 - 2026-11-21 developer: Hanna asked for the old version on the phone, since that worked. On phones each book is one simple block again, as before the hardcovers of 19 November (one piece to draw instead of about nine: pages, two boards, spine and four ridges); the computer keeps the hardcovers. Checked locally: phone size shows the blocks with 400 books, desktop the hardcovers.
   Remaining: Hanna opens the shelf on her phone; if the note still shows, she sends the Details line.
+- 2026-11-21 developer: with #207 the note's Details on Hanna's phone said "Error creating WebGL context … no WebGL": Chrome had blocked WebGL after the earlier crashes. After force-stopping Chrome the shelf showed, but it lagged and stuttered when turning a book. Fourth change, for smoothness: the shelf stops drawing while another page lies over it (it drew about 25,000 calls a second behind the Dashboard); on phones only the main light, still decorations, and on the shelf each book is drawn in two parts (paper and spine) instead of six, medals without their rim; fairy-light bulbs and ivy leaves are instanced (all phones and computers); on phones the back and stand-in front are painted at 0.6 of the size and without grain. Built app, 114 books at 443 × 824: draw calls on the shelf down from about 78,600 to 32,000 per 3 s, 0 behind the Dashboard.
+  Remaining: Hanna checks on her phone that the shelf scrolls and turns books smoothly.

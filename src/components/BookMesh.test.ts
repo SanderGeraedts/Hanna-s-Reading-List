@@ -28,3 +28,19 @@ describe('search highlight strength (#184)', () => {
     expect(bookLight(1, 0, 1)).toEqual({ emissive: 1, shade: 0 })
   })
 })
+
+describe('a book on the shelf on a phone is drawn in two parts (T-0003)', () => {
+  it('has the paper sides first and the spine last, as two groups', async () => {
+    const { shelfBlock } = await import('./BookMesh')
+    const g = shelfBlock({ w: 0.13, h: 0.2, t: 0.03 })
+    expect(g.groups).toEqual([
+      { start: 0, count: 30, materialIndex: 0 },
+      { start: 30, count: 6, materialIndex: 1 },
+    ])
+    // the last six indices are the spine side (-x): every corner at x = -w/2
+    const pos = g.attributes.position
+    const idx = Array.from(g.index!.array).slice(30)
+    expect(idx.every((i) => Math.abs(pos.getX(i) + 0.065) < 1e-6)).toBe(true)
+    expect(g.index!.count).toBe(36)
+  })
+})

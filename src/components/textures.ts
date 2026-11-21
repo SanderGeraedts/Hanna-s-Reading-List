@@ -76,6 +76,9 @@ function accentFor(bg: string) {
 
 /** Subtle cloth/paper grain so flat colours don't look plasticky. */
 function grain(ctx: CanvasRenderingContext2D, w: number, h: number, strength = 0.06) {
+  // too fine to see on a phone, and reading every pixel back is slow there:
+  // it made taking a book out stutter (T-0003)
+  if (onPhone()) return
   const img = ctx.getImageData(0, 0, w, h)
   const d = img.data
   for (let i = 0; i < d.length; i += 4) {
@@ -144,6 +147,8 @@ const PX_PER_UNIT = 2400
  * shelf on an Android phone needs (#181, T-0003).
  */
 const PHONE_SPINE_SCALE = 0.55
+/** the back and the stand-in front on a phone: 384 px wide instead of 640 */
+const PHONE_COVER_SCALE = 0.6
 const spineScale = () => (onPhone() ? PHONE_SPINE_SCALE : 1)
 
 /** A phone (or anything with a small screen or a touch screen): the lighter shelf. */
@@ -487,8 +492,11 @@ export function medalFaceTexture(tier: MedalTier, count: number) {
 export function paintBack(book: Book, dims: BookDims) {
   const W = 640
   const H = Math.round((W * dims.h) / dims.w)
-  const c = canvas(W, H)
+  // on a phone a smaller picture, drawn with the same layout: quicker to paint when a book is taken out
+  const px = onPhone() ? PHONE_COVER_SCALE : 1
+  const c = canvas(W * px, H * px)
   const ctx = c.getContext('2d', { willReadFrequently: true })!
+  ctx.scale(px, px)
   const bg = book.color
   const ink = inkFor(bg)
   const accent = accentFor(bg)
@@ -567,8 +575,11 @@ export function paintBack(book: Book, dims: BookDims) {
 export function paintFallbackCover(book: Book, dims: BookDims) {
   const W = 640
   const H = Math.round((W * dims.h) / dims.w)
-  const c = canvas(W, H)
+  // on a phone a smaller picture, drawn with the same layout: quicker to paint when a book is taken out
+  const px = onPhone() ? PHONE_COVER_SCALE : 1
+  const c = canvas(W * px, H * px)
   const ctx = c.getContext('2d', { willReadFrequently: true })!
+  ctx.scale(px, px)
   const bg = book.color
   const ink = inkFor(bg)
   const accent = accentFor(bg)
