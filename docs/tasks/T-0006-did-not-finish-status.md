@@ -2,11 +2,11 @@
 id: T-0006
 title: "Add a \"Did not finish\" reading status, and a dashboard block that brings one back now and then"
 description: "#187: books Hanna gave up on can be marked DNF; a dashboard block shows one of them at a time as a reminder to try again."
-status: Doing
+status: Done
 depends_on: [T-0001]
 decisions: [D-0002]
 raised_on: 2026-11-21
-done_on: ""
+done_on: 2026-11-21
 result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/199"]
 ---
 
@@ -233,6 +233,88 @@ and `BookPanel.tsx` on the branch. The app has one look (D-0020), no light/dark 
 
 # Test
 
+Tester, 2026-11-21, on a fresh worktree of `t-0006-did-not-finish` (head `4374d24`), then
+again after merging `origin/main` (T-0003, #198; the only conflict was the generated task
+index, regenerated). The deploy-preview items were done on a local dev server instead (issue
+#193): with no backend (shelf in the browser), and for saving with a throwaway local
+PocketBase 0.40.6 on port 8511 with the repo's migrations and hooks.
+
+**Commands**
+
+- `npm ci`: `added 654 packages, and audited 655 packages in 1m`.
+- `npm test` on the branch: `Test Files 49 passed (49)`, `Tests 338 passed (338)`. After the
+  merge with main: `Test Files 52 passed (52)`, `Tests 349 passed (349)`.
+- `npm run build`: `✓ built in 1.42s` (after the merge: `✓ built in 1.68s` / `1.26s`).
+- Code-owned paths in `git diff origin/main...HEAD`: none (`shelfMerge.ts`, `server/shelf.ts`,
+  `deploy/nas/`, `.github/`, `netlify*`, `CLAUDE.md`, `.claude/`, the guardrails untouched).
+
+**Saving with a real PocketBase** (two and three browser contexts, one account):
+
+```
+1 server after sign-up:        x1:reading:0.42 y1:want z1:read
+3 A panel stopped line:        Stopped at 42% · page 100 of 237
+4 server after A marks DNF:    x1:dnf:0.42 (log=2) y1:want z1:read
+5 B (second browser) signs in: x1:dnf:0.42 y1:want z1:read; panel "dnf | Stopped at 42% · page 100 of 237"
+6 C local before (stale):      x1:reading:0.42 y1:want z1:read
+7 server after stale C saves Piranesi: x1:dnf:0.42 (log=2) y1:reading z1:read
+7b C after its save (took the server copy): x1:dnf:0.42 y1:reading z1:read
+8b B after a reload:           x1:dnf:0.42 y1:reading z1:read
+9 B dashboard block:           Give it another try / Circe / Madeline Miller / Stopped at 42% / Try again / Show on the shelf
+```
+
+The status survives a save and a load in a second browser, and a stale device saving another
+book neither undoes it nor loses its reading log. No request left localhost except Google Fonts.
+
+**The tests for the nightly sync and the ↻ refresh:** `didNotFinish.test.ts` runs the nightly
+path through `syncedShelf` (what `server/nightly.ts` calls) and the refresh through
+`importStorytelBooks` (what `useStorytelSync.ts` and Add book call). They cover: stays DNF when
+Storytel says reading (same progress) or want; becomes Reading on new progress; becomes Read
+on finished; the nightly sync leaves a DNF book and a paused book equal to what they were. I
+also read the "other edition of a merged book" branch: `keepPaused` runs first, so the
+edition's "reading" becomes `dnf` and the rank comparison doesn't move it. Sound; the only gap
+is that "listened on" and "finished" are tested on the refresh only, not through
+`syncedShelf`, which uses the same function.
+
+**Screens, local dev server with no backend (1280 px and 320 px):**
+
+- Header: before "5 books · 3 reading · 1 want to read · 1 read", after marking Circe
+  "5 books · 2 reading · 1 want to read · 1 read · 1 did not finish".
+- Panel: "Stopped at 42% · page 100 of 237", no progress slider (0 sliders). **The designer's
+  ask, a book she only listens to** (Storytel, 625 min, 30.45%): "Stopped at 30.5% · 3 h 10 min
+  of 10 h 25 min". The block shows "Stopped at 30.5%" for it.
+- *Arrange by → Reading status* chosen in the menu: order Reading, Want to read, Did not finish;
+  the walnut "Did not finish" sign; no bookmark on the DNF spines, a medal only on the one read
+  before. (The developer's screenshot had the DNF nook before *Read* because its test shelf
+  was never sorted through the menu, only given the arrangement; sorted, DNF comes last, as
+  the unit test also says.)
+- Search: "dnf", "DNF", "did not", "Did not finish" and "finish" each give "2 books".
+- Streak and Calendar: strip before "🔥 2 days in a row · 1 read", after marking DNF the same;
+  Calendar 20 and 21 November still say "Circe, you started it and read 47 pages" / "Circe, you
+  read 52 pages".
+- Block after *Try again*: "“The Hobbit audio” is back in Currently reading." then the next
+  book, focus on its *Try again*; *Currently reading* lists the book.
+- 320 px: very long title wraps, buttons 44 px and 44 px, page scroll width 320.
+- A shelf saved before the change: the localStorage copy is byte-for-byte the same after load
+  (`true`).
+
+**Tried to break it**
+
+- Every book "Did not finish": header line, block shows one, *Currently reading* "Nothing on
+  the go right now.", *What next?* "No unread books waiting on the shelf.", streak kept;
+  pressing *Try again* until none are left ends with "No books put aside." and focus on the
+  heading. No errors.
+- No DNF book: only the title and "No books put aside.", block 102 px high.
+- *Try again* then undo (set it back to *Did not finish* in the panel): status, progress,
+  times read, *Started on* and the reading log are exactly as before (`true`).
+- Double-click on *Try again*: only one book moved back to Reading.
+- The daily pick (device clock faked): 21 Nov noon and evening "Book two", 22 Nov "Book one".
+  Across midnight with the page open, the block keeps the evening's book until the dashboard
+  is shown again (going to the shelf and back shows the new day's book). Acceptable: it never
+  changes under her hand.
+- The only console error was the dev server's missing `/favicon.ico` (404), unrelated.
+
+**Verdict: passed.**
+
 # Log
 
 - 2026-11-21 architect: Task written from #187, with the assumptions in the Goal.
@@ -276,3 +358,6 @@ and `BookPanel.tsx` on the branch. The app has one look (D-0020), no light/dark 
 - 2026-11-21 ux-designer: reviewed: passes. Status, nook sign, panel line and block match the
   Design at 320 px and 1280 px; the dropped explanation line (D-0014), the app's page and time
   format, and the medal when read before are accepted. Next: the tester.
+- 2026-11-21 tester: passed. Done-when items run locally (no backend, and a throwaway
+  PocketBase for saving): the status survives a second browser and a stale device; listening
+  line "3 h 10 min of 10 h 25 min"; 349 tests pass after merging main. Merged #199.
