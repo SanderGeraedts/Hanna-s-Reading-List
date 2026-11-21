@@ -98,6 +98,38 @@ have the production account server's address. Until the Engineer has confirmed t
 review and the tester's screenshots come from a local dev server with no backend (shelf in the
 browser) or a local PocketBase, never from signing in or adding books on a deploy preview.
 
+## Review after building (2026-11-21)
+
+Looked at the developer's screenshots of #195 (local dev server, no backend, 12 demo books):
+before (`main`) and after at 320, 390 and 1280 px, and the close-up of the 1280 px shelf. I also
+read the change in `paintSpine` and `spineColours`.
+
+**What matches the Design:**
+
+- **Dark spines** (Dune, Matilda, A Court of Thorns and Roses, The Hobbit, Mistborn, Rebecca,
+  The Name of the Wind, Dracula): the title, the surname and "EN" are off-white. In the close-up
+  they read clearly, where on `main` they were gold.
+- **Light spines** (The Night Circus, Circe, Piranesi, Emma): the lettering is near-black, where
+  on `main` it was deep gold. Piranesi's mustard spine gets the dark ink, as `inkFor` decided
+  before #176.
+- **No shadow under the letters.** The letters are clean at every size.
+- **The bands stay:** gold on dark spines, deep gold on light ones. With off-white letters
+  between them, the spines still look like hardcovers.
+- **The language tag has the title's colour**, on both kinds of spine.
+- **Unchanged:** the medals and their ribbons, the bookmarks (gold on The Night Circus, orange
+  on Circe, red on The Name of the Wind), the wear, and where the text sits and how big it is.
+- **On a phone** (390 and 320 px) the dark spines' titles are easier to read than in gold.
+  That was the aim.
+- **Compared with before `9abdd95`:** the lettering is the colour the Design gives for before
+  #176 (off-white / near-black from `inkFor`, no shadow). The only difference is the bands,
+  which #176 added and which this task keeps on purpose.
+
+**Differences:** none. (At 320 px the top row sits under the header's light fade and the page
+buttons. That was already so on `main`, it has nothing to do with spine lettering, and T-0003
+deals with it.)
+
+**Verdict: passes.** On to the tester.
+
 # Test
 
 # Log
@@ -113,3 +145,5 @@ browser) or a local PocketBase, never from signing in or adding books on a deplo
   `npm run build`: "built in 1.29s". Screenshots before (`main`) and after from a local dev
   server with no backend, at 320, 390 and 1280 px, for the UX designer's review; the medal,
   ribbon, bookmark and language tag show as before.
+- 2026-11-21 ux-designer: reviewed: passes. Off-white lettering on dark spines, near-black on
+  light ones, no shadow, bands kept, as designed (screenshots at 320, 390 and 1280 px).
