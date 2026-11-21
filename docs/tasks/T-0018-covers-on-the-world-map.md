@@ -140,6 +140,38 @@ Tapping a country (or a cover) to open its books, and zooming the map.
   chip) and as `title` for hover.
 - D-0014: no hint text in the block. D-0023: places stay hers; this task only reads them.
 
+## Build notes (developer)
+
+- `src/lib/places.ts`: `worldMap()` gives `countries` and `imaginary` as `Map<string, Book[]>`, each
+  book once per place, sorted by `tileOrder` (latest `lastFinish` first, no finish date last, ties
+  by title). `byCount` is replaced by `byBooks` (most books first, ties alphabetical), used for the
+  country list, the screen-reader label and the lands.
+- `src/lib/cover.ts`: `coverAtSize(url, size)` sets `size=` on an app cover URL (`/api/cover/…`)
+  and leaves every other URL (`data:`, `/api/remote-cover?…`, empty) as it is. Map tiles use `S`,
+  lands rows `M`.
+- `src/components/PictureBlocks.tsx`: `loadWorld` also works out each country's top-left corner;
+  each lit country gets one `<pattern>` (`userSpaceOnUse`, starting at that corner, `ceil(√n)`
+  columns, last row filled on from the first book), a spine-colour rect behind each cover
+  `<image>`. Tile size is one constant pair, `TILE_W` × `TILE_H` = 8 × 12. Lit countries' outlines
+  (`--bg` 2.5 px under `--accent` 1.25 px, `vector-effect: non-scaling-stroke`) are drawn in their
+  own group after all countries, `pointer-events: none` so hover still reaches the country's
+  `<title>`. Patterns, not a clip path (choice 3).
+- **Found while building:** Chrome draws a broken-image sign for an SVG `<image>` whose cover
+  fails (seen in the first covers-failed screenshots), so the tile showed that instead of its
+  spine colour. The block now remembers failed map covers (`onError`) and leaves their `<image>`
+  out, so the spine colour shows, as the design asks. Tested in `BooksWorldMap.test.tsx`.
+- Lit countries' fill is an inline `style` (`fill: url(#…)`), because the `.world-country` CSS
+  rule would beat a `fill` attribute.
+- Lands: `h3` "Imaginary lands", a `ul.world-lands` with one `li` per land (name, then a
+  `ul.world-land-books` with `aria-label` = the land); covers are `<img loading="lazy" alt title>`
+  with the spine colour as background, or a `span.cover-chip role="img"`; a failed cover becomes
+  the chip. The cover size reuses the `own-challenge-books` rule.
+- No open choice was left for Hanna; nothing was asked. Group 1: no change to `Book`, saving or
+  syncing, no new package.
+- Noticed, not fixed (for the architect): Russia's shape has a thin sliver across the far east
+  where its ring crosses the date line (visible as a pale wedge in the map screenshots); it was
+  there before with the gold fill too.
+
 ## Choices made by the team
 
 Hanna agreed on the scope above and asked to take the recommended option for anything still open.
@@ -338,3 +370,23 @@ Middle-earth
 - 2026-11-22 ux-designer: designed (map tiles and gold outline on both wallpapers, names-only list,
   lands rows, states, phone/computer, screen reader and hover, wording); choices 13–16 added;
   design checks added to *Done when*; handed to the developer.
+- 2026-11-22 developer: built the cover patchwork per lit country (patterns, spine colour behind
+  every tile, failed map covers left out), gold-over-dark outlines on top, names-only country list,
+  lands as rows of covers, no number anywhere (map label, hover text, list, lands, waiting line),
+  `worldMap()` with books per place in tile order, `byBooks`, `coverAtSize`; see *Build notes*.
+  Check: `pnpm test` 80 files, 601 passed, 9 skipped (new: `src/components/BooksWorldMap.test.tsx`
+  8 tests incl. "no digit anywhere in the block", and the map tests in `src/lib/places.test.ts`
+  and `src/lib/setIn.test.ts` on the new shape); `pnpm exec tsc --noEmit` clean;
+  `pnpm run build` built; `pnpm exec harness check` all ✓. Clicked through on the no-backend dev
+  server (`vite dev --port 3128`, shelf in localStorage, real Open Library covers through the
+  app's `/api/cover` route): 32 screenshots in `T-0018-screens/` (map, map close-up, hover, covers
+  failed, waiting, empty, loading, map failed; 390 and 1280; lavender and midnight). The hover
+  shots draw the `<title>` text next to the pointer as a stand-in, because a native tooltip is not
+  in a screenshot; the app's fixed top bar is hidden while snapping. Measured on every
+  combination: no digit in the block's text, label "World map of where your books are set: United
+  States of America, United Kingdom, France, Italy, Japan, Netherlands, Romania, Russia", lands
+  covers 35 × 53 px, no overflow at 390, no page errors. 150-book check (150 finished books with
+  places, 101 distinct map cover URLs): 101 map requests all `size=S`, 27 lands requests all
+  `size=M`, no URL requested twice (the other 45–51 `size=L` requests come from other dashboard
+  blocks, the same without places); long tasks and click-to-frame times (130–263 ms) the same as
+  the same shelf without places (130–241 ms), so no extra in-view logic.

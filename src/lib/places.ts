@@ -1,5 +1,6 @@
 import type { Book } from './library'
 import { timesRead } from './library'
+import { lastFinish } from './ratingAsk'
 
 /**
  * Where Hanna's books are set (reading in pictures, part 4). Open Library
@@ -197,10 +198,10 @@ export function placesOf(places: string[], known: ReadonlySet<string>): BookPlac
 }
 
 export interface WorldMap {
-  /** country -> how many of her books are set there */
-  countries: Map<string, number>
-  /** made-up place -> how many books */
-  imaginary: Map<string, number>
+  /** country -> her finished books set there, in tile order (D-0026: books, not counts) */
+  countries: Map<string, Book[]>
+  /** made-up place -> its finished books, in tile order */
+  imaginary: Map<string, Book[]>
   /** finished books whose places haven't been looked up yet */
   waiting: number
   /** finished books with at least one known place */
@@ -209,11 +210,29 @@ export interface WorldMap {
 
 const finished = (b: Book) => b.status === 'read' || timesRead(b) > 0
 
+/** Tile order (T-0018): most recently finished first, books without a finish date last, ties by title. */
+export const tileOrder = (a: Book, b: Book): number => {
+  const fa = lastFinish(a)
+  const fb = lastFinish(b)
+  if (fa !== fb) {
+    if (!fa) return 1
+    if (!fb) return -1
+    return fb.localeCompare(fa)
+  }
+  return a.title.localeCompare(b.title)
+}
+
 export function worldMap(books: Book[], known: ReadonlySet<string>): WorldMap {
-  const countries = new Map<string, number>()
-  const imaginary = new Map<string, number>()
+  const countries = new Map<string, Book[]>()
+  const imaginary = new Map<string, Book[]>()
   // the same land in other capitals on another book counts under the first spelling
   const spelling = new Map<string, string>()
+  // each book once per place
+  const add = (m: Map<string, Book[]>, place: string, b: Book) => {
+    const list = m.get(place)
+    if (!list) m.set(place, [b])
+    else if (!list.includes(b)) list.push(b)
+  }
   let waiting = 0
   let placed = 0
   for (const b of books) {
@@ -224,22 +243,23 @@ export function worldMap(books: Book[], known: ReadonlySet<string>): WorldMap {
     }
     const p = placesOf(b.places, known)
     if (p.countries.length || p.imaginary.length) placed++
-    for (const c of p.countries) countries.set(c, (countries.get(c) ?? 0) + 1)
+    for (const c of p.countries) add(countries, c, b)
     for (const i of p.imaginary) {
       const land = spelling.get(landKey(i)) ?? i
       spelling.set(landKey(i), land)
-      imaginary.set(land, (imaginary.get(land) ?? 0) + 1)
+      add(imaginary, land, b)
     }
   }
+  for (const list of [...countries.values(), ...imaginary.values()]) list.sort(tileOrder)
   return { countries, imaginary, waiting, placed }
 }
 
 /** Which books still need their places looked up: finished ones that have none yet. */
 export const needsPlaces = (b: Book) => finished(b) && b.places === undefined
 
-/** A count list most first, ties alphabetical: "Hogwarts 4 · Narnia 2 · Middle Earth 1". */
-export const byCount = (counts: Map<string, number>): Array<[string, number]> =>
-  [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+/** Places with their books, most books first, ties alphabetical (the order says it; no count is shown, D-0026). */
+export const byBooks = (places: Map<string, Book[]>): Array<[string, Book[]]> =>
+  [...places].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))
 
 /**
  * What a places lookup writes, decided at the moment it writes (D-0023): only

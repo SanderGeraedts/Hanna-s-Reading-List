@@ -8,6 +8,19 @@ export function coverUrlForIsbn(isbn: string, size: 'S' | 'M' | 'L' = 'L') {
   return `/api/cover/isbn/${isbn}?size=${size}`
 }
 
+/**
+ * The app's own Open Library cover (`/api/cover/…`) at another size, for small
+ * pictures like the world map's tiles (T-0018). Own photos (`data:`), Storytel
+ * covers (`/api/remote-cover`) and anything else stay as they are.
+ */
+export function coverAtSize(url: string, size: 'S' | 'M' | 'L'): string {
+  if (!url.startsWith('/api/cover/')) return url
+  const [path, query = ''] = url.split('?')
+  const params = new URLSearchParams(query)
+  params.set('size', size)
+  return `${path}?${params}`
+}
+
 /** Storytel covers go through a same-origin proxy so WebGL can use them. */
 export function remoteCoverUrl(url: string) {
   return `/api/remote-cover?url=${encodeURIComponent(url)}`
