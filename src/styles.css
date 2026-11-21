@@ -2198,6 +2198,43 @@ textarea.input {
 .next-actions .btn.storytel-link {
   margin-top: 0;
 }
+
+/* the book panel's open buttons: Storytel and her own e-book file (#185), wrapping on a phone */
+.open-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+.open-links .btn.storytel-link {
+  margin-top: 0;
+}
+.btn.ebook-link {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  width: fit-content;
+  text-decoration: none;
+}
+/* the e-book link field under "How I have it" */
+.link-btn.ebook-add {
+  justify-self: start;
+}
+.ebook-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+.ebook-row .input {
+  flex: 1;
+  min-width: 0;
+}
+@media (pointer: coarse) {
+  .btn.ebook-remove {
+    min-width: var(--tap);
+    min-height: var(--tap);
+  }
+}
 .book-list {
   list-style: none;
   margin: 0;
