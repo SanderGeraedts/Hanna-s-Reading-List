@@ -13,7 +13,6 @@ None.
 - [T-0001 Adopt the harness at v0.7.0](T-0001-adopt-the-harness.md): D-0001: switch to pnpm, install the harness at v0.7.0 with harness adopt, thin AGENTS.md and CLAUDE.md, CI and auto-merge as callers of the harness's workflows with the backend workflow wired in, and the harness's ruleset on main.
 - [T-0003 Show the bookshelf again on a phone](T-0003-show-the-shelf-on-a-phone.md): #181: the shelf isn't shown in the mobile version; find what broke it on narrow screens and fix it, with a test that keeps it fixed.
 - [T-0009 Keep the dashboard's favourites with the account, so every device shows the same ones](T-0009-favourites-follow-her-across-devices.md): #182: the starred dashboard blocks are saved per device today; keep them on the account's shelf record on the server, saved on their own like the reading goals.
-- [T-0014 Motivate reading from the pile: in vs. out, two coin jars, dust off the oldest and a pile challenge button](T-0014-motivation-for-the-pile.md): The want-to-read block shows this month's books in vs. out with a 6-month line and two coin jars (buying and Storytel), Waiting for you offers the longest-waiting book once a week, and Challenges gets a Pile challenge button.
 
 ## Done
 
@@ -27,6 +26,7 @@ None.
 - [T-0011 Add a quick update button to move a book on or finish it without the full book panel](T-0011-quick-update-for-reading.md): A round 📖 button in the corner of every page opens the books Hanna is reading as big covers; tapping one opens a small card with big − / + buttons, typing the page, Finished! and More.
 - [T-0012 Make the book nooks little 3D worlds: all ten scenes](T-0012-3d-book-nooks.md): Hanna wants the nooks to look like real book nooks: tiny 3D houses, towers and lanterns with warm light, merged so each nook is cheap to draw; the alley and the castle first, the other eight scenes in later steps.
 - [T-0013 Let Make a wish take wishes and grant three books, picked smartly, with series strictly in order](T-0013-make-a-wish-v2.md): Step 1: optional wishes for length, genre and language. Step 2: three books from her pile, favouring those that waited longest, authors she loves and series she enjoys; a book only shows if every earlier book of its series is read.
+- [T-0014 Motivate reading from the pile: in vs. out, two coin jars, dust off the oldest and a pile challenge button](T-0014-motivation-for-the-pile.md): The want-to-read block shows this month's books in vs. out with a 6-month line and two coin jars (buying and Storytel), Waiting for you offers the longest-waiting book once a week, and Challenges gets a Pile challenge button.
 
 ## Dropped
 

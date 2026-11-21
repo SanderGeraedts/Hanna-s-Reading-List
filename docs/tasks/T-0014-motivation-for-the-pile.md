@@ -2,11 +2,11 @@
 id: T-0014
 title: "Motivate reading from the pile: in vs. out, two coin jars, dust off the oldest and a pile challenge button"
 description: "The want-to-read block shows this month's books in vs. out with a 6-month line and two coin jars (buying and Storytel), Waiting for you offers the longest-waiting book once a week, and Challenges gets a Pile challenge button."
-status: Doing
+status: Done
 depends_on: []
 decisions: [D-0008, D-0010, D-0013, D-0014, D-0020, D-0022]
 raised_on: 2026-11-21
-done_on: ""
+done_on: 2026-11-21
 result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/222"]
 ---
 
@@ -373,6 +373,98 @@ has a screenshot or can be read straight from the code.
 
 # Test
 
+Tester, 2026-11-21, on `t-0014-pile-motivation` at `c37d6a1`, after `pnpm install --frozen-lockfile`.
+
+## Checks as run
+
+- `pnpm test` → `Test Files 71 passed | 1 skipped (72)`, `Tests 477 passed | 9 skipped (486)`
+  (`src/lib/pile.test.ts` 19 tests, `ownChallenges.test.ts` and `colours.test.ts` with the
+  `--text` on `--accent-soft` pair for lavender and midnight included).
+- `pnpm run build` → `✓ built in 825ms` (client) and `✓ built in 661ms` (server), exit 0.
+  `src/routeTree.gen.ts` restored afterwards, not committed.
+- `pnpm exec harness check` → `✓ tasks: 14 tasks, index in step`, `✓ decisions: 25 records,
+  index complete, 3 overrules valid`, `✓ engineers: 2 listed`, `✓ generated files: current`.
+- Extra unit checks of my own against `src/lib/pile.ts` (a temporary test file, deleted
+  afterwards, not committed): 13 passed (13). They are the logic cases in the list below.
+- Click-through on `vite dev --port 3126 --strictPort` with no backend (no `POCKETBASE_URL`
+  set, checked by name only), shelves seeded into localStorage `hannas-reading-list:v1`,
+  Chrome through playwright-core at 390×844 (touch) and 1280×800, lavender and midnight. No
+  page errors. The dev server was stopped afterwards.
+
+## What I tried to break
+
+Logic (my unit checks, all as the task says):
+
+- A book added 13 days before its finish is not "out" and earns nothing; 14 days is out and
+  earns 1 coin. A book added at 23:00 and finished 13 calendar days later doesn't count.
+- A book added and finished on the same day: in +1, out 0, "…your pile grew by 1."
+- On the same day 3 coins are earned first, then an owned add spends them → 0.
+- 1 or 2 coins: adding a paperback or e-book spends nothing, never below 0, and later earnings
+  go on from there (1 → 2).
+- Library and borrowed finishes earn nothing, library and borrowed adds spend nothing, and
+  audiobook finishes earn nothing.
+- Paper + Storytel counts for the buying jar only; listen-only Storytel books (also an old one
+  with only a `storytelId`) fill the Storytel jar; adding owned books and a Storytel book never
+  lowers it.
+- Finishes before 2026-11-01 and after today don't count.
+- Empty shelf: six 0 months, both jars 0, no dust-off book, the "Nothing added…" sentence.
+- The 6 months across a year boundary (Sep 2025 … Feb 2026).
+- Dust-off rotation:
+  - Sunday 2026-11-22 belongs to the week of Monday 2026-11-16.
+  - An even older book imported mid-week doesn't change the week's pick, and gets its turn
+    the next Monday.
+  - After Not now nothing shows for the rest of that week; the next week brings the next
+    oldest not dismissed, and the week after that the one after.
+- Book 3 of a series (the oldest on the shelf) whose book 2 is unread is never picked; a
+  standalone is. A book not out yet is never picked. 13 days on the shelf: no item; 14 days:
+  the item shows.
+- "Has waited" text: 2 weeks, 4 weeks (one day short of a month), 1 month, 11 months,
+  2 years (for 2 years 7 months), and 31 Jan → 1 Mar is 1 month.
+
+In the browser (390×844 and 1280×800, both wallpapers):
+
+- **Edge shelf:** exactly 13 and 14 days, a same-day add and finish, owned adds with 1 and
+  2 coins, library and borrowed books, paper + Storytel, two Storytel-only books, a series
+  with book 3 older than an unread book 2, and a book not out yet.
+  - The sentence was "This month you added 6 and read 6 from your pile: your pile stayed the
+    same." (counted by hand: 6 in, 6 out).
+  - Line: "Pile change per month: June 0, July 0, August 0, September 0, October 0,
+    November 0".
+  - Jars: "Buying jar: 2 of 3 coins" (🪙 🪙 ◌) and "Storytel jar: 2 coins".
+  - The dust-off item was "Standalone Old · Old Writer / Has waited 3 years — give it a go?"
+    (not Saga 3, not the book that isn't out yet).
+- **Maybe** opened the book panel, and the item was still there afterwards. **Not now**
+  hid it and stored `{"week":"2026-11-16","pick":"b14","dismissed":["b14"]}`; after a reload
+  in the same week it stayed hidden.
+  - With a book to rate also waiting, the block stayed and focus moved to `waiting-title`.
+  - With nothing else waiting, the whole block hid.
+- **The next week:** a dismissal stored for the week of 2026-11-09 → this week's item was
+  "Saga 2 … Has waited 2 years" (Saga 2 is a choice now that book 1 is read; Standalone Old
+  stayed dismissed). A pick stored for last week but not dismissed → recomputed and stored
+  for 2026-11-16. Broken JSON in the dust-off key → the dashboard loads and the item shows.
+- **Treat:** 3 earned, an owned paperback added the same day (spent 3), then 4 more →
+  "Buying jar: 4 coins, treat earned", 4 🪙, on the gold wash (`rgba(217, 168, 91, 0.18)`).
+  7 coins in each jar → "🪙 × 7", and the Storytel jar showed "7 coins".
+- **Empty pile** (the last two books read this month): "0 books waiting", "…added 0 and
+  read 2 from your pile: your pile shrank by 2 🎉", November −2, buying "2 of 3", no
+  dust-off item, no Waiting for you block.
+- **New shelf (no books):** "Nothing added or read from your pile yet this month." (muted),
+  six 0 points with November filled, ◌ ◌ ◌ "0 of 3" and ◌ "0 coins".
+- **A book added 11 days ago:** "…grew by 1.", and no dust-off item.
+- **Pile challenge:** it opened "New challenge for 2026 | Pile challenge | 12 | From my
+  pile", with focus in Name and the button disabled while the form is open. Nothing was stored
+  before Save, and still nothing after Cancel. Two Saves (one changed to 20) gave two
+  challenges with different ids.
+- **Touch sizes at 390:** Maybe 44 px, Not now 44 px, cover button 53 px, Pile challenge
+  44 px. At 1280 without touch they keep the normal small size (25–27 px), as designed.
+
+Observation, not blocking: when Not now hides the whole Waiting for you block (nothing else
+waiting), focus falls back to the page body, because the heading it moves to disappears too.
+The design accepts that the block hides; the UX designer may want to choose where focus goes
+then, in a later task.
+
+**Verdict: passed.** Everything in *Done when* ran and holds; nothing remains for a human.
+
 # Log
 
 - 2026-11-21 architect: task written
@@ -406,3 +498,4 @@ has a screenshot or can be read straight from the code.
   trimmed afterwards.
 - 2026-11-21 ux-designer: reviewed: matches the design, nothing to fix (small sparkline labels
   and the centred Challenges bar from `main` noted, not blocking); on to the tester
+- 2026-11-21 tester: passed (477 tests, build, harness check, own edge-case checks and click-through on a local dev server with no backend; see *Test*)
