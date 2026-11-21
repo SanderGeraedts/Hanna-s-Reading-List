@@ -21,7 +21,7 @@ import { pickReadNext, readNextChoices } from '#/lib/readNext'
 import { pendingRatings } from '#/lib/ratingAsk'
 import { seriesQuestions } from '#/lib/sleepSeries'
 import { WaitingCard } from './WaitingCard'
-import { GenreFlowerCard } from './PictureBlocks'
+import { GenreFlowerCard, PagesPerMonthCard } from './PictureBlocks'
 import { WrapUpCard } from './WrapUpCard'
 import { wrapKey, wrapUpDue } from '#/lib/wrapup'
 import { AgainCard } from './AgainCard'
@@ -244,6 +244,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
     covers: <CoverWallCard books={books} onShowBook={onShowBook} />,
     rhythm: <RhythmCard books={books} />,
     flower: <GenreFlowerCard books={books} />,
+    months: <PagesPerMonthCard books={books} />,
     challenge: (
       <ChallengeCard
         books={books}
