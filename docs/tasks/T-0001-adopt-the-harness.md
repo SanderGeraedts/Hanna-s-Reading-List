@@ -132,6 +132,148 @@ Nothing visible.
 
 # Test
 
+2026-11-21, tester. First run at `59d7d0d`, re-run at `4aeb1b0`, which merges `main` in
+after T-0002. Ran in a fresh worktree of `origin/t-0001-adopt-harness` that had no
+`.netlify/` folder. Node v22.23.5, pnpm 10.34.9, and no `POCKETBASE_URL` in the environment.
+
+**Verdict: passed at `4aeb1b0`**, for everything that can be checked before the merge.
+`59d7d0d` conflicted with `main` after T-0002 merged; the developer fixed that in `4aeb1b0`
+before I sent the task back. See the last two sections.
+
+## Done-when, run by hand at `59d7d0d`
+
+- `pnpm install --frozen-lockfile`: it ran `preinstall` (passes under pnpm) and `prepare`
+  (`harness hooks`), then printed "Done in 21.2s using pnpm v10.34.9".
+- `npm install` (npm 11.20.0, in a scratch folder with a copy of `package.json`) printed
+  "Use pnpm (G-0016): pnpm install", `npm error code 1`, and exited with 1. As the developer
+  noted, npm still wrote `node_modules/` and a `package-lock.json` before the guard stopped it.
+  That comes from the harness's guard, not from this change.
+- `git ls-files package-lock.json` printed nothing.
+- `pnpm exec harness check` exited with 0 and printed "✓ tasks: 10 tasks, index in step",
+  "✓ decisions: 8 records, index complete, 3 overrules valid", "✓ engineers: 2 listed" and
+  "✓ generated files: current".
+- `pnpm exec harness overrules` lists G-0017 overruled by D-0002, G-0018 overruled by D-0003
+  and G-0028 overruled by D-0005.
+- `pnpm exec harness role`, with `GH_TOKEN` for `SanderGeraedts` (`gh api user` gives
+  `SanderGeraedts`), printed `engineer`.
+- `pnpm test` printed "Tests 279 passed (279)" and exited with 0. The branch doesn't touch
+  `src/`. The last CI run on the old `main` also had 41 files and 279 tests. The new `main`
+  has 42 files and 280 tests, because T-0002 added `vite.config.test.ts`.
+- `pnpm run build` printed "✓ built in 14.42s" and exited with 0.
+- The npm/npx grep over the listed files printed nothing (exit 1).
+- The harness grep finds `github:SanderGeraedts/harness#v0.7.0` in `package.json` and
+  `@v0.7.0` in both `ci.yml` and `auto-merge.yml`. `auto-merge.yml` has
+  `backend-workflow: backend.yml` and `wait-for: CI,Backend image`. The lockfile resolves the
+  harness to `9f6ca58`, which is `v0.7.0^{commit}` in the harness repository.
+- On the pull request, `checks / checks` passed. Its log shows pnpm v10.34.9, the four ✓
+  lines of `harness check`, "Test Files 41 passed (41)", "Tests 279 passed (279)" and the
+  build. `netlify/hannas-reading-list/deploy-preview` is `success`, "Deploy Preview ready!".
+  Netlify's build command is `pnpm run build` and the repository no longer has an npm
+  lockfile, so the green preview means the build ran with pnpm. I didn't open the Netlify log
+  or the preview itself, because previews may carry production's address. The Done-when check
+  that the preview "opens the shelf" can't pass until the Engineer fixes the preview
+  environment (Log item 4).
+- The checks for after the merge (rulesets, production deploy) were not run, since the pull
+  request hasn't merged.
+
+## What else I tried
+
+- **Dependency versions.** I compared `package-lock.json` from `main` with `pnpm-lock.yaml`,
+  matching each package name against its set of versions. npm had 692 packages and pnpm has
+  693; the only difference is the added `@sandergeraedts/harness`. Everything else, including
+  the optional platform packages, has the same versions. `pnpm ls --depth 0` agrees with the
+  old lock for vite 8.3.5, vitest 5.1.0, react 19.3.1, three 0.187.0, @tanstack/react-start
+  1.169.4, @tanstack/react-router 1.170.46, @netlify/vite-plugin-tanstack-start 1.3.19,
+  typescript 6.0.3 and happy-dom 21.0.4.
+- **Workflows.** The real names are `CI` (`ci.yml`) and `Backend image` (`backend.yml`), so
+  `workflows: [CI, Backend image]` and `wait-for: CI,Backend image` match exactly. The
+  harness's reusable workflow matches `wait-for` against the run's `.name`, which is the
+  workflow name. `backend-paths` covers the same four paths as `backend.yml`'s push trigger.
+  `backend.yml` is unchanged (`git diff --quiet` against `main`) and already has
+  `workflow_dispatch:`. `ci.yml` has `workflow_dispatch:` and the `ready_for_review` trigger.
+  The permissions in `auto-merge.yml` (`contents`, `pull-requests`, `actions: write`) are what
+  the reusable workflow asks for.
+- **Rules kept.** I compared the thin `AGENTS.md` and `CLAUDE.md` with the old `CLAUDE.md`.
+  These all carried over:
+  - whose instance this is, with the pointer to `docs/hanna-guardrails.md` and the
+    `feature-chat` skill (in both files);
+  - never use the production `POCKETBASE_URL` locally, and never pull Netlify environment
+    variables (now naming `netlify link` and `netlify dev` too);
+  - #96 and `shelfMerge.ts`;
+  - `Book` fields optional;
+  - a `deploy/nas/` change rebuilds the image and changes the live database;
+  - the code owners;
+  - the commands, the Netlify deploy on merge, and the previews.
+
+  Two things were dropped, and neither matters: "CI must pass before merging", which CI and
+  the harness rules now enforce, and "since #94 a save can't drop books", which the README
+  still explains. `docs/hanna-guardrails.md` and `.claude/skills/feature-chat/SKILL.md` keep
+  their rules; only commands changed. CODEOWNERS now also lists `/AGENTS.md`, `/.harness/` and
+  `/.githooks/`. The guardrails' list of "the guardrails themselves" doesn't name `AGENTS.md`
+  yet; that is for the follow-up task after Q-003.
+- **The pre-push hook.** I fed it stdin directly. A push to `refs/heads/main` is refused
+  (exit 1), including when the last line has no trailing newline. A push to a feature branch
+  is allowed (exit 0). The file is stored with LF line endings (`.gitattributes`).
+- **`core.hooksPath`.** `harness hooks` (run by `prepare`) set `core.hooksPath=.githooks` in
+  the clone's shared config. The path is relative, so it resolves in each worktree.
+  - The main clone is on `main`, which has no `.githooks/` yet, so it runs no hooks.
+  - It ran none before either: `.git/hooks` holds only `*.sample` files.
+  - So nothing is lost. The main clone just gets no pre-push guard until `.githooks/` reaches
+    `main`, and the `main` ruleset still refuses direct pushes.
+
+  This doesn't break anything.
+- **`.nvmrc` and Netlify.** `.nvmrc` is `22`, which matches `NODE_VERSION = "22"` in
+  `netlify.toml`.
+
+## Found at `59d7d0d`, fixed in `4aeb1b0`
+
+1. **Merge conflict with `main`.** After T-0002 (#191) merged,
+   `git merge-tree --write-tree --name-only HEAD origin/main` reported
+   `CONFLICT (content): Merge conflict in docs/tasks/index.md`.
+2. **T-0002's text wasn't adapted.** T-0002 says the task that merges second takes the
+   other's changes in. At `59d7d0d` the merged result would have had:
+   - `docs/data-safety.md` still saying `npm run dev` and pointing at "`CLAUDE.md` →
+     *Data safety*", a section this pull request removes;
+   - no #156 rule in `AGENTS.md`.
+
+The developer fixed both in `4aeb1b0`, before I sent the task back.
+
+## Re-run at `4aeb1b0`
+
+Same worktree; I deleted `node_modules` first.
+
+- `pnpm install --frozen-lockfile` printed "Done in 36.1s using pnpm v10.34.9".
+- `pnpm exec harness check` printed the same four ✓ lines and exited with 0.
+- `harness role` printed `engineer`.
+- `harness overrules` lists the same three overrules.
+- `git ls-files package-lock.json` printed nothing.
+- The npm/npx grep, with `docs/data-safety.md` added, printed nothing (exit 1).
+- `grep -n "environmentVariables" AGENTS.md vite.config.ts` found `AGENTS.md:38` (the rule in
+  *Project rules*) and `vite.config.ts:22`, `environmentVariables: { enabled: false },`.
+- `docs/data-safety.md` no longer mentions `CLAUDE.md` and points at `AGENTS.md` →
+  *Project rules*.
+- `git merge-tree --write-tree HEAD origin/main` reports no conflict (exit 0).
+- `pnpm test` printed "Test Files 42 passed (42)" and "Tests 280 passed (280)": the 280 on
+  `main` now, which includes T-0002's new test.
+- `pnpm run build` printed "✓ built in 2.52s" and "✓ built in 1.85s", exit 0.
+  - Afterwards `git status` showed `src/routeTree.gen.ts` as modified. The change is line
+    endings only: the build writes LF and this Windows checkout uses CRLF. `main` does the
+    same. I restored the file.
+- The pull request checks for `4aeb1b0`:
+  - `checks / checks` passed. Its log shows pnpm v10.34.9, the four ✓ lines, "Test Files 42
+    passed (42)" and "Tests 280 passed (280)".
+  - `netlify/hannas-reading-list/deploy-preview` passed, "Deploy Preview ready!".
+  - Netlify's "Header rules", "Pages changed" and "Redirect rules" show `skipping`. They are
+    Netlify's deploy-summary items, not test checks, and they skip on every pull request here
+    (#188, #191) too.
+  - GitHub reports the pull request `MERGEABLE`.
+
+**Verdict at `4aeb1b0`: passed** for everything that can be checked before the merge. Still
+open, for the Engineer:
+- the preview item of *Done when*: the preview shows the sign-in screen, which points at the
+  preview environment (Log item 4);
+- the checks for after the merge.
+
 # Log
 
 - 2026-11-21 architect: Task written from the Engineer's request. Ran `harness adopt` (v0.7.0,
@@ -195,3 +337,17 @@ Nothing visible.
   shows `AGENTS.md:38` and `vite.config.ts:22`; the npm/npx grep prints nothing; `pnpm test`
   42 files, 280 tests passed (279 before plus the one in T-0002's `vite.config.test.ts`);
   `pnpm run build` built.
+- 2026-11-21 tester: passed at `4aeb1b0`. Every Done-when item that can be run before the
+  merge passed (outputs in *Test*). `59d7d0d` had conflicted with `main` after T-0002 merged,
+  and `4aeb1b0` fixed that. Dependency versions are unchanged apart from the added harness.
+  Every project rule and data-safety guard from the old `CLAUDE.md` is kept. The workflow
+  names match. `core.hooksPath` doesn't break the main clone, which had no hooks before.
+  Marked ready; not merged.
+- Remaining: for the Engineer:
+  (1) the code-owner review of #192;
+  (2) at the merge, change the required check in the ruleset `main` from `test` to
+      `checks / checks`, then merge by hand;
+  (3) Q-003 (#190): `harness protect`, and `main`'s code-owner review and bypass;
+  (4) deploy previews show the sign-in screen, which suggests `POCKETBASE_URL` is set for
+      previews (G-0019). The preview item of the Done-when waits on this;
+  (5) after the merge: the rulesets check and Netlify's production deploy.
