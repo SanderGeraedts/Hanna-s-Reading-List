@@ -4136,6 +4136,68 @@ textarea.input {
   font-size: var(--fs-small);
 }
 
+/* ---- Set in, in the book panel (T-0015) -----------------------------------
+   Genres' chips, with long names wrapping inside the chip, and a list of
+   suggestions one per line under the Add box. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.setin .chip {
+  max-width: 100%;
+}
+.setin-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.setin .chip button {
+  flex: none;
+}
+.setin-list {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: var(--space-1) 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-small);
+  background: var(--surface-solid);
+}
+.setin-list[hidden] {
+  display: none;
+}
+.setin-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-small);
+  color: var(--text);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.setin-list li.active {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+/* on a phone: Set in's chips, × and rows are big enough for a finger (Genres keeps its look) */
+@media (pointer: coarse) {
+  .setin .chip {
+    min-height: var(--tap);
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  .setin .chip button {
+    min-width: var(--tap);
+    min-height: var(--tap);
+  }
+  .setin-list li {
+    min-height: var(--tap);
+  }
+}
+
 /* ---- make the room yours: the 🎨 Room panel ------------------------------ */
 .room-sheet {
   position: fixed;

@@ -16,14 +16,14 @@ describe('where the books are set', () => {
 
   it('puts made-up places in the imaginary lands', () => {
     const p = placesOf(['Hogwarts School of Witchcraft and Wizardry (Imaginary place)', 'Narnia', 'Middle Earth (Imaginary place)', 'England'], KNOWN)
-    expect(p.imaginary).toEqual(['Hogwarts School of Witchcraft and Wizardry', 'Narnia', 'Middle Earth'])
+    expect(p.imaginary).toEqual(['Hogwarts', 'Narnia', 'Middle Earth'])
     expect(p.countries).toEqual(['United Kingdom'])
   })
 
   it('reads Open Library’s real places for Harry Potter', () => {
     const p = placesOf(['England', 'Hogwarts School of Witchcraft and Wizardry', '4 Privet Drive', 'Diagon Alley'], KNOWN)
     expect(p.countries).toEqual(['United Kingdom'])
-    expect(p.imaginary).toEqual(['Hogwarts School of Witchcraft and Wizardry'])
+    expect(p.imaginary).toEqual(['Hogwarts'])
     // a real place name with a short made-up word inside it is not imaginary
     expect(placesOf(['Ozark Mountains'], KNOWN).imaginary).toEqual([])
   })

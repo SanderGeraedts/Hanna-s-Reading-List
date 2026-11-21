@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import type { Book } from '#/lib/library'
 import { genrePetals, petalLength } from '#/lib/genreFlower'
 import { monthlyAmounts, niceMax } from '#/lib/monthlyPages'
 import type { MonthAmount } from '#/lib/monthlyPages'
 import { monthName } from './Dashboard'
-import { worldMap } from '#/lib/places'
+import { byCount, worldMap } from '#/lib/places'
 
 /** Petal colours: soft and warm, readable on the walnut cards, one per genre. */
 export const PETAL_COLOURS = ['#e8a0b4', '#f2c46d', '#9fc9e6', '#b8d98f', '#c9a6e6', '#f2a37a', '#8fd1c4', '#d9c9a6']
@@ -197,7 +197,7 @@ export function BooksWorldMapCard({ books }: { books: Book[] }) {
   const map = useMemo(() => worldMap(books, known), [books, known])
   const max = Math.max(1, ...map.countries.values())
   const top = [...map.countries].sort((a, b) => b[1] - a[1]).slice(0, 6)
-  const lands = [...map.imaginary].sort((a, b) => b[1] - a[1])
+  const lands = byCount(map.imaginary)
   const shade = (n: number) => 0.3 + 0.7 * Math.sqrt(n / max)
 
   return (
@@ -234,7 +234,21 @@ export function BooksWorldMapCard({ books }: { books: Book[] }) {
           {lands.length > 0 && (
             <p className="world-lands">
               <span aria-hidden>🗺️ </span>
-              <strong>Imaginary lands:</strong> {lands.map(([l]) => l).join(', ')}
+              <strong>Imaginary lands:</strong>{' '}
+              {lands.map(([land, n], i) => (
+                <Fragment key={land}>
+                  {i > 0 && (
+                    <>
+                      <span className="visually-hidden">,</span>
+                      <span aria-hidden> · </span>
+                    </>
+                  )}
+                  {/* a non-breaking space: the count never starts a line on its own */}
+                  {land}
+                  {' '}
+                  <span className="muted">{n}</span>
+                </Fragment>
+              ))}
             </p>
           )}
           {map.waiting > 0 && <p className="muted small-text">Looking up where {map.waiting} more {map.waiting === 1 ? 'book is' : 'books are'} set…</p>}

@@ -118,36 +118,44 @@ const ALIASES: Record<string, string> = {
   transylvania: 'Romania',
 }
 
-/** Made-up places that Open Library doesn't always mark as imaginary. */
-const IMAGINARY = new Set([
-  'middle earth',
-  'middle-earth',
-  'narnia',
-  'westeros',
-  'essos',
-  'panem',
-  'prythian',
-  'hogwarts',
-  'oz',
-  'neverland',
-  'wonderland',
-  'discworld',
-  'earthsea',
-  'fillory',
-  'erilea',
-  'ravka',
-  'roshar',
-  'scadrial',
-  'atlantis',
-  'camelot',
+/**
+ * Made-up places that Open Library doesn't always mark as imaginary, with the
+ * short name the map counts them under (T-0015): "Hogwarts School of Witchcraft
+ * and Wizardry" is Hogwarts, "Middle-earth" is Middle Earth.
+ */
+const IMAGINARY = new Map([
+  ['middle earth', 'Middle Earth'],
+  ['middle-earth', 'Middle Earth'],
+  ['narnia', 'Narnia'],
+  ['westeros', 'Westeros'],
+  ['essos', 'Essos'],
+  ['panem', 'Panem'],
+  ['prythian', 'Prythian'],
+  ['hogwarts', 'Hogwarts'],
+  ['oz', 'Oz'],
+  ['neverland', 'Neverland'],
+  ['wonderland', 'Wonderland'],
+  ['discworld', 'Discworld'],
+  ['earthsea', 'Earthsea'],
+  ['fillory', 'Fillory'],
+  ['erilea', 'Erilea'],
+  ['ravka', 'Ravka'],
+  ['roshar', 'Roshar'],
+  ['scadrial', 'Scadrial'],
+  ['atlantis', 'Atlantis'],
+  ['camelot', 'Camelot'],
 ])
 
-/** A well-known made-up place, also inside a longer name ("Hogwarts School of Witchcraft and Wizardry"). */
-const imaginaryName = (name: string) => {
+/** A well-known made-up place, also inside a longer name ("Hogwarts School of Witchcraft and Wizardry"): its short name. */
+const imaginaryName = (name: string): string | undefined => {
   const words = name.toLowerCase()
   // the names are only letters, spaces and hyphens: no regex characters to escape
-  return [...IMAGINARY].some((w) => new RegExp(`(^|[^a-z])${w}([^a-z]|$)`).test(words))
+  for (const [w, display] of IMAGINARY) if (new RegExp(`(^|[^a-z])${w}([^a-z]|$)`).test(words)) return display
+  return undefined
 }
+
+/** The same made-up land in other capitals or spacing ("Velaris", "velaris"): one key. */
+export const landKey = (land: string) => land.toLowerCase().replace(/[\s-]+/g, ' ').trim()
 
 const clean = (s: string) => s.replace(/\s+/g, ' ').trim()
 
@@ -159,7 +167,8 @@ export interface BookPlaces {
 /** The countries and the made-up places in a book's places list. `known`: the country names on the map. */
 export function placesOf(places: string[], known: ReadonlySet<string>): BookPlaces {
   const countries = new Set<string>()
-  const imaginary = new Set<string>()
+  // key -> the spelling counted: a built-in land's short name, else the first spelling
+  const imaginary = new Map<string, string>()
   const knownLower = new Map([...known].map((c) => [c.toLowerCase(), c]))
   const country = (raw: string) => {
     const s = clean(raw).toLowerCase()
@@ -168,8 +177,10 @@ export function placesOf(places: string[], known: ReadonlySet<string>): BookPlac
   for (const place of places) {
     const name = clean(place.replace(/\(.*?\)/g, '').split('--')[0])
     // "Hogwarts School … (Imaginary place)", "Narnia (Imaginary place)"
-    if (/imaginary|fictitious|fictional|mythical|legendary/i.test(place) || imaginaryName(name)) {
-      if (name) imaginary.add(name)
+    const builtIn = imaginaryName(name)
+    if (/imaginary|fictitious|fictional|mythical|legendary/i.test(place) || builtIn) {
+      const land = builtIn ?? name
+      if (land && !imaginary.has(landKey(land))) imaginary.set(landKey(land), land)
       continue
     }
     // the place itself, then what's in brackets ("Paris (France)"), then each part ("England -- London")
@@ -182,7 +193,7 @@ export function placesOf(places: string[], known: ReadonlySet<string>): BookPlac
       }
     }
   }
-  return { countries: [...countries], imaginary: [...imaginary] }
+  return { countries: [...countries], imaginary: [...imaginary.values()] }
 }
 
 export interface WorldMap {
@@ -201,6 +212,8 @@ const finished = (b: Book) => b.status === 'read' || timesRead(b) > 0
 export function worldMap(books: Book[], known: ReadonlySet<string>): WorldMap {
   const countries = new Map<string, number>()
   const imaginary = new Map<string, number>()
+  // the same land in other capitals on another book counts under the first spelling
+  const spelling = new Map<string, string>()
   let waiting = 0
   let placed = 0
   for (const b of books) {
@@ -212,10 +225,28 @@ export function worldMap(books: Book[], known: ReadonlySet<string>): WorldMap {
     const p = placesOf(b.places, known)
     if (p.countries.length || p.imaginary.length) placed++
     for (const c of p.countries) countries.set(c, (countries.get(c) ?? 0) + 1)
-    for (const i of p.imaginary) imaginary.set(i, (imaginary.get(i) ?? 0) + 1)
+    for (const i of p.imaginary) {
+      const land = spelling.get(landKey(i)) ?? i
+      spelling.set(landKey(i), land)
+      imaginary.set(land, (imaginary.get(land) ?? 0) + 1)
+    }
   }
   return { countries, imaginary, waiting, placed }
 }
 
 /** Which books still need their places looked up: finished ones that have none yet. */
 export const needsPlaces = (b: Book) => finished(b) && b.places === undefined
+
+/** A count list most first, ties alphabetical: "Hogwarts 4 · Narnia 2 · Middle Earth 1". */
+export const byCount = (counts: Map<string, number>): Array<[string, number]> =>
+  [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+
+/**
+ * What a places lookup writes, decided at the moment it writes (D-0023): only
+ * when the book still has no places. A list Hanna set or emptied while the
+ * lookup was under way stays hers.
+ */
+export const placesPatch =
+  (found: string[]) =>
+  (b: Book): Partial<Book> =>
+    b.places === undefined ? { places: found } : {}
