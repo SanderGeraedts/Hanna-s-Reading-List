@@ -6,7 +6,8 @@
  * comes from the shelf, so nothing is lost while one is hidden.
  *
  * On a narrow screen each section's two columns are shown as one, taking turns.
- * The layout is remembered per device.
+ * The layout is remembered per device; signed in, the favourites follow the
+ * account (#182, see favourites.ts).
  */
 
 export const BLOCKS = {
