@@ -226,3 +226,10 @@ browser) or a local PocketBase, never from signing in or adding books on a deplo
   again* moves it to *Currently reading* with its 42% and shows the next, then "No books put
   aside."; buttons 44 px high; no horizontal scroll. No code-owned path touched. Next: the UX
   designer's review.
+- 2026-11-21 developer: checked the block against D-0013 (no pop-ups) and D-0014 (no
+  explanatory hint texts), recorded on main in #204. No pop-up: the block sits on the dashboard
+  and opens nothing by itself. The Design's last line "3 books put aside. Another one
+  tomorrow." explains how the block works, which D-0014 rules out, so it is **left out**
+  (decision over Design). Kept: "No books put aside." (an empty-block message, allowed), the
+  "“…” is back in Currently reading." confirmation after *Try again* (feedback on her own
+  action, not an explanation), and "Stopped at N%" (her data).
