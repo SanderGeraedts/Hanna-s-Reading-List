@@ -28,6 +28,8 @@ export interface Badge {
   progress?: { done: number; goal: number }
   /** a secret badge: hidden until earned, a surprise */
   secret?: boolean
+  /** a secret badge's riddle, shown on its locked tile when tapped (the name stays secret) */
+  riddle?: string
 }
 
 type Reached = { earned: boolean; on?: string; total?: number }
@@ -82,6 +84,21 @@ function rainbowColour(hex: string): number | null {
   const edges = [15, 40, 70, 165, 225, 260, 330]
   const i = edges.findIndex((e) => h < e)
   return i === -1 ? 0 : i
+}
+
+/** A riddle for each secret badge: a hint, never the answer. */
+export const RIDDLES: Record<string, string> = {
+  'author-5': 'Five times you return to the same storyteller.',
+  doorstopper: 'A tale so thick it could hold a door open.',
+  'same-day': 'Open it at sunrise, close it by moonlight.',
+  slow: 'Some stories need a whole season to be told.',
+  dusty: 'A book that waited a long, long time on your shelf for its turn.',
+  'reread-3': "Third time's the charm with a story you love.",
+  'spice-5': 'Five times the peppers burn their brightest.',
+  'five-stars': 'Three shining stories in a row, each worth every star.',
+  'new-year': 'Turn the last page as the new year begins.',
+  binge: 'Three stories in seven days.',
+  rainbow: 'Red, orange, yellow, green, blue, indigo, violet: finish them all.',
 }
 
 export function badges(books: Book[], today = localDay()): Badge[] {
@@ -220,7 +237,10 @@ export function badges(books: Book[], today = localDay()): Badge[] {
   add('reread-5', '💞', 'Old favourite', 'Read one book 5 times', rereadOn(5))
 
   // ---- secret badges: hidden until earned ------------------------------
-  const secret = (id: string, icon: string, name: string, how: string, r: Reached) => add(id, icon, name, how, r, undefined, true)
+  const secret = (id: string, icon: string, name: string, how: string, r: Reached) => {
+    add(id, icon, name, how, r, undefined, true)
+    out[out.length - 1].riddle = RIDDLES[id]
+  }
 
   // 5 different books by the same author
   const byAuthor = new Map<string, Array<string | undefined>>()
