@@ -12,12 +12,15 @@ import type { ImportSummary } from '#/lib/storytelImport'
 import { sameIsbn } from '#/lib/isbn'
 import { normalizeIsbn, parsePublished, publishedYear } from '#/lib/bookFacts'
 import { BarcodeScanner } from './BarcodeScanner'
+import { AddFollowUp } from './AddFollowUp'
+import type { FollowUpHandle } from './AddFollowUp'
 
 export type Tab = 'search' | 'scan' | 'isbn' | 'manual' | 'storytel'
 
 interface Props {
   existing: Book[]
-  onAdd: (book: NewBook) => void
+  /** adds the book and gives it back with its id, so the follow-up can patch it */
+  onAdd: (book: NewBook) => Book
   onUpdate: (id: string, patch: Partial<Book>) => void
   onClose: () => void
   /** the Storytel login remembered on this device, if any */
@@ -66,6 +69,12 @@ export function AddBookDialog({
   const [tab, setTab] = useState<Tab>(initialTab)
   /** an ISBN Open Library didn't know, carried over to the manual tab */
   const [manualIsbn, setManualIsbn] = useState<string | undefined>()
+  /** the book just added, while the follow-up asks how she has it (T-0016) */
+  const [followUp, setFollowUp] = useState<{ book: Book; from: Tab } | null>(null)
+  const followUpHandle = useRef<FollowUpHandle>(null)
+  const tabsArea = useRef<HTMLDivElement>(null)
+  /** after the follow-up, focus goes back into the tab she was on */
+  const refocus = useRef(false)
   const dialog = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
@@ -76,11 +85,30 @@ export function AddBookDialog({
     d.querySelector<HTMLInputElement>('.tab-panel input')?.focus()
   }, [])
 
+  useEffect(() => {
+    if (followUp || !refocus.current) return
+    refocus.current = false
+    const area = tabsArea.current
+    ;(area?.querySelector<HTMLElement>('.tab-panel input') ?? area?.querySelector<HTMLElement>('.tab.active'))?.focus()
+  }, [followUp])
+
+  /** Adds a book from Search, Scan, ISBN or Manual, then asks how she has it. */
+  const addFrom = (from: Tab) => (b: NewBook) => {
+    const book = onAdd(b)
+    setFollowUp({ book, from })
+  }
+  // the follow-up reads the book as it is now, with the formats and price she just gave
+  const followUpBook = followUp && (existing.find((b) => b.id === followUp.book.id) ?? followUp.book)
+
   return (
     <dialog
       ref={dialog}
       className="dialog"
-      onClose={onClose}
+      onClose={() => {
+        // closing early keeps what was valid in the follow-up
+        followUpHandle.current?.flush()
+        onClose()
+      }}
       onClick={(e) => {
         if (e.target === dialog.current) dialog.current?.close()
       }}
@@ -92,6 +120,21 @@ export function AddBookDialog({
             ×
           </button>
         </header>
+        {followUp && followUpBook && (
+          <AddFollowUp
+            key={followUp.book.id}
+            book={followUpBook}
+            from={followUp.from}
+            onUpdate={onUpdate}
+            handle={followUpHandle}
+            onDone={() => {
+              refocus.current = true
+              setFollowUp(null)
+            }}
+          />
+        )}
+        {/* the tabs stay as she left them (her search, the scanner) while the follow-up shows */}
+        <div className="add-tabs" ref={tabsArea} hidden={!!followUp}>
         <div className="tabs" role="tablist">
           {(
             [
@@ -113,19 +156,20 @@ export function AddBookDialog({
             </button>
           ))}
         </div>
-        {tab === 'search' && <SearchTab existing={existing} onAdd={onAdd} />}
+        {tab === 'search' && <SearchTab existing={existing} onAdd={addFrom('search')} />}
         {tab === 'scan' && (
           <ScanTab
             existing={existing}
-            onAdd={onAdd}
+            onAdd={addFrom('scan')}
+            paused={!!followUp}
             onManual={(isbn) => {
               setManualIsbn(isbn)
               setTab('manual')
             }}
           />
         )}
-        {tab === 'isbn' && <IsbnTab onAdd={onAdd} />}
-        {tab === 'manual' && <ManualTab onAdd={onAdd} isbn={manualIsbn} />}
+        {tab === 'isbn' && <IsbnTab onAdd={addFrom('isbn')} />}
+        {tab === 'manual' && <ManualTab onAdd={addFrom('manual')} isbn={manualIsbn} />}
         {tab === 'storytel' && (
           <StorytelTab
             existing={existing}
@@ -135,6 +179,7 @@ export function AddBookDialog({
             onLogin={onStorytelLogin}
           />
         )}
+        </div>
         <p className="attribution">
           Book data and covers from{' '}
           <a href="https://openlibrary.org" target="_blank" rel="noreferrer">
@@ -259,10 +304,13 @@ function ScanTab({
   existing,
   onAdd,
   onManual,
+  paused = false,
 }: {
   existing: Book[]
   onAdd: (b: NewBook) => void
   onManual: (isbn: string) => void
+  /** the follow-up shows over the tab: the camera waits */
+  paused?: boolean
 }) {
   const [find, setFind] = useState<ScanFind | null>(null)
   const [adding, setAdding] = useState(false)
@@ -299,7 +347,7 @@ function ScanTab({
 
   return (
     <div className="tab-panel scan-tab">
-      <BarcodeScanner onIsbn={scanned} paused={find?.kind === 'found' || adding} />
+      <BarcodeScanner onIsbn={scanned} paused={paused || find?.kind === 'found' || adding} />
       {find?.kind === 'looking' && <p className="muted">Looking up {find.isbn}…</p>}
       {find?.kind === 'found' && (
         <div className="scan-card">

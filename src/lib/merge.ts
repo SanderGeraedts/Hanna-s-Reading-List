@@ -37,6 +37,8 @@ export function mergeBooks(keep: Book, other: Book): Book {
     ...keep,
     // fill in what the kept copy doesn't know
     year: keep.year ?? other.year,
+    // what she paid: the kept copy's price, else the other's (T-0016)
+    price: keep.price ?? other.price,
     // the other copy's date only when it is about the same year
     published:
       keep.published ??

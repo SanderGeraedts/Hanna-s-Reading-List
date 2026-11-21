@@ -78,33 +78,58 @@ describe('the buying jar', () => {
     expect(pileJars([book('new', '2026-11-05', { status: 'read', formats: ['paperback'], finished: ['2026-11-10'] })], TODAY).buying).toBe(0)
   })
 
-  it('spends 3 when an owned book is added, only when there are 3', () => {
-    const three = [read('p', ['paperback'], '2026-11-02'), read('h', ['hardcover'], '2026-11-03'), read('e', ['ebook'], '2026-11-04')]
-    expect(pileJars([...three, book('buy', '2026-11-10', { formats: ['hardcover'] })], TODAY).buying).toBe(0)
-    // with 2 coins, adding a book does nothing (never below 0)
-    expect(pileJars([...three.slice(0, 2), book('buy', '2026-11-10', { formats: ['ebook'] })], TODAY).buying).toBe(2)
-    // a coin earned on a day can be spent that same day: finishes count first
-    expect(pileJars([...three.slice(0, 2), read('x', ['paperback'], '2026-11-10'), book('buy', '2026-11-10', { formats: ['paperback'] })], TODAY).buying).toBe(0)
+  const three = [read('p', ['paperback'], '2026-11-02'), read('h', ['hardcover'], '2026-11-03'), read('e', ['ebook'], '2026-11-04')]
+
+  it('spends price / 5 exactly when a priced owned book is added (D-0024)', () => {
+    expect(pileJars([...three, book('buy', '2026-11-10', { formats: ['hardcover'], price: 12 })], TODAY).buying).toBe(0.6)
+    expect(pileJars([book('buy', '2026-11-10', { formats: ['paperback'], price: 12 })], TODAY).buying).toBe(-2.4)
+    expect(pileJars([book('buy', '2026-11-10', { formats: ['ebook'], price: 7.99 })], TODAY).buying).toBe(-1.598)
   })
 
-  it('library and borrowed books never earn or spend', () => {
-    const three = [read('p', ['paperback'], '2026-11-02'), read('h', ['hardcover'], '2026-11-03'), read('e', ['ebook'], '2026-11-04')]
+  it('sums decimals without float drift', () => {
+    const dimes = ['a', 'b', 'c'].map((id) => book(id, '2026-11-10', { formats: ['paperback'], price: 0.1 }))
+    expect(pileJars(dimes, TODAY).buying).toBe(-0.06)
+    const mixed = [...three, ...dimes, book('d', '2026-11-12', { formats: ['ebook'], price: 0.2 })]
+    expect(pileJars(mixed, TODAY).buying).toBe(2.9)
+  })
+
+  it('goes below zero: no threshold, no floor', () => {
+    const shelf = [read('p', ['paperback'], '2026-11-02'), book('buy', '2026-11-10', { formats: ['paperback'], price: 12 })]
+    expect(pileJars(shelf, TODAY).buying).toBe(-1.4)
+  })
+
+  it('an owned book with no price spends nothing, also one added after 2026-11-01', () => {
+    expect(pileJars([...three, book('buy', '2026-11-10', { formats: ['hardcover'] })], TODAY).buying).toBe(3)
+    expect(pileJars([...three, book('free', '2026-11-10', { formats: ['ebook'], price: 0 })], TODAY).buying).toBe(3)
+  })
+
+  it('library, borrowed and listen-only books never earn or spend, even with a price', () => {
     const shelf = [
       ...three,
       read('l', ['library'], '2026-11-05'),
       read('b', ['borrowed'], '2026-11-06'),
-      book('lib', '2026-11-07', { formats: ['library'] }),
-      book('bor', '2026-11-08', { formats: ['borrowed'] }),
+      book('lib', '2026-11-07', { formats: ['library'], price: 20 }),
+      book('bor', '2026-11-08', { formats: ['borrowed'], price: 20 }),
+      book('aud', '2026-11-08', { formats: ['audiobook'], price: 20 }),
+      book('st', '2026-11-09', { formats: ['storytel'], price: 20 }),
     ]
     expect(pileJars(shelf, TODAY)).toEqual({ buying: 3, storytel: 0 })
+  })
+
+  it('Storytel imports never spend', () => {
+    expect(pileJars([...three, book('imp', '2026-11-10', { storytelId: '42', price: 9 })], TODAY).buying).toBe(3)
   })
 
   it('counts nothing before 2026-11-01', () => {
     const shelf = [read('old', ['paperback'], '2026-10-31'), read('new', ['paperback'], '2026-11-01')]
     expect(pileJars(shelf, TODAY).buying).toBe(1)
     // an owned book added in October doesn't spend November's coins
-    const three = [read('p', ['paperback'], '2026-11-02'), read('h', ['hardcover'], '2026-11-03'), read('e', ['ebook'], '2026-11-04')]
-    expect(pileJars([...three, book('oct', '2026-10-20', { formats: ['paperback'] })], TODAY).buying).toBe(3)
+    expect(pileJars([...three, book('oct', '2026-10-20', { formats: ['paperback'], price: 15 })], TODAY).buying).toBe(3)
+  })
+
+  it('an older shelf with no prices loads with its count and no spending', () => {
+    const shelf = [...three, book('a', '2026-11-05', { formats: ['paperback'] }), book('b', '2026-11-06', { format: 'hardcover' })]
+    expect(pileJars(shelf, TODAY).buying).toBe(3)
   })
 })
 

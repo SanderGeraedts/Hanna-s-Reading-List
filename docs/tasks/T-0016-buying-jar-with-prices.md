@@ -381,3 +381,26 @@ To be written by the tester.
 - 2026-11-21 ux-designer: designed (the add dialog follow-up, the panel's Price field and the
   one-line jar; choices made while Hanna was asleep are listed under *Design*); handed to the
   developer.
+- 2026-11-21 requester: Hanna asked to go with the recommended options while asleep; the designer's
+  choices stand.
+- 2026-11-21 developer: built `Book.price` (optional), `src/lib/price.ts` (price parsing, coin
+  text and jar label, who is asked, the €0 e-book link condition) with `price.test.ts`;
+  `pileJars` sums the buying jar in cents (+500 per owned finish from the pile, − price per owned
+  book added since 2026-11-01; no floor, `TREAT_COST` gone); `merge.ts` keeps
+  `keep.price ?? other.price`; the add dialog's follow-up (`AddFollowUp.tsx`, with
+  `AddFollowUp.test.tsx`) after Search, Scan, ISBN and Manual, the tabs kept mounted and hidden
+  meanwhile; "Price" in the book panel (`PriceField.tsx`); the one-line buying jar; the pair
+  "warning on a sunken well over a card" for both wallpapers in `colours.test.ts`. Check:
+  `pnpm test` 75 files passed, 1 skipped; 534 tests passed, 9 skipped. `pnpm run build` ✓ built.
+  `pnpm exec harness check`: tasks, decisions, engineers, generated files ✓. Clicked through on
+  `vite dev --port 3124` with no backend, shelf seeded in localStorage, at 390×844 and 1280×800 on
+  lavender and midnight (screens in `docs/tasks/T-0016-screens/`): jar "Buying jar: 4.6 coins" /
+  "Buying jar: minus 1.4 coins" in rgb(224, 163, 95) (`--warning`), Storytel jar unchanged;
+  follow-up "Added “The Name of the Wind”.", focus on Paperback, price field `inputmode=decimal`
+  144 px wide, chips/Skip/Done 44 px high on touch; "twelve" → "Try 12.50 or 12,50." not saved;
+  "12,50" + Done → 12.5, back on Manual with "Added to the shelf." and focus in Title; E-book at
+  "0" → Next → `javascript:x` refused with the panel's error, Skip keeps €0; a good link saved on
+  Enter; Escape mid-way kept the book, Hardcover and 24.99; panel shows "€ 12.50", edit to 9.95,
+  Escape puts back, emptying clears it, hidden after unticking Paperback; no sideways scroll; no
+  page errors. For the architect: `colours.test.ts` checks "warning on a card" on lavender only,
+  not on midnight (the task's Notes say both); I added only the pair the design asks for.

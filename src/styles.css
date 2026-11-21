@@ -532,6 +532,48 @@ textarea.input {
   display: grid;
   gap: 0.75rem;
 }
+/* the tab row and its panel; hidden (not unmounted) while the add follow-up shows (T-0016) */
+.add-tabs {
+  display: contents;
+}
+.add-tabs[hidden] {
+  display: none;
+}
+.add-follow-up .success {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.follow-up-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+/* everything new she taps in the follow-up is a full finger high on a touch screen */
+@media (pointer: coarse) {
+  .add-follow-up .format-chip,
+  .follow-up-actions .btn {
+    min-height: var(--tap);
+  }
+}
+/* a price: the € fixed inside the field's left edge, about 9rem wide */
+.price-box {
+  position: relative;
+  width: 9rem;
+  max-width: 100%;
+}
+.price-euro {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+.input.price-input {
+  width: 100%;
+  padding-left: 1.9rem;
+}
 .results {
   list-style: none;
   margin: 0;
@@ -4555,10 +4597,6 @@ button.today-item:hover {
 .jar p {
   margin: 0;
 }
-.jar.treat {
-  background: var(--accent-soft);
-  border-color: var(--accent-line);
-}
 .jar-name {
   font-size: var(--fs-small);
   font-weight: 600;
@@ -4584,9 +4622,16 @@ button.today-item:hover {
 .jar-status {
   font-size: var(--fs-small);
 }
-.jar-status.treat {
-  color: var(--text);
+/* the buying jar's one line, "🪙 4.6 coins" (T-0016); below zero the whole line is in --warning,
+   and its real minus sign makes it read without colour */
+.jar-count {
+  font-size: var(--fs-large);
   font-weight: 600;
+  line-height: 1.2;
+  color: var(--text);
+}
+.jar-count.below {
+  color: var(--warning);
 }
 /* the dust-off's cover is a 44 px target, the cover centred in it */
 .dust-off .cover-btn {
