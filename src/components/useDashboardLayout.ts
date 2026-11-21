@@ -1,133 +1,173 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { DEFAULT_LAYOUT, cleanLayout, type DashboardLayout } from '#/lib/dashboardLayout'
-import { favouritesChange, meetAccount } from '#/lib/favourites'
+import { DEFAULT_LAYOUT, cleanLayout, type BlockId, type DashboardLayout } from '#/lib/dashboardLayout'
+import { cleanFavourites, favouritesChange, meetAccount, type FavouritesChange } from '#/lib/favourites'
 import { loadFavourites, saveFavourites } from '#/server/favourites'
 
 export const layoutKey = (accountId: string | null) => `hannas-reading-list:dashboard:${accountId ?? 'local'}`
 /** set once this device has met the account's favourites (see meetAccount) */
 export const favouritesMetKey = (accountId: string) => `hannas-reading-list:favourites-met:${accountId}`
+/** stars and unstars made on this device that the account hasn't got yet, oldest first */
+export const favouritesUnsentKey = (accountId: string) => `hannas-reading-list:favourites-unsent:${accountId}`
 
-function readFlag(key: string) {
+/** this browser's storage, or the one a test hands in */
+type Store = () => Storage
+
+function read(st: Store, key: string): string | null {
   try {
-    return localStorage.getItem(key) === '1'
+    return st().getItem(key)
   } catch {
-    return false
+    return null
   }
 }
 
-function writeFlag(key: string) {
+function write(st: Store, key: string, value: string | null) {
   try {
-    localStorage.setItem(key, '1')
+    if (value === null) st().removeItem(key)
+    else st().setItem(key, value)
   } catch {
-    /* storage blocked: the device meets the account again next time, which is harmless */
+    /* storage blocked: it still holds for this visit */
   }
 }
+
+function readUnsent(st: Store, key: string): FavouritesChange[] {
+  try {
+    const list: unknown = JSON.parse(read(st, key) ?? '[]')
+    return (Array.isArray(list) ? list : []).map((c) => ({
+      add: cleanFavourites(c?.add),
+      remove: cleanFavourites(c?.remove),
+    }))
+  } catch {
+    return []
+  }
+}
+
+const sameList = (a: readonly BlockId[], b: readonly BlockId[]) => a.length === b.length && a.every((id, i) => id === b[i])
 
 /**
  * The dashboard layout, remembered on this device for this account (#85).
- * Signed in, the favourites follow the account (#182): read when the
- * dashboard opens and whenever it comes back into view, and every star sent
- * on its own. Signed out, offline, or while the server doesn't keep
- * favourites, they stay on this device as before.
+ * Signed in, the favourites follow the account (#182):
+ *
+ * - every star and unstar is kept on the device until the account has it, and
+ *   sent one at a time, oldest first (also after being offline);
+ * - the account's favourites are read when the dashboard opens and whenever it
+ *   comes back into view, after this device's unsent changes have gone up;
+ * - the first time, the device meets the account (see meetAccount).
+ *
+ * Signed out, or while the server doesn't keep favourites, they stay on this
+ * device as before. Everything that talks to the server runs one step at a
+ * time, so a device never has two saves on their way at once.
  */
-export function useDashboardLayout(accountId: string | null) {
+export function useDashboardLayout(accountId: string | null, storage?: Storage) {
   const key = layoutKey(accountId)
+  const box = useRef(storage)
+  box.current = storage
+  const st = useCallback<Store>(() => box.current ?? localStorage, [])
   const [layout, setState] = useState<DashboardLayout>(() => {
     try {
-      return cleanLayout(JSON.parse(localStorage.getItem(key) ?? 'null'))
+      return cleanLayout(JSON.parse(st().getItem(key) ?? 'null'))
     } catch {
       return DEFAULT_LAYOUT
     }
   })
   const current = useRef(layout)
-  // the account keeps favourites, as far as this device knows
-  const kept = useRef(false)
-  // favourites saves still on their way, and how many were sent so far
-  const pending = useRef(0)
-  const sent = useRef(0)
+  const chain = useRef<Promise<unknown>>(Promise.resolve())
+  const live = useRef(true)
 
   const store = useCallback(
     (next: DashboardLayout) => {
       current.current = next
       setState(next)
-      try {
-        localStorage.setItem(key, JSON.stringify(next))
-      } catch {
-        /* storage blocked: it still holds for this visit */
-      }
+      write(st, key, JSON.stringify(next))
     },
     [key],
   )
 
   /** Takes over the account's favourites (except blocks hidden on this device). */
   const adopt = useCallback(
-    (favourites: string[]) => {
+    (favourites: BlockId[]) => {
       const next = cleanLayout({ ...current.current, favourites })
-      const now = current.current.favourites
-      if (next.favourites.length !== now.length || next.favourites.some((id, i) => id !== now[i])) store(next)
+      if (!sameList(next.favourites, current.current.favourites)) store(next)
     },
     [store],
   )
 
-  useEffect(() => {
-    kept.current = false
-    if (!accountId) return
-    let live = true
-    const metKey = favouritesMetKey(accountId)
+  /** Runs server steps one after another. */
+  const run = useCallback((step: () => Promise<unknown>) => {
+    chain.current = chain.current.then(step).catch(() => {
+      /* offline, or signed out on the server: unsent changes wait for the next try */
+    })
+  }, [])
 
-    const pull = () => {
-      const at = sent.current
-      loadFavourites()
-        .then((account) => {
-          // a star sent meanwhile is newer than this answer
-          if (!live || !account.kept || pending.current > 0 || at !== sent.current) return
-          kept.current = true
-          const { favourites, push } = meetAccount(current.current.favourites, account.favourites, readFlag(metKey))
-          if (push.length === 0) {
-            writeFlag(metKey)
-            adopt(favourites)
-            return
-          }
-          // first meeting with an account without favourites: this device's go up
-          saveFavourites({ data: { add: push, remove: [] } })
-            .then((saved) => {
-              if (!saved.kept) return
-              writeFlag(metKey)
-              if (live && at === sent.current) adopt(saved.favourites)
-            })
-            .catch(() => {})
-        })
-        // offline, or not signed in on the server: the copy here will do
-        .catch(() => {})
+  /** Sends this device's unsent changes, oldest first. False when the server doesn't keep favourites. */
+  const flush = useCallback(async (unsentKey: string): Promise<boolean> => {
+    for (;;) {
+      const [first] = readUnsent(st, unsentKey)
+      if (!first) return true
+      const saved = await saveFavourites({ data: first })
+      if (!saved.kept) {
+        write(st, unsentKey, null)
+        return false
+      }
+      // only the change just sent leaves the list; newer ones stay behind it
+      write(st, unsentKey, JSON.stringify(readUnsent(st, unsentKey).slice(1)))
     }
+  }, [])
 
-    pull()
+  /** Unsent changes go up, then the account's favourites are taken over. */
+  const pull = useCallback(
+    async (account: string) => {
+      const metKey = favouritesMetKey(account)
+      const unsentKey = favouritesUnsentKey(account)
+      if (read(st, metKey) !== '1') {
+        const first = await loadFavourites()
+        if (!first.kept) {
+          // the device keeps its own; they go up once the server keeps favourites
+          write(st, unsentKey, null)
+          return
+        }
+        // an account without favourites gets this device's (its unsent changes are part of them)
+        if (first.favourites.length === 0) {
+          const { push } = meetAccount(current.current.favourites, first.favourites, false)
+          write(st, unsentKey, push.length ? JSON.stringify([{ add: push, remove: [] }]) : null)
+        }
+      }
+      if (!(await flush(unsentKey))) return
+      const account_ = await loadFavourites()
+      if (!account_.kept) return
+      write(st, metKey, '1')
+      // a star made meanwhile goes up first; its own step reads the account again
+      if (live.current && readUnsent(st, unsentKey).length === 0) adopt(account_.favourites)
+    },
+    [adopt, flush],
+  )
+
+  useEffect(() => {
+    live.current = true
+    if (!accountId) return
+    run(() => pull(accountId))
     const onVisible = () => {
-      if (document.visibilityState === 'visible') pull()
+      if (document.visibilityState === 'visible') run(() => pull(accountId))
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => {
-      live = false
+      live.current = false
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [accountId, adopt])
+  }, [accountId, pull, run])
 
   const setLayout = useCallback(
     (next: DashboardLayout) => {
       const before = current.current.favourites
       store(next)
-      if (!accountId || !kept.current) return
+      if (!accountId) return
       const change = favouritesChange(before, next.favourites)
       if (change.add.length === 0 && change.remove.length === 0) return
-      sent.current++
-      pending.current++
-      saveFavourites({ data: change })
-        .catch(() => {})
-        .finally(() => {
-          pending.current--
-        })
+      const unsentKey = favouritesUnsentKey(accountId)
+      write(st, unsentKey, JSON.stringify([...readUnsent(st, unsentKey), change]))
+      // before the first meeting, a pull does the meeting and then sends it
+      run(() => (read(st, favouritesMetKey(accountId)) === '1' ? flush(unsentKey) : pull(accountId)))
     },
-    [accountId, store],
+    [accountId, flush, pull, run, store],
   )
 
   return [layout, setLayout] as const

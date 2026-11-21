@@ -34,12 +34,12 @@ import type { DayEntry } from '#/lib/readingLog'
 import { percentText } from '#/lib/progress'
 import {
   BLOCKS,
-  DEFAULT_LAYOUT,
   SECTIONS,
   SECTION_IDS,
   hideBlock,
   moveBlock,
   placeOf,
+  resetLayout,
   showBlock,
   singleColumn,
   toggleFold,
@@ -340,7 +340,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
         {arranging ? (
           <>
             <div className="dashboard-bar-actions">
-              <button className="btn small" onClick={() => setLayout(DEFAULT_LAYOUT)}>
+              <button className="btn small" onClick={() => setLayout(resetLayout(layout))}>
                 Reset
               </button>
               <button className="btn small primary" onClick={() => setArranging(false)}>

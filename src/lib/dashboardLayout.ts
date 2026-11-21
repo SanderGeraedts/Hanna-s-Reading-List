@@ -203,6 +203,14 @@ export function showBlock(layout: DashboardLayout, id: BlockId): DashboardLayout
   return { ...moveBlock(next, id, section, column, 0), folded: next.folded.filter((s) => s !== section) }
 }
 
+/**
+ * "Reset" while arranging: the default order, nothing hidden or folded. The
+ * favourites stay as they are: they follow the account, on every device (#182).
+ */
+export function resetLayout(layout: DashboardLayout): DashboardLayout {
+  return { ...structuredClone(DEFAULT_LAYOUT), favourites: [...layout.favourites] }
+}
+
 /** Folds a section shut, or opens it. */
 export function toggleFold(layout: DashboardLayout, section: FoldId): DashboardLayout {
   const folded = layout.folded.includes(section)

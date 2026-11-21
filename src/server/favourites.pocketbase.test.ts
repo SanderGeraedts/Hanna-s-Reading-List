@@ -134,6 +134,44 @@ describe.skipIf(!URL_)('favourites on a local PocketBase (#182)', () => {
       body: { favourites: [] },
     })
     expect(patch.status).toBe(404)
+    // the favourites route: signed out it refuses, and it only ever changes your own shelf
+    const anon = await api(URL_!, '/api/collections/libraries/favourites', { method: 'POST', body: { add: ['goal'] } })
+    expect(anon.status).toBe(401)
+    await api(URL_!, '/api/collections/libraries/records', {
+      method: 'POST',
+      token: b.token,
+      body: { owner: b.id, books: [], arrangement: '' },
+    })
+    expect(await srv.changeFavourites(b.token, { add: ['rhythm'], remove: ['goal', 'calendar', 'heatmap'] })).toEqual({
+      kept: true,
+      favourites: ['rhythm'],
+    })
+    expect(await srv.readFavourites(a.token)).toEqual({ kept: true, favourites: ['goal', 'calendar', 'heatmap'] })
+  })
+
+  it('keeps every star when saves arrive at the same moment', async () => {
+    const shelfBefore = await shelf(URL_!, a.token)
+    const extra = ['rhythm', 'badges', 'covers', 'pile', 'top', 'fact'] as const
+    let lost = 0
+    for (let round = 0; round < 20; round++) {
+      await srv.changeFavourites(a.token, { add: [], remove: [...extra] })
+      // started together, none awaited before the others: two devices, or quick taps
+      await Promise.all(extra.map((id) => srv.changeFavourites(a.token, { add: [id], remove: [] })))
+      const now = await srv.readFavourites(a.token)
+      if (!now.kept || !extra.every((id) => now.favourites.includes(id))) lost++
+    }
+    expect(lost).toBe(0)
+    // a star and an unstar of different blocks at once
+    await Promise.all([
+      srv.changeFavourites(a.token, { add: [], remove: ['rhythm'] }),
+      srv.changeFavourites(a.token, { add: ['wrapped'], remove: [] }),
+    ])
+    const after = await shelf(URL_!, a.token)
+    expect(after.favourites).not.toContain('rhythm')
+    expect(after.favourites).toContain('wrapped')
+    expect(after.books).toEqual(shelfBefore.books)
+    expect(after.arrangement).toBe(shelfBefore.arrangement)
+    await srv.changeFavourites(a.token, { add: [], remove: [...extra, 'wrapped'] })
     expect(await srv.readFavourites(a.token)).toEqual({ kept: true, favourites: ['goal', 'calendar', 'heatmap'] })
   })
 
@@ -164,5 +202,12 @@ describe.skipIf(!OLD_URL)('favourites on a local PocketBase without the field (#
     const after = await shelf(OLD_URL!, a.token)
     expect(after).toEqual(before) // not even `updated` moved
     expect(after.favourites).toBeUndefined()
+    // the route is there (same hooks), but answers 404 without the field
+    const direct = await api(OLD_URL!, '/api/collections/libraries/favourites', {
+      method: 'POST',
+      token: a.token,
+      body: { add: ['goal'] },
+    })
+    expect(direct.status).toBe(404)
   })
 })

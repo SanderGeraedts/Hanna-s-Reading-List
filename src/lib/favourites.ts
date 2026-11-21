@@ -8,8 +8,11 @@ import { BLOCKS, type BlockId } from './dashboardLayout'
  * They live in their own `favourites` field on the account's `libraries`
  * record and are saved on their own, never as part of a shelf save, so a
  * favourite can't touch the books. A save sends what changed (added and
- * removed blocks), not the whole list, so two devices never overwrite each
- * other's stars and a device that knows nothing can't wipe them.
+ * removed blocks), not the whole list, and the server applies it in one
+ * transaction (pb_hooks/favourites.pb.js), so saves that overlap keep each
+ * other's stars and a device that knows nothing can't wipe them. Each device
+ * sends its changes one at a time and keeps them until the account has them
+ * (src/components/useDashboardLayout.ts).
  */
 
 export const MAX_FAVOURITES = Object.keys(BLOCKS).length

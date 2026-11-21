@@ -1,12 +1,12 @@
 import type { BlockId } from '#/lib/dashboardLayout'
-import { applyChange, cleanFavourites, type FavouritesChange } from '#/lib/favourites'
-import { pb } from './pocketbase'
+import { cleanFavourites, type FavouritesChange } from '#/lib/favourites'
+import { PocketBaseError, pb } from './pocketbase'
 
 /**
  * Reading and writing the dashboard's favourites (#182) on the account's
  * `libraries` record. Server only: the server functions in favourites.ts call
- * these. A favourites save only ever sends the `favourites` field, so it can't
- * change the books.
+ * these. A favourites save only ever changes the `favourites` field, so it
+ * can't change the books.
  */
 
 /** `kept: false`: the account has no shelf on the server yet, or the server doesn't keep favourites (yet). */
@@ -38,19 +38,22 @@ export async function readFavourites(token: string): Promise<AccountFavourites> 
 }
 
 /**
- * Applies a change to what the account has now and saves only that field.
- * Never makes a shelf record and never writes to a server without the field.
+ * Stars and unstars on the account. The server applies the change to what the
+ * account has at that moment, in one transaction (pb_hooks/favourites.pb.js),
+ * so saves that overlap (two quick taps, two devices) keep each other's stars.
+ * It only writes the `favourites` field, never makes a shelf record, and a
+ * server without the field (or the route) answers 404: nothing is written.
  */
 export async function changeFavourites(token: string, change: FavouritesChange): Promise<AccountFavourites> {
-  const row = await findRow(token)
-  if (!row || !keepsFavourites(row)) return NOT_KEPT
-  const now = cleanFavourites(row.favourites)
-  const next = applyChange(now, change)
-  if (next.length === now.length && next.every((id, i) => id === now[i])) return { kept: true, favourites: now }
-  const saved = await pb<Row>(`/api/collections/libraries/records/${row.id}?fields=id,favourites`, {
-    method: 'PATCH',
-    token,
-    body: { favourites: next },
-  })
-  return { kept: true, favourites: cleanFavourites(saved.favourites) }
+  try {
+    const saved = await pb<{ favourites?: unknown }>('/api/collections/libraries/favourites', {
+      method: 'POST',
+      token,
+      body: { add: change.add, remove: change.remove },
+    })
+    return { kept: true, favourites: cleanFavourites(saved.favourites) }
+  } catch (err) {
+    if (err instanceof PocketBaseError && err.status === 404) return NOT_KEPT
+    throw err
+  }
 }
