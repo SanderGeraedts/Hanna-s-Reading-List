@@ -164,3 +164,9 @@ screenshots.
 - 2026-11-21 ux-designer: reviewed: sent back. On the desktop the dark-spined match (The Hobbit)
   is not clearly brighter than the dimmed light books: raise `MATCH_GLOW` to 0.6 (dim and
   forward stay). The 320 px top-row overlap belongs to T-0003, not this task.
+- 2026-11-21 developer: fixed what the UX designer sent back. `MATCH_GLOW` 0.5 → 0.6, and the
+  unit test pins 0.6 (`MATCH_DIM` 0.82 and `MATCH_FORWARD` 0.06 unchanged). The Night Circus's
+  lettering stays readable at 0.6, so 0.55 was not needed. In the new screenshots of "the" at
+  390 and 1280 px (local dev server, no backend), The Hobbit is brighter than Circe and
+  Piranesi beside it and stands forward. `npm test`: "Tests 285 passed (285)"; `npm run build`:
+  "built in 1.37s".

@@ -47,7 +47,7 @@ const damp = THREE.MathUtils.damp
 const smooth = THREE.MathUtils.smoothstep
 
 /** While searching (#184): the glow a match gets on top of the shelf's lighting. */
-export const MATCH_GLOW = 0.5
+export const MATCH_GLOW = 0.6
 /** While searching: how much a book that doesn't match dims (0.82 leaves it at 18%). */
 export const MATCH_DIM = 0.82
 /** While searching: how far a match comes forward off the shelf (a hover is 0.035). */

@@ -3,7 +3,7 @@ import { MATCH_DIM, MATCH_FORWARD, MATCH_GLOW, bookLight } from './BookMesh'
 
 describe('search highlight strength (#184)', () => {
   it('pins the values from the design', () => {
-    expect(MATCH_GLOW).toBe(0.5)
+    expect(MATCH_GLOW).toBe(0.6)
     expect(MATCH_DIM).toBe(0.82)
     expect(MATCH_FORWARD).toBe(0.06)
   })
@@ -12,8 +12,8 @@ describe('search highlight strength (#184)', () => {
     expect(bookLight(0, 0, 0)).toEqual({ emissive: 0, shade: 1 })
   })
 
-  it('gives a match a glow of 0.5 at full brightness', () => {
-    expect(bookLight(0, 1, 0)).toEqual({ emissive: 0.5, shade: 1 })
+  it('gives a match a glow of 0.6 at full brightness', () => {
+    expect(bookLight(0, 1, 0)).toEqual({ emissive: 0.6, shade: 1 })
   })
 
   it('leaves a book that does not match at 18% brightness, without glow', () => {
