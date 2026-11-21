@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Book } from '#/lib/library'
 import { finishPatch, parsePosition, position, quickBooks, stepOf, stepPatch } from '#/lib/quickUpdate'
 import { Cover } from './Dashboard'
+import { sparkle } from './Sparkles'
 
 type Update = (id: string, patch: Partial<Book> | ((book: Book) => Partial<Book>)) => void
 
@@ -198,6 +199,7 @@ function QuickCard({
           onClick={() => {
             onUpdate(book.id, (b) => finishPatch(b))
             onFinished()
+            sparkle()
           }}
         >
           Finished! 🎉
