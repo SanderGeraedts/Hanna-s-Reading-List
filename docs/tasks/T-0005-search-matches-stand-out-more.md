@@ -99,6 +99,52 @@ have the production account server's address. Until the Engineer has confirmed t
 review and the tester's screenshots come from a local dev server with no backend (shelf in the
 browser) or a local PocketBase, never from signing in or adding books on a deploy preview.
 
+## Review after building (2026-11-21)
+
+Looked at the developer's screenshots of #197 (local dev server, no backend, 12 demo books,
+search "the" matching The Night Circus, The Hobbit and The Name of the Wind): before (`main`)
+and after at 320, 390 and 1280 px. I also read the change in `BookMesh.tsx`.
+
+**What matches the Design:**
+
+- **The values are named constants** at the Design's values (`MATCH_GLOW` 0.5, `MATCH_DIM`
+  0.82, `MATCH_FORWARD` 0.06), and the easing and the update-only-on-change are kept.
+- **Matches come forward.** At 390 and 1280 px all three matches clearly stand proud of the
+  row and cast a shadow on the books next to them. This works well, and it does not depend on
+  colour.
+- **On a phone (390 px) the difference is clear.** The Night Circus is the brightest thing on
+  the shelf, and The Name of the Wind (teal) is clearly brighter than Emma and Dracula beside
+  it. The shelf does not look switched off: the spines, the koala, the cat and the bookcase
+  are all still there. So the dimming stays at `0.82`; there is no need to go back to `0.78`.
+- **The header chip** ("“the” · 3 ✕") is unchanged.
+
+**Differences:**
+
+1. **Must fix: a dark-spined match is not clearly brighter than the light books that don't
+   match, on the desktop.** At 1280 px, The Hobbit (purple) is about as bright as Circe and
+   Piranesi beside it, which are dimmed but still read as tan and mustard. It mostly stands out
+   by its step forward and its crisper letters, not by its light. This is the case the Design
+   named for adjusting ("if a match with a very dark spine … is still not clearly brighter than
+   the light books around it, raise the glow up to `0.7`"), and *Done when* asks for the
+   matches to be "clearly the brightest things on the shelf". The developer saw the same.
+   **Change:** set `MATCH_GLOW` to **`0.6`** (from 0.5) and update the unit test that pins it.
+   Keep `MATCH_DIM` 0.82 and `MATCH_FORWARD` 0.06. Not higher than 0.6 in this round: The Night
+   Circus (cream) is already near white at 0.5, and its lettering must stay readable.
+   **Check in the new screenshots** (1280 and 390 px, search "the"): The Hobbit is visibly
+   brighter than Circe and Piranesi, and the lettering on The Night Circus can still be read.
+   If The Night Circus's lettering washes out at 0.6, go back to 0.55 and say so in the *Log*.
+2. **Not for this task: the top row at 320 px.** The row sits under the header's light fade and
+   the page buttons cover its left end, so a match there (The Night Circus) is hard to see.
+   That isn't caused by this change: the same fade and buttons cover that row on `main` with no
+   search on (see T-0004's 320 px screenshots). It belongs to the phone layout. T-0003's *Done
+   when* already says that at 320 × 640 the tabs "cover no books, also while a search is on".
+   Once T-0003 is done, a match on the top row can be seen there too. If T-0003 ends up not
+   touching the header, the architect should open a separate task for it.
+
+**Verdict: send back** to the developer for difference 1 (`MATCH_GLOW` 0.5 → 0.6, test
+updated, new screenshots at 1280 and 390 px). After that I only need to look at the new
+screenshots.
+
 # Test
 
 # Log
@@ -115,3 +161,6 @@ browser) or a local PocketBase, never from signing in or adding books on a deplo
   1280 px from a local dev server with no backend, for the UX designer's review. For the
   architect, not fixed here: at 320 px the top shelf row sits under the header's light fade and
   the view buttons cover its left end, so a match there (The Night Circus) is hard to see.
+- 2026-11-21 ux-designer: reviewed: sent back. On the desktop the dark-spined match (The Hobbit)
+  is not clearly brighter than the dimmed light books: raise `MATCH_GLOW` to 0.6 (dim and
+  forward stay). The 320 px top-row overlap belongs to T-0003, not this task.
