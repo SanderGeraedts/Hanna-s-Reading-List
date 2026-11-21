@@ -433,6 +433,7 @@ function Scene({
           <BookMesh
             key={book.id}
             book={book}
+            simple={lite}
             clipColor={clipColors.get(book.id)}
             sleep={sleepIds.has(book.id)}
             dims={dims}
