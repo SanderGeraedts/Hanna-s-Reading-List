@@ -4,7 +4,7 @@ title: "Bring back a dashboard block with new books she might like that aren't o
 description: "#186: a dashboard block of new releases by her favourite authors and in her favourite genres, from Open Library, leaving out books already on the shelf; built from the Recommended for you block removed in #123."
 status: Doing
 depends_on: [T-0001]
-decisions: [D-0002, D-0003]
+decisions: [D-0002, D-0003, D-0014, D-0017, D-0018, D-0021]
 raised_on: 2026-11-21
 done_on: ""
 result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/202"]
@@ -191,3 +191,17 @@ browser) or a local PocketBase, never from signing in or adding books on a deplo
   machine and passed on a rerun.
 - 2026-11-21 developer: draft PR #202, based on #199 (merge that first). Screens in the
   developer's scratch folder (320 px and 1280 px). Next: the UX designer's review.
+- 2026-11-21 developer: merged `origin/main` (with D-0006 to D-0020, #204) through T-0006's
+  branch. Recorded **D-0021** (decided by the Requester in #186), which replaces **D-0016**:
+  the same content, except that a block of suggested books not on the shelf ("New for you") is
+  on the dashboard again; Complete your series, Upcoming releases and Listening and reading
+  stay off. D-0016 is now *Replaced* by D-0021 and listed under *Replaced*. Checked
+  **D-0017** (no AI) and **D-0018** (no Google Books): the suggestions come only from Open
+  Library's free, keyless search through `browseBooks`; no AI SDK, call or key, and no Google
+  or other keyed API. Checked **D-0014** (no explanatory hint texts): the Design's empty text
+  ended with the hint "Rate a few books for better picks.", which is left out (decision over
+  Design). The empty message "New books by your favourite authors and in your favourite
+  genres." stays, as do the notes for when it can't suggest (nothing to go on, Open Library
+  unreachable, nothing new), which D-0014 allows. `harness check`: tasks and decisions pass
+  (24 records, index complete); the generated-file lines fail as on main, because the
+  harness adoption (T-0001) hasn't merged yet.

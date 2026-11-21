@@ -111,9 +111,8 @@ export function NewForYouCard({ books, accountId, onAdd }: Props) {
       </p>
       {note && <p className="muted small-text">{note}</p>}
       {shown.length === 0 && !busy && !note && (
-        <p className="muted small-text">
-          New books by your favourite authors and in your favourite genres. Rate a few books for better picks.
-        </p>
+        // the empty-block message; no "how to" hint (D-0014)
+        <p className="muted small-text">New books by your favourite authors and in your favourite genres.</p>
       )}
       <ul className="recommend-list" ref={list} aria-busy={busy}>
         {shown.map((s) => (

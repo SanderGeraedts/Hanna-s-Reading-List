@@ -22,11 +22,11 @@ global one replaced ends its line with `Replaced by G-NNNN.`
 - [D-0013 The app asks nothing in pop-ups: what it wants to know waits in Waiting for you on the dashboard](D-0013-no-pop-ups-questions-wait-on-the-dashboard.md): The rating question after finishing a book and Part of a series? are no longer dialogs; they wait in a Waiting for you block at the top of the dashboard, which hides itself when nothing is waiting.
 - [D-0014 No explanatory hint texts under controls and blocks](D-0014-no-explanatory-hint-texts.md): Hanna asked, block by block and then in one pass, for the explanations under the shelf, the book panel, the dashboard blocks and Add book to go; error hints, the calendar's tap hint, sign-up and barcode texts and messages for empty blocks stay.
 - [D-0015 No quotes anywhere in the app; quotes she already typed stay in her data](D-0015-no-quotes-in-the-app.md): The quote card, loved quotes and the quotes field in the book panel were removed at Hanna's request; Book.quotes and Book.lovedQuotes stay in the data, unused, so nothing she typed is lost.
-- [D-0016 Recommended for you, Complete your series, Upcoming releases and Listening and reading are off the dashboard; books not out yet go on the shelf](D-0016-four-dashboard-blocks-removed-and-unreleased-books-go-on-the-shelf.md): At Hanna's request the four blocks she didn't use were removed with their code; a book whose publication date is still to come goes on the shelf as want-to-read, and What next? leaves it out.
 - [D-0017 No AI anywhere: every feature works without an AI service or key](D-0017-no-ai-anywhere.md): The AI page-edge designer, AI recommendations and AI series lookup were removed on 12 November 2026 with the Anthropic SDK and ANTHROPIC_API_KEY; page edges are picked by hand or from the cover, and lookups use Open Library.
 - [D-0018 No Google Books: search, ISBN lookups and imports use Open Library and Storytel only](D-0018-no-google-books.md): Google Books search and the Google Play Books import were built and reverted the same day, because both need a Google Cloud Console setup (an API key and an OAuth client) that isn't going to happen.
 - [D-0019 No native app, so no home-screen widget](D-0019-no-native-app-or-home-screen-widget.md): Hanna's request for a scrollable phone widget of the shelf is not planned: a real home-screen widget needs a native app, and iPhone widgets can't scroll; the app stays a web app.
 - [D-0020 The look is one design system: cosy library, one warm gold accent, a lavender striped wallpaper on every page, checked for contrast by a test](D-0020-the-look-one-design-system-gold-on-lavender.md): Colours, six text sizes, spacing, corners and a 44 px tap size are tokens at the top of styles.css, shown on the unlinked /style page; every page has the same lavender striped wallpaper with gold as the one accent, and colours.test.ts fails when text falls below WCAG contrast.
+- [D-0021 New for you (suggested books not on the shelf) is on the dashboard again; Complete your series, Upcoming releases and Listening and reading stay off; books not out yet go on the shelf](D-0021-new-for-you-is-back-the-other-removed-blocks-stay-off.md): At Hanna's request in #186 a block of suggested books from Open Library that aren't on her shelf is back as New for you; the other three blocks removed in #123 stay off, a book whose publication date is still to come goes on the shelf as want-to-read, and What next? leaves it out.
 
 ## Open questions
 
@@ -36,7 +36,7 @@ global one replaced ends its line with `Replaced by G-NNNN.`
 
 ## Replaced
 
-None.
+- [D-0016 Recommended for you, Complete your series, Upcoming releases and Listening and reading are off the dashboard; books not out yet go on the shelf](D-0016-four-dashboard-blocks-removed-and-unreleased-books-go-on-the-shelf.md): At Hanna's request the four blocks she didn't use were removed with their code; a book whose publication date is still to come goes on the shelf as want-to-read, and What next? leaves it out.
 
 ## Resolved questions
 
