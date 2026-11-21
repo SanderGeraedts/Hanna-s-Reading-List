@@ -85,6 +85,18 @@ Tapping a country (or a cover) to open its books, and zooming the map.
   both wallpapers.
 - With a seeded shelf of 150 finished books with places: the dashboard stays responsive, and the
   network tab shows the map's covers requested at the small size, each URL once.
+- Design checks (UX designer), on the screenshots and in the dev server:
+  - every lit country has a gold outline with a dark edge, drawn over its neighbours, readable on
+    lavender and midnight, about the same thickness at 390 and 1280;
+  - no lit country is shaded lighter than another; while covers load and when one fails, its tile
+    shows the spine colour, never a hole;
+  - the country list shows names only; a long name wraps inside its cell;
+  - the lands show "Imaginary lands" and one row per land, each cover 2.2 × 3.3 rem, wrapping onto
+    more lines without overflowing at 390 px; a broken or missing cover shows a spine-colour chip;
+  - hovering a lit country shows its name and its book titles one per line; hovering a lands cover
+    shows its title;
+  - with no places yet the plain map shows with "Open Library doesn't know where your finished
+    books are set yet."
 - `pnpm test`, `pnpm run build` and `pnpm exec harness check` pass.
 
 # Notes
@@ -150,7 +162,171 @@ These were taken by the architect; the UX designer may refine the visual ones un
     show the title on hover.
 12. **A decision record (D-0026)** so no one adds numbers back to the block later.
 
+Taken by the UX designer (recommended options, see *Design*):
+
+13. **Lit-country outline:** gold (`--accent`, 1.25 px) over a dark edge (`--bg`, 2.5 px), in
+    screen pixels, the same on both wallpapers, drawn above all filled countries.
+14. **Tiles touch**, no seam between covers; a pattern's grid is about square (`ceil(√n)`
+    columns), its last row filled from the first book.
+15. **Lands as titled rows:** "Imaginary lands" (no colon) as a small heading, then each land's
+    name on its own line with its covers below, wrapping, all of them.
+16. **No hover highlight** on the map; covers in the lands are not focusable.
+
 # Design
+
+Everything stays inside the existing card `.dash-card.world-card` with the title "Where your books
+are set" (unchanged). From top to bottom: the map, the list of country names, the imaginary lands,
+then at most one muted line (waiting or empty). No hint text (D-0014), no number anywhere (D-0026).
+Tokens only (D-0020); no new colour, text size or spacing value.
+
+## Where the block sits, at both widths
+
+| | Phone, 390 px wide | Computer, 1280 px wide |
+|---|---|---|
+| Card | one column, card padding 1rem (existing ≤ 720 px rule) | one of two dashboard columns, card padding `--space-5` |
+| Map width | about 334 px, so 0.93 px per map unit | about 486 px, so 1.35 px per map unit |
+| One cover tile (8 × 12 map units) | about 7 × 11 px | about 11 × 16 px |
+| Country list | 2 columns | 3 columns |
+| Lands-row covers per line | about 8 | about 12 |
+
+The map keeps its shape (`viewBox 0 0 360 142`, `width: 100%`, `height: auto`) and its existing
+frame: `.world-map` background, `--radius-small` corners, `--space-2` above and below. The tile size
+stays 8 × 12 map units on both widths (the architect's constant): at 7 px wide on a phone a cover is
+a recognisable colour block, at 11 px on a computer the artwork starts to show. Nothing changes
+between the two widths except what the card width gives.
+
+## The map
+
+### Plain countries (no finished book set there)
+
+Unchanged: `.world-country` fill `rgba(255, 255, 255, 0.1)`, stroke `rgba(0, 0, 0, 0.35)`, width
+0.25 map units. Hover text: the country name only. These are drawn first.
+
+### Cover-filled countries (one or more finished books set there)
+
+- **Fill:** the patchwork of tiles, one tile per book, in tile order (most recently finished first,
+  no finish date last, ties by title). Each tile is a rect in the book's spine colour
+  (`book.color`) with the cover image on top (`preserveAspectRatio="xMidYMid slice"`, so a cover is
+  cropped, never squashed). Tiles touch: no gap or seam between them (a seam would eat a third of a
+  phone tile).
+- **The grid inside a country's pattern:** `columns = ceil(√n)` for n books, rows as needed; empty
+  cells at the end of the last row continue from the first book, so the pattern is full and a
+  repeat never leaves a hole. The pattern starts at the top-left corner of the country's bounding
+  box, so a tiny country shows its first tile (her latest read there).
+- **No shading by count:** `fillOpacity` and the gold `.world-country.lit` fill go. Every lit
+  country is fully opaque covers.
+- **The outline (same on lavender and midnight):** each lit country gets its outline drawn on top
+  of all filled countries, in its own group after them, so a neighbouring lit country can't paint
+  over it. Two strokes, both `fill: none`, `vector-effect: non-scaling-stroke` (so the width is in
+  screen pixels, the same on phone and computer), `stroke-linejoin: round`:
+  1. underneath: `stroke: var(--bg)`, width **2.5 px** (a dark edge, so the gold reads against a
+     pale cover);
+  2. on top: `stroke: var(--accent)`, width **1.25 px** (the one gold accent; it already passes
+     3:1 on a card on both wallpapers in `colours.test.ts`).
+
+  The card is the same walnut `--surface` on both wallpapers (only its 12 % see-through tint
+  differs), so the outline needs no wallpaper override and no new contrast pair. A tiny country
+  (the Netherlands, about 6 px wide on a phone) shows mostly outline with a sliver of cover; that is
+  fine, it still reads as gold and lit.
+- **No hover effect** (no highlight, default cursor): the map isn't interactive in this task.
+
+### Cover loading and failed covers
+
+- While a cover image loads, its tile shows the spine-colour rect: the map never shows holes or a
+  spinner, the covers simply appear over the colours.
+- A cover that fails to load leaves the spine-colour rect: it looks exactly like a book without a
+  cover. Nothing else changes, no error text.
+- Map tiles ask for the small cover size (`size=S`); own photos (`data:`) and Storytel covers as
+  they are.
+
+## The list of country names
+
+`ul.world-top`, the top 6 lit countries, most books first, ties alphabetical. Each `li` holds only
+the country name, `--fs-body`, `--text`; the muted count span goes. The grid stays
+`repeat(auto-fill, minmax(9rem, 1fr))` with gap `--space-1` `--space-3`; a long name ("Bosnia and
+Herz.", "United States of America") wraps inside its cell (`overflow-wrap: anywhere`, `min-width:
+0`). `justify-content: space-between` on the `li` goes (nothing to push right). Hidden when no
+country is lit.
+
+## Imaginary lands, one row per land
+
+Shown only when there is at least one land; under the country list, `--space-3` above it.
+
+```
+🗺️ Imaginary lands                       ← title line
+Hogwarts                                 ← land name
+[▯][▯][▯][▯]                             ← its covers, wrapping
+Middle-earth
+[▯][▯]
+```
+
+- **Title line:** `🗺️ Imaginary lands` (no colon, the rows follow), the emoji `aria-hidden`,
+  `--fs-small`, weight 600, `--text`. Markup: an `h3` (the card's title is the `h2`), margin 0.
+- **The rows:** a `ul.world-lands`, no bullets, `display: grid`, gap `--space-3` between lands.
+  Lands most books first, ties alphabetical; the same land merged as in T-0015 (first spelling
+  shown).
+- **One row (`li`):** the land name, `--fs-small`, `--text`, normal weight, wrapping with
+  `overflow-wrap: anywhere` (a long name like "Hogwarts School of Witchcraft and Wizardry" wraps,
+  never overflows); then `--space-1` below it, the covers.
+- **The covers:** a `ul` reusing the `own-challenge-books` look: `display: flex; flex-wrap: wrap;
+  gap: var(--space-1)`, each cover **2.2 × 3.3 rem** (35 × 53 px), `border-radius: 3px`,
+  `object-fit: cover`. Add the new class to the existing `.own-challenge-books img,
+  .own-challenge-books .cover-chip` rule rather than copying the values. Covers in tile order, every
+  book once, all of them (no "more"); they wrap onto as many lines as needed. Cover size `size=M`,
+  `<img loading="lazy">`.
+- **Book without a cover:** `span.cover-chip` with `background: book.color`, same size.
+- **Cover that fails to load** (`onError`): replaced by the same spine-colour `cover-chip`. Give the
+  `<img>` `background: book.color` as well, so a slow cover shows its colour while it loads.
+- **Not buttons:** covers are plain images, not focusable, no click (tapping is not in this task).
+
+## The lines under the map (one at most, `muted small-text`)
+
+| State | What shows |
+|---|---|
+| Map shapes still loading | only `Unfolding the map…` (unchanged), no map |
+| Map shapes failed | only `The map couldn't be loaded right now.` (unchanged) |
+| Some finished books still being looked up | the map (plain countries plus any lit ones), list and lands as far as known, then `Looking up where more of your books are set…` |
+| Nothing lit, no lands, nothing waiting (no places yet, or no finished books) | the plain map, then `Open Library doesn't know where your finished books are set yet.` (unchanged) |
+| Everything looked up | no line |
+
+## Screen readers and hover
+
+- **Map:** `svg role="img"` with `aria-label` = `World map of where your books are set: ` + all lit
+  countries, most books first, joined with `, ` (e.g. "World map of where your books are set:
+  United Kingdom, France, Greece"); just `World map` when none is lit. The map is one image to a
+  screen reader; the paths' titles are for mouse hover.
+- **Hover on a lit country:** its `<title>` is the country name, then each book title on its own
+  line, in tile order:
+  ```
+  United Kingdom
+  Pride and Prejudice
+  Jane Eyre
+  ```
+  (a newline between lines; no "books", no "and more").
+- **Hover on a plain country:** its name.
+- **Country list:** read as a plain list of names.
+- **Lands:** the `h3` "Imaginary lands", then a list; each row reads the land name, then its cover
+  list with `aria-label` = the land name, each cover announced by its book title: `<img alt="{title}"
+  title="{title}">`, or for a chip `<span class="cover-chip" role="img" aria-label="{title}"
+  title="{title}">`. Hover on a cover shows its title.
+- No part of the block is in the tab order (nothing is interactive).
+
+## Exact wording (English, as the app)
+
+- Title: `Where your books are set` (unchanged)
+- `Unfolding the map…` / `The map couldn't be loaded right now.` (unchanged)
+- Map label: `World map of where your books are set: {countries}` or `World map`
+- Lands title: `Imaginary lands`
+- Waiting: `Looking up where more of your books are set…`
+- Empty: `Open Library doesn't know where your finished books are set yet.` (unchanged)
+
+## Reuse
+
+- Tokens: `--accent`, `--bg`, `--text`, `--fs-small`, `--fs-body`, `--space-1` … `--space-3`,
+  `--radius-small`; existing `.dash-card`, `.dash-card-head`, `.world-map`, `.world-country`,
+  `.world-top`, `.muted`, `.small-text`, `.visually-hidden`, `.cover-chip` and the
+  `own-challenge-books` cover sizes.
+- The ` · ` separators and the hidden commas of the old lands line go (each land is its own row).
 
 # Test
 
@@ -159,3 +335,6 @@ These were taken by the architect; the UX designer may refine the visual ones un
 - 2026-11-22 architect: task written from Hanna's feature chat of 2026-11-22; D-0026 records that
   the block shows her covers and never numbers; choices under *Choices made by the team*; group 1,
   no new stored fields; handed to the UX designer.
+- 2026-11-22 ux-designer: designed (map tiles and gold outline on both wallpapers, names-only list,
+  lands rows, states, phone/computer, screen reader and hover, wording); choices 13–16 added;
+  design checks added to *Done when*; handed to the developer.
