@@ -137,6 +137,67 @@ have the production account server's address. Until the Engineer has confirmed t
 review and the tester's screenshots come from a local dev server with no backend (shelf in the
 browser) or a local PocketBase, never from signing in or adding books on a deploy preview.
 
+## Review after building (2026-11-21)
+
+**What I looked at.** The developer's screenshots (320, 360, 390 px: shelf, search "the" on,
+Dashboard; 768 and 1280: shelf and Dashboard; the error note at 320, 360, 390; the header
+signed in before and after; 150 books). I also ran the branch (`c5dad26`) myself on a local
+dev server with no backend (12 demo books, headless Chrome) at 320 × 640, 390 × 844 and
+1280 × 800: took a book out with a tap, turned it round, put it back with Esc, and with WebGL
+switched off checked the note and the keyboard order. The app has one colour scheme, so there
+is no light/dark pair to compare.
+
+**Matches the Design.**
+
+- *Phone header:* ☰, the title and the count (cut off with "…" at 320) on top, 🔍 ↻ "+ Add"
+  on the right, and the four round tabs on a full-width row of their own, 📚 in gold. One row
+  at 320, 360 and 390, also with the search chip ("the" · 3 ✕) and with the account button
+  (H). Before the fix, signed in, the tabs wrapped to two rows (📅 alone at 390 and 360, two by
+  two at 320) and sat over the crown and the top shelf; that is gone.
+- *Bookshelf on a phone:* the bookcase fills the width, the crown and the top shelf start under
+  the header, the top shelf's spines are readable on the first screen, zoom buttons bottom
+  right. Same at 150 books.
+- *Taking a book out:* the book comes up above the details sheet and clears the header at 320
+  and 390. Turned round, its painted back (blurb, barcode) shows; Esc puts it back.
+- *Dashboard:* the strip with the books being read starts fully under the tabs at 320, 360,
+  390, 768 and 1280.
+- *Desktop:* the 1280 shelf is the same as on `main` (compared with the `main` shot from the
+  T-0004 run).
+- *Error note:* the exact words of the Design, centred, each line in the empty-shelf note's
+  pill, gold "Try again", announced through `role="status"`.
+
+**Differences, and whether they block.**
+
+1. *Keyboard order with the note:* tabs, then 🔍, ↻ (Storytel), "+ Add book", then "Try
+   again" (on desktop also Sort, Genre, What next). The Design said "Try again" comes right
+   after the tabs. **Accepted, doesn't block.** The header keeps one order on every width,
+   the buttons are only three stops, and a screen reader hears the note as soon as it shows.
+2. *Zoom buttons stay next to the note.* Only "Zoom in" can be reached (− and ⤢ are disabled
+   at the whole-case view), and it does nothing visible while the shelf can't be drawn.
+   **Doesn't block** for a state that should be rare; better hidden. Follow-up below.
+3. *The note says "on this phone" also on a computer* (seen at 1280). My wording. **Doesn't
+   block**; follow-up below.
+4. *Plain colour on backs and fronts until a book is taken out.* On the shelf the camera
+   looks at the spines; the covers face the neighbouring books, and only the last book in a
+   row shows a sliver of its side. That sliver is now the book's own colour, which reads as a
+   cloth board. I could not see a difference from `main` at 320, 390 or 1280, nor with 150
+   books. A book with a cover picture shows the plain colour only for the moment until its
+   picture loads (before, the painted stand-in showed for that moment); a book without one
+   still gets the stand-in front. When taken out, the back is painted at once and showed when
+   I turned it. **Not visible in normal use, not jarring; accepted.**
+
+**Seen, outside this task (for the architect, as a separate task).** At 1280 × 800 the
+desktop toolbar (🔍, Arrange by, Genre, What next?, ↻, + Add book) wraps under the title and
+tabs and lies over the crown and the fairy lights; the "Genre" label disappears behind the
+lights. It is the same on `main`, this pull request doesn't change it, and the books are not
+covered, so it should not hold up #181. Proposed task: on desktop the header's real height
+also moves the bookcase down (as on phones now), or the toolbar gets its own row above the
+case. The same task can hide the zoom buttons while the shelf can't be drawn, and say
+"on this device" instead of "on this phone" in the note.
+
+**Verdict: matches the Design. Passed to the tester.** Still unproven, as the developer says:
+whether the shelf now shows on Hanna's own phone.
+
 # Test
 
 # Log
@@ -182,4 +243,10 @@ browser) or a local PocketBase, never from signing in or adding books on a deplo
   block in the page's order, so desktop stays exactly as it is); the zoom buttons stay
   visible next to the note. Seen, not fixed (for the architect): at 1280 × 800 the desktop
   toolbar wraps under the title and sits over the top of the bookcase (also on `main`).
+  Remaining: Hanna checks on her own phone that the bookshelf shows with her books.
+- 2026-11-21 ux-designer: reviewed: matches the Design, passed to the tester. Phone header
+  one row at 320, 360, 390 (signed in, search on), Dashboard strip clear, desktop unchanged,
+  error note as designed; plain-colour covers not visible on the shelf. Not blocking: keyboard
+  reaches the header buttons before "Try again"; zoom buttons and "on this phone" in the note;
+  the desktop toolbar over the crown (also on `main`), proposed as a separate task.
   Remaining: Hanna checks on her own phone that the bookshelf shows with her books.
