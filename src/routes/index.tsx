@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ClientOnly, createFileRoute, useNavigate } from '@tanstack/react-router'
-import { BookshelfScene, ZOOM_MAX, clampZoom } from '#/components/BookshelfScene'
+import { ZOOM_MAX, clampZoom } from '#/components/BookshelfScene'
+import { SafeBookshelf } from '#/components/SafeBookshelf'
 import { AddBookDialog } from '#/components/AddBookDialog'
 import { BookPanel } from '#/components/BookPanel'
 import { CoverPicker } from '#/components/CoverPicker'
@@ -127,6 +128,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   const inspect = useRef<InspectTarget>({ rotY: 0, rotX: 0 })
   // share of the screen the details sheet covers on phones; the scene keeps the book above it
   const sheet = useRef(0.45)
+  // the header's real height: what's below it starts under it (#181)
+  const [header, headerPx] = useHeaderHeight()
   const onSheet = useCallback((share: number) => {
     sheet.current = share
   }, [])
@@ -336,8 +339,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   )
 
   return (
-    <div className="app">
-      <header className="topbar">
+    <div className="app" style={headerPx ? ({ '--header-h': `${headerPx}px` } as React.CSSProperties) : undefined}>
+      <header className="topbar" ref={header}>
         <div className="brand">
           <div className="brand-title">
             {/* the ☰ menu only holds the shelf's tools on a phone: elsewhere it would be empty */}
@@ -382,6 +385,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
                   .map((s) => `${counts[s]} ${STATUS_LABELS[s].toLowerCase()}`)
                   .join(' · ')}
           </p>
+          {/* on a phone the brand's children sit in the header's grid: the tabs get a row of their own (#181) */}
           <PageTabs view={view} onView={showView} />
         </div>
         <div className="toolbar">
@@ -435,7 +439,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
 
       <main className="stage">
         <ClientOnly fallback={<div className="stage-loading">Building the shelf…</div>}>
-          <BookshelfScene
+          <SafeBookshelf
             books={shown}
             selectedId={selectedId}
             inspect={inspect}
@@ -447,6 +451,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             highlight={highlight}
             zoom={zoom}
             onZoom={setZoom}
+            topInset={headerPx}
           />
         </ClientOnly>
         {!offShelf && !selected && books.length > 0 && (
@@ -610,6 +615,22 @@ const VIEWS = [
 ] as const
 
 const FOCUS: ChallengeSection[] = ['goal', 'monthly', 'bingo', 'alphabet']
+
+/** The header's height in CSS px, kept up to date as it changes (search chip, wrapping, rotating the phone). */
+function useHeaderHeight() {
+  const [px, setPx] = useState(0)
+  const [el, setEl] = useState<HTMLElement | null>(null)
+  useEffect(() => {
+    if (!el) return
+    const measure = () => setPx(Math.round(el.getBoundingClientRect().height))
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [el])
+  return [setEl, px] as const
+}
 
 /** The pages, always in view as tabs: one tap to switch. On a phone just the icons. */
 function PageTabs({ view, onView }: { view: View; onView: (view: View) => void }) {
