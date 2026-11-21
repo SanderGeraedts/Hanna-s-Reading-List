@@ -154,6 +154,50 @@ have the production account server's address. Until the Engineer has confirmed t
 review and the tester's screenshots come from a local dev server with no backend (shelf in the
 browser) or a local PocketBase, never from signing in or adding books on a deploy preview.
 
+## Review after building (2026-11-21)
+
+Looked at the developer's screens from a local dev server with no backend, at 320 px and
+1280 px (empty, Open Library unreachable, six suggestions, the dashboard, after adding one, and
+the 320 × 640 viewport), and read the texts in `NewForYouCard.tsx` and `recommend.ts` on the
+branch. The empty-state screens were taken before the D-0014 change; I checked its current text
+in the code. The app has one look (D-0020), no light/dark switch.
+
+**Matches the Design:**
+
+- Heading "New for you", the head button "Suggest books" when empty and "New suggestions" with
+  suggestions ("Looking…" while busy, in the code), in *Today*'s right column after *What
+  next?*.
+- Each line: small cover, bold title, "Sarah J. Maas · 2027" in helper text, the reason ("More
+  by Sarah J. Maas, whose books you rate ★4½", "New in Fantasy"), then "+ Want to read" (small
+  secondary button) and "Not for me" (quiet, text only). Six at most.
+- At 320 px the cover stays left, long titles and reasons wrap without being cut, the two
+  buttons go under each other, and every line's cover, title, reason and both buttons are fully
+  visible. On desktop the two buttons sit on one row.
+- Open Library unreachable: "Open Library can't be reached right now. Try again later." in
+  helper text, not red, with the head button still there; the rest of the dashboard stays.
+- Button names include the book ("Add “…” as Want to read", "Not for me: “…”"), the "“…” is on
+  your shelf." line has `role="status"`, the list has `aria-busy`, and focus moves to the next
+  line's "+ Want to read" or the head button.
+
+**Differs, all accepted (no fix needed):**
+
+- *No "Rate a few books for better picks."* It was an instruction, which D-0014 rules out; the
+  decision wins over my Design. The other texts pass D-0014 as messages for an empty or
+  unhelpful block: "New books by your favourite authors and in your favourite genres." (what the
+  empty block will hold), "Finish and rate a few books first, so there is something to go on.",
+  the unreachable note and "Nothing new found just now. Try again later." Nothing opens or
+  searches by itself, so D-0013 and D-0021 ("looks only when she presses its button") hold.
+- *Saved layouts get the block right after What next?*, via the new rule that a later block
+  goes after the block it follows by default. That is what D-0021 asks, and what my Design meant.
+- Suggestions can be books not out yet (2027). D-0021 says such a book goes on the shelf as
+  want-to-read, so that is fine.
+
+**Seen, not this task's:** in the 320 px screenshots taller than the screen, the fixed header
+covers the top of the card when scrolled; that is the app's existing header, the same for every
+block.
+
+**Verdict: passes.** On to the tester, after T-0006 (#199), which this branch is built on.
+
 # Test
 
 # Log
@@ -205,3 +249,6 @@ browser) or a local PocketBase, never from signing in or adding books on a deplo
   unreachable, nothing new), which D-0014 allows. `harness check`: tasks and decisions pass
   (24 records, index complete); the generated-file lines fail as on main, because the
   harness adoption (T-0001) hasn't merged yet.
+- 2026-11-21 ux-designer: reviewed: passes. Name, place, lines, buttons, notes and the 320 px
+  layout match the Design; the dropped hint (D-0014) and placement after *What next?* in saved
+  layouts are accepted. Next: the tester, after T-0006.
