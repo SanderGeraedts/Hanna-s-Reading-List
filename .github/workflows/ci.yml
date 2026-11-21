@@ -1,11 +1,15 @@
-# Tests and build on every pull request. Required by branch protection on
-# main, so a PR with a failing test or a broken build can't be merged.
+# Every pull request runs the checks; the auto-merge workflow acts on the result (G-0011).
+# Keep the tag the same as the harness dependency in package.json (D-0001, G-0004).
 name: CI
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
+  # The auto-merge workflow starts CI on main after a merge: a merge made with GITHUB_TOKEN
+  # starts no push workflows.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,14 +19,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm test
-      - run: npm run build
+  # The harness's reusable CI: pnpm install, harness check, then the test and build scripts
+  # (its default checks). GitHub reports this job as "checks / checks". No POCKETBASE_URL
+  # here, so tests and the build never reach the NAS (G-0019, D-0003).
+  checks:
+    uses: SanderGeraedts/harness/.github/workflows/ci.yml@v0.7.0

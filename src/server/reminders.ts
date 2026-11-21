@@ -13,7 +13,7 @@ import { pb, pocketbaseUrl } from './pocketbase'
  * gave up are removed.
  *
  * Needs on Netlify: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT
- * (a mailto: address), made with `npx web-push generate-vapid-keys`.
+ * (a mailto: address), made with `pnpm dlx web-push generate-vapid-keys`.
  */
 
 interface ReminderItem {
