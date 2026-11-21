@@ -3978,6 +3978,48 @@ textarea.input {
   border-radius: 50%;
 }
 
+/* ---- reading in pictures: pages per month ----------------------------- */
+.months-chart {
+  width: 100%;
+  height: auto;
+  margin-top: var(--space-2);
+}
+.months-grid {
+  stroke: var(--border);
+  stroke-dasharray: 2 3;
+}
+.months-scale,
+.months-label {
+  fill: var(--muted);
+  font-size: 9px;
+}
+.months-now {
+  fill: var(--accent);
+}
+.months-last {
+  fill: rgba(217, 168, 91, 0.32);
+}
+.months-key {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: var(--space-1) 0 0;
+  color: var(--muted);
+}
+.months-swatch {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 2px;
+  margin-left: var(--space-2);
+}
+.months-swatch.now {
+  background: var(--accent);
+}
+.months-swatch.last {
+  background: rgba(217, 168, 91, 0.32);
+}
+
 /* ---- favourites on top --------------------------------------------- */
 .block-star.on {
   color: var(--accent);

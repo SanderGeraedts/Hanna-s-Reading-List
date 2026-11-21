@@ -37,6 +37,7 @@ export const BLOCKS = {
   covers: 'Cover wall',
   rhythm: 'When I read most',
   flower: 'Genre flower',
+  months: 'Pages per month',
   again: 'Give it another try',
 } as const
 
@@ -75,7 +76,7 @@ export const DEFAULT_LAYOUT: DashboardLayout = {
     challenges: [['goal', 'alphabet'], ['bingo']],
     stats: [
       ['count', 'heatmap', 'breakdown', 'flower', 'authors'],
-      ['calendar', 'records', 'rhythm', 'series', 'pile'],
+      ['calendar', 'months', 'records', 'rhythm', 'series', 'pile'],
     ],
     fun: [
       ['badges', 'fact', 'wrapped'],
