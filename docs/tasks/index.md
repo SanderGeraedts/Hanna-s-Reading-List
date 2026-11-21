@@ -22,6 +22,7 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 - [T-0007 Let a book hold a link to its e-book file, shown only when one is added](T-0007-link-to-the-ebook-file.md): #185: an optional link per book to where Hanna keeps the e-book (Google Drive, a server), with an open button in the book panel like "Open in Storytel", shown only when the link is set.
 - [T-0008 Bring back a dashboard block with new books she might like that aren't on her shelf](T-0008-dashboard-block-with-new-books-for-her.md): #186: a dashboard block of new releases by her favourite authors and in her favourite genres, from Open Library, leaving out books already on the shelf; built from the Recommended for you block removed in #123.
 - [T-0010 Let the task index replace the roadmap issue #21](T-0010-the-task-index-replaces-the-roadmap-issue.md): #21 kept the order of open requests by hand; under the harness the generated task index does that, so #21 points to it and is closed.
+- [T-0011 Add a quick update button to move a book on or finish it without the full book panel](T-0011-quick-update-for-reading.md): A round 📖 button in the corner of every page opens the books Hanna is reading as big covers; tapping one opens a small card with big − / + buttons, typing the page, Finished! and More.
 
 ## Dropped
 
