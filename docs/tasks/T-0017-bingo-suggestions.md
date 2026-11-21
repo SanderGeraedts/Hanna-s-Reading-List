@@ -55,7 +55,7 @@ that passes the test the square uses to tick itself, so finishing the suggested 
 | `firstinseries` | Start a new series | is book 1 (`seriesGroups` index 1, a series with at least 2 books on the shelf) of a series of which she has read nothing and is reading or has paused nothing |
 | `series` | Finish a series | is the last unread book of its series on the shelf: every other book of that series on the shelf is read (the `seriesProgress` test the tick uses, a series of 2 or more) |
 | `longseries` | From a series of 5+ | is in a series with 5 or more books on the shelf, or numbered 5 or higher |
-| `sameauthor` | Same author twice | is by an author she finished a book by on this card (see *Choices made while Hanna slept*) |
+| `sameauthor` | Same author twice | is by an author she finished a book by **this year, on any card** (Hanna's decision, see *Same author twice* below) |
 
 **Best guess** (can't be known before she reads it, so the most likely book):
 
@@ -79,6 +79,25 @@ help, so tapping does nothing and these squares don't look tappable.
 yet."** (with no Open and no Another one).
 
 All 28 square ids in `SQUARES` are covered above; there is no square left to decide.
+
+### Same author twice: the whole year counts (Hanna's decision, 2026-11-21)
+
+Hanna decided this herself on 2026-11-21 (relayed by the coordinator while she was awake), and it
+replaces the architect's earlier choice that only books finished on the current card count.
+
+- **The suggestion** for `sameauthor`: a choice by an author of whom she finished a book **this
+  year, on any card** (any finish in `yearFinishes(books, year)`, matched on any of the book's
+  authors with `authorKey`).
+- **The tick changes the same way.** The `sameauthor` tick in `src/lib/bingo.ts` now looks only
+  at `win` (the finishes on this card). It must also tick on a finish on this card when she
+  finished **another book** (a different book id) by the same author **earlier in the same year**,
+  even on an older card of that year. Two finishes of the same book still don't count. The book
+  that ticks the square is the finish on this card, as now. The developer gives the tick what it
+  needs (for example the year's finishes before this card in `Shelf`), and every other square's
+  tick and `cardSquares` stay exactly as they are.
+- What this means for her: on a second or later card, "Same author twice" can tick with the first
+  book she finishes by an author she already read that year. A card she is playing may tick this
+  square on her next visit if such a book is already on it; full cards stay as remembered.
 
 ## 2. A–Z tips follow the series rules
 
@@ -115,23 +134,42 @@ under *Design*.
 4. **No difference shown between a clear fit and a best guess**, and no reason line ("An author you
    love" etc.) on the card: D-0014, no explanation texts. The square's own label already says what
    it asks.
-5. **Same author twice** uses the authors of books finished **on this card** (since the card
-   started), not the whole year, because only those make the square tick. On the first card of
-   the year that is the same as "this year". The developer exposes the card's start (the same
-   window `bingoYear` plays) to the suggestion logic.
-6. **New author**: "never finished a book by" is per author, the way the tick checks it
+5. **New author**: "never finished a book by" is per author, the way the tick checks it
    (`firstByAuthor`), so a co-written book with one new author fits.
-7. **Week vs fast**: `week` uses Make a wish's "short" (under 300 pages or 8 hours), `fast` uses
+6. **Week vs fast**: `week` uses Make a wish's "short" (under 300 pages or 8 hours), `fast` uses
    the bingo "Under 200 pages" test; two days asks for a shorter book than a week.
-8. **Five and spicy** match on any of the book's authors (the `authorKey` comparison bingo uses),
+7. **Five and spicy** match on any of the book's authors (the `authorKey` comparison bingo uses),
    and for spicy also on its series (`seriesGroups` key).
-9. **Re-read** prefers books she rated 4–5 stars, leaves out sleep reads, and isn't weighted.
-10. **Page squares** use the same page count as the tick (`thicknessPages`): a book with no page
-    count and no listening time doesn't fit `long`, `huge`, `short`, `fast` (or `week` without
-    either).
-11. **A–Z tips for DNF books** stay as today (suggestible, ranked last): Hanna only asked about
+8. **Re-read** prefers books she rated 4–5 stars, leaves out sleep reads, and isn't weighted.
+9. **Page squares** use the same page count as the tick (`thicknessPages`): a book with no page
+   count and no listening time doesn't fit `long`, `huge`, `short`, `fast` (or `week` without
+   either).
+10. **A–Z tips for DNF books** stay as today (suggestible, ranked last): Hanna only asked about
     want-to-read books, and DNF books aren't recommendations from the pile.
-12. **No new stored fields** were needed (D-0002 would make one optional).
+11. **No new stored fields** were needed (D-0002 would make one optional).
+
+(The architect's earlier choice about *Same author twice* was replaced by Hanna's own decision,
+under *Same author twice: the whole year counts* above.)
+
+Taken by the UX designer (2026-11-21), the visual and interaction ones, written out under *Design*:
+
+12. **The card names its square.** Its heading is the tapped square's label (e.g. "Over 500
+    pages"), so on a phone she still sees which square it is for when the grid has scrolled up.
+    A label, not an explanation (D-0014).
+13. **The author is shown under the title**, as in What next?: two books with a similar title are
+    told apart, and it is not a reason line.
+14. **Buttons are "Open" and "🎲 Another one"**, full-size buttons like What next? (gold Open,
+    outlined Another one); the 🎲 matches What next?'s "🎲 Another".
+15. **The cover is a picture, not a button**: Open is the one way to the book, so there is one tab
+    stop less per suggestion.
+16. **Tappable squares look tappable**: empty squares of the card being played get the stronger
+    frame (`--border-strong`); "3 books in one month", "5 books in one month", filled squares, other
+    years and full cards keep today's look. The chosen square gets a solid gold frame.
+17. **Focus moves to the card's heading** when it opens (the card sits after all 16 squares in tab
+    order); × or Escape closes it and puts focus back on the square.
+18. **When the shelf changes under an open card**: if the book shown no longer fits (finished,
+    removed, marked as a sleep read), the card shows another fitting book (or the no-fit line); if
+    the square ticks itself, the card closes.
 
 # Done when
 
@@ -147,8 +185,8 @@ under *Design*.
       doesn't is never suggested (pages incl. a listen-only book counted in minutes, Dutch, audio,
       15 h, library, borrowed, hardcover, before 1950, this year, each genre, not fantasy, new
       author, book 1 of an unstarted series but not of a started one, the last unread book of a
-      series, series of 5+, an author finished on this card but not one finished only on an
-      earlier card);
+      series, series of 5+, an author finished this year on any card, also one finished only on
+      an earlier card of this year, but not one finished only last year);
     - the best guesses: `week` (under 300 pages / 8 h), `fast` (under 200 pages), `five` (an
       author with a 5-star book), `spicy` (an author or series with 4+ spice);
     - `reread` suggests only finished books, prefers 4–5 stars, never a sleep read, and never a
@@ -158,6 +196,12 @@ under *Design*.
       or book 3 of a series with book 2 unread;
     - the draw is weighted by `wishWeight` and Another one doesn't repeat until every fitting book
       was shown (a seeded `random` and a fixed `today` make the tests deterministic).
+  - **bingo tick for Same author twice** (`src/lib/bingo.test.ts`, Hanna's decision of
+    2026-11-21): a book by an author finished on card 1, then **another** book by that author
+    finished on card 2 of the same year, ticks card 2's `sameauthor` square with the card 2 book;
+    the same author finished only last year doesn't tick it; finishing the same book twice doesn't
+    tick it; two books by one author on one card still tick it as before; the existing bingo
+    tests for every other square still pass unchanged.
 - Clicked through on a local dev server with no backend (`pnpm run dev`, the shelf in the browser,
   never the production `POCKETBASE_URL`), with screenshots at 390×844 and 1280×800 on both
   wallpapers (lavender and midnight) in `docs/tasks/T-0017-screens/`, of:
@@ -168,6 +212,21 @@ under *Design*.
   - Make a wish and What next? no longer offering a sleep read on a shelf that has one.
 - What Hanna sees matches *Design*; new buttons are at least 44 px high on a touch screen; no
   explanation text is added (D-0014).
+- Checked by the tester for the UX designer's part:
+  - with the keyboard only: Tab reaches each empty square of this year's card (not `three`,
+    `fivemonth`, filled squares, another year's card or a full card); Enter or Space opens the
+    card and focus lands on its heading; Tab then reaches Open, 🎲 Another one and ×; Escape or ×
+    closes it and focus is back on the square; a visible gold focus ring on each of them;
+  - a screen reader (or the accessibility tree) gives each empty square as a button named
+    "<label>, suggest a book" with expanded false/true, and the card as a region named after the
+    square;
+  - the card is never a pop-up: it opens under the grid, inside the bingo block, and the page
+    behind it stays usable;
+  - one fitting book: no 🎲 Another one; nothing fitting: only the heading, × and "No book on
+    your shelf fits this one yet.";
+  - at 390×844 nothing scrolls sideways, the buttons wrap as whole buttons, and a long title
+    wraps without overflowing;
+  - the colour test (`colours.test.ts`) still passes; no new colour was added.
 - `pnpm test`, `pnpm run build` and `pnpm exec harness check` pass.
 
 # Notes
@@ -181,7 +240,7 @@ under *Design*.
   - `src/lib/bingo.ts`: `SQUARES` and the helpers the suggestions should reuse rather than copy
     (`pagesOf`, `pubYear`, the genre regexes, `has`, `authorKey`, `shelfFacts`, the card's start
     day). Export what's needed; keep the tick behaviour and `cardSquares` exactly as they are, so
-    no card she is playing changes.
+    no card she is playing changes, except the `sameauthor` tick (Hanna's decision above).
   - `src/lib/wish.ts`: `wishWeight`, `lengthOf`, and the weighted draw in `grantWish` (reuse or
     extract it).
   - `src/lib/series.ts` (`seriesGroups`), `src/lib/insights.ts` (`seriesProgress`),
@@ -200,7 +259,136 @@ under *Design*.
 
 # Design
 
-To be written by the UX designer.
+Written by the UX designer, 2026-11-21. New choices are 12–18 under *Choices made while Hanna
+slept*. Language: English, as the rest of the app. No new colours, sizes or components: everything
+below is existing tokens (top of `src/styles.css`) and existing classes.
+
+## Where it lives
+
+The bingo block (`BingoCard`), on the dashboard and on the Challenges page, only for **the card
+being played this year** (`year === thisYear`). The suggestion card is a part of the bingo block,
+directly **under the grid** (and on Challenges above "Full cards in …" and Share). It pushes what
+is below it down; it never floats over anything, never dims the page and has no backdrop (D-0013).
+At most one is open per bingo block; the dashboard's and the Challenges page's blocks each have
+their own.
+
+## The squares
+
+| Square | Looks | Tap / Enter / Space | For a screen reader |
+|---|---|---|---|
+| Empty, card being played, not `three`/`fivemonth` | as today, plus the stronger frame `border-color: var(--border-strong)`; on hover (computer) `background: var(--surface-hover)` and `border-color: var(--accent-line)`; `cursor: pointer` | opens the card for this square; tapped again: closes it; another empty square: switches to it | a `<button type="button">`, name "`<label>`, suggest a book", `aria-expanded` false/true, `aria-controls` the card while it is open |
+| Empty, chosen (its card is open) | `border: 1px solid var(--accent)` plus `box-shadow: 0 0 0 1px var(--accent)` (a 2 px gold frame without moving the grid), label in `--text` instead of `--muted`; background stays `--surface-sunken`, so it never looks ticked | closes the card | as above, `aria-expanded="true"` |
+| `three`, `fivemonth` (empty) | exactly as today (`--border`, no hover) | nothing | as today: `role="img"`, "`<label>`. Ticks itself when a finished book fits" |
+| Filled (ticked) | exactly as today | nothing | as today |
+| Another year's card, full cards | exactly as today | nothing | as today |
+
+- Focus ring on a square button: the app's own, `outline: 2px solid var(--accent); outline-offset:
+  2px` (as `.btn:focus-visible`).
+- Hover title (computer): "Suggest a book" on a tappable square, today's titles on the others.
+- While the dashboard is being arranged, the block ignores taps as every block does today
+  (`pointer-events: none`); nothing extra.
+- The grid's size, gaps and text size stay as they are. A square is about 70 px on a 390 px
+  phone, so each is a big enough target.
+
+## The suggestion card
+
+One `<section>` (`className="bingo-suggest"`, `aria-labelledby` its heading), styled with tokens
+only: `background: var(--surface-sunken)`, `border: 1px solid var(--accent-line)`, `border-radius:
+var(--radius-card)`, `padding: var(--space-3)`, `display: grid; gap: var(--space-3)`. The gold line
+ties it to the gold-framed square above. It sits inside the block's walnut `--surface`, so it looks
+the same on the lavender and the midnight wallpaper; no `--header-*` colours are used.
+
+**Top row** (`display: flex; align-items: center; justify-content: space-between; gap:
+var(--space-2)`):
+
+- the heading: an `<h3>` with the square's label exactly as on the square (e.g. "Over 500
+  pages", "A spicy read (4+ 🌶️)"), `font-family: var(--serif)`, `font-size: var(--fs-body)`,
+  `font-weight: 600`, `color: var(--text)`, `margin: 0`, `tabIndex={-1}` so focus can be put on it
+  (focus ring as `.waiting-card h2:focus-visible`, no ring for a plain `:focus`);
+- the close button: `.btn icon small` with "×", `aria-label="Close"`; on a touch screen at least
+  44×44 px (`@media (pointer: coarse)`: `min-width` and `min-height: var(--tap)`).
+
+**With a book** (the `.next-book` / `.next-title` / `.next-actions` layout of What next?, reused):
+
+- the cover: `<Cover book={book} />` at the normal dashboard size (5.5 rem wide), a picture only
+  (`alt=""`, not a button). No cover URL: `Cover` already draws the coloured blank with the title.
+- next to it, in one `aria-live="polite" aria-atomic="true"` wrapper: the title in `.next-title`
+  (serif, `--fs-large`), the authors joined by ", " in `.muted` under it (left out when there are
+  none). Long titles wrap (`overflow-wrap: anywhere`), never cut off.
+- `.next-actions` under them:
+  - **Open**: `.btn primary`, `aria-label="Open <title>"`. Calls `onShowBook(book.id)`, exactly
+    like What next? and Make a wish: the book panel opens on the shelf. The suggestion card stays as
+    it was (coming back to the dashboard it is closed, because the page remounts; fine).
+  - **🎲 Another one**: `.btn`, the die in `<span aria-hidden>`, `aria-label="Another book for
+    <label>"`. Shows the next fitting book that wasn't shown yet (choice 3); focus stays on the
+    button; the live wrapper reads the new title and author. Left out when exactly one book fits.
+  - both `white-space: nowrap` so they wrap as whole buttons (as `.again-card .next-actions
+    .btn`); at least 44 px high on a touch screen (`.btn` already gets `min-height: var(--tap)` on
+    `pointer: coarse`).
+
+**No fit**: under the top row one line, `<p className="muted">No book on your shelf fits this one
+yet.</p>`. No cover, no Open, no Another one. (An empty-block message, allowed by D-0014.)
+
+No other text anywhere: no reason line, no "best guess" mark, no count of fitting books, no helper
+sentence (D-0014, choice 4).
+
+## Behaviour
+
+- **Opening** (tap, Enter or Space on an empty square): the card draws a book (weighted, as the
+  task says) and appears; focus moves to its heading with `focus({ preventScroll: true })`, then
+  the card is scrolled into view only as far as needed (`scrollIntoView({ block: 'nearest' })`,
+  smooth unless `prefers-reduced-motion: reduce`). The screen reader then reads the heading;
+  Tab goes to Open, 🎲 Another one, ×, and on to the rest of the page.
+- **Switching** to another empty square: the card's contents change in place to that square (new
+  heading, a fresh draw), the first square loses its gold frame, focus goes to the heading again.
+- **Closing**: tapping the chosen square again (focus stays on it), ×, or Escape while focus is
+  anywhere in the bingo block (a `keydown` on the block, not on `window`): the card goes, focus
+  returns to the chosen square. No animation needed; if one is added, it is a fade of at most
+  150 ms and none with `prefers-reduced-motion`.
+- **The shelf changes while it is open** (choice 18): the book shown stops fitting → another
+  fitting book (or the no-fit line); the square ticks itself → the card closes (focus to the
+  block's heading `#bingo-title` only if focus was inside the card); the card fills and a new card
+  starts → closes.
+- **Year switch on Challenges**: the block remounts per year (it is keyed by year), so the card
+  closes; on another year's card nothing opens.
+- Nothing is stored (no localStorage); a new visit starts with no card open.
+
+## Phone and computer
+
+- **Phone (390×844)**: the bingo block is the full width (about 310 px inside its padding). Under
+  the grid: the card full width, cover 5.5 rem on the left, title and author on the right, the two
+  buttons below them; "Open" and "🎲 Another one" sit side by side when they fit and otherwise
+  wrap, Open first. The × is top right, 44×44. Nothing scrolls sideways.
+- **Computer (1280×800)**: the block is one column of the two-column dashboard / Challenges page
+  (about 560–600 px). Same layout; the buttons stay on one line next to each other under the
+  title.
+- **Lavender and midnight**: the card and the squares sit on the block's own walnut surface, so
+  they look the same on both; only the block's surroundings differ. The tester checks both
+  (screens in `docs/tasks/T-0017-screens/`).
+
+## Exact wording
+
+| Where | Text |
+|---|---|
+| Card heading | the square's label, unchanged from `SQUARES` |
+| Main button | Open |
+| Second button | 🎲 Another one |
+| Close button | × (accessible name "Close") |
+| No fit | No book on your shelf fits this one yet. |
+| Square button, accessible name | `<label>`, suggest a book |
+| Square button, hover title | Suggest a book |
+| Open, accessible name | Open `<title>` |
+| Another one, accessible name | Another book for `<label>` |
+
+## Reused, not new
+
+`Cover` (`Dashboard.tsx`), `.next-book`, `.next-title`, `.next-actions` (What next?), `.btn`,
+`.btn.primary`, `.btn.icon.small`, `.muted`, the `.bingo-square` look, and the tokens
+`--surface-sunken`, `--surface-hover`, `--border-strong`, `--accent`, `--accent-line`, `--text`,
+`--muted`, `--fs-body`, `--fs-large`, `--space-2`, `--space-3`, `--radius-card`, `--tap`,
+`--serif`. New CSS is only `.bingo-suggest` (and its top row), the tappable / chosen square states
+and the 44 px × on touch screens, all with these tokens. `BingoCard` gets an `onShowBook` prop from
+`Dashboard.tsx` and `ChallengesPage.tsx`.
 
 # Test
 
@@ -213,3 +401,8 @@ To be written by the tester.
   only on bingo's re-read square); all 28 bingo squares mapped; choices taken while Hanna was
   asleep are under *Choices made while Hanna slept*; group 1, no new stored fields; handed to the
   UX designer.
+- 2026-11-21 ux-designer: Hanna's decision recorded: *Same author twice* counts every book she
+  finished this year, on any card, for the suggestion and for the square's tick (replaces the
+  architect's choice 5, with a test in *Done when*).
+- 2026-11-21 ux-designer: designed (the suggestion card under the bingo grid, tappable squares,
+  keyboard and screen reader, wording; choices 12–18); handed to the developer.
