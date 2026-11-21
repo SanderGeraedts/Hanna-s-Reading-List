@@ -180,6 +180,72 @@ The existing line, now with a count after each land, most first, ties alphabetic
 - The map shows "Imaginary lands: Hogwarts 4 · Narnia 2 · …", most first, including the land just
   added on a finished book. Checked on both wallpapers.
 
+## Review after building (2026-11-21)
+
+Looked at: `git diff main...HEAD -- src` and the twelve screenshots in `docs/tasks/T-0015-screens/`
+(390×844 and 1280×800, lavender and midnight).
+
+**Verdict: back to the developer for two small fixes** (must-fix 1 and 2 below). Everything else
+matches the design.
+
+**Matches the design**
+
+- Set in sits directly under Genres, for every book; label "Set in"; same chip look as Genres.
+- Chips: 🌍 for map countries and names the map turns into one (England, Paris), 🗺️ for made-up
+  places with "(Imaginary place)" left off, no mark for "4 Privet Drive"; marks `aria-hidden`,
+  visually hidden ", country" / ", made-up place"; × labelled "Remove …" and focus goes back to
+  the box. Long names wrap inside the chip with × at the end ("Hogwarts School of Witchcraft and
+  Wizardry", phone). 44 px chips, × and rows on touch only; Genres unchanged.
+- Placeholders "Add…" / "Add a place…" / "Looking up…" as designed.
+- Suggestions: nothing until a letter is typed; up to 5 rows, starting matches first, then the add
+  row last; first row highlighted ("fra" → 🌍 France highlighted, Enter adds it); "Prythian" → only
+  the row 🗺️ Add "Prythian" as a made-up place. Combobox roles, ↓/↑ wrap, Enter, Escape closes
+  the list and keeps the text (without closing the panel), leaving the box adds nothing.
+- Map line: "Imaginary lands: Hogwarts 3 · Narnia 2 · …", most first, ties alphabetical, muted
+  counts, dots `aria-hidden` with a hidden comma, non-breaking space before each count, wraps
+  without cut-off; tokens only, reads well on lavender and midnight.
+
+**The developer's three open points**
+
+1. *"fra" shows France and also `Add "Fra" as a made-up place`.* **Keep as built.** This is the
+   design: the add row shows unless the text equals a row or a place already on the book. France
+   is first and highlighted, so "fra" + Enter or a tap on the first row does the right thing; the
+   add row is the only way to add a made-up place whose name is part of a country's name, and the
+   words "as a made-up place" make clear what it does. No change.
+2. *"usa" saved as "Usa".* **Must fix (small).** Keep her word (don't swap it for "United States
+   of America": "England" or "Paris" carry meaning she chose, and the chip shows what she typed),
+   but spell it properly. Same for "new york", which now becomes "New york".
+3. *"Hogwarts 3" and "Hogwarts School of Witchcraft and Wizardry 1" as separate lands.* **Must
+   fix.** The point of the counts is "how often have I been to Hogwarts"; one land split in two
+   gives the wrong answer, and it happens as soon as a typed "Hogwarts" meets Open Library's long
+   name. Merge only what is clearly the same place (a well-known land from the built-in list, or
+   the same name in other capitals), no guessing on other names.
+
+**Must fix before the tester**
+
+1. `placeFromTyped` (`src/lib/setIn.ts`), for a name the map knows as a country but not by the
+   map's own name (the `ALIASES` path): store it with a capital at the start of every word
+   ("new york" → "New York", "saint petersburg" → "Saint Petersburg"), and in capitals when it is
+   an abbreviation: one word of at most 3 letters, or letters with dots ("usa" → "USA",
+   "uk" → "UK", "u.s." → "U.S."). Text she already typed with capitals inside stays as typed
+   ("USA", "McLean"). The add row shows that spelling (🌍 Add "USA"). Made-up places keep the
+   current rule (capital first letter only, or the spelling on another book). Tests: "usa" → "USA",
+   "uk" → "UK", "new york" → "New York", "england" → "England", "USA" → "USA".
+2. Imaginary lands that are the same place count as one (`src/lib/places.ts`, in `placesOf`, so
+   the map counts and the panel's suggestions agree):
+   - a name that contains a well-known land from the built-in list (the check `imaginaryName`
+     already does) is counted under that land's short name: "Hogwarts School of Witchcraft and
+     Wizardry" → Hogwarts. Give the built-in list a display spelling per land ("Hogwarts",
+     "Narnia", "Middle Earth" for both "middle earth" and "middle-earth", "Oz", …);
+   - any other land: the same name in other capitals or spacing is one land (first spelling wins);
+   - a book with both "Hogwarts" and "Hogwarts School of Witchcraft and Wizardry" counts once.
+   - The chips in the panel keep showing the name as stored (the long name stays long there).
+   - Tests: 3 books "Hogwarts (Imaginary place)" + 1 book "Hogwarts School of Witchcraft and
+     Wizardry (Imaginary place)" → "Hogwarts 4"; one book with both → 1; "Middle-earth" and
+     "Middle Earth" → one land; "Velaris" and "velaris" → one land.
+   - New screenshots of the map block (390×844 and 1280×800) showing "Hogwarts 4 · Narnia 2 · …"
+     with the seeded shelf, and of the add row for "usa" (🌍 Add "USA").
+
 # Test
 
 # Log
@@ -209,3 +275,7 @@ The existing line, now with a count after each land, most first, ties alphabetic
   phone chip/×/row heights 44 px; map "Hogwarts 3 · Narnia 2 · Hogwarts School of Witchcraft and
   Wizardry 1 · Middle Earth 1 · Prythian 1" on lavender and midnight; no sideways scroll; no page
   errors. Hand over to the UX designer for review.
+- 2026-11-21 ux-designer: reviewed: back to the developer. Matches the design, except two must-fix
+  items under *Review after building*: typed country names spelled properly ("usa" → "USA",
+  "new york" → "New York"), and the same imaginary land counted once ("Hogwarts School of
+  Witchcraft and Wizardry" counts as Hogwarts). The "Add "Fra" as a made-up place" row stays.
