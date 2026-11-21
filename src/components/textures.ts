@@ -28,6 +28,25 @@ export function toTexture(c: HTMLCanvasElement) {
   return t
 }
 
+/**
+ * A book's own picture (spine, back, stand-in front), painted afresh whenever
+ * the shelf is drawn. On a phone its canvas is freed once it's on the graphics
+ * chip: Android's Chrome caps the memory of all canvases on a page, and a full
+ * shelf has hundreds of them (#181, T-0003). Not for shared, cached pictures,
+ * which may have to be sent to a new drawing again.
+ */
+function bookTexture(c: HTMLCanvasElement) {
+  const t = toTexture(c)
+  if (onPhone()) {
+    t.onUpdate = () => {
+      c.width = 1
+      c.height = 1
+      t.onUpdate = null
+    }
+  }
+  return t
+}
+
 function parseHex(hex: string): [number, number, number] {
   const n = parseInt(hex.replace('#', ''), 16)
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
@@ -125,8 +144,12 @@ const PX_PER_UNIT = 2400
  * shelf on an Android phone needs (#181, T-0003).
  */
 const PHONE_SPINE_SCALE = 0.55
-const spineScale = () =>
-  typeof window !== 'undefined' && window.matchMedia?.('(max-width: 720px), (pointer: coarse)').matches ? PHONE_SPINE_SCALE : 1
+const spineScale = () => (onPhone() ? PHONE_SPINE_SCALE : 1)
+
+/** A phone (or anything with a small screen or a touch screen): the lighter shelf. */
+export function onPhone() {
+  return typeof window !== 'undefined' && !!window.matchMedia?.('(max-width: 720px), (pointer: coarse)').matches
+}
 
 /**
  * Size and height of the medal on a finished book's spine (book units).
@@ -211,7 +234,7 @@ export function paintSpine(book: Book, dims: BookDims, sleep = false) {
   grain(ctx, W, H, 0.05)
   paintWear(ctx, W, H, book)
   if (read) paintMedalRibbon(ctx, W, H, dims)
-  return toTexture(c)
+  return bookTexture(c)
 }
 
 /** Gold leaf for the bands on a darker hardcover spine. */
@@ -537,7 +560,7 @@ export function paintBack(book: Book, dims: BookDims) {
   }
 
   grain(ctx, W, H, 0.04)
-  return toTexture(c)
+  return bookTexture(c)
 }
 
 /** Used when Open Library has no cover for the book. */
@@ -569,7 +592,7 @@ export function paintFallbackCover(book: Book, dims: BookDims) {
   ctx.font = `italic 400 30px ${SERIF}`
   ctx.fillText(ellipsize(ctx, authorLine(book), W - 160), W / 2, H * 0.78)
   grain(ctx, W, H, 0.05)
-  return toTexture(c)
+  return bookTexture(c)
 }
 
 function paintPages(vertical: boolean) {

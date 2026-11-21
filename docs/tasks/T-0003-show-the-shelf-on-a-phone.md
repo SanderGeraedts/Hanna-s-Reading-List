@@ -7,7 +7,7 @@ depends_on: [T-0001]
 decisions: [D-0002, G-0019]
 raised_on: 2026-11-21
 done_on: ""
-result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/198", "https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/206"]
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/198", "https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/206", "https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/207"]
 ---
 
 # Goal
@@ -372,3 +372,7 @@ bookshelf now shows on her own phone. So the task stays *Doing*, and #181 stays 
   Remaining: Hanna checks on her own phone that the bookshelf shows with her books.
 - 2026-11-21 developer: Hanna checked on her own phone (Android, Chrome): still the "can't be drawn" note, so the phone still runs out of graphics memory with her real shelf. Second fix: cover images are loaded only once a book is taken out (they face the next book on the shelf), shrunk to at most 512 px; the stand-in front is painted only then too; spines are painted at 0.55 of the sharpness on phones. Checked locally (no backend) at 390 × 844, touch, 2.6× pixels, 400 books with covers: the shelf draws, no cover is fetched until a book is taken out, then its cover shows sharp; no page errors.
   Remaining: Hanna checks on her own phone that the bookshelf shows with her books.
+- 2026-11-21 developer: after #206 Hanna still sees the note on her phone (Android, Chrome). Third change: on phones no shadows, 1× pixels, no antialiasing, and each book's spine/back/stand-in canvas is freed once it is on the graphics chip (Chrome on Android caps all canvases on a page). The note gets a "Details" line saying how it failed (the error, or "lost after N s"), the number of books, the screen, the largest texture and the graphics chip, so the next step is based on her phone, not a guess. Checked locally at 390 × 844 with 400 books: the shelf draws, a lost context shows the Details line.
+  Remaining: Hanna opens the shelf on her phone; if the note still shows, she sends the Details line.
+- 2026-11-21 developer: Hanna asked for the old version on the phone, since that worked. On phones each book is one simple block again, as before the hardcovers of 19 November (one piece to draw instead of about nine: pages, two boards, spine and four ridges); the computer keeps the hardcovers. Checked locally: phone size shows the blocks with 400 books, desktop the hardcovers.
+  Remaining: Hanna opens the shelf on her phone; if the note still shows, she sends the Details line.

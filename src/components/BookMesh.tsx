@@ -22,6 +22,11 @@ export interface BookMeshProps {
   clipColor?: string
   /** a sleep read: a small moon on the spine */
   sleep?: boolean
+  /**
+   * on a phone: the book as one simple block, as before the hardcovers (#181):
+   * one piece to draw instead of about nine, so a full shelf fits on the phone
+   */
+  simple?: boolean
   dims: BookDims
   slot: Slot
   selected: boolean
@@ -138,6 +143,7 @@ export function BookMesh(props: BookMeshProps) {
     fov,
     inspectFrame,
     sleep = false,
+    simple = false,
   } = props
   const group = useRef<THREE.Group>(null)
 
@@ -200,6 +206,8 @@ export function BookMesh(props: BookMeshProps) {
       front: [edge, edge, edge, edge, front, edge],
       back: [edge, edge, edge, edge, edge, back],
       spine: [edge, spine, edge, edge, edge, edge],
+      // the simple block: fore-edge, spine, top, bottom, front, back
+      block: [fore, spine, topBottom, topBottom, front, back],
     }
     // painted is a new object every render: depend on the textures in it
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -210,26 +218,31 @@ export function BookMesh(props: BookMeshProps) {
   // is a little smaller, so the covers stick out past the pages (a few mm),
   // with softly rounded board edges
   const parts = useMemo(() => {
+    if (simple) return { block: new THREE.BoxGeometry(dims.w, dims.h, dims.t) }
     // thick enough boards and a clear overhang, so it reads as a hardcover from the shelf
     const board = THREE.MathUtils.clamp(dims.t * 0.1, 0.0018, 0.0032)
     const over = Math.min(0.0045, dims.w * 0.04, dims.h * 0.025)
     const round = board * 0.45
     const pagesW = dims.w - board - over
     return {
-      board,
-      pages: { geometry: new THREE.BoxGeometry(pagesW, dims.h - 2 * over, dims.t - 2 * board), x: -dims.w / 2 + board + pagesW / 2 },
-      board3: new RoundedBoxGeometry(dims.w - board, dims.h, board, 1, round),
-      spine: new RoundedBoxGeometry(board, dims.h, dims.t, 1, round),
+      hardcover: {
+        board,
+        pages: { geometry: new THREE.BoxGeometry(pagesW, dims.h - 2 * over, dims.t - 2 * board), x: -dims.w / 2 + board + pagesW / 2 },
+        board3: new RoundedBoxGeometry(dims.w - board, dims.h, board, 1, round),
+        spine: new RoundedBoxGeometry(board, dims.h, dims.t, 1, round),
+      },
     }
-  }, [dims.w, dims.h, dims.t])
+  }, [dims.w, dims.h, dims.t, simple])
   useEffect(
     () => () => {
-      parts.pages.geometry.dispose()
-      parts.board3.dispose()
-      parts.spine.dispose()
+      parts.block?.dispose()
+      parts.hardcover?.pages.geometry.dispose()
+      parts.hardcover?.board3.dispose()
+      parts.hardcover?.spine.dispose()
     },
     [parts],
   )
+  const hc = parts.hardcover
 
   // ---- animation --------------------------------------------------------
   const anim = useRef({
@@ -322,15 +335,20 @@ export function BookMesh(props: BookMeshProps) {
 
   return (
     <group ref={group} position={[slot.x, slot.y, slot.z]} rotation={[0, SPINE_OUT, 0]}>
-      <mesh {...part} material={materials.pages} geometry={parts.pages.geometry} position={[parts.pages.x, 0, 0]} />
-      <mesh {...part} material={materials.front} geometry={parts.board3} position={[parts.board / 2, 0, dims.t / 2 - parts.board / 2]} />
-      <mesh {...part} material={materials.back} geometry={parts.board3} position={[parts.board / 2, 0, -dims.t / 2 + parts.board / 2]} />
-      <mesh {...part} material={materials.spine} geometry={parts.spine} position={[-dims.w / 2 + parts.board / 2, 0, 0]} />
+      {parts.block && <mesh {...part} material={materials.block} geometry={parts.block} />}
+      {hc && (
+        <>
+          <mesh {...part} material={materials.pages} geometry={hc.pages.geometry} position={[hc.pages.x, 0, 0]} />
+          <mesh {...part} material={materials.front} geometry={hc.board3} position={[hc.board / 2, 0, dims.t / 2 - hc.board / 2]} />
+          <mesh {...part} material={materials.back} geometry={hc.board3} position={[hc.board / 2, 0, -dims.t / 2 + hc.board / 2]} />
+          <mesh {...part} material={materials.spine} geometry={hc.spine} position={[-dims.w / 2 + hc.board / 2, 0, 0]} />
+        </>
+      )}
       {(book.status === 'reading' || book.status === 'paused') && (
         <Bookmark dims={dims} progress={book.progress ?? 0} color={props.clipColor ?? RAINBOW[0]} />
       )}
       {hasMedal(book) && <Medal dims={dims} count={timesRead(book)} />}
-      <SpineRidges dims={dims} read={book.status === 'read'} />
+      {!simple && <SpineRidges dims={dims} read={book.status === 'read'} />}
     </group>
   )
 }
