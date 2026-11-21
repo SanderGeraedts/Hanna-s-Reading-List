@@ -304,6 +304,73 @@ Sleep reads don't count.
 - The sentence is plain text. The line and the jars are read through their `aria-label`s and
   aren't tab stops.
 
+## Review after building (2026-11-21)
+
+Looked at the code (`git diff main...HEAD -- src`) and all 20 screenshots in `T-0014-screens/`
+(390×844 and 1280×800, lavender and midnight). No live run needed: every state in the design
+has a screenshot or can be read straight from the code.
+
+**What matches**
+
+- **Pile block:** the top is unchanged; the pages line is left out when it's empty. A 1 px
+  `--border` line with `--space-3` above and below, then the sentence, the line and the jars in
+  that order.
+- **Sentence:** word for word as in the table: "shrank by 4 🎉" with no full stop, "grew by N.",
+  "stayed the same.", and "Nothing added or read from your pile yet this month." in `--muted`,
+  `--fs-small` (`pile-390-nothing.jpg`). Plain digits throughout.
+- **6-month line:** "Last 6 months" label; a dashed `--border-strong` 0 line; up is grew; a
+  symmetric scale (largest absolute value, at least 2), so 0 sits on the dashed line. Numbers
+  above the point at 0 or more and below when negative, with a real minus sign. Gold line, hollow
+  rings for earlier months and a bigger filled dot for this month. Three-letter month names, with
+  this month bold in `--text`. Axis text uses the Books per month chart's 9 px `--muted` style.
+  `role="img"` with the full `aria-label`, no tab stop.
+- **Jars:** two equal columns at both widths, and they stack only below about 18rem (`minmax(8.6rem, 1fr)`).
+  - The well: `--surface-sunken`, a `--border-strong` outline and 4 px lid, small corners at
+    the top and card corners at the bottom.
+  - Buying jar: dashed empty slots and "0 of 3" / "2 of 3". At 3 or more coins: "Treat earned!
+    🎁" in weight 600 on the `--accent-soft` wash with an `--accent-line` outline and lid. 4
+    coins show 4 🪙 and no slots; above 6 it shows "🪙 × N".
+  - Storytel jar: one empty slot and "0 coins" at 0, then "1 coin" / "N coins".
+  - Coins are `aria-hidden`. Each jar is a `role="group"` with the labels from the design, and
+    neither has a tab stop.
+  - Both wallpapers look right, and `colours.test.ts` has `--text` on `--accent-soft` over a
+    card for lavender and midnight.
+- **Dust-off item:** after the wrap-up and before the badges.
+  - The cover sits in a 44 × 44 px `cover-btn` labelled "Open {title}". A book with no cover
+    shows its own colour (The Name of the Wind).
+  - Line 1 is the bold title with " · author" in `--muted`. Line 2 is "Has waited 2 years — give
+    it a go?" in body text, rounded down to weeks, months or years.
+  - **Maybe** (gold) opens the book panel (`dustoff-maybe-*.jpg`). **Not now** moves focus to
+    the "Waiting for you" heading and hides the item.
+  - Once nothing else waited, the whole block hid (`dustoff-notnow-*.jpg`), because the
+    "nothing waiting" check includes the item.
+  - The item doesn't show under 14 days on the shelf, after Not now, or once the book is
+    started. All the aria-labels are as designed.
+- **Pile challenge:** sits between "＋ New challenge" and "⠿ Arrange", in the same walnut
+  `btn small` style. It shows only for this year and is disabled while the form is open; the 📚
+  is `aria-hidden`. It opens "New challenge for 2026" filled in with Pile challenge / 12 / From
+  my pile, focus starts in Name, and Save adds a new challenge. On a phone the bar wraps whole
+  buttons.
+- **Touch size:** the new buttons get `min-height: var(--tap)` on a coarse pointer. The
+  developer measured 44 px.
+
+**Differences**
+
+1. On a 390 px phone the sparkline's numbers draw at about 10 px and the month names at about
+   9 px. That's small, but it's the same axis style as the Books per month chart, which the
+   design asked to reuse. Not blocking.
+2. At 1280 px the Challenges bar sits in the middle, not at the right edge. That was already so
+   on `main` (the bar is a grid item with `margin: 0 auto`), so this task didn't cause it. Not
+   blocking.
+3. The developer added a few things the design didn't ask for: "＋ New challenge" and "⠿
+   Arrange" are 44 px on touch too, so the bar stays even, and the bar now wraps whole buttons.
+   Both fit the design. Not blocking.
+4. `ownChallenges.ts` has `newChallengeId =()` with a missing space. It's code style that no one
+   sees, not a design issue. Not blocking; the developer can tidy it up if they touch the file
+   again.
+
+**Verdict:** matches the design. Nothing must be fixed. On to the tester.
+
 # Test
 
 # Log
@@ -337,3 +404,5 @@ Sleep reads don't count.
   words in them. Noted for the architect: in `colours.test.ts` the `token()` pattern is a
   template string, so `\s*` reaches the RegExp as `s*`; it still works only because the value is
   trimmed afterwards.
+- 2026-11-21 ux-designer: reviewed: matches the design, nothing to fix (small sparkline labels
+  and the centred Challenges bar from `main` noted, not blocking); on to the tester
