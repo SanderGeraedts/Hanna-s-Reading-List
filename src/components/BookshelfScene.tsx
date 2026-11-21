@@ -57,7 +57,11 @@ function portraitInspect(frame: { fill: number; yShift: number }, sheet: number,
   frame.yShift = (s - header) / 2
 }
 
-/** Phones get a lighter version of the room: smaller shadows, fewer pixels, so scrolling stays smooth. */
+/**
+ * Phones get a lighter version of the room: no shadows and one pixel per
+ * screen pixel, so a full shelf fits in a phone's graphics memory (#181) and
+ * scrolling stays smooth.
+ */
 function useLite() {
   const [lite, setLite] = useState(false)
   useEffect(() => {
@@ -74,10 +78,10 @@ export function BookshelfScene(props: BookshelfSceneProps) {
   const lite = useLite()
   return (
     <Canvas
-      shadows="soft"
-      dpr={lite ? [1, 1.5] : [1, 2]}
+      shadows={lite ? false : 'soft'}
+      dpr={lite ? 1 : [1, 2]}
       camera={{ fov: FOV, near: 0.05, far: 60, position: [0, 0.7, 4] }}
-      gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping }}
+      gl={{ antialias: !lite, toneMapping: THREE.ACESFilmicToneMapping }}
       style={{ touchAction: 'none' }}
     >
       <color attach="background" args={['#2a1f18']} />

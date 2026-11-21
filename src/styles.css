@@ -3630,6 +3630,28 @@ textarea.input {
   gap: var(--space-2);
 }
 
+/* ---- why the shelf couldn't be drawn (T-0003) ------------------------ */
+.shelf-error-details {
+  margin-top: var(--space-2);
+  max-width: min(32rem, calc(100vw - 2rem));
+  font-size: var(--fs-tiny);
+  color: var(--muted);
+  text-align: left;
+}
+.shelf-error-details summary {
+  cursor: pointer;
+  text-align: center;
+}
+.shelf-error-details code {
+  display: block;
+  margin-top: var(--space-1);
+  padding: var(--space-2);
+  border-radius: var(--radius-small);
+  background: var(--surface-sunken);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
 /* ---- favourites on top --------------------------------------------- */
 .block-star.on {
   color: var(--accent);

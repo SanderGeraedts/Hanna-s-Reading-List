@@ -60,6 +60,18 @@ describe('the bookshelf when the 3D drawing fails (#181)', () => {
     expect(screen.queryByTestId('shelf')).toBeNull()
   })
 
+  it('says why under Details: the error, or how long until the drawing was lost', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    render(<SafeBookshelf {...props} />)
+    fireEvent.click(screen.getByText('Details'))
+    expect(screen.getByRole('status').textContent).toContain('error: THREE.WebGLRenderer: Error creating WebGL context.')
+    cleanup()
+    scene.fail = false
+    render(<SafeBookshelf {...props} />)
+    act(() => scene.lost?.())
+    expect(screen.getByRole('status').textContent).toMatch(/lost after \d+ s · 0 books/)
+  })
+
   it('shows the shelf, and no note, when drawing works', () => {
     scene.fail = false
     render(<SafeBookshelf {...props} />)
