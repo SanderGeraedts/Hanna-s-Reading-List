@@ -290,6 +290,10 @@ sent, and the history hook copies them whole, so the field survives both.
 
 **Not checked:** the deploy preview itself (by rule, see above).
 
+**After merging `main` in** (T-0002 and T-0004 had landed, and the conflict was only in the
+generated task index, now regenerated): `npm test` gave `Test Files  46 passed (46)`,
+`Tests  306 passed (306)`, and `npm run build` exited 0.
+
 **Verdict: passed.**
 
 # Log
