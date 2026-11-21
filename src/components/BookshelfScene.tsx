@@ -8,7 +8,7 @@ import { FRAME, SHELF, computeLayout, fitShelf, rowFloorY, topGap } from '#/lib/
 import { arrangementSeparators } from '#/lib/separators'
 import type { ShelfLayout } from '#/lib/shelfLayout'
 import { BookMesh, RAINBOW } from './BookMesh'
-import { Decorations, FairyLights } from './Decorations'
+import { Decorations, FairyLights, StillDecorations } from './Decorations'
 import { BookNooks } from './BookNook'
 import { SeriesDividers } from './SeriesDivider'
 import { sleepReadIds } from '#/lib/sleepSeries'
@@ -32,6 +32,8 @@ export interface BookshelfSceneProps {
   onZoom?: (zoom: number) => void
   /** height of the header over the top of the scene, in CSS px (phones keep the case below it) */
   topInset?: number
+  /** another page lies over the shelf: stop drawing it until it's shown again */
+  paused?: boolean
   /** the browser dropped the 3D drawing (WebGL context lost), e.g. when a phone runs out of memory */
   onContextLost?: () => void
 }
@@ -58,8 +60,8 @@ function portraitInspect(frame: { fill: number; yShift: number }, sheet: number,
 }
 
 /**
- * Phones get a lighter version of the room: no shadows and one pixel per
- * screen pixel, so a full shelf fits in a phone's graphics memory (#181) and
+ * Phones get a lighter version of the room: no shadows and at most 1.5
+ * pixels per screen point, so a full shelf fits in a phone's graphics memory (#181) and
  * scrolling stays smooth.
  */
 function useLite() {
@@ -78,8 +80,11 @@ export function BookshelfScene(props: BookshelfSceneProps) {
   const lite = useLite()
   return (
     <Canvas
+      // another page (Dashboard, Challenges, Calendar) covers the shelf: don't keep drawing it
+      frameloop={props.paused ? 'never' : 'always'}
       shadows={lite ? false : 'soft'}
-      dpr={lite ? 1 : [1, 2]}
+      // 1.5 pixels per screen point on a phone: sharp titles, still much lighter than the screen's own 2–3
+      dpr={lite ? [1, 1.5] : [1, 2]}
       camera={{ fov: FOV, near: 0.05, far: 60, position: [0, 0.7, 4] }}
       gl={{ antialias: !lite, toneMapping: THREE.ACESFilmicToneMapping }}
       style={{ touchAction: 'none' }}
@@ -420,10 +425,12 @@ function Scene({
       <Lights caseHeight={caseLayout.caseHeight} caseWidth={caseLayout.caseWidth} cameraBase={cameraBase} lite={lite} />
       <Room />
       <Bookcase layout={caseLayout} />
-      <Decorations items={layout.decor} />
+      <StillDecorations.Provider value={lite}>
+        <Decorations items={layout.decor} />
       <BookNooks items={layout.nooks} />
       <SeriesDividers items={layout.dividers} />
-      <FairyLights width={caseLayout.innerWidth} top={caseLayout.caseHeight} />
+        <FairyLights width={caseLayout.innerWidth} top={caseLayout.caseHeight} />
+      </StillDecorations.Provider>
 
       {ordered.map((book) => {
         const slot = layout.slots.get(book.id)
@@ -612,21 +619,26 @@ function Lights({
         shadow-camera-top={caseHeight + 0.6}
         shadow-camera-bottom={-1.2}
       />
-      {/* the reading lamp: warm, from the top left, without shadows of its own */}
-      <pointLight
-        position={[-caseWidth / 2 - 0.25, caseHeight + 0.35, 1.1]}
-        intensity={2.2}
-        distance={5}
-        decay={1.6}
-        color="#ffc27a"
-      />
-      {/* soft light near the viewer so an inspected book is well lit */}
-      <pointLight
-        position={[cameraBase.x - 0.4, cameraBase.y + 0.5, cameraBase.z - 0.2]}
-        intensity={1.6}
-        distance={4}
-        color="#fff4e6"
-      />
+      {/* on a phone every light costs work on every pixel: only the main light there */}
+      {!lite && (
+        <>
+          {/* the reading lamp: warm, from the top left, without shadows of its own */}
+          <pointLight
+            position={[-caseWidth / 2 - 0.25, caseHeight + 0.35, 1.1]}
+            intensity={2.2}
+            distance={5}
+            decay={1.6}
+            color="#ffc27a"
+          />
+          {/* soft light near the viewer so an inspected book is well lit */}
+          <pointLight
+            position={[cameraBase.x - 0.4, cameraBase.y + 0.5, cameraBase.z - 0.2]}
+            intensity={1.6}
+            distance={4}
+            color="#fff4e6"
+          />
+        </>
+      )}
     </>
   )
 }

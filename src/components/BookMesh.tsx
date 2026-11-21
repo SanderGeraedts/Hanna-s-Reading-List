@@ -208,6 +208,8 @@ export function BookMesh(props: BookMeshProps) {
       spine: [edge, spine, edge, edge, edge, edge],
       // the simple block: fore-edge, spine, top, bottom, front, back
       block: [fore, spine, topBottom, topBottom, front, back],
+      // the simple block on the shelf: the paper, then the spine (see shelfBlock)
+      shelf: [topBottom, spine],
     }
     // painted is a new object every render: depend on the textures in it
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -218,7 +220,7 @@ export function BookMesh(props: BookMeshProps) {
   // is a little smaller, so the covers stick out past the pages (a few mm),
   // with softly rounded board edges
   const parts = useMemo(() => {
-    if (simple) return { block: new THREE.BoxGeometry(dims.w, dims.h, dims.t) }
+    if (simple) return { block: new THREE.BoxGeometry(dims.w, dims.h, dims.t), shelfBlock: shelfBlock(dims) }
     // thick enough boards and a clear overhang, so it reads as a hardcover from the shelf
     const board = THREE.MathUtils.clamp(dims.t * 0.1, 0.0018, 0.0032)
     const over = Math.min(0.0045, dims.w * 0.04, dims.h * 0.025)
@@ -236,6 +238,7 @@ export function BookMesh(props: BookMeshProps) {
   useEffect(
     () => () => {
       parts.block?.dispose()
+      parts.shelfBlock?.dispose()
       parts.hardcover?.pages.geometry.dispose()
       parts.hardcover?.board3.dispose()
       parts.hardcover?.spine.dispose()
@@ -335,7 +338,13 @@ export function BookMesh(props: BookMeshProps) {
 
   return (
     <group ref={group} position={[slot.x, slot.y, slot.z]} rotation={[0, SPINE_OUT, 0]}>
-      {parts.block && <mesh {...part} material={materials.block} geometry={parts.block} />}
+      {parts.block &&
+        // on the shelf two draws (paper and spine) instead of six; taken out, every side with its picture
+        (takenOut ? (
+          <mesh {...part} material={materials.block} geometry={parts.block} />
+        ) : (
+          <mesh {...part} material={materials.shelf} geometry={parts.shelfBlock} />
+        ))}
       {hc && (
         <>
           <mesh {...part} material={materials.pages} geometry={hc.pages.geometry} position={[hc.pages.x, 0, 0]} />
@@ -347,10 +356,27 @@ export function BookMesh(props: BookMeshProps) {
       {(book.status === 'reading' || book.status === 'paused') && (
         <Bookmark dims={dims} progress={book.progress ?? 0} color={props.clipColor ?? RAINBOW[0]} />
       )}
-      {hasMedal(book) && <Medal dims={dims} count={timesRead(book)} />}
+      {hasMedal(book) && <Medal dims={dims} count={timesRead(book)} rim={!simple} />}
       {!simple && <SpineRidges dims={dims} read={book.status === 'read'} />}
     </group>
   )
+}
+
+/**
+ * A book's block for the shelf on a phone, drawn in two parts instead of six:
+ * every side but the spine with one material (the paper), then the spine
+ * (BoxGeometry side 1, -x). Front and back face the books next to it there.
+ */
+export function shelfBlock(dims: BookDims) {
+  const g = new THREE.BoxGeometry(dims.w, dims.h, dims.t)
+  const index = g.index!.array
+  // BoxGeometry with one segment: six indices per side, in side order +x, -x, +y, -y, +z, -z
+  const side = (i: number) => Array.from(index.slice(i * 6, i * 6 + 6))
+  g.setIndex([...side(0), ...side(2), ...side(3), ...side(4), ...side(5), ...side(1)])
+  g.clearGroups()
+  g.addGroup(0, 30, 0)
+  g.addGroup(30, 6, 1)
+  return g
 }
 
 function damp3(v: THREE.Vector3, x: number, y: number, z: number, lambda: number, dt: number) {
@@ -480,15 +506,18 @@ export function getMedalMaterials(count: number) {
   return mats
 }
 
-function Medal({ dims, count }: { dims: BookDims; count: number }) {
+function Medal({ dims, count, rim = true }: { dims: BookDims; count: number; rim?: boolean }) {
   const { r, fromBottom } = medalLayout(dims)
   const mats = getMedalMaterials(count)
   return (
     // spine is the -x face; the disc faces outwards along -x
     <group position={[-dims.w / 2, -dims.h / 2 + fromBottom, 0]}>
-      <mesh castShadow material={mats.rim} position={[-MEDAL_DEPTH / 2, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[r, r, MEDAL_DEPTH, 40, 1, true]} />
-      </mesh>
+      {/* on a phone just the face: the thin rim is one more draw for every finished book */}
+      {rim && (
+        <mesh castShadow material={mats.rim} position={[-MEDAL_DEPTH / 2, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[r, r, MEDAL_DEPTH, 40, 1, true]} />
+        </mesh>
+      )}
       <mesh material={mats.face} position={[-MEDAL_DEPTH, 0, 0]} rotation={[0, -Math.PI / 2, 0]}>
         <circleGeometry args={[r, 40]} />
       </mesh>
