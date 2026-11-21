@@ -369,6 +369,59 @@ All reversible; each is the recommended option. Tell her in the PR.
 10. **The jar's count is one large bold line;** below zero the line is in the warning colour and
     starts with a real minus sign, so it reads without colour; the well itself doesn't change.
 
+## Review after building (2026-11-21)
+
+**Verdict: matches the design. No must-fix items.** Looked at the 29 screenshots in
+`docs/tasks/T-0016-screens/` (390×844 and 1280×800, lavender and midnight) and at
+`git diff main...HEAD -- src`.
+
+**The follow-up in the add dialog: matches.**
+- It takes the place of the tab row and the panel. The header ("Add a book", ×) and the Open
+  Library line stay. The tabs are hidden, not unmounted, so the search and scanner come back as
+  she left them. The camera is paused while the follow-up shows.
+- "Added “{title}”." is `.success` with `role="status"` and wraps (`overflow-wrap: anywhere`).
+- The eight chips use the panel's words and order (`FORMAT_LABELS`) in a `role="group"` labelled
+  "How I have it", with `aria-pressed`. Each tap saves through `onUpdate`/`withFormats`.
+  Paperback is ticked after a scan.
+- "What did it cost?" shows only while Paperback, Hardcover or E-book is ticked. The "€" sits
+  inside the left edge in `--muted`, the field is 9rem wide, `inputMode="decimal"`, with no
+  placeholder or hint. Its accessible name includes the hidden "(euros)". Unticking the last owned
+  format hides the field and drops the price.
+- "twelve" shows "Try 12.50 or 12,50." under the field (`aria-invalid`, `aria-describedby`) and
+  isn't saved. The "too much" error text matches.
+- Skip and Done sit right-aligned with Done in gold, both 44 px high on touch. Next replaces Done
+  for an e-book at €0. Skip removes a price saved in this follow-up (also one saved on blur when
+  focus moved to Skip). Done with an empty field closes without a price.
+- Step 2 shows "E-book link" full width with no hint line. `javascript:x` is refused with the
+  panel's exact error and focus stays in the field. Skip keeps the €0, and an empty field acts as
+  Skip.
+- Closing with ×, Escape or the backdrop calls `flush()`, which keeps a valid price or link and
+  quietly drops a wrong one.
+- Focus: into the price field when it already shows, otherwise the first chip, and the link field
+  on step 2. Afterwards it goes back to the tab's field.
+
+**The book panel: matches.** "Price" sits directly under the "How I have it" chips and above
+"+ Add e-book link", only for paperback, hardcover or e-book (`ownsCopy`). It reads "€ 12.50" for
+12.5 and shows empty once cleared. It saves on blur or Enter, and Escape puts back the saved
+price. It uses the same errors as the dialog.
+
+**The buying jar: matches.** It is one line, "🪙 4.6 coins", in `--fs-large` at weight 600 and
+`--text`, with a no-break space after the 🪙. There is no coin row, no "of 3" and no gold wash.
+"🪙 −1.4 coins" uses a real minus sign and the whole line is in `--warning`. The well doesn't
+change colour. The `aria-label` is "Buying jar: minus 1.4 coins" and the visible line is
+`aria-hidden`. The two jars stay in equal columns at both widths, and the 🎧 Storytel jar is
+unchanged. `colours.test.ts` has "warning on a sunken well over a card" on both wallpapers.
+
+**Small differences, none a must-fix:**
+1. After Scan, focus goes back to the active "Scan" tab button rather than "the scanner area".
+   That still keeps focus in the dialog, as the design asks. Fine.
+2. The panel's "Price" has no hidden "(euros)" in its name; the dialog's does. The design didn't
+   ask for it in the panel. Fine as is (optional polish).
+3. In a few screenshots one chip looks lighter ("Audiobook", "From the library"). That is the
+   mouse hovering in the capture, not a state of the design.
+
+Handover: to the tester.
+
 # Test
 
 To be written by the tester.
@@ -405,3 +458,6 @@ To be written by the tester.
   page errors. For the architect: `colours.test.ts` checks "warning on a card" on lavender only,
   not on midnight (the task's Notes say both); I added only the pair the design asks for.
   Draft pull request #225; handed to the UX designer for review.
+- 2026-11-21 ux-designer: reviewed: matches the design, no must-fix items (29 screens and the
+  `src` diff checked; three small differences noted under *Review after building*, none
+  blocking); handed to the tester.
