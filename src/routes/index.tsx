@@ -22,6 +22,7 @@ import { pickReadNext, readNextChoices } from '#/lib/readNext'
 import { Dashboard } from '#/components/Dashboard'
 import { BadgeToasts } from '#/components/NewBlocks'
 import { QuickUpdate } from '#/components/QuickUpdate'
+import { SparkleLayer, sparkle } from '#/components/Sparkles'
 import { ChallengesPage } from '#/components/ChallengesPage'
 import { CalendarPage } from '#/components/CalendarPage'
 import type { ChallengeSection } from '#/components/ChallengesPage'
@@ -307,7 +308,12 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     return acc
   }, {})
 
-  const pickNext = () => select(pickReadNext(readNext, selectedId)?.id ?? null)
+  // make a wish: the star grants a book from her pile, with a sparkle
+  const pickNext = () => {
+    const wish = pickReadNext(readNext, selectedId)
+    select(wish?.id ?? null)
+    if (wish) sparkle()
+  }
   const sortSelect = (done?: () => void) => (
     <select
       className="input"
@@ -373,7 +379,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
                         pickNext()
                       }}
                     >
-                      <span aria-hidden>🎲</span> What next?
+                      <span aria-hidden>⭐</span> Make a wish
                     </button>
                   </div>
                 ))}
@@ -418,11 +424,11 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
                 onClick={pickNext}
                 title={
                   readNext.length
-                    ? 'Pick a book to read next: no re-reads, and only the next book of a series'
-                    : 'Nothing to read next: no unread books waiting on the shelf'
+                    ? 'Make a wish: a book to read next from your pile (no re-reads, only the next book of a series)'
+                    : 'No wishes left: no unread books waiting on the shelf'
                 }
               >
-                <span aria-hidden>🎲</span> What next?
+                <span aria-hidden>⭐</span> Make a wish
               </button>
             </>
           )}
@@ -508,6 +514,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
       </main>
 
       <BadgeToasts books={books} accountId={account?.id ?? null} ready={loaded} />
+      <SparkleLayer />
       <QuickUpdate books={books} onUpdate={updateBook} onShowBook={showBook} hidden={!loaded || !!selected} />
 
       {selected && (
@@ -519,6 +526,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           onStatus={(status) => {
             // no pop-up: a finished book waits under "Waiting for you" on the dashboard
             updateBook(selected.id, statusPatch(selected, status))
+            // a little magic when she finishes it
+            if (status === 'read' && selected.status !== 'read') sparkle()
           }}
           // what she read today goes in the reading log (#76)
           onProgress={(progress) => updateBook(selected.id, (b) => progressPatch(b, progress))}

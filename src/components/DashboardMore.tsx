@@ -309,6 +309,7 @@ export function WrappedCard({ books, onShowBook }: Props) {
         <p className="muted">No books finished in {year} yet. The year's story starts with the first one.</p>
       ) : (
         <>
+          <p className="story-line">Once upon a time…</p>
           <div className="wrapped-numbers">
             <p>
               <strong>{r.books}</strong>
@@ -359,6 +360,9 @@ export function WrappedCard({ books, onShowBook }: Props) {
               ))}
             </dl>
           )}
+          <p className="story-line end">
+            {year < new Date().getFullYear() ? '…and she read happily ever after.' : '…and the story continues.'}
+          </p>
         </>
       )}
     </section>
