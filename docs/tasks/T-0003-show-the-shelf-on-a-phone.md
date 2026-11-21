@@ -7,7 +7,7 @@ depends_on: [T-0001]
 decisions: [D-0002, G-0019]
 raised_on: 2026-11-21
 done_on: ""
-result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/198", "https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/206", "https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/207", "PR_PLACEHOLDER"]
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/198", "https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/206", "https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/207", "https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/208"]
 ---
 
 # Goal
