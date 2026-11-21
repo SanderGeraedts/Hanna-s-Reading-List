@@ -14,7 +14,7 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 
 ## Doing
 
-- [T-0010 Let the task index replace the roadmap issue #21](T-0010-the-task-index-replaces-the-roadmap-issue.md): #21 kept the order of open requests by hand; under the harness the generated task index does that, so #21 points to it and is closed.
+None.
 
 ## Done
 
@@ -22,6 +22,7 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 - [T-0004 Make the text on dark spines white again instead of gold](T-0004-white-spine-text-again.md): #180: since every book became a hardcover, dark spines get gold lettering; put the white lettering back, keeping dark lettering on light spines.
 - [T-0005 Make the books that match a search stand out much more from the rest](T-0005-search-matches-stand-out-more.md): #184: while searching, the matching books light up and the rest dim; make the difference between the two clearly bigger.
 - [T-0007 Let a book hold a link to its e-book file, shown only when one is added](T-0007-link-to-the-ebook-file.md): #185: an optional link per book to where Hanna keeps the e-book (Google Drive, a server), with an open button in the book panel like "Open in Storytel", shown only when the link is set.
+- [T-0010 Let the task index replace the roadmap issue #21](T-0010-the-task-index-replaces-the-roadmap-issue.md): #21 kept the order of open requests by hand; under the harness the generated task index does that, so #21 points to it and is closed.
 
 ## Dropped
 
