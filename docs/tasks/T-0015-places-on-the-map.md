@@ -87,8 +87,102 @@ Open Library's subject places by `src/lib/useBookDetails.ts`, only while `places
 
 # Design
 
+## Design (2026-11-21, before the build)
+
+Built from what is already there: the Genres chips and their "Add…" box in the book panel, and the
+map block's existing lines. No new colours (existing `.chip`, `.btn`, `--muted`, `--accent-*`
+tokens, so both wallpapers follow), no hint texts (D-0014). One layout for phone and computer; the
+only difference is the 44 px touch size on phones (`pointer: coarse`, `--tap`).
+
+### 1. "Set in" in the book panel
+
+**Where:** its own field directly under Genres, for every book on the shelf. Label: **Set in**.
+
+**Chips.** One chip per place in `book.places`, in stored order, same chip look as Genres. Each
+chip starts with a small mark so the kind is clear without colour:
+
+| Kind | Chip shows | Example |
+| --- | --- | --- |
+| on the map as a country (a map country, or a name `places.ts` turns into one, like "England" or "Paris") | 🌍 + the name as stored | 🌍 France · 🌍 England |
+| made-up place (what `placesOf` counts as imaginary) | 🗺️ + the name without "(Imaginary place)" | 🗺️ Prythian · 🗺️ Hogwarts School of Witchcraft and Wizardry |
+| anything else from Open Library (not on the map) | no mark, just the name | 4 Privet Drive |
+
+- **×** at the end of every chip removes that place (Open Library's too). Focus then goes to the
+  Add box. The mark is `aria-hidden`; the chip's text for a screen reader is "France, country" /
+  "Prythian, made-up place" (visually hidden word after the name); × is "Remove France".
+- **Long names** wrap inside the chip (max width of the field, never cut off with …); × stays at
+  the chip's end.
+- **Many places:** chips wrap onto as many lines as needed, no limit, no "more"; the Add box sits
+  after the last chip and drops to its own line when there's no room (as in Genres).
+- **Touch (phone):** the Set in chips are at least 44 px tall and × has a 44 × 44 px tap area
+  (a modifier on this field only, so Genres keeps its look).
+
+**The Add box** (after the chips, like Genres' "Add…"). Placeholder:
+
+- "Add…" when the book has places;
+- "Add a place…" when it has none (`[]`, or undefined and not finished);
+- "Looking up…" for a finished book whose places are still undefined.
+
+**Suggestions while typing.** Nothing shows until she types at least one letter. Then a list
+appears right under the box, one row per line (full width of the field, 44 px tall on phones):
+
+1. up to **5** matches, from the map's country names (🌍) and the made-up places already on her
+   other books (🗺️), names that start with what she typed first, then the rest, alphabetical;
+   places already on this book are left out;
+2. as the **last row**, unless what she typed equals one of the rows above or a place already on
+   this book:
+   - **🗺️ Add "Prythian" as a made-up place** — or, when the map already knows the name as a
+     country ("England", "USA", "Paris"): **🌍 Add "England"**.
+
+The first row is highlighted from the start. So "Fran" + Enter adds 🌍 France, "Prythian" + Enter
+adds 🗺️ Prythian. Example for "Nar": 🗺️ Narnia (if on another book) · then 🗺️ Add "Nar" as a
+made-up place.
+
+- **Touch / mouse:** tapping a row adds it; the keyboard stays open and the box is emptied, ready
+  for the next place.
+- **Keyboard:** ↓/↑ move the highlight (wraps), Enter adds the highlighted row, Escape closes the
+  list and keeps the text, Tab leaves the field. The box is a combobox (`role="combobox"`,
+  `aria-expanded`, `aria-controls` the listbox "Places", `aria-activedescendant` for the
+  highlight), so focus stays in the box.
+- **Leaving the box does not add anything** (unlike Genres): what she typed stays in the box, so
+  half a word never becomes a made-up place.
+- **Spelling:** a country is added with the map's name ("france" → France); a made-up place gets
+  a capital first letter and, if the same land is already on another book in another case, that
+  book's spelling ("narnia" → Narnia). Adding a place that's already on the book adds nothing and
+  empties the box.
+- Removing the last chip leaves an empty field with "Add a place…": no message, never looked up
+  again (D-0023).
+
+### 2. The map block: Imaginary lands with counts
+
+The existing line, now with a count after each land, most first, ties alphabetical:
+
+> 🗺️ **Imaginary lands:** Hogwarts 4 · Narnia 2 · Middle Earth 1
+
+- The count is in the muted colour (as the country counts in the list above it); the "·"
+  separators are `aria-hidden`, so a screen reader reads "Hogwarts 4, Narnia 2, Middle Earth 1".
+- **Long names** ("Hogwarts School of Witchcraft and Wizardry 4") wrap like normal text; the count
+  never ends up alone at the start of a line (non-breaking space before it).
+- **Many lands:** all of them, in the same wrapping line (small text); no cut-off.
+- A land she just added in the panel shows here as soon as the book is finished (the map counts
+  finished books only, as now). No land: no line, as now.
+
+### Done when (design)
+
+- Set in sits under Genres for a finished and an unfinished book; chips show 🌍 / 🗺️ / no mark as
+  in the table; × removes, also an Open Library place.
+- Typing "fra" shows 🌍 France first; Enter adds it. Typing "Prythian" shows the last row
+  'Add "Prythian" as a made-up place'; Enter or tapping it adds 🗺️ Prythian. Leaving the box with
+  text in it adds nothing. At most 5 suggestion rows plus the add row.
+- Keyboard only: ↓/↑/Enter/Escape work as described, focus stays in the box.
+- At 390×844 the chips, × and suggestion rows are at least 44 px tall; long names wrap, nothing
+  is cut off or scrolls sideways.
+- The map shows "Imaginary lands: Hogwarts 4 · Narnia 2 · …", most first, including the land just
+  added on a finished book. Checked on both wallpapers.
+
 # Test
 
 # Log
 
 - 2026-11-21 architect: task written
+- 2026-11-21 ux-designer: designed
