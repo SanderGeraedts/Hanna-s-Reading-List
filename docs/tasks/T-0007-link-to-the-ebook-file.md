@@ -149,6 +149,48 @@ have the production account server's address. Until the Engineer has confirmed t
 review and the tester's screenshots come from a local dev server with no backend (shelf in the
 browser) or a local PocketBase, never from signing in or adding books on a deploy preview.
 
+## Review after building (2026-11-21, head `cea9117`)
+
+Looked at the developer's twelve screenshots (320 × 640 and 1280 × 800: with a link, without,
+refused, added) and at my own local dev server with no backend (shelf in the browser), at the
+same two sizes, driven by keyboard. The app has one theme (no light/dark), so there was no
+second theme to check.
+
+**Matches the design:**
+
+- **Open button:** "📖 Open e-book", small outlined button (not orange), after "▶ Open in
+  Storytel" in a wrapping row; absent for a book without a link. Name and tooltip "Open e-book
+  (drive.google.com, opens in a new tab)"; for `http://192.168.1.10/…` it reads "Open e-book
+  (192.168.1.10, opens in a new tab)". New tab, `rel="noopener noreferrer"`.
+- **No link:** only "+ Add e-book link" as a `link-btn`, right under *How I have it*,
+  independent of the E-book chip.
+- **Field:** label "E-book link", `https://…` placeholder, full width, hint "Where the file is,
+  e.g. on Google Drive or your server." linked by `aria-describedby`; × named "Remove e-book
+  link". A long link scrolls inside the field.
+- **Refused link:** `javascript:alert(1)` and `drive.google.com/x` stay in the field,
+  `aria-invalid="true"`, hint becomes "Only links that start with https:// or http:// can be
+  opened here." in the danger colour, and the open button keeps the last good link. Typing
+  again puts the normal hint back.
+- **Keyboard:** "+ Add e-book link" puts focus in the field; Tab goes from the field to the ×;
+  after the × focus is back on "+ Add e-book link" and the open button is gone. Escape restores
+  the saved link without closing the panel. Opening the field and leaving it empty returns to
+  "+ Add e-book link".
+- **Phone:** the × is 44 × 44 px at 320 px (touch); field and × fit the sheet width; both top
+  buttons are fully visible. No page errors at either size.
+
+**Differs:**
+
+- **Desktop, the e-book button wraps under "Open in Storytel" even with a short title.** The
+  design pictured them on one line on desktop, wrapping at 320 px or with a long title. The
+  panel's title column (next to the close button) is about 262 px wide and the two buttons need
+  about 280 px. Both stay fully visible, left-aligned and evenly spaced, and stacked they read as
+  a tidy pair; moving the row out of the title column would change the panel's existing header.
+  **Accepted, no fix needed.**
+- On desktop the × is 30 px, as the design asked (44 px only on touch screens). Not a
+  difference.
+
+**Verdict:** matches the design; passed on to the tester.
+
 # Test
 
 # Log
@@ -172,3 +214,7 @@ browser) or a local PocketBase, never from signing in or adding books on a deplo
   button wraps onto a second line at both widths: the panel's title column is narrower than the
   two buttons together, as the design allows); refusal shows the exact note; add, reload, remove
   all work; no page errors.
+- 2026-11-21 ux-designer: reviewed: matches the design, passed on to the tester. Checked the
+  developer's screenshots and a local dev server (no backend) at 320 × 640 and 1280 × 800:
+  words, refusal, focus after + and ×, Escape, 44 px × on touch. The e-book button also wraps on
+  desktop (title column too narrow for both); both stay fully visible, accepted.
