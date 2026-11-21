@@ -427,7 +427,9 @@ function Scene({
       <Bookcase layout={caseLayout} />
       <StillDecorations.Provider value={lite}>
         <Decorations items={layout.decor} />
-      <BookNooks items={layout.nooks} />
+      <StillDecorations.Provider value={lite}>
+        <BookNooks items={layout.nooks} />
+      </StillDecorations.Provider>
       <SeriesDividers items={layout.dividers} />
         <FairyLights width={caseLayout.innerWidth} top={caseLayout.caseHeight} />
       </StillDecorations.Provider>

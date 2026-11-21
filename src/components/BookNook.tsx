@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useContext, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { NOOK, SHELF } from '#/lib/shelfLayout'
@@ -8,6 +8,9 @@ import type { NookThemeId } from '#/lib/nookThemes'
 import { METALS, medalTier, toTexture } from './textures'
 import { getMedalMaterials } from './BookMesh'
 import { D, H, IH, IW, SHELL, W, sceneTextures } from './nookPaint'
+import { nookGeometry } from './nook3d'
+import type { NookGeometry } from './nook3d'
+import { StillDecorations } from './Decorations'
 
 /**
  * Book nooks: book-sized boxes that open onto a tiny scene, standing between
@@ -54,14 +57,7 @@ function PlacedNook({ slot }: { slot: NookSlot }) {
   )
 }
 
-function Nook({
-  label,
-  theme: themeId,
-  variant,
-  complete,
-  medal,
-  sleep,
-}: {
+interface NookProps {
   label: string
   theme: NookThemeId
   variant: number
@@ -70,7 +66,74 @@ function Nook({
   medal?: number
   /** the whole series is a sleep read: a moon on the sign */
   sleep: boolean
-}) {
+}
+
+/** The night alley and the castle are little 3D worlds (T-0012); the other scenes are painted, for now. */
+function Nook(props: NookProps) {
+  const world = useMemo(() => nookGeometry(props.theme, props.variant), [props.theme, props.variant])
+  return world ? <Nook3D {...props} world={world} /> : <PaintedNook {...props} />
+}
+
+// one pair of materials for every 3D nook: colours come from the geometry
+const worldSolid = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0.03 })
+const worldGlow = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false })
+
+/** The hanging sign inside a 3D nook: smaller, from a bracket on the right-hand wall, near the front. */
+const INNER_SIGN = { w: 0.024, h: 0.136, x: IW / 2 - 0.034, z: D / 2 - 0.03, top: H - SHELL - 0.022 }
+
+function Nook3D({ world, theme: themeId, variant, label, complete, sleep, medal }: NookProps & { world: NookGeometry }) {
+  const tex = useMemo(() => sceneTextures(themeId, variant), [themeId, variant])
+  const sign = useMemo(() => signTexture(label, complete, sleep), [label, complete, sleep])
+  useEffect(() => () => sign.dispose(), [sign])
+  const still = useContext(StillDecorations)
+  // lanterns and windows flicker softly on a computer; on a phone they glow but sit still
+  useFrame(({ clock }) => {
+    if (still) return
+    const t = clock.elapsedTime
+    worldGlow.color.setScalar(0.9 + Math.sin(t * 7.1) * 0.04 + Math.sin(t * 12.7) * 0.03)
+  })
+  return (
+    <group>
+      <mesh geometry={world.solid} material={worldSolid} castShadow receiveShadow />
+      <mesh geometry={world.glow} material={worldGlow} />
+      {/* the night sky at the end, and the cobbles underfoot, painted as before */}
+      <mesh position={[0, H / 2, -D / 2 + SHELL + 0.0005]}>
+        <planeGeometry args={[IW, IH]} />
+        <meshBasicMaterial map={tex.sky} toneMapped={false} />
+      </mesh>
+      <mesh position={[0, SHELL + 0.0004, SHELL / 2]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[IW, D - SHELL]} />
+        <meshStandardMaterial map={tex.ground.map} roughness={0.9} />
+      </mesh>
+      {/* the sign, hanging from an iron bracket into the scene */}
+      <group position={[INNER_SIGN.x, INNER_SIGN.top, INNER_SIGN.z]}>
+        <mesh position={[INNER_SIGN.w / 2 + 0.005, 0.004, 0]}>
+          <boxGeometry args={[0.03, 0.0015, 0.0015]} />
+          <meshStandardMaterial color="#1c1c22" metalness={0.6} roughness={0.4} />
+        </mesh>
+        <mesh castShadow position={[0, -INNER_SIGN.h / 2, 0]}>
+          <boxGeometry args={[INNER_SIGN.w, INNER_SIGN.h, 0.0025]} />
+          <meshStandardMaterial attach="material-0" color="#5a3a22" />
+          <meshStandardMaterial attach="material-1" color="#5a3a22" />
+          <meshStandardMaterial attach="material-2" color="#5a3a22" />
+          <meshStandardMaterial attach="material-3" color="#5a3a22" />
+          <meshStandardMaterial attach="material-4" map={sign} roughness={0.7} />
+          <meshStandardMaterial attach="material-5" color="#5a3a22" />
+        </mesh>
+        {!!medal && <SignMedal count={medal} top={-INNER_SIGN.h} />}
+      </group>
+    </group>
+  )
+}
+
+function PaintedNook({
+  label,
+  theme: themeId,
+  variant,
+  complete,
+  medal,
+  sleep,
+}: NookProps) {
   const theme = NOOK_THEMES[themeId]
   const tex = useMemo(() => sceneTextures(themeId, variant), [themeId, variant])
   const sign = useMemo(() => signTexture(label, complete, sleep), [label, complete, sleep])

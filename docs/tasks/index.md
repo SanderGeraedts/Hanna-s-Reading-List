@@ -23,6 +23,7 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 - [T-0008 Bring back a dashboard block with new books she might like that aren't on her shelf](T-0008-dashboard-block-with-new-books-for-her.md): #186: a dashboard block of new releases by her favourite authors and in her favourite genres, from Open Library, leaving out books already on the shelf; built from the Recommended for you block removed in #123.
 - [T-0010 Let the task index replace the roadmap issue #21](T-0010-the-task-index-replaces-the-roadmap-issue.md): #21 kept the order of open requests by hand; under the harness the generated task index does that, so #21 points to it and is closed.
 - [T-0011 Add a quick update button to move a book on or finish it without the full book panel](T-0011-quick-update-for-reading.md): A round 📖 button in the corner of every page opens the books Hanna is reading as big covers; tapping one opens a small card with big − / + buttons, typing the page, Finished! and More.
+- [T-0012 Make the book nooks little 3D worlds, starting with the night alley and the castle](T-0012-3d-book-nooks.md): Hanna wants the nooks to look like real book nooks: tiny 3D houses, towers and lanterns with warm light, merged so each nook is cheap to draw; the alley and the castle first, the other eight scenes in later steps.
 
 ## Dropped
 
