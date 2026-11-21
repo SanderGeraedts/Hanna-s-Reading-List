@@ -2,7 +2,7 @@
 id: T-0002
 title: "Stop the local dev server from loading production's environment through the Netlify plugin"
 description: "#156: turn off the Netlify Vite plugin's environment variables in vite.config.ts, so a checkout linked to the Netlify site never reaches the production account server."
-status: Open
+status: Doing
 depends_on: []
 decisions: [G-0019, D-0003]
 raised_on: 2026-11-21
@@ -63,3 +63,27 @@ Nothing visible.
 
 - 2026-11-21 architect: Task written from #156, ordered right after the adoption and without a
   dependency on it, because the main clone has a `.netlify/` folder.
+- 2026-11-21 developer: Built in `vite.config.ts`: `environmentVariables: { enabled: false }` in
+  the Netlify plugin's `dev` options, next to `edgeFunctions`, with a comment (#156, #96).
+  `vite.config.test.ts` checks the option (fails on main: `expected undefined to equal
+  { enabled: false }`; passes with the fix). Data-safety mention in a new `docs/data-safety.md`,
+  linked from the README's local-development section; the line for `CLAUDE.md` / `AGENTS.md`
+  goes in with T-0001, which is code-owned, so `CLAUDE.md` is not edited here. Checks, in a
+  fresh worktree with `.netlify/state.json` holding only a made-up `siteId`, no
+  `POCKETBASE_URL`: dev server log `⬥ Netlify Middleware loaded. Emulating features: aiGateway,
+  blobs, database, functions, geolocation, headers, images, redirects, server, static.` (on
+  main the same line lists `environmentVariables`); `http://localhost:3000` opened the shelf
+  with no sign-in screen. With a local PocketBase 0.40.6 (`SIGNUP_EMAILS=test@example.com`,
+  repo migrations and hooks) and `POCKETBASE_URL=http://127.0.0.1:8090`: sign-in screen shown,
+  `test@example.com` signed up, a manually added book "T0002 Local Test Book" was saved (the
+  local `libraries` record holds it). `npm test`: `Test Files 42 passed (42)`, `Tests 280
+  passed (280)`; `npm run build`: `✓ built`.
+- 2026-11-21 developer: For the architect, two things in the *Done when* that the fix can't
+  meet as written (not changed here): (1) `@netlify/vite-plugin` logs `⬥ Netlify Environment
+  loaded` every time it starts, whatever is enabled (`logger.log("Environment loaded")` after
+  `netlifyDev.start()`), so that line stays in the log with the fix; the proof the option works
+  is that `environmentVariables` is gone from the `Emulating features` line. (2) On a machine
+  where the Netlify CLI is logged in, a made-up `siteId` stops the dev server before it starts
+  (`Failed retrieving site data for site …: Not Found`, from `@netlify/config` resolving the
+  site), independent of this change; the checks above ran with `APPDATA` pointed at an empty
+  scratch folder so no stored Netlify login was found and nothing reached Netlify.
