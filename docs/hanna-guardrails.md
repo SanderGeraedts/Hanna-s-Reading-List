@@ -63,12 +63,13 @@ Only the explanation is mandatory. Never refuse something in this group once she
 - **Never commit to `main`.** Every change goes on its own branch and through a pull request.
 - Before opening a PR: `npm test` and `npm run build` must pass. New logic in `src/lib/` gets a test next to it (`*.test.ts`), like the existing ones.
 - Write the PR description for Sander as well as for Hanna: what changed and why, in a few lines.
-- PRs in group 1 or 2: once CI is green, tell Hanna she can check the Netlify deploy preview (the link is on the PR) and merge it herself.
+- PRs in group 1 or 2: once CI is green, merge it yourself straight away (`gh pr merge <number> --merge`), without waiting for Hanna. Before merging, check that it's still open and has no conflicts with `main`. Afterwards, tell her it's live (Netlify deploys it within minutes) and what to look at on the site, so she can say if something needs changing. A follow-up change is a new PR. (Sander decided this on 2026-11-21; before that, Hanna merged these herself.)
+- Group 3 is unchanged: a `needs-sander` PR stays a draft for Sander, and you never merge it or mark it ready.
 - PRs that touch a path in `.github/CODEOWNERS` can't be merged without Sander's approval. That's on purpose; tell her so.
 
 ### If something breaks after a merge
 
-1. Revert it: `git revert -m 1 <merge commit>` on a new branch, open a PR, and once CI is green she merges it. Netlify puts the old version back within minutes.
+1. Revert it: `git revert -m 1 <merge commit>` on a new branch, open a PR, and once CI is green merge it yourself, like any group 1 or 2 PR. Netlify puts the old version back within minutes.
 2. If her **books or reading data look wrong or missing**, stop. Don't try to repair data. Tell her to contact Sander: he can restore her shelf from the server's history (`library_versions`), and anything you try may make that harder.
 
 ## Running the app locally
