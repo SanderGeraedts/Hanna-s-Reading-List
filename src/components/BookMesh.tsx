@@ -46,6 +46,25 @@ const TAU = Math.PI * 2
 const damp = THREE.MathUtils.damp
 const smooth = THREE.MathUtils.smoothstep
 
+/** While searching (#184): the glow a match gets on top of the shelf's lighting. */
+export const MATCH_GLOW = 0.5
+/** While searching: how much a book that doesn't match dims (0.82 leaves it at 18%). */
+export const MATCH_DIM = 0.82
+/** While searching: how far a match comes forward off the shelf (a hover is 0.035). */
+export const MATCH_FORWARD = 0.06
+
+/**
+ * How a book is lit: `fly` from 0 (on the shelf) to 1 (taken out, lit evenly),
+ * `glow` and `dim` from 0 to 1 while a search is on. `emissive` is the glow on
+ * top of the scene's light; `shade` the brightness of the lit colour.
+ */
+export function bookLight(fly: number, glow: number, dim: number) {
+  return {
+    emissive: fly + MATCH_GLOW * glow * (1 - fly),
+    shade: (1 - fly) * (1 - MATCH_DIM * dim),
+  }
+}
+
 /** Shift `angle` by whole turns so it is as close as possible to `ref`. */
 export function nearestTurn(angle: number, ref: number) {
   return angle + Math.round((ref - angle) / TAU) * TAU
@@ -236,7 +255,7 @@ export function BookMesh(props: BookMeshProps) {
     const out = smooth(p, 0, 0.35)
     const fly = smooth(p, 0.2, 1)
     tmp.base.lerpVectors(a.shelf, a.drag, a.dragAmt)
-    tmp.base.z += 0.035 * a.hover + 0.28 * out + 0.03 * a.glow
+    tmp.base.z += 0.035 * a.hover + 0.28 * out + MATCH_FORWARD * a.glow
     tmp.base.y += 0.01 * a.hover
 
     // distance at which the book fills `fill` of the view height
@@ -253,9 +272,8 @@ export function BookMesh(props: BookMeshProps) {
     )
 
     // fade from lit to evenly lit as the book flies out (and back as it returns);
-    // a search match glows a little, the other books dim
-    const glowing = fly + 0.22 * a.glow * (1 - fly)
-    const shade = (1 - fly) * (1 - 0.65 * a.dim)
+    // a search match glows, the other books dim
+    const { emissive: glowing, shade } = bookLight(fly, a.glow, a.dim)
     const first = materials.all[0]
     if (Math.abs(first.emissiveIntensity - glowing) > 0.001 || Math.abs(first.color.r - shade) > 0.001) {
       for (const m of materials.all) {
