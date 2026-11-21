@@ -7,7 +7,7 @@ depends_on: [T-0014]
 decisions: [D-0002, D-0009, D-0010, D-0013, D-0014, D-0020, D-0022, D-0024]
 raised_on: 2026-11-21
 done_on: ""
-result: []
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/225"]
 ---
 
 # Goal
@@ -404,3 +404,4 @@ To be written by the tester.
   Escape puts back, emptying clears it, hidden after unticking Paperback; no sideways scroll; no
   page errors. For the architect: `colours.test.ts` checks "warning on a card" on lavender only,
   not on midnight (the task's Notes say both); I added only the pair the design asks for.
+  Draft pull request #225; handed to the UX designer for review.
