@@ -141,15 +141,8 @@ function authorLine(book: Book) {
 
 const PX_PER_UNIT = 2400
 
-/**
- * On a phone a spine is a few pixels wide on screen, so it's painted at about
- * half the sharpness: a quarter of the picture memory per book, which a full
- * shelf on an Android phone needs (#181, T-0003).
- */
-const PHONE_SPINE_SCALE = 0.55
 /** the back and the stand-in front on a phone: 384 px wide instead of 640 */
 const PHONE_COVER_SCALE = 0.6
-const spineScale = () => (onPhone() ? PHONE_SPINE_SCALE : 1)
 
 /** A phone (or anything with a small screen or a touch screen): the lighter shelf. */
 export function onPhone() {
@@ -168,8 +161,9 @@ export function medalLayout(dims: BookDims) {
 }
 
 export function paintSpine(book: Book, dims: BookDims, sleep = false) {
-  const H = Math.min(1024, Math.round(dims.h * PX_PER_UNIT * 1.3 * spineScale()))
-  const W = Math.max(24, Math.round((H * dims.t) / dims.h))
+  // spines stay sharp on phones too: painting them at half the sharpness made the titles blurry (T-0003)
+  const H = Math.min(1024, Math.round(dims.h * PX_PER_UNIT * 1.3))
+  const W = Math.max(40, Math.round((H * dims.t) / dims.h))
   const c = canvas(W, H)
   const ctx = c.getContext('2d', { willReadFrequently: true })!
   const bg = book.color

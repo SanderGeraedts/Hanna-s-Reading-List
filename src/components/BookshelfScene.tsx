@@ -60,8 +60,8 @@ function portraitInspect(frame: { fill: number; yShift: number }, sheet: number,
 }
 
 /**
- * Phones get a lighter version of the room: no shadows and one pixel per
- * screen pixel, so a full shelf fits in a phone's graphics memory (#181) and
+ * Phones get a lighter version of the room: no shadows and at most 1.5
+ * pixels per screen point, so a full shelf fits in a phone's graphics memory (#181) and
  * scrolling stays smooth.
  */
 function useLite() {
@@ -83,7 +83,8 @@ export function BookshelfScene(props: BookshelfSceneProps) {
       // another page (Dashboard, Challenges, Calendar) covers the shelf: don't keep drawing it
       frameloop={props.paused ? 'never' : 'always'}
       shadows={lite ? false : 'soft'}
-      dpr={lite ? 1 : [1, 2]}
+      // 1.5 pixels per screen point on a phone: sharp titles, still much lighter than the screen's own 2–3
+      dpr={lite ? [1, 1.5] : [1, 2]}
       camera={{ fov: FOV, near: 0.05, far: 60, position: [0, 0.7, 4] }}
       gl={{ antialias: !lite, toneMapping: THREE.ACESFilmicToneMapping }}
       style={{ touchAction: 'none' }}
