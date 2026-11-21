@@ -3867,6 +3867,17 @@ textarea.input {
   color: var(--accent);
 }
 
+/* ---- finish estimates -------------------------------------------------- */
+.quick-eta {
+  margin: calc(var(--space-2) * -1) 0 0;
+  text-align: center;
+}
+.goal-forecast {
+  margin: var(--space-1) 0 0;
+  color: var(--accent);
+  font-size: var(--fs-small);
+}
+
 /* ---- favourites on top --------------------------------------------- */
 .block-star.on {
   color: var(--accent);
