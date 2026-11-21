@@ -61,7 +61,7 @@ Only the explanation is mandatory. Never refuse something in this group once she
 ## How work gets done
 
 - **Never commit to `main`.** Every change goes on its own branch and through a pull request.
-- Before opening a PR: `npm test` and `npm run build` must pass. New logic in `src/lib/` gets a test next to it (`*.test.ts`), like the existing ones.
+- Before opening a PR: `pnpm test` and `pnpm run build` must pass. New logic in `src/lib/` gets a test next to it (`*.test.ts`), like the existing ones.
 - Write the PR description for Sander as well as for Hanna: what changed and why, in a few lines.
 - PRs in group 1 or 2: once CI is green, tell Hanna she can check the Netlify deploy preview (the link is on the PR) and merge it herself.
 - PRs that touch a path in `.github/CODEOWNERS` can't be merged without Sander's approval. That's on purpose; tell her so.
@@ -84,9 +84,9 @@ To try changes with sign-in and syncing, run a local PocketBase in `.pocketbase/
      --dir=.pocketbase/pb_data --migrationsDir=deploy/nas/pb_migrations --hooksDir=deploy/nas/pb_hooks
    ```
    On Windows PowerShell: `$env:SIGNUP_EMAILS='test@example.com'; .\.pocketbase\pocketbase.exe serve --dir=.pocketbase/pb_data --migrationsDir=deploy/nas/pb_migrations --hooksDir=deploy/nas/pb_hooks`
-3. Run the app against it: `POCKETBASE_URL=http://127.0.0.1:8090 npm run dev` (PowerShell: `$env:POCKETBASE_URL='http://127.0.0.1:8090'; npm run dev`), and create an account with `test@example.com` on the sign-in screen.
+3. Run the app against it: `POCKETBASE_URL=http://127.0.0.1:8090 pnpm run dev` (PowerShell: `$env:POCKETBASE_URL='http://127.0.0.1:8090'; pnpm run dev`), and create an account with `test@example.com` on the sign-in screen.
 4. If a secret is needed locally (e.g. `STORYTEL_COOKIE_SECRET`), make up a throwaway value. Never ask for or use the real one.
 
-For changes that don't touch sign-in or syncing, plain `npm run dev` (no `POCKETBASE_URL`) is enough: the shelf then lives in the browser.
+For changes that don't touch sign-in or syncing, plain `pnpm run dev` (no `POCKETBASE_URL`) is enough: the shelf then lives in the browser.
 
 If the local PocketBase stops working, fixing it is your job: delete `.pocketbase/pb_data` and start again. Don't involve Sander.

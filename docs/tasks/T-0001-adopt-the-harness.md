@@ -2,7 +2,7 @@
 id: T-0001
 title: "Adopt the harness at v0.7.0"
 description: "D-0001: switch to pnpm, install the harness at v0.7.0 with harness adopt, thin AGENTS.md and CLAUDE.md, CI and auto-merge as callers of the harness's workflows with the backend workflow wired in, and the harness's ruleset on main."
-status: Open
+status: Doing
 depends_on: []
 decisions: [D-0001, D-0002, D-0003, D-0005, G-0004, G-0007, G-0011, G-0012, G-0016, G-0019, G-0023, G-0029]
 raised_on: 2026-11-21
@@ -136,3 +136,27 @@ Nothing visible.
   the part of the ruleset that changes access. The existing required check is `test`, from the
   job `test` in the old `ci.yml`. Known gap, not in scope: G-0019 asks for seeded demo data on
   previews; previews here start with an empty shelf.
+- 2026-11-21 developer: Built on `t-0001-adopt-harness`, in a worktree without `.netlify/`.
+  `packageManager: pnpm@10.34.9`; `pnpm-lock.yaml` made with `pnpm import` from the old
+  `package-lock.json` (same resolved versions), which is deleted. Installed
+  `github:SanderGeraedts/harness#v0.7.0`; `adopt --write SanderGeraedts SanderGeraedtsFugro`
+  added the four agents, `.claude/settings.json`, `.githooks/pre-push`, `.gitattributes`,
+  `.nvmrc` (it wrote `26`, corrected to `22`) and the `preinstall` and `prepare` scripts;
+  `harness sync` "✓ generated files are current". Thin `AGENTS.md` (project rules with their
+  decisions) and `CLAUDE.md`; npm commands are pnpm ones in the five docs and `netlify.toml`
+  (Hanna's setup gains `winget install --id pnpm.pnpm -e`). `ci.yml` calls the harness's CI at
+  `v0.7.0` with its default checks; `auto-merge.yml` as in step 7; `backend.yml` unchanged.
+  CODEOWNERS also lists `/AGENTS.md`, `/.harness/`, `/.githooks/`. Checks, locally:
+  `pnpm install --frozen-lockfile` "Done in 2.8s using pnpm v10.34.9"; `npm install` stops
+  with "Use pnpm (G-0016): pnpm install" (npm error code 1); `git ls-files package-lock.json`
+  prints nothing; `harness check` "✓ tasks: 10 tasks, index in step", "✓ decisions: 8
+  records, index complete, 3 overrules valid", "✓ engineers: 2 listed", "✓ generated files:
+  current"; `harness overrules` lists G-0017 ← D-0002, G-0018 ← D-0003, G-0028 ← D-0005;
+  `harness role` as SanderGeraedts "engineer"; `pnpm test` 41 files, 279 tests passed (`npm
+  test` on `main` before: 279 passed); `pnpm run build` built; the npm/npx grep prints
+  nothing; the harness grep shows `#v0.7.0` and `@v0.7.0` in both workflows. For the
+  architect: `adopt` lists candidates (D-0001 ~ G-0004/G-0001, D-0005 ~ G-0018/G-0030/G-0027
+  and others), not acted on here; `npm install` writes `node_modules` and a `package-lock.json`
+  before the guard stops it (npm 11 runs the root `preinstall` after reifying); `prepare`
+  sets `core.hooksPath=.githooks` in the clone's shared git config, so the main clone has no
+  hooks until it has `.githooks/` from `main`.

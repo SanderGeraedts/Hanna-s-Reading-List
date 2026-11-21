@@ -17,9 +17,9 @@ A 3D bookshelf for a personal reading list, built with **React**, **TanStack Sta
 ## Getting started
 
 ```bash
-npm install
-npm run dev        # http://localhost:3000
-npm run build      # production build -> dist/
+pnpm install
+pnpm run dev       # http://localhost:3000
+pnpm run build     # production build -> dist/
 ```
 
 ## Where the book images come from
@@ -51,7 +51,7 @@ With `POCKETBASE_URL` set, the app asks people to sign in and keeps each person'
 - Each device keeps a copy of the shelf, so it opens at once and works offline. Changes are saved a moment after they're made, and changes from other devices are picked up when the page comes back into view (`useLibrary` in `src/lib/library.ts`).
 - **A save can't wipe the shelf.** The server folds every save into its own copy (`src/lib/shelfMerge.ts`): a device says which server version its copy is based on and which books it removed on purpose. Books the server has that a save leaves out stay, unless they were removed (or merged) on that device. When the server copy changed in the meantime (another device, the nightly sync, or a stale copy such as test data on a developer's machine), each book is taken from whichever side edited it last (`editedAt`), and the server's copy otherwise. So a mixed-up device can at worst add books, never lose them. This was added after a local test shelf overwrote Hanna's shelf on 9 November 2026.
 - **History:** before a shelf changes, PocketBase keeps the previous version in `library_versions` (at most one per 10 minutes, always one when a save drops books, the last 100 per person; admin only). See [Restoring a shelf](deploy/nas/README.md#restoring-a-shelf).
-- The first sign-in on a device moves the shelf that browser had before accounts into the account, with every book and the arrangement, but only when the account has no shelf yet. Into an account that already has books, it isn't mixed in. It only counts as done once the server has confirmed the save, so if the server can't be reached it's tried again on the next visit. The old copy (`hannas-reading-list:v1`) is left in the browser as a backup; `hannas-reading-list:v1:migrated` records that it was moved (or skipped). Tests for this are in `src/lib/library.sync.test.ts` and `src/lib/shelfMerge.test.ts` (`npm test`).
+- The first sign-in on a device moves the shelf that browser had before accounts into the account, with every book and the arrangement, but only when the account has no shelf yet. Into an account that already has books, it isn't mixed in. It only counts as done once the server has confirmed the save, so if the server can't be reached it's tried again on the next visit. The old copy (`hannas-reading-list:v1`) is left in the browser as a backup; `hannas-reading-list:v1:migrated` records that it was moved (or skipped). Tests for this are in `src/lib/library.sync.test.ts` and `src/lib/shelfMerge.test.ts` (`pnpm test`).
 
 Without `POCKETBASE_URL` there's no sign-in, and each browser keeps its own shelf in `localStorage`.
 
@@ -60,7 +60,7 @@ To try it locally, download the PocketBase version named in `deploy/nas/Dockerfi
 ```bash
 SIGNUP_EMAILS=test@example.com .pocketbase/pocketbase serve --dir=.pocketbase/pb_data \
   --migrationsDir=deploy/nas/pb_migrations --hooksDir=deploy/nas/pb_hooks
-POCKETBASE_URL=http://127.0.0.1:8090 npm run dev
+POCKETBASE_URL=http://127.0.0.1:8090 pnpm run dev
 ```
 
 Never point a local dev server at the production `POCKETBASE_URL` (see #96).
