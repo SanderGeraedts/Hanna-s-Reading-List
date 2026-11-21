@@ -7,7 +7,7 @@ depends_on: [T-0015]
 decisions: [D-0002, D-0014, D-0020, D-0022, D-0023, D-0026]
 raised_on: 2026-11-22
 done_on: ""
-result: []
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/227"]
 ---
 
 # Goal
@@ -389,4 +389,5 @@ Middle-earth
   places, 101 distinct map cover URLs): 101 map requests all `size=S`, 27 lands requests all
   `size=M`, no URL requested twice (the other 45–51 `size=L` requests come from other dashboard
   blocks, the same without places); long tasks and click-to-frame times (130–263 ms) the same as
-  the same shelf without places (130–241 ms), so no extra in-view logic.
+  the same shelf without places (130–241 ms), so no extra in-view logic. Draft PR #227; handed
+  to the UX designer for the design checks.
