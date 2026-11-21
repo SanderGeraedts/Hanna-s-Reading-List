@@ -46,7 +46,8 @@ export function searchShelf(books: Book[], query: string, detected?: Map<string,
         weight: 1,
         hint: book.lent && `Lent to ${book.lent.to || 'a friend'}`,
       },
-      { text: STATUS_LABELS[book.status], weight: 1, hint: STATUS_LABELS[book.status] },
+      // "dnf" is what Hanna calls a book she didn't finish (#187)
+      { text: `${STATUS_LABELS[book.status]}${book.status === 'dnf' ? ' dnf' : ''}`, weight: 1, hint: STATUS_LABELS[book.status] },
       { text: book.description ?? '', weight: 0.5, hintFor: (term) => snippet(book.description ?? '', term) },
     ]
     const folded = fields.map((f) => fold(f.text))

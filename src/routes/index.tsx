@@ -21,6 +21,7 @@ import { detectSeries, seriesGroups } from '#/lib/series'
 import { pickReadNext, readNextChoices } from '#/lib/readNext'
 import { Dashboard } from '#/components/Dashboard'
 import { BadgeToasts } from '#/components/NewBlocks'
+import { QuickUpdate } from '#/components/QuickUpdate'
 import { ChallengesPage } from '#/components/ChallengesPage'
 import { CalendarPage } from '#/components/CalendarPage'
 import type { ChallengeSection } from '#/components/ChallengesPage'
@@ -380,7 +381,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
               : activeGenre
                 ? `${shown.length} of ${books.length} books · ${genreChoices.find((g) => g.value === activeGenre)!.label}`
                 : `${books.length} book${books.length === 1 ? '' : 's'} · ` +
-                (['reading', 'paused', 'want', 'read'] as const)
+                (['reading', 'paused', 'want', 'read', 'dnf'] as const)
                   .filter((s) => counts[s])
                   .map((s) => `${counts[s]} ${STATUS_LABELS[s].toLowerCase()}`)
                   .join(' · ')}
@@ -484,6 +485,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             accountId={account?.id ?? null}
             onOpenChallenges={openChallenges}
             onOpenCalendar={openCalendar}
+            onAdd={addBook}
           />
         )}
         {view === 'calendar' && <CalendarPage books={books} onShowBook={showBook} onUpdate={updateBook} startMonth={search.month} />}
@@ -499,6 +501,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
       </main>
 
       <BadgeToasts books={books} accountId={account?.id ?? null} ready={loaded} />
+      <QuickUpdate books={books} onUpdate={updateBook} onShowBook={showBook} hidden={!loaded || !!selected} />
 
       {selected && (
         <BookPanel

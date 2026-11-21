@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import type { Book } from '#/lib/library'
-import { timesRead } from '#/lib/library'
+import { hasMedal, timesRead } from '#/lib/library'
 import type { BookDims } from '#/lib/shelfLayout'
 import { formatDuration, listenOnly } from '#/lib/listening'
 import type { PageEdges } from '#/lib/edges'
@@ -149,7 +149,7 @@ export function paintSpine(book: Book, dims: BookDims, sleep = false) {
   ctx.fillRect(0, 0, W, H)
 
   // decorative bands (a finished book's medal takes the place of the bottom pair)
-  const read = book.status === 'read'
+  const read = hasMedal(book)
   ctx.fillStyle = accent
   for (const y of read ? [H * 0.05] : [H * 0.05, H * 0.9]) {
     ctx.fillRect(0, y, W, Math.max(2, H * 0.006))

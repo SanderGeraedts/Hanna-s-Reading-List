@@ -2,12 +2,12 @@
 id: D-0016
 title: "Recommended for you, Complete your series, Upcoming releases and Listening and reading are off the dashboard; books not out yet go on the shelf"
 description: "At Hanna's request the four blocks she didn't use were removed with their code; a book whose publication date is still to come goes on the shelf as want-to-read, and What next? leaves it out."
-status: Accepted
+status: Replaced
 date: 2026-11-13
 decided_by: requester
 overrules: []
 replaces: []
-replaced_by: []
+replaced_by: [D-0021]
 resolves: []
 tags: [dashboard]
 ---

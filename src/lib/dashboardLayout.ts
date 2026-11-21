@@ -16,6 +16,7 @@ export const BLOCKS = {
   count: 'Books read',
   goal: 'Reading goal',
   next: 'What next?',
+  newforyou: 'New for you',
   reading: 'Currently reading',
   series: 'Series',
   calendar: 'Calendar',
@@ -36,6 +37,7 @@ export const BLOCKS = {
   badges: 'Badges',
   covers: 'Cover wall',
   rhythm: 'When I read most',
+  again: 'Give it another try',
 } as const
 
 export type BlockId = keyof typeof BLOCKS
@@ -67,8 +69,8 @@ export interface DashboardLayout {
 export const DEFAULT_LAYOUT: DashboardLayout = {
   sections: {
     today: [
-      ['waiting', 'reading', 'pace', 'lent'],
-      ['challenge', 'next', 'recent'],
+      ['waiting', 'reading', 'pace', 'lent', 'again'],
+      ['challenge', 'next', 'newforyou', 'recent'],
     ],
     challenges: [['goal', 'alphabet'], ['bingo']],
     stats: [
@@ -125,10 +127,17 @@ export function cleanLayout(raw: unknown): DashboardLayout {
 
   // "Waiting for you" goes first, also on a dashboard arranged before it existed
   if (!seen.has('waiting')) sections.today[0].unshift('waiting'), seen.add('waiting')
-  // blocks added to the app later go where they are by default
+  // blocks added to the app later go where they are by default: after the
+  // block they follow there when she has it in that column, else at the end
   for (const s of SECTION_IDS)
     for (const [c, list] of DEFAULT_LAYOUT.sections[s].entries())
-      for (const id of list) if (!seen.has(id)) sections[s][c].push(id), seen.add(id)
+      list.forEach((id, i) => {
+        if (seen.has(id)) return
+        const col = sections[s][c]
+        const after = list.slice(0, i).reverse().find((prev) => col.includes(prev))
+        col.splice(after ? col.indexOf(after) + 1 : col.length, 0, id)
+        seen.add(id)
+      })
 
   const folded = (Array.isArray(r.folded) ? r.folded : []).filter(isFold)
   // favourites: known blocks, each once, not hidden
