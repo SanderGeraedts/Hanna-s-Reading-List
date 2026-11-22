@@ -3,6 +3,7 @@ id: T-NNNN
 title: "What the task delivers, as an imperative"
 description: "One sentence, for the index."
 status: Open                # Open | Doing | Done | Dropped
+size: full                  # small | full: the architect sizes it (G-0031)
 depends_on: []              # tasks that must be Done first
 decisions: []               # decisions this task must follow, global (G-) and project (D-)
 raised_on: YYYY-MM-DD
