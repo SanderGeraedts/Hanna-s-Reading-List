@@ -6,7 +6,7 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 
 ## Open
 
-None.
+- [T-0021 Show how tall her want-to-read pile would stand, with a fun comparison, in the Want-to-read pile block](T-0021-tbr-pile-height.md): The Want-to-read pile block gets one line like “Stacked up, your pile would be 1.62 m tall: about as tall as an adult (1.75 m).”, from the shelf thickness of every want-to-read book except those she only listens to (D-0029), rounded to cm or m, with the closest of a fixed list of everyday heights.
 
 ## Doing
 
