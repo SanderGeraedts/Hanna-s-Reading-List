@@ -2,11 +2,11 @@
 id: T-0019
 title: "Let her pick a book's spine colour from swatches taken from its cover, with Back to automatic"
 description: "The book panel gets a Spine colour row with 5–6 swatches from the book's cover (the dominant one first, marked ★ Dominant, the current one ✓); a tap sets book.color and the spine and back repaint at once; Back to automatic gives the cover's colour again, or colorFromString(title) for a book without a cover."
-status: Doing
+status: Done
 depends_on: [T-0004]
 decisions: [D-0002, D-0007, D-0009, D-0014, D-0020, D-0022, D-0027]
 raised_on: 2026-11-22
-done_on: ""
+done_on: "2026-11-22"
 result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/228"]
 ---
 
@@ -530,7 +530,79 @@ Handed to the tester. The hover-name check above still applies.
 
 # Test
 
-To be written by the tester.
+**Verdict: passed.** Tested on `t-0019-spine-colour-picker` at 3189aa2, after a clean
+`pnpm install --frozen-lockfile` (exit 0). Nothing in the change can harm her data: it adds no
+field, doesn't touch `Book`, `shelfMerge.ts`, `src/server/shelf.ts` or syncing, and a swatch tap is
+an ordinary `updateBook` edit.
+
+## Commands (before my tests)
+
+- `pnpm test`: `Test Files  82 passed | 1 skipped (83)`, `Tests  649 passed | 9 skipped (658)`.
+- `pnpm exec tsc --noEmit`: no output, exit 0.
+- `pnpm run build`: `✓ built in 584ms`, exit 0.
+- `pnpm exec harness check`: `✓ tasks: 19 tasks, index in step`, `✓ decisions: 30 records, index
+  complete, 3 overrules valid`, `✓ engineers: 2 listed`, `✓ generated files: current`.
+
+After adding my tests: `pnpm test`: `Test Files  83 passed | 1 skipped (84)`, `Tests  656 passed |
+9 skipped (665)`; `pnpm exec tsc --noEmit`: exit 0.
+
+## What I checked in `git diff main...HEAD -- src`
+
+- **Nothing recolours a book on its own (D-0027):** `color` is still written only by
+  `AddBookDialog` and `storytelImport` for new books, and by `CoverPicker` for a new cover. The
+  Storytel refresh patches status, progress, minutes, pages, `storytelId` and formats, never
+  `color`. `SpineColourField` calls `onChange` only from a tap. No server code mentions `color`.
+- **Automatic colours of existing books don't move:** `analyzePixels` computes `color` with the
+  same loop and `0.82 / wsum` as the old `analyzeCover`. The only new branch (`wsum === 0`) can't
+  happen for a 24 × 24 image, because every weight is at least 0.15.
+- **A new cover gives the new colour:** `CoverPicker` analyses and stores the same URL, so the
+  row's ★ Dominant equals the stored colour right after a cover change, and "Back to automatic"
+  doesn't show by mistake. Own photos (`data:` URLs) go the same way.
+- **Back to automatic:** with a cover it gives `analysis.color`. Without one it gives
+  `colorFromString` of the current title. With a failed or still-loading cover it isn't shown
+  (`automaticColour` gives `null`).
+- **A failed cover:** `analyzeCover` resolves `null` on an image error, a tiny image or a canvas
+  error, and the row also treats a rejected promise as `null`. It shows one ✓ swatch and no error
+  text.
+- **Lettering contrast:** `inkFor` keeps the brightness rule and switches only below 3:1 when the
+  other ink is better. With these two inks the better one always reaches at least about 3.9:1, so
+  every spine colour gets readable lettering. The sweep test and the old `textures.test.ts` cases
+  pass. The ✓ uses the same function.
+- **Sync:** a tap goes through `updateBook`, which sets `editedAt`, so `mergeIntoServer` keeps the
+  newest pick across devices.
+- **Merging duplicates:** `mergeBooks` keeps the kept copy's `color` (`...keep`). When only the
+  other copy has a cover, the merged book gets that cover but keeps its own colour. The row then
+  shows that colour as the extra ✓ swatch, with "Back to automatic". That's D-0027 working as meant.
+- **Small and harmless:** after switching books or covers, the previous palette is still in state
+  for one render, until the effect resets the analysis. Nothing is saved from it and you can't see
+  it in practice. Not a fix.
+
+## Tests I added
+
+- `src/lib/spineColour.d0027.test.ts` (4 tests):
+  - the Storytel refresh of a matched book never patches `color`;
+  - merging duplicates keeps the kept copy's colour, even when the other copy brings the cover;
+  - a newer pick wins over a stale server copy;
+  - an older device copy doesn't overwrite a newer pick from another device.
+- `src/components/SpineColourField.test.tsx` (3 more tests):
+  - a late analysis for the previous book is dropped after switching books, and nothing is saved;
+  - a new cover shows the new cover's swatches with ✓ on its dominant, and saves nothing itself;
+  - an analysis that throws counts as a cover that can't be read.
+
+## The UX reviewer's hover check (dev server)
+
+Run on `pnpm exec vite dev --port 3130 --strictPort` with no backend and the shelf seeded in
+localStorage, in Chrome at 1280 × 800 through playwright-core. I hovered each swatch, then stopped
+the server. Every swatch's `title` equals its `aria-label`, and the hover border turns `--text`.
+There were no page, canvas or CORS errors.
+
+- **Harry Potter:** "Brown, dominant" (`#72564d`, ✓), "Brown 2" (`#a17e5a`), "Dark blue",
+  "Brown 3" (`#583a39`), "Dark grey", "Grey". No muted warm swatch is called Red or Orange: pass.
+- **The Hobbit, Gül & Derksen and The Alchemist:** every swatch named "Red" is a saturated red
+  (saturation 0.58 or more), and the muted warm ones are "Brown".
+- **A remark, not a fix:** by M1's rule a saturated mid-dark orange is "Brown" too (The
+  Alchemist's burnt orange `#b3561f` and golden `#c3921d`), and The Hobbit's near-black brown
+  `#2e1a16` is "Dark grey". None of these names a colour that isn't on the cover.
 
 # Log
 
@@ -564,3 +636,8 @@ To be written by the tester.
 - 2026-11-22 ux-designer: reviewed: pass. M1 fixed in 8218429 (muted warm colours named brown, the
   kept cases unchanged, the real Harry Potter row tested); colourName and SpineColourField tests: 33
   passed. Handed to the tester.
+- 2026-11-22 tester: passed. Clean install; `pnpm test` (656 passed, 9 skipped after my tests),
+  `tsc`, `build` and `harness check` green; D-0027, new cover, Back to automatic, failed cover,
+  lettering contrast, sync and merging checked in the diff; 7 tests added; Harry Potter hover names
+  checked in the dev server ("Brown, dominant", "Brown 2", "Dark blue", "Brown 3", "Dark grey",
+  "Grey"). Status Done.

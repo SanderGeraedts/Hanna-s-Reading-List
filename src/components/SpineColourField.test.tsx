@@ -129,6 +129,49 @@ describe('Spine colour row (T-0019)', () => {
     expect(within(group).queryByRole('button', { name: 'Back to automatic' })).toBeNull()
   })
 
+  it('a late analysis for the previous book is dropped when she switches books (tester)', async () => {
+    let finishA: (a: CoverAnalysis) => void = () => {}
+    analyzeCover.mockImplementation((url) =>
+      url.endsWith('A') ? new Promise((res) => (finishA = res)) : new Promise(() => {}),
+    )
+    const onChange = vi.fn()
+    const a = book({ id: 'a', coverUrl: '/api/cover/A', color: '#2e4a7a' })
+    const b = book({ id: 'b', coverUrl: '/api/cover/B', color: '#123456' })
+    const { rerender } = render(<SpineColourField book={a} onChange={onChange} onFace={() => {}} />)
+    rerender(<SpineColourField book={b} onChange={onChange} onFace={() => {}} />)
+    await act(async () => finishA(ANALYSIS))
+    const group = screen.getByRole('group', { name: 'Spine colour' })
+    const s = within(group).getAllByRole('button')
+    expect(s).toHaveLength(1)
+    expect(s[0].getAttribute('aria-pressed')).toBe('true')
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('a new cover shows the new cover’s swatches, ✓ on its dominant, without saving anything itself (tester)', async () => {
+    const NEW: CoverAnalysis = { color: '#2f5d46', aspect: 0.7, palette: ['#2f5d46', '#d1d100'] }
+    analyzeCover.mockImplementation(async (url) => (url.endsWith('new') ? NEW : ANALYSIS))
+    const onChange = vi.fn()
+    const old = book({ ...withCover })
+    const { rerender } = render(<SpineColourField book={old} onChange={onChange} onFace={() => {}} />)
+    await act(async () => {})
+    // what CoverPicker hands BookPanel: the new cover with its automatic colour
+    rerender(<SpineColourField book={{ ...old, coverUrl: '/api/cover/new', color: '#2F5D46' }} onChange={onChange} onFace={() => {}} />)
+    await act(async () => {})
+    const group = screen.getByRole('group', { name: 'Spine colour' })
+    const s = within(group).getAllByRole('button')
+    expect(s.map((e) => e.getAttribute('aria-label'))).toEqual(['Green, dominant', 'Yellow'])
+    expect(pressed(s)).toEqual([s[0]])
+    expect(within(group).queryByRole('button', { name: 'Back to automatic' })).toBeNull()
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('an analysis that throws counts as a cover that can’t be read (tester)', async () => {
+    analyzeCover.mockRejectedValue(new Error('canvas tainted'))
+    const { swatches, group } = await setup(book({ ...withCover, color: '#123456' }))
+    expect(swatches()).toHaveLength(1)
+    expect(within(group).queryByRole('button', { name: 'Back to automatic' })).toBeNull()
+  })
+
   it('every swatch is a button with a plain, unique colour name', async () => {
     const { swatches } = await setup(book({ ...withCover, color: '#7d3030' }))
     const names = swatches().map((s) => s.getAttribute('aria-label'))
