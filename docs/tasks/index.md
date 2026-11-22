@@ -6,7 +6,7 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 
 ## Open
 
-None.
+- [T-0025 Let her move left and right along the shelf when it is zoomed in](T-0025-zoom-sideways.md): #234: zoomed in, the camera turns round the middle of the case instead of moving along it, so the ends can't be reached on the phone or the computer; aim the camera where it is panned to, and add ‹ › buttons at the shelf's edges, a mouse drag on the empty wall, the ← → keys and a working one-finger swipe (D-0032).
 
 ## Doing
 
