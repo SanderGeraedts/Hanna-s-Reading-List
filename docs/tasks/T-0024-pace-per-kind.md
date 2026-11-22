@@ -7,7 +7,7 @@ depends_on: [T-0023]
 decisions: [D-0008, D-0010, D-0014, D-0020, D-0022, D-0030, D-0031]
 raised_on: 2026-11-22
 done_on: ""
-result: []
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/235"]
 ---
 
 # Goal
@@ -382,4 +382,4 @@ finished**, so E-book is the no-pace kind. Names `pile-pace-<case>-<width>-<wall
   → no errors. `pnpm run build` → built. `pnpm exec harness check` → tasks 24, index in step;
   decisions 34, index complete, 3 overrules valid; engineers 2; generated files current.
   `src/routeTree.gen.ts` unchanged. 20 screenshots, no console errors, no horizontal scroll. To the
-  UX designer for review.
+  UX designer for review. Draft PR #235.
