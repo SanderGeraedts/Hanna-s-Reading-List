@@ -417,6 +417,64 @@ Space and the screen reader on the checkbox.
 
 # Test
 
+(Tester, 2026-11-23, night mode, Hanna not asked. G-0031: CI's run read, not repeated; only
+what is new or affected re-checked, then tried to break it.)
+
+**CI** (`gh pr checks 240`, run 45079281678, head `6b02406`): `checks / checks` pass in 56 s,
+**attempt 1** (no re-run), *Test Files 93 passed | 1 skipped (94)*, *Tests 913 passed | 9 skipped
+(922)*, `harness check` and both builds in the job; no retried or flaky test in the log. Netlify
+deploy preview ready; e2e shards skipped by the workflow, as on other PRs.
+
+**Local, from clean:** `pnpm install --frozen-lockfile` (done), `pnpm run build` (✓ built),
+`pnpm exec tsc --noEmit` (clean), `pnpm exec harness check` (✓ tasks, ✓ decisions, ✓ engineers,
+✓ generated files). New and affected tests run five times in a row (`vitest run room.test.ts
+RoomPanel.test.tsx SafeBookshelf.test.tsx BookMesh.test.ts`, default workers): **36 passed (36)**
+each time.
+
+**The checks the developer left**, against the built app (`pnpm run preview --port 3142`, no
+`POCKETBASE_URL`, no `.netlify` link, demo books from `scripts/measure-shelf.mjs` seeded in
+`localStorage`, headless Chrome with SwiftShader; a scratch Playwright script, not committed):
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Toggle *Detailed books* ten times, 150 books, live WebGL buffers / textures (created − deleted) after each | **390 × 844:** on 299 / 31 every time (6 samples), off 294 / 31 every time (5). **1280 × 800:** on 1,419 / 162, off 1,414 / 162, every time. No leak, no lost context. After the ten toggles the shelf is the same picture as before (390: 0.000 % pixels differ; 1280: 0.145 %, the floor's grain), so the ridges' instanced mesh is rebuilt and filled again ✓ |
+| 2 | WebGL off entirely (`--disable-webgl --disable-3d-apis`, WebGL confirmed unavailable) | 390 and 360: the note with its words unchanged, **Try again** + **Show simple books** side by side on one line, both 44 px high, inside the screen. *Show simple books* saves `detailedBooks: false` and draws again; that fails too, so the note comes back with **only Try again**. *Try again* again: the note, no crash. The Dashboard works ✓ |
+| 3 | Reload and another profile | Unticked → saved `detailedBooks: false` → after a reload still unticked; *Reset* ticks it again. A fresh browser profile (own user-data folder): no room saved, ticked ✓ |
+| 4 | Keyboard and screen reader (390 and 1280) | Tab from the last *Wallpaper* choice lands on the checkbox, `:focus-visible` with a solid gold outline (rgb 217 168 91). Space unticks (and saves), Space ticks again, focus stays on it. ARIA snapshot: `group "Books"` → `checkbox "Detailed books" [checked]`; the Chrome accessibility tree (CDP `getFullAXTree`) gives role checkbox, name "Detailed books", checked true, inside group "Books". A screen reader reads "Books, group", "Detailed books, checkbox, checked". Row 44 px; a click at its far right end toggles. Tooltip "Your room: wood, wallpaper, books, decorations" ✓. (No real VoiceOver/TalkBack here; the accessibility tree is what they read.) |
+| 5 | A book's flight out and back at 390, *Detailed books* on (and off, as control) | Tapped a book: out with the details panel. Every painted frame of the flight back recorded (DevTools screencast, 23 frames on / 26 off): the changes fall steadily (29.7 → 6.4 → … → 0.3 %) and stay under 0.3 % once it settles, with **no late spike when it lands** (where it swaps back to the light shelf piece). Out and back a second time: the same. The shelf after put-back differs 1.2 % from before the take-out, but as a one-pixel shift of the whole scene (the camera still easing back to her zoom), equally with blocks (1.1 %), so not from this change ✓ |
+| 6 | Old saved rooms | Room `{wood, wallpaper}` with no field, `detailedBooks: null`, `"false"` (string), `0`, and unreadable JSON: all load ticked and draw the shelf. A room with no field draws the same picture as `detailedBooks: true` (0.027 % differ) and not as `false` (2.83 %) ✓ |
+
+**Measurements, spot-checked once** (`pnpm run measure:shelf --url=http://localhost:3142
+--books=150,400 --views=phone`, and `--books=150 --views=desktop --detailed=on`):
+
+| 390 × 844 | 150 on | 150 off | 400 on | 400 off | Budget |
+|---|---|---|---|---|---|
+| Draw calls per frame | 95 | 94 | 95 | 94 | on ≤ 1.25 × off ✓ (1.01 ×) |
+| Draw calls per 3 s | 2,470 | 2,726 | 2,755 | 3,666 | ✓ (frame rate under SwiftShader) |
+| Picture MB | 23.20 | 23.20 | 23.47 | 23.47 | ± 5 % ✓ (0 %) |
+| Geometry MB | 0.980 | 0.696 | 1.045 | 0.696 | ≤ 2 MB, ≤ off + 2 MB ✓ |
+| Draws behind the Dashboard | 0 | 0 | 0 | 0 | 0 ✓ |
+| Live buffers / textures, lost | 299 / 31, 0 | 294 / 31, 0 | 299 / 31, 0 | 294 / 31, 0 | |
+
+1280 × 800, 150 on: 926 draw calls per frame, 123.66 MB pictures, 4.968 MB geometry,
+1,419 / 162 live, 0 behind the Dashboard. All the same as the developer's table.
+
+**Tried to break it:** ten toggles in a row (above); toggling with the panel over the shelf and
+comparing the shelf afterwards; a stored string `"false"`, `0`, `null` and broken JSON;
+*Show simple books* when the simple books can't be drawn either. With a book taken out the 🎨
+button isn't shown, so the switch can't be changed while a book is out (the design's line
+about it can't happen; nothing to test). Nothing broke.
+
+**Tests added for gaps** (all pass):
+- `RoomPanel.test.tsx`: `useRoom` reads a room saved before the switch (wood, wallpaper, a
+  decoration off) as detailed and keeps its choices; unreadable saved JSON gives detailed
+  books; unticking in the panel on such an old room saves `false` and keeps the old choices.
+- `SafeBookshelf.test.tsx`: with no `onRoom` the note offers only *Try again*; after *Show
+  simple books*, if the blocks fail too, the note comes back with only *Try again*.
+
+**Verdict: passed.** Every budget met, the switch frees what it built, the note works with WebGL
+off, and the setting is per device with the old rooms on. Hanna's own phone remains.
+
 # Log
 
 - 2026-11-22 architect: wrote the task from Hanna's feature chat (night mode, nothing asked).
@@ -492,3 +550,11 @@ Space and the screen reader on the checkbox.
   out" meaning out right now, the zoom at about 2.7, and the note shots by a lost context. A
   follow-up for later, not new and also on `main`: a read-before *did not finish* book gets its
   bottom ridges across its medal. Handed to the **tester**.
+- 2026-11-23 tester: passed. CI green on attempt 1 (913 passed); the new tests 5× green; ten
+  toggles leave buffers and textures at the same counts (390 and 1280); WebGL off shows the note
+  with *Show simple books*; reload, other profile, Space, the accessibility tree, the flight
+  out and back at 390 and old saved rooms all checked; measurements match. Added five tests for
+  gaps (old room through `useRoom`, broken JSON, the note without `onRoom` or when the blocks
+  fail too). Stays *Doing* for Hanna.
+  Remaining: Hanna checks on her own phone that the shelf shows hardcovers, scrolls and turns
+  books smoothly, and that the *Detailed books* switch works.

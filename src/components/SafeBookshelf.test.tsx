@@ -119,4 +119,21 @@ describe('the note offers the simple books while they are detailed (T-0034, D-00
     expect(screen.getByRole('button', { name: 'Show simple books' })).toBeTruthy()
     expect(onRoom).not.toHaveBeenCalled()
   })
+
+  // tester (T-0034): with no way to save the choice, the action would do nothing, so it isn't offered
+  it('offers only "Try again" when there is no onRoom to switch it with', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    render(<SafeBookshelf {...props} room={DEFAULT_ROOM} />)
+    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['Try again'])
+  })
+
+  it('comes back with only "Try again" when the simple books fail too', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const onRoom = vi.fn()
+    const { rerender } = render(<SafeBookshelf {...props} room={DEFAULT_ROOM} onRoom={onRoom} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Show simple books' }))
+    // the parent passes the room it saved; the scene still fails (scene.fail stays true)
+    rerender(<SafeBookshelf {...props} room={{ ...DEFAULT_ROOM, detailedBooks: false }} onRoom={onRoom} />)
+    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['Try again'])
+  })
 })

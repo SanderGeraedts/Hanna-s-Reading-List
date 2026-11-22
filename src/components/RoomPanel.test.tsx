@@ -55,4 +55,29 @@ describe('the Detailed books switch in the room panel (T-0034, D-0035)', () => {
     const again = renderHook(() => useRoom())
     expect(again.result.current[0].detailedBooks).toBe(false)
   })
+
+  // tester (T-0034): what a device saved before the switch, read through the hook itself
+  it('reads a room saved before the switch as detailed, keeping its other choices', () => {
+    localStorage.setItem('hannas-reading-list:room', JSON.stringify({ wood: 'cherry', wallpaper: 'midnight', decor: [{ kind: 'mug', on: false }] }))
+    const { result } = renderHook(() => useRoom())
+    expect(result.current[0].detailedBooks).toBe(true)
+    expect(result.current[0].wood).toBe('cherry')
+    expect(result.current[0].wallpaper).toBe('midnight')
+    expect(result.current[0].decor.find((d) => d.kind === 'mug')?.on).toBe(false)
+  })
+
+  it('falls back to detailed books when the saved room is unreadable', () => {
+    localStorage.setItem('hannas-reading-list:room', '{not json')
+    const { result } = renderHook(() => useRoom())
+    expect(result.current[0].detailedBooks).toBe(true)
+  })
+
+  it('unticking it in the panel saves false and keeps the old room\'s other choices', () => {
+    localStorage.setItem('hannas-reading-list:room', JSON.stringify({ wood: 'cherry', wallpaper: 'midnight' }))
+    const { result } = renderHook(() => useRoom())
+    render(<RoomPanel room={result.current[0]} onRoom={(r) => act(() => result.current[1](r))} onClose={() => {}} />)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Detailed books' }))
+    const saved = JSON.parse(localStorage.getItem('hannas-reading-list:room') ?? '{}')
+    expect(saved).toMatchObject({ wood: 'cherry', wallpaper: 'midnight', detailedBooks: false })
+  })
 })
