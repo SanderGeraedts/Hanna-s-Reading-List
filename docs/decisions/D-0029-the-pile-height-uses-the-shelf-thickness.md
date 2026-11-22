@@ -2,12 +2,12 @@
 id: D-0029
 title: "The want-to-read pile's height is its books' shelf thickness added up, without books she only listens to"
 description: "The Want-to-read pile block shows how tall her want-to-read books would stand stacked up: the sum of each book's thickness on the shelf (bookDims, 1 unit ≈ 1 metre), leaving out books she only listens to, which have no paper to stack; the one place where a listen-only book's minutes don't count as pages."
-status: Accepted
+status: Replaced
 date: 2026-11-22
 decided_by: architect
 overrules: []
 replaces: []
-replaced_by: []
+replaced_by: [D-0030]
 resolves: []
 tags: [dashboard, pile, audiobooks, shelf]
 ---

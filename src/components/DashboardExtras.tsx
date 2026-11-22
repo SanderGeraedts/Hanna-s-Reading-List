@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import { loadGoals, saveGoal } from '#/server/shelf'
 import type { Book } from '#/lib/library'
 import { dailyFact, unlockedFacts } from '#/lib/facts'
@@ -19,7 +20,23 @@ import {
 import { goalPace, goalPaceText } from '#/lib/insightsMore'
 import { localDay } from '#/lib/library'
 import { pileJars, pileMonths, pileSentence, signed } from '#/lib/pile'
-import { ALL_AUDIOBOOKS_LINE, compareHeight, comparisonWords, heightSpoken, heightText, pileHeight } from '#/lib/pileHeight'
+import {
+  audioLead,
+  compareDuration,
+  compareHeight,
+  comparisonWords,
+  daysSpoken,
+  daysText,
+  durationWords,
+  heightLead,
+  heightSpoken,
+  heightText,
+  pileHeights,
+  pileKinds,
+  timeSpoken,
+  timeText,
+} from '#/lib/pileHeight'
+import type { PileKind } from '#/lib/pileHeight'
 import { belowZero, buyingJarLabel, coinText } from '#/lib/price'
 import type { PileMonth } from '#/lib/pile'
 import { goalForecast } from '#/lib/finishEstimate'
@@ -593,27 +610,103 @@ function Height({ metres }: { metres: number }) {
   )
 }
 
-/** How tall the want-to-read pile would stand, stacked up (T-0021, D-0029). */
+const NBSP = ' '
+
+/** A listening time shown with non-breaking spaces inside, and spoken in full (T-0023). */
+function Time({ minutes }: { minutes: number }) {
+  return (
+    <>
+      <span aria-hidden="true">{timeText(minutes, NBSP)}</span>
+      <span className="visually-hidden">{timeSpoken(minutes)}</span>
+    </>
+  )
+}
+
+type PileChoice = 'all' | PileKind
+
+const PILE_BUTTONS: { kind: PileChoice; emoji?: string; label: string }[] = [
+  { kind: 'all', label: 'All' },
+  { kind: 'paper', emoji: '📖', label: 'Paper' },
+  { kind: 'ebook', emoji: '📱', label: 'E-book' },
+  { kind: 'audio', emoji: '🎧', label: 'Audiobook' },
+]
+
+const PILE_EMOJI: Record<PileChoice, string> = { all: '📚', paper: '📖', ebook: '📱', audio: '🎧' }
+
+/**
+ * How tall the want-to-read pile would stand, as real books (T-0023, D-0030),
+ * with the All · Paper · E-book · Audiobook switch when two or more kinds have
+ * books. The switch starts on All and is not saved anywhere.
+ */
 function PileHeightLine({ books }: { books: Book[] }) {
-  const height = useMemo(() => pileHeight(books), [books])
-  if (height.counted === 0) {
-    if (height.listenOnly === 0) return null
-    return (
-      <p>
-        <span aria-hidden="true">{'🎧 '}</span>
-        {ALL_AUDIOBOOKS_LINE}
-      </p>
+  const pile = useMemo(() => pileHeights(books), [books])
+  const kinds = pileKinds(pile)
+  const [choice, setChoice] = useState<PileChoice>('all')
+  const hasSwitch = kinds.length > 1
+  const shown: PileChoice = hasSwitch && choice !== 'all' && kinds.includes(choice) ? choice : 'all'
+  // the chosen kind ran out (the shelf changed): fall back to All
+  if (choice !== shown) setChoice(shown)
+  if (pile.counts.all === 0) return null
+
+  let line: ReactNode
+  if (shown === 'audio') {
+    const comparison = compareDuration(pile.audioMinutes)
+    line = (
+      <>
+        {audioLead(pile.counts.audio)} <Time minutes={pile.audioMinutes} />:{' '}
+        {comparison.kind === 'days' ? (
+          <>
+            about as long as listening nonstop for{' '}
+            <span aria-hidden="true">{`${daysText(comparison.days)}${NBSP}days`}</span>
+            <span className="visually-hidden">{daysSpoken(comparison.days)}</span>
+          </>
+        ) : (
+          <>
+            {durationWords(comparison).before}
+            <Time minutes={comparison.thing.minutes} />
+            {durationWords(comparison).after}
+          </>
+        )}
+        .
+      </>
+    )
+  } else {
+    const metres = shown === 'all' ? pile.all : pile[shown]
+    const comparison = compareHeight(metres)
+    const { before, after } = comparisonWords(comparison)
+    line = (
+      <>
+        {heightLead(shown, pile.counts[shown])} <Height metres={metres} />: {before}
+        <Height metres={comparison.thing.metres} />
+        {after}.
+      </>
     )
   }
-  const comparison = compareHeight(height.metres)
-  const { before, after } = comparisonWords(comparison)
+
   return (
-    <p>
-      <span aria-hidden="true">{'📚 '}</span>
-      Stacked up, your pile would be <Height metres={height.metres} />: {before}
-      <Height metres={comparison.thing.metres} />
-      {after}.
-    </p>
+    <>
+      {hasSwitch && (
+        <div className="segmented pile-kinds" role="group" aria-label="Which part of the pile">
+          {PILE_BUTTONS.filter((b) => b.kind === 'all' || kinds.includes(b.kind)).map((b) => (
+            <button
+              key={b.kind}
+              type="button"
+              className={shown === b.kind ? 'active' : ''}
+              aria-pressed={shown === b.kind}
+              onClick={() => setChoice(b.kind)}
+            >
+              {b.emoji && <span aria-hidden="true">{b.emoji}</span>}
+              {b.emoji && ' '}
+              {b.label}
+            </button>
+          ))}
+        </div>
+      )}
+      <p {...(hasSwitch ? { 'aria-live': 'polite' as const, 'aria-atomic': true } : {})}>
+        <span aria-hidden="true">{`${PILE_EMOJI[shown]}${NBSP}`}</span>
+        {line}
+      </p>
+    </>
   )
 }
 
