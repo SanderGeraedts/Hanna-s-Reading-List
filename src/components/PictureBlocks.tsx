@@ -6,6 +6,7 @@ import type { MonthAmount } from '#/lib/monthlyPages'
 import { monthName } from './Dashboard'
 import { byBooks, worldMap } from '#/lib/places'
 import { coverAtSize } from '#/lib/cover'
+import { LAT_TOP, polygonsToPath } from '#/lib/worldPath'
 
 /** Petal colours: soft and warm, readable on the walnut cards, one per genre. */
 export const PETAL_COLOURS = ['#e8a0b4', '#f2c46d', '#9fc9e6', '#b8d98f', '#c9a6e6', '#f2a37a', '#8fd1c4', '#d9c9a6']
@@ -219,7 +220,6 @@ function LandCover({ book }: { book: Book }) {
  */
 let worldShapes: Promise<CountryShape[]> | null = null
 const MAP_W = 360
-const LAT_TOP = 84
 const LAT_BOTTOM = -58
 const MAP_H = LAT_TOP - LAT_BOTTOM
 
@@ -230,14 +230,6 @@ function loadWorld(): Promise<CountryShape[]> {
     const fc = topo.feature(world as any, (world as any).objects.countries) as unknown as {
       features: Array<{ properties: { name: string }; geometry: { type: string; coordinates: number[][][] | number[][][][] } | null }>
     }
-    // a ring that crosses the date line (Russia, Fiji) jumps across the map: lift the pen there
-    const ring = (pts: number[][]) =>
-      pts
-        .map(([lon, lat], k) => {
-          const jump = k > 0 && Math.abs(lon - pts[k - 1][0]) > 180
-          return `${k === 0 || jump ? 'M' : 'L'}${(lon + 180).toFixed(1)},${(LAT_TOP - lat).toFixed(1)}`
-        })
-        .join('') + 'Z'
     return fc.features
       .filter((f) => f.geometry && f.properties.name !== 'Antarctica')
       .map((f) => {
@@ -252,7 +244,7 @@ function loadWorld(): Promise<CountryShape[]> {
               x = Math.min(x, lon + 180)
               y = Math.min(y, LAT_TOP - lat)
             }
-        return { name: f.properties.name, d: polys.map((poly) => poly.map(ring).join('')).join(''), x, y }
+        return { name: f.properties.name, d: polygonsToPath(polys), x, y }
       })
   })
   return worldShapes
