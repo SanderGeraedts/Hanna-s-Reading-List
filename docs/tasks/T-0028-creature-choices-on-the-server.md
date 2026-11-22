@@ -2,7 +2,7 @@
 id: T-0028
 title: "Keep her creature choices on the account: a creatures field and an add-only route on the server (needs Sander)"
 description: "The server half of D-0034: a JSON field creatures on her libraries record and a route POST /api/collections/libraries/creatures that adds choice events in one transaction and never removes one; a draft needs-sander pull request with only deploy/nas changes, approved by Sander on 2026-11-22 but merged by him."
-status: Open
+status: Doing
 size: small
 depends_on: []
 decisions: [D-0003, D-0005, D-0006, D-0033, D-0034]
@@ -121,3 +121,28 @@ Nothing visible.
   G-0031, G-0032, `hold-paths`, the backend workflow). None keeps an add-only list safe from two
   devices and older copies of the app; kept as needs-sander, with the reasons in plain words under
   *Why it needs the server*. Added the `release` kind (Hanna: pets can be released with care).
+- 2026-11-22 developer: built the migration `deploy/nas/pb_migrations/1795824000_creatures.js`
+  (JSON field `creatures`, 2 MB, only when missing; down removes it), the hook
+  `deploy/nas/pb_hooks/creatures.pb.js` (`POST /api/collections/libraries/creatures`, add-only, in one
+  transaction) and `src/server/creatures.pocketbase.test.ts` (13 tests; the shelf-save test runs the
+  real `saveShelf` with TanStack's server-function wrapper mocked). Choices taken at night without
+  asking (recommended options): a setting event replaces only one with the same **kind and** key
+  (so a name never pushes out an outfit for the same pet); on a tie in `at` the larger id wins; an
+  older setting event that arrives late is not stored; more than 200 events in one call is refused
+  with 400 (nothing written) rather than cut silently; an event with a field that isn't a short
+  string or number, more than 12 fields, or a setting kind without `key` is dropped as malformed;
+  anything malformed already stored (written some other way) is left out of the log, as
+  favourites does; `{ events: [] }` only reads. Check, against two local throwaway PocketBase
+  0.40.6 servers (one with this repo's migrations and hooks, one without the new migration):
+  `PB_TEST_URL=http://127.0.0.1:18090 PB_TEST_OLD_URL=http://127.0.0.1:18091 pnpm exec vitest run
+  src/server/creatures.pocketbase.test.ts` → `Test Files 1 passed (1), Tests 13 passed (13)`.
+  Migration on an existing database: `migrate up` → `Applied 1795824000_creatures.js`; again → `No
+  new migrations to apply.`; `migrate down 1` → `Reverted 1795824000_creatures.js`. `tsc --noEmit`
+  clean; `pnpm test` → `Test Files 91 passed | 2 skipped (93), Tests 869 passed | 22 skipped`.
+  For the architect: `harness backend` (G-0032) can't start this project's backend, because it
+  reads `backend/Dockerfile` and this project keeps it in `deploy/nas/`; the same checksum-checked
+  PocketBase download (the harness's `ensurePocketBase`, per-user cache) was started by hand
+  instead, with `--migrationsDir`/`--hooksDir` pointing at `deploy/nas/`.
+  Remaining: Sander reviews and merges the draft pull request; the Backend image workflow and
+  Watchtower deploy it; Sander checks on the NAS that `libraries` has the `creatures` field and
+  that her shelf still loads.
