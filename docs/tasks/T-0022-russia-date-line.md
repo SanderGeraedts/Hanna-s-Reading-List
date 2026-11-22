@@ -2,11 +2,11 @@
 id: T-0022
 title: "Draw Russia on the world map without the pale wedge in its far east"
 description: "Shapes that cross the date line (Russia, Fiji) are drawn as whole, closed shapes, shifted across the map edge and cut off by the map's frame, instead of lifting the pen at the jump; the path code moves to src/lib with a unit test, and every other country draws exactly as before."
-status: Doing
+status: Done
 depends_on: []
 decisions: [D-0014, D-0020, D-0022]
 raised_on: 2026-11-22
-done_on: ""
+done_on: 2026-11-22
 result: [https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/231]
 ---
 
@@ -220,6 +220,61 @@ look the same as before; nothing draws outside the map's panel.
 
 # Test
 
+**Verdict: passed** (2026-11-22, tester). Checked on `t-0022-russia-date-line` after a clean
+`pnpm install --frozen-lockfile`.
+
+**Done when, run independently**
+
+- `pnpm test` (before my tests): `Test Files 87 passed | 1 skipped (88)`, `Tests 755 passed |
+  9 skipped (764)`. With my 5 tests added: `Test Files 87 passed | 1 skipped (88)`,
+  `Tests 760 passed | 9 skipped (769)`. `src/lib/worldPath.test.ts`: 15 passed.
+- `pnpm exec tsc --noEmit`: no output, exit 0.
+- `pnpm run build`: `✓ built in 787ms` (client) and `✓ built in 585ms` (SSR), no errors.
+- `pnpm exec harness check`: `✓ tasks: 22 tasks, index in step`, `✓ decisions: 32 records,
+  index complete, 3 overrules valid`, `✓ engineers: 2 listed`, `✓ generated files: current`.
+- Done when 1: the developer's tests cover every point (crossing square, unchanged plain ring,
+  real atlas with only `['Fiji', 'Russia']` changed, the USA by name, Russia and Fiji closed
+  with no jump over 180). Done when 2: the 16 `before-*`/`after-*` pairs are there, and the UX
+  review compared them.
+
+**Edge cases tried** (`git diff main...HEAD -- src`). Each new test checks what the browser
+actually fills: the nonzero winding number (SVG's default fill rule) of grid points over every
+subpath of `d`, compared with where the polygon is on the globe. Every one of them fails
+against the old ring function (12 failed in a mutant run), so they test the fix itself.
+
+- **A ring crossing the line several times** (a zigzag over and back twice): unwrapping is
+  cumulative, so it stays one continuous closed ring plus one copy. The fill matches
+  everywhere on the map. Passed.
+- **A ring exactly on ±180**: a ring that reaches 180 but not past it gets no copy, and the
+  atlas's way of writing the line points as −180 next to +179 gives the same closed ring as
+  writing 180. A ring that only touches −180 from the west keeps its old string. Passed.
+- **Holes**: each ring is unwrapped from its own first point, so a hole that starts on the
+  other side of the line from its outer ring ends up 360 away from it. The copy step still
+  puts a matching outer and hole on both sides, so the hole is cut out at both edges, whichever
+  side it starts on. Holes are wound opposite to their outer ring, as in the atlas. Passed.
+- **MultiPolygon pieces**: each piece is handled on its own. Only the crossing piece is
+  copied, and pieces wholly east or west of the line give their old strings. Passed.
+- **Russia and Fiji on the real atlas, the whole fill**: compared with an independent
+  reference (the atlas's rings made continuous point by point, with their ±360 twins). They
+  match at every grid point across the whole map width, more finely in the far east, at
+  Chukotka's tip at the left edge, and at Fiji on both edges. Kamchatka and inland Chukotka
+  are filled, Chukotka's tip at x ≈ 5 is filled, and the Sea of Okhotsk and the Pacific off
+  Kamchatka stay unfilled. Passed. (My reference was wrong at first: it put each point within
+  180 of the test point, and Russia is wider than that seen from Scandinavia. It also had a
+  grid point lying exactly on a coast segment. I fixed both in the test, not the code.)
+- **Cover-pattern start (the bounding box)**: the `x`/`y` loop in `loadWorld` is unchanged in
+  the diff, so it is still computed from the atlas's own points: x = 0 for both Russia and Fiji
+  (both have points at −180). The pattern is `userSpaceOnUse` and repeats, so its origin only
+  sets where the tiles line up. That is the same as before, and the tiles fill the copied
+  shapes on both edges too (the `after-zoom-*-lit` shots). Sensible, unchanged.
+- **Every other country**: `draws every country except Russia and Fiji exactly as before`
+  compares each `d` with the old ring function on the real atlas. Only Fiji and Russia
+  differ, and the USA has its own test. `PictureBlocks.tsx` only swaps `ring` for
+  `polygonsToPath` and imports `LAT_TOP`. No CSS change.
+- `src/routeTree.gen.ts` unchanged.
+
+Nothing remains for a human: the look was checked by the UX designer's before/after shots.
+
 # Log
 
 - 2026-11-22 architect: task written from T-0018's review (point 2). Cause found: lifting the pen
@@ -242,3 +297,4 @@ look the same as before; nothing draws outside the map's panel.
   outside the panel. Handed to the ux-designer for review.
 - 2026-11-22 ux-designer: reviewed: matches the design, no must-fix (all 16 `after-*` shots compared
   with `before-*`, plus a pixel comparison of each pair and the `src` diff). Handed to the tester.
+- 2026-11-22 tester: passed (pnpm test, tsc, build and harness check green; added 5 edge-case tests: several crossings, exactly on ±180, holes starting on either side, MultiPolygon pieces, Russia and Fiji fill against an independent reference on the real atlas; bounding box unchanged).
