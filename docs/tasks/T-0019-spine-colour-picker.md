@@ -7,7 +7,7 @@ depends_on: [T-0004]
 decisions: [D-0002, D-0007, D-0009, D-0014, D-0020, D-0022, D-0027]
 raised_on: 2026-11-22
 done_on: ""
-result: []
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/228"]
 ---
 
 # Goal
@@ -445,4 +445,4 @@ To be written by the tester.
   *Build notes*. `pnpm test`: 82 files passed, 1 skipped; 646 tests passed, 9 skipped.
   `pnpm exec tsc --noEmit`: no errors. `pnpm run build`: built. `pnpm exec harness check`: tasks,
   decisions, engineers, generated files all ✓. 36 screenshots at 390 and 1280 on lavender and
-  midnight, no console errors; handed to the UX designer for review.
+  midnight, no console errors; draft PR #228; handed to the UX designer for review.
