@@ -7,7 +7,7 @@ depends_on: [T-0021]
 decisions: [D-0008, D-0010, D-0014, D-0020, D-0022, D-0030]
 raised_on: 2026-11-22
 done_on: ""
-result: []
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/232"]
 ---
 
 # Goal
@@ -553,4 +553,4 @@ To be written by the tester.
   tasks, decisions, engineers, generated files all ✓. 28 screenshots (mixed on each of 4 choices,
   one kind only, only audiobooks, empty × 390/1280 × lavender/midnight), no console errors, no
   horizontal scroll; the switch fits on one row at 390 (328 of 332 px). `src/routeTree.gen.ts`
-  unchanged. Handed to the UX designer for review.
+  unchanged. Draft PR #232. Handed to the UX designer for review.
