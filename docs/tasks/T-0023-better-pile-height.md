@@ -475,10 +475,10 @@ on `--surface` as in T-0021. No new colour pair, so `colours.test.ts` needs noth
   shows; units heard in full ("centimetres", "hours", "3 and a half days"); emoji not read.
 - [x] **Rest of the block:** books waiting, the pages line, the pace line and the motivation part
   don't change when the switch changes. Lavender and midnight look the same.
-- [ ] **Wrapped switch** (added in the review): at 360×800 (touch) on both wallpapers the switch
+- [x] **Wrapped switch** (added in the review): at 360×800 (touch) on both wallpapers the switch
   wraps onto a second row as a rounded box whose corners follow the buttons' own curve; no gold
   button sticks out past the border; on one row it is still the same full pill as the Genre
-  flower's.
+  flower's. Developer, 2026-11-22: checked on `pile-mixed-all-360-*.jpg` and `pile-mixed-audiobook-360-*.jpg` (two rows: All · Paper · E-book, then Audiobook; 302 px wide, buttons 44 px, no horizontal scroll) and on the retaken `pile-mixed-all-390-lavender.jpg` and `pile-mixed-all-1280-lavender.jpg` (one row, pill unchanged).
 
 ## Review after building (2026-11-22)
 
@@ -571,7 +571,7 @@ Back to the developer with the two items above; after that, to the tester.
   saved; when the chosen kind runs out it is set back to All. The `<p>` gets `aria-live="polite"` and
   `aria-atomic="true"` only while the switch shows. Times are `<span aria-hidden>86&nbsp;h&nbsp;20&nbsp;min</span>`
   plus `.visually-hidden` "86 hours 20 minutes"; "3½&nbsp;days" likewise, heard "3 and a half days".
-- **CSS:** one rule, `.pile-kinds { justify-self: start; max-width: 100%; flex-wrap: wrap; row-gap: 3px }`.
+- **CSS:** one rule, `.pile-kinds { justify-self: start; max-width: 100%; flex-wrap: wrap; row-gap: 3px; border-radius: calc(var(--tap) / 2 + 4px) }` (the radius added after the UX review, so a wrapped switch is a rounded box, not a blob).
   `.segmented` is unchanged.
 - **The switch at 390 fits on one row:** measured in the dev server, the pill is 328–329 px wide
   (depending on which button is pressed and bold) in a 332 px text area, so 3–4 px to spare; all four
@@ -632,3 +632,11 @@ To be written by the tester.
   when it wraps (at 360 px or with larger text, since 390 has only 3–4 px to spare), so it becomes a
   blob and gold buttons stick out past its border. Fix: `border-radius: calc(var(--tap) / 2 + 4px)`
   on `.pile-kinds`, plus 360×800 screenshots on both wallpapers; back to the developer.
+- 2026-11-22 developer: fixed the review's must-fix: `border-radius: calc(var(--tap) / 2 + 4px)`
+  on `.pile-kinds` (only that line; `.segmented` unchanged). New screenshots
+  `pile-mixed-{all,audiobook}-360-{lavender,midnight}.jpg` (360×800 touch: the switch wraps to two
+  rows, 302 px wide, a rounded box with no button sticking out); retook
+  `pile-mixed-all-390-lavender.jpg` and `pile-mixed-all-1280-lavender.jpg` (one row, the same
+  pill). No console errors, no horizontal scroll. *Wrapped switch* check ticked; lesson added.
+  Checks: `pnpm test` → 790 passed, 9 skipped; `pnpm exec tsc --noEmit` → no errors;
+  `pnpm exec harness check` → all ✓. Back to the UX designer, then the tester.

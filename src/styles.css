@@ -1725,6 +1725,8 @@ textarea.input {
   max-width: 100%;
   flex-wrap: wrap;
   row-gap: 3px;
+  /* half a touch button plus padding and border: a pill on one row, a rounded box on two */
+  border-radius: calc(var(--tap) / 2 + 4px);
 }
 .period-pick {
   display: flex;
