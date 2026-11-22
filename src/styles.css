@@ -4958,3 +4958,358 @@ button.today-item:hover {
 .challenges-page .dashboard-bar-actions .btn {
   white-space: nowrap;
 }
+
+/* ---- the book creatures: the Creatures tab and block (T-0029) ------------------------- */
+.creatures-page {
+  max-width: 72rem;
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-4);
+}
+.creatures-head {
+  flex-wrap: wrap;
+}
+.creatures-earn {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.creatures-today {
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+.creatures-empty {
+  margin: 0;
+  color: var(--header-muted);
+}
+/* a computer: the den left (about 62 %), the creature card and This week right */
+.creatures-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 62fr) minmax(0, 38fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+.creatures-side {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+@media (max-width: 860px) {
+  .creatures-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 720px) {
+  .dashboard:has(> .creatures-page) {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+.den-card {
+  padding: var(--space-3);
+  gap: var(--space-3);
+}
+.den-stage {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  border-radius: var(--radius-small);
+  overflow: hidden;
+  /* the den's own colour while the 3D loads: no spinner */
+  background: #3a2c24;
+}
+@media (max-width: 720px) {
+  .den-stage {
+    aspect-ratio: auto;
+    height: 300px;
+  }
+}
+.den-stage .den-canvas {
+  position: absolute !important;
+  inset: 0;
+}
+.den-below {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  padding: 0 var(--space-2) var(--space-2);
+}
+.den-below h2,
+.choose h2 {
+  margin: 0;
+}
+.hello-shiny {
+  font-weight: 600;
+}
+.name-field {
+  display: grid;
+  gap: var(--space-1);
+  width: min(100%, 20rem);
+}
+.name-field label {
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.field-error {
+  color: var(--danger);
+  font-size: var(--fs-small);
+}
+
+/* the cookie pill: gold outline, cream number */
+.cookie-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border: 1.5px solid var(--accent-line);
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--text);
+  font-size: var(--fs-large);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* 3b: five tiles over one canvas */
+.choose {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-2);
+}
+.choose-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.choose-canvas {
+  position: absolute !important;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+.choose-tile {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: center;
+  padding: var(--space-2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface-sunken);
+  cursor: pointer;
+  text-align: center;
+}
+.choose-tile:hover {
+  border-color: var(--accent-line);
+}
+.choose-tile.picked {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+.choose-tile:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.choose-square {
+  width: 100%;
+  aspect-ratio: 1;
+}
+.choose-name {
+  font-size: var(--fs-small);
+  line-height: 1.25;
+}
+@media (max-width: 720px) {
+  /* three on the first row, two centred on the second */
+  .choose-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+  .choose-tile {
+    grid-column: span 2;
+    padding: var(--space-1);
+  }
+  .choose-tile:nth-of-type(4) {
+    grid-column: 2 / span 2;
+  }
+  .choose-tile:nth-of-type(5) {
+    grid-column: 4 / span 2;
+  }
+}
+.choose-actions {
+  justify-content: flex-start;
+}
+
+/* the creature card */
+.creature-card {
+  gap: var(--space-2);
+}
+.creature-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.creature-name-row h2 {
+  overflow-wrap: anywhere;
+}
+.creature-rename {
+  display: grid;
+  gap: var(--space-2);
+}
+.creature-level .muted {
+  margin-left: var(--space-1);
+}
+.growth {
+  display: grid;
+  gap: var(--space-1);
+}
+.growth-bar {
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+.growth-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+.growth-numbers {
+  justify-self: end;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.food-bowl {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+.feed-wrap {
+  position: relative;
+  display: inline-block;
+}
+.feed-btn[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: default;
+}
+.feed-btn[aria-disabled='true']:hover {
+  background: var(--accent);
+}
+/* a 🍪 hops from the button toward the den */
+.cookie-hop {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  pointer-events: none;
+  animation: cookie-hop 0.5s ease-out forwards;
+}
+@keyframes cookie-hop {
+  from {
+    transform: translate(-50%, 0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translate(-160%, -60px) scale(0.8);
+    opacity: 0;
+  }
+}
+
+/* This week */
+.week-card summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.week-card summary::-webkit-details-marker {
+  display: none;
+}
+.week-card summary::before {
+  content: '▸';
+  color: var(--muted);
+}
+.week-card[open] summary::before {
+  content: '▾';
+}
+.week-card summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-small);
+}
+.week-card summary h2 {
+  font-size: var(--fs-large);
+}
+.week-list {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.week-list li {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+.week-day {
+  font-weight: 600;
+}
+.week-what {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.week-cookies {
+  white-space: nowrap;
+}
+
+/* the dashboard block */
+.creatures-row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+.still-tile {
+  position: relative;
+  flex: none;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+@media (max-width: 720px) {
+  .still-tile {
+    width: 96px;
+    height: 96px;
+  }
+}
+.still-tile .still-canvas {
+  position: absolute !important;
+  inset: 0;
+}
+.creatures-info {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  flex: 1;
+}
+.creatures-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .growth-fill {
+    transition: none;
+  }
+  .cookie-hop {
+    display: none;
+  }
+}

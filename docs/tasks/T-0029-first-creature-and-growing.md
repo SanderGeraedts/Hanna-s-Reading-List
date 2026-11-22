@@ -2,7 +2,7 @@
 id: T-0029
 title: "Hatch her first book creature from a welcome egg, earn cookies by reading, and let it grow, with a Creatures tab and a dashboard block"
 description: "CR1 of the book creatures (D-0033): cookies worked out from the reading log, a welcome egg (no starting cookies) from which she chooses her first creature among the five commons, with a name, feeding and growing by itself on reading days, baby/young/grown-up stages, a missing-you look; a Creatures tab (home) and a dashboard block; hatches and level-ups in Waiting for you; her choices kept on the device and sent to the account once T-0028 is live (D-0034)."
-status: Open
+status: Doing
 size: full
 depends_on: [T-0027]
 decisions: [D-0002, D-0003, D-0008, D-0013, D-0014, D-0020, D-0022, D-0025, D-0030, D-0033, D-0034]
@@ -482,6 +482,37 @@ Taken with the recommended option tonight; each is easy to change in `numbers.ts
 
 # Test
 
+Developer's own checks (2026-11-23, night); the tester's independent run goes here too.
+
+- **Done when 1:** `src/lib/creatures/cookies.test.ts` (pages, listen-only minutes, a book without
+  length as 280 pages, sleep read half, finish treat incl. re-read, nothing before the start,
+  fixing a past day lowers the total, rounding on the total, This week adds up, sleep-only day
+  half), `creature.test.ts` (welcome egg, balance 0, only the five commons, same creature on every
+  device, shiny fixed per egg, names, growth by itself only on reading days, feeding, negative
+  balance, stages, wording, moods), `choices.test.ts` (merge: union by id, newest setting per key,
+  nothing doubled, same order everywhere; cleaning like the route), `creaturesSync.test.ts` (two
+  devices against a stand-in server that merges like T-0028's route; 404 with no field, 404 with no
+  shelf, offline then T-0028 goes live, signed out never calls the server; quick feeds combined),
+  `src/components/CreaturesPage.test.tsx` (welcome flow, Feed, Rename after reload, the tab and the
+  block agree, Waiting lines), `src/components/creatures/scenes.test.tsx` (frame loop),
+  `dashboardLayout.test.ts` (old layout gets the block, favourites kept). Output:
+  `Test Files 101 passed | 1 skipped (102), Tests 1111 passed | 9 skipped (1120)`.
+- **Done when 3 / 12 (frame loop):** `scenes.test.tsx`: the den is `frameloop="always"` on a
+  computer, `demand` on a phone and with reduce motion, `never` when paused (book panel, add
+  dialog, wish card over the page) or the page is hidden; the block's picture and the choose canvas
+  are `demand`. Measured in headless Chrome (SwiftShader) on the dev server, draw calls in 4 s:
+  390 visible 1760 (≈ 20 frames/s on demand), hidden 0; 1280 visible 8500 (60 fps with shadows),
+  hidden 0. Leaving the tab unmounts the den.
+- **Done when 2 / 6–12:** screenshots in `T-0029-screens/` (no-backend dev server on 3146, demo
+  books, page clock fixed at 2026-11-29 19:00 unless said): all 14 of Design §14 (31 files) plus
+  `tab-390-lav-card`, `missing-390-lav-card`, `sleepy-390-mid-card` (the card with its mood line)
+  and `fed-1280-lav-before` (23 🍪, five cookies in the bowl; after the feed 18 and four). The five
+  tabs sit on one line at 390 (all tops 109 px). `shiny-hello-1280-mid` uses the dev-only switch
+  `localStorage['hannas-reading-list:dev-shiny'] = '1'` (stripped from builds by
+  `import.meta.env.DEV`); the real welcome egg is not shiny (its hash gives 10 of 20).
+- `pnpm exec tsc --noEmit`: no output. `pnpm run build`: `✓ built`. `pnpm exec harness check`: see
+  Log.
+
 # Log
 
 - 2026-11-22 architect: wrote CR1 from Hanna's brief; earned things are derived from the reading
@@ -497,3 +528,40 @@ Taken with the recommended option tonight; each is easy to change in `numbers.ts
   lines, keyboard and screen reader, wording, 14 screenshots and phone movement. Done when 6–12
   added. Five questions taken with the recommended option for the morning. Hand-over to the
   developer. Remaining: Hanna's answers to the five morning questions.
+- 2026-11-23 developer: built CR1 on branch `t-0029-first-creature` (from `t-0027-book-creatures`).
+  Lib: `src/lib/creatures/numbers.ts` (every number, `CREATURES_START = 2026-11-23`), `cookies.ts`
+  (minutes from `readingLog`, 1 🍪 / 5 min on the total, +10 per finish, sleep reads half, This
+  week as running-total differences), `creature.ts` (welcome egg, hatch = earliest hatch event for
+  `welcome` among the five commons, seeded shiny 1 in 20 and name hash, level cost, stages, moods,
+  `deriveCreatures`), `choices.ts` (event log, cleaning with the route's rules, merge: union by id
+  and newest setting per key), `words.ts` (all wording). Sync: `src/server/creatures.ts` +
+  `creaturesStore.ts` (read `fields=id,creatures`, POST to `/api/collections/libraries/creatures`,
+  `kept: false` on a missing field or 404; never PATCH) and `src/components/useCreatureChoices.ts`
+  (log in localStorage per account, sends what the account hasn't got on open, on coming back into
+  view and after each choice; quick Feed taps within 2 s become one event, held back until the taps
+  stop). UI: `CreaturesPage.tsx` (🐾 tab `?view=creatures`, `&step=choose` from every Hatch
+  button), `CreaturesCard.tsx` (block `creatures`, Today right column after Monthly challenge),
+  two Waiting for you lines in `WaitingCard.tsx`, `creatures/CreaturesContext.tsx` (one log for
+  the whole page), 3D in `creatures/DenScene.tsx` (den, egg, crack, idle, moods, feed and level-up
+  reactions), `ChooseScene.tsx` (one canvas behind five tiles), `CreatureStill.tsx` (block picture,
+  on demand), `pose.ts` (one build per species/stage/palette/quality, cloned). Nothing in
+  `src/server/shelf.ts`, `src/lib/shelfMerge.ts`, `deploy/nas/` or any CODEOWNERS path. Checks:
+  `tsc --noEmit` no output; `pnpm test` 1111 passed, 9 skipped (102 files); `pnpm run build` ✓;
+  `harness check` ✓ tasks 34 / decisions 38 / engineers 2 / generated files current; 35 screenshots.
+- 2026-11-23 developer: choices taken at night (recommended option, nothing asked): (1) a sleep
+  read's finish treat is halved too (5 🍪), reading D-0033 §2 "sleep reads earn half" as all their
+  earning; (2) a day counts as a reading day for growth and moods when it has a log entry or a
+  finish; (3) "Creatures" h1 and cookie pill sit on the `challenges-head` card like Calendar and
+  Challenges ("same page frame"), not straight on the wallpaper, so the cream pill text stays
+  readable on lavender; (4) a level-up line on a device with no seen level counts level 1 as seen
+  (only the newest shows); (5) the den stops for the book panel, the add dialog and the wish card;
+  (6) `CREATURES_START` is 2026-11-23: if the PR merges later the architect or tester may move it to
+  the merge day (anything read since then counts, nothing is lost); (7) Escape in the choose step
+  is Not yet. The default layout gained `creatures`, so `recommend.test.ts`'s default-layout
+  expectation changed with it.
+- 2026-11-23 developer: no pull request yet, on purpose: the no-stacked-PRs rule means this goes to
+  `main` only after T-0027 (PR #241) is merged; then rebase on `main`, open the draft PR, add it to
+  `result`, wait for CI and hand over to the UX designer for review. T-0028 (PR #239) is not
+  needed: until Sander merges it every device keeps its own log and nothing differs. Remaining:
+  draft PR after #241; UX review; tester; Hanna's five morning questions; Done when 5 (Hanna on the
+  live site).

@@ -214,3 +214,18 @@ describe('moving within Favourites (T-0020, D-0028)', async () => {
     expect(cleanLayout(JSON.parse(JSON.stringify(ordered))).favourites).toEqual([b, c, d, a, e])
   })
 })
+
+describe('the Creatures block (T-0029)', () => {
+  it('stands in Today right after Monthly challenge, also on a layout saved before it, with her favourites kept', () => {
+    expect(BLOCKS.creatures).toBe('Creatures')
+    expect(DEFAULT_LAYOUT.sections.today[1].slice(0, 2)).toEqual(['challenge', 'creatures'])
+    const before = structuredClone(DEFAULT_LAYOUT)
+    before.sections.today[1] = before.sections.today[1].filter((id) => id !== 'creatures')
+    before.favourites = ['goal', 'challenge']
+    const loaded = cleanLayout(JSON.parse(JSON.stringify(before)))
+    expect(loaded.sections.today[1].slice(0, 2)).toEqual(['challenge', 'creatures'])
+    expect(loaded.favourites).toEqual(['goal', 'challenge'])
+    // and it can be starred like every block
+    expect(cleanLayout({ ...loaded, favourites: ['creatures'] }).favourites).toEqual(['creatures'])
+  })
+})
