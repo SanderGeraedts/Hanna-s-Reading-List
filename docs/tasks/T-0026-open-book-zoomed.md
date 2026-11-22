@@ -7,7 +7,7 @@ depends_on: []
 decisions: [D-0002, D-0014, D-0020, D-0022, D-0032]
 raised_on: 2026-11-22
 done_on: ""
-result: []
+result: [https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/238]
 ---
 
 # Goal
@@ -406,4 +406,4 @@ Night mode: nothing was asked; the fix ships with these picks and each is easy t
   so "same zoom and pan" was checked on the ‹ › and zoom buttons' state and the screenshots. Seen in
   the reduced-motion run: putting the book back, the camera jumps forward first and the book flies
   home from close by, large for a moment; that is the book's flight, kept as designed (Hanna's
-  question 2). Handed to the ux-designer for the design check.
+  question 2). Draft PR #238. Handed to the ux-designer for the design check.
