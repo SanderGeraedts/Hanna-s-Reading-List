@@ -619,9 +619,30 @@ Then re-take the screenshots with the same script (all 16) and run the model tes
 - Red squirrel: the dark tail tip on its own ball looks a little like a lollipop; painting it
   `m.body` would make the tail one bushy S.
 
+### Re-review (2026-11-23)
+
+**Verdict: pass.** Commit 11382ff makes must-fix 1–5 exactly as written: the diff of the
+four model files and `species.ts` matches the review line for line, and the unicorn's top
+comment is updated. These are the same numbers I checked at 2× from four sides before.
+The 16 new screenshots show:
+
+- **Bookmark fox:** the red ribbons rise beside the head and the gold one stands above it.
+  It reads as a ribbon-tailed fox, not a winged cat. On midnight the shiny ribbons
+  (`#9a5fb5`, `#5f86d9`) now show clearly.
+- **Starlight unicorn:** the lavender mane shows down its left side from the front, and with
+  the nostrils gone the muzzle looks like a pony's. The horn is clear. The shiny's gold mane
+  stands out on midnight.
+- **Capybara:** a longer, blunter snout with the darker top and the ears set back. In the ¾
+  view it reads as a capybara, not a bear.
+- **African penguin:** the spots sit below the chest band, so it no longer reads as a face on
+  its tummy.
+
+The other 16 creatures are unchanged. The family and both wallpapers still pass. Hand-over to
+the tester.
+
 ### Hand-over
 
-Back to the developer for must-fix 1–5. When the new screenshots match, the UX designer only
+Back to the developer for must-fix 1–5 (done; see *Re-review*). When the new screenshots match, the UX designer only
 needs a quick look at the four changed tiles before the tester; nothing else needs a new review.
 
 ## Modelling brief for Fable agents
@@ -777,3 +798,4 @@ Taken at night with the recommended option, without asking Hanna (all reversible
 - 2026-11-22 developer: Remaining: the UX review (Done when 4 and 7, *Review*), the Red List check by hand (above), and the tester.
 - 2026-11-23 ux-designer: reviewed: changes needed. The family passes (Done when 4) and 16 of 20 are recognisable at 120 px; five must-fix items (bookmark fox ribbons and its shiny ribbon colours, unicorn mane, nostrils and hat anchor, capybara snout and ears, African penguin chest spots), each tried on the dev server and with the model test, then reverted. Integrator notes accepted except the unicorn's hat anchor. §7's bookmark-fox shiny row updated. Back to the developer. Remaining: must-fix 1–5 and new screenshots, a quick UX look at the four changed tiles, the Red List check by hand, and the tester.
 - 2026-11-23 developer: must-fix 1–5 from *Review after building* applied exactly, no Fable: bookmark-fox side ribbons up beside the head; bookmark-fox shiny ribbons `#9a5fb5` / `#5f86d9` in `species.ts`; starlight-unicorn mane down its left side, nostrils removed (nose slot unused), `hat` at (0, 0.348, −0.08) with `rotation.x = −0.35`, top comment updated; capybara longer snout, wider darker top, nose forward, ears set back; african-penguin chest spots below the band. The two optional tweaks were left alone. Check: `vitest run src/components/creatures src/lib/creatures` 2 files, 110 tests passed; `model bookmark-fox: 2000 / 1000 tris, 9 / 9 calls, 0.82 wide × 1.08 tall × 0.76 deep`; `model starlight-unicorn: 2864 / 1288 tris, 9 / 9 calls, 0.71 wide × 1.11 tall × 0.68 deep`; `model capybara: 2296 / 1056 tris, 7 / 7 calls, 0.72 wide × 0.97 tall × 0.80 deep`; `model african-penguin: 2608 / 1156 tris, 8 / 8 calls, 0.65 wide × 0.97 tall × 0.68 deep` (all as the review expected); `tsc --noEmit` clean. All 16 screenshots re-taken with the same script on `vite dev --port 3141` (no errors, all 20 tiles render), vite stopped and the port checked free. Lesson added to `docs/lessons.md`. Remaining: a quick UX look at the four changed tiles, the Red List check by hand, and the tester.
+- 2026-11-23 ux-designer: reviewed: pass. Re-review of must-fix 1–5 (commit 11382ff, new screenshots): bookmark fox ribbons and shiny ribbons, unicorn mane, muzzle and hat anchor, capybara snout and ears, African penguin chest spots all as specified and readable at 120 px on both wallpapers. Hand-over to the tester. Remaining: the Red List check by hand on iucnredlist.org, and the tester.
