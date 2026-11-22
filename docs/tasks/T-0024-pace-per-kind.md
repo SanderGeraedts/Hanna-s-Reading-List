@@ -307,18 +307,85 @@ finished**, so E-book is the no-pace kind. Names `pile-pace-<case>-<width>-<wall
 
 ## Design checks (on the screenshots and in the dev server)
 
-- [ ] **Wording:** each choice's pace line matches the table: "paper books" / "e-books" / "h",
+- [x] **Wording:** each choice's pace line matches the table: "paper books" / "e-books" / "h",
   "of reading" / "of listening", singular for exactly 1; All unchanged.
-- [ ] **No pace:** the E-book shot shows "You haven't finished an e-book in the last year, so
+- [x] **No pace:** the E-book shot shows "You haven't finished an e-book in the last year, so
   there's no pace yet." muted and small, in the pace line's place, with no pace line next to it.
-- [ ] **Nothing else moves:** books waiting, the pages line, the switch and the motivation part are
+- [x] **Nothing else moves:** books waiting, the pages line, the switch and the motivation part are
   the same on all four choices; the gaps between the lines look the same as in T-0023's shots.
-- [ ] **Screen reader:** while the switch shows, one live region holds both lines (the height `<p>`
+- [x] **Screen reader:** while the switch shows, one live region holds both lines (the height `<p>`
   has no `aria-live` of its own); after a press both sentences are heard, height first; "hours",
   never "h"; no live region without a switch.
-- [ ] **390 / 360 / 1280:** lines wrap without cutting off, "5.1 h" stays whole, no horizontal
+- [x] **390 / 360 / 1280:** lines wrap without cutting off, "5.1 h" stays whole, no horizontal
   scroll; at 360 the switch is the two-row rounded box.
-- [ ] **Lavender and midnight** look the same.
+- [x] **Lavender and midnight** look the same.
+
+## Review after building (2026-11-22)
+
+**Verdict: matches the design. No must-fix items.** To the tester.
+
+Looked at: `git diff main...HEAD -- src` (`insights.ts`, `DashboardExtras.tsx`, `styles.css`, the two
+test files), all 20 screenshots in `docs/tasks/T-0024-screens/`, and a run of
+`pnpm exec vitest run src/components/PileCard.test.tsx src/lib/insights.test.ts` → 2 files, 39 tests
+passed.
+
+**What matches, state by state**
+
+- **All** (390, 1280, both wallpapers): "At your pace of 1.1 a month, that's about 1 year of
+  reading.", plain body text, word for word as before (now through `paceNumber` / `paceTime`). The
+  "Once some books have a “Finished on” date…" line is unchanged in code and still only shows with a
+  non-empty pile.
+- **Paper**: "At your pace of 0.8 paper books a month, that's about 1 year of reading.", body text;
+  singular "1 paper book" / "1 e-book" handled by `kindPaceWords` and covered by the unit tests.
+- **Audiobook** (390, 360, 1280): "At your pace of 3.9 h a month, that's 11 months of listening.";
+  "3.9 h" stays whole on every width (non-breaking space in an `aria-hidden` span), heard
+  "3.9 hours" through `.visually-hidden`; "of listening" only here.
+- **E-book, no pace** (390, 360, 1280): "You haven't finished an e-book in the last year, so there's
+  no pace yet." muted and small, in the pace line's place, with no pace line next to it; it wraps to
+  two lines at 390 / 360, never cut off.
+- **Nothing else moves:** "17 books waiting", "4,900 pages · 31 h to listen", the switch and the
+  motivation part (in vs. out, the 6-month line, both jars) are identical on all four choices. The
+  gaps between switch, height line, pace line and divider look the same as in T-0023's shots;
+  `.pile-said` repeats the card's `gap: var(--space-3)` exactly as designed. The card only grows or
+  shrinks by the wrapped line, as expected.
+- **Switch:** one row at 390 and 1280, the two-row rounded box at 360; look and place unchanged.
+- **Screen reader** (in code and in the component tests): one `<div class="pile-said">` with
+  `aria-live="polite"` and `aria-atomic="true"` only while the switch shows; the height `<p>` has
+  no live attributes of its own; height line first, then pace line, in reading order; no live
+  region without a switch. Focus behaviour of the buttons unchanged.
+- **Lavender and midnight:** the walnut card and its text look the same on both; no new colour,
+  size or spacing.
+
+**Developer's choices**
+
+- **13. Wrapper kept without a switch (no live attributes), none with an empty pile: agreed.**
+  It is what the design allowed; the block's structure is the same either way, and a plain `<div>`
+  with no role adds nothing a screen reader announces.
+- **14. `kindPace` worked out from the whole shelf each render, not memoised: agreed.** Nothing a
+  user sees depends on it; the shelf is a few hundred books and the line is only worked out for the
+  one kind shown. Keeping the rule in one place matters more here.
+
+**The phone header over the top of the card: a real problem, but not this task's, and older than
+it.** At 390 and 360 the card's title sits under the floating header in the shots. That exact
+crop is partly a screenshot artefact: the card was scrolled to the top of the dashboard's scroll
+area, and when the dashboard is opened nothing is covered, because `.dashboard` starts below the
+header's real height (#181). But Hanna's own phone screenshot in issue #233 shows the same thing
+in real use: as soon as she scrolls, the dashboard slides under the header, and because the
+header's background is a fade (92 % at the top to 0 % at the bottom, `.topbar`), the cards
+behind show through the stats line and the round tab buttons ("Das Zeichen der Athene" runs
+through "Hanna's Reading List"). It is not made worse by T-0024, so it is **a follow-up, not a
+must-fix** here:
+
+- *Follow-up (new task):* on the dashboard views, give the header a background she can read text
+  on (a solid band, or fade the dashboard's own top edge instead) and give `.dashboard` a
+  `scroll-padding-top` of the header's height, so a card scrolled to or a focused button never
+  lands under the header (WCAG 2.4.11, focus not hidden).
+
+A smaller observation, also older than this task (T-0023): the grey line says "31 h to listen"
+while the 🎧 height line says "Your audiobooks are 41 h". Both are right by their own rules (the
+grey line counts listen-only books' minutes, D-0008; the height line counts every audiobook with
+`audioMinutes`, D-0030), but two different hours on one card may puzzle her. Worth a word with
+the architect; not for this task.
 
 # Build notes
 
@@ -383,3 +450,7 @@ finished**, so E-book is the no-pace kind. Names `pile-pace-<case>-<width>-<wall
   decisions 34, index complete, 3 overrules valid; engineers 2; generated files current.
   `src/routeTree.gen.ts` unchanged. 20 screenshots, no console errors, no horizontal scroll. To the
   UX designer for review. Draft PR #235.
+- 2026-11-22 ux-designer: reviewed: matches the design, no must-fix items. All 20 screenshots and
+  the diff checked; design checks ticked; choices 13–14 agreed. Follow-up (older than this task):
+  the see-through phone header lets scrolled dashboard content show under it (Hanna's #233
+  screenshot), and `.dashboard` has no `scroll-padding-top`. Handed to the tester.
