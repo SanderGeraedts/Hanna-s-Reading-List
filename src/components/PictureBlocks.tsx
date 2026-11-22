@@ -1,10 +1,11 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useId, useMemo, useState } from 'react'
 import type { Book } from '#/lib/library'
 import { genrePetals, petalLength } from '#/lib/genreFlower'
 import { monthlyAmounts, niceMax } from '#/lib/monthlyPages'
 import type { MonthAmount } from '#/lib/monthlyPages'
 import { monthName } from './Dashboard'
-import { byCount, worldMap } from '#/lib/places'
+import { byBooks, worldMap } from '#/lib/places'
+import { coverAtSize } from '#/lib/cover'
 
 /** Petal colours: soft and warm, readable on the walnut cards, one per genre. */
 export const PETAL_COLOURS = ['#e8a0b4', '#f2c46d', '#9fc9e6', '#b8d98f', '#c9a6e6', '#f2a37a', '#8fd1c4', '#d9c9a6']
@@ -143,6 +144,73 @@ export function PagesPerMonthCard({ books }: { books: Book[] }) {
 interface CountryShape {
   name: string
   d: string
+  /** top-left corner of its bounding box, in map units */
+  x: number
+  y: number
+}
+
+/** One cover tile on the map, in map units (2:3, a book's shape; T-0018). */
+export const TILE_W = 8
+export const TILE_H = 12
+
+/**
+ * A lit country's patchwork: one tile per book in tile order, about square
+ * (`ceil(√n)` columns), the last row filled on from the first book so a
+ * repeat never leaves a hole.
+ */
+function CoverPattern({
+  id,
+  x,
+  y,
+  books,
+  broken,
+  onBroken,
+}: {
+  id: string
+  x: number
+  y: number
+  books: Book[]
+  /** covers that failed to load: their tiles show only the spine colour */
+  broken: ReadonlySet<string>
+  onBroken: (url: string) => void
+}) {
+  const cols = Math.ceil(Math.sqrt(books.length))
+  const rows = Math.ceil(books.length / cols)
+  return (
+    <pattern id={id} patternUnits="userSpaceOnUse" x={x} y={y} width={cols * TILE_W} height={rows * TILE_H}>
+      {Array.from({ length: cols * rows }, (_, i) => {
+        const b = books[i % books.length]
+        const tx = (i % cols) * TILE_W
+        const ty = Math.floor(i / cols) * TILE_H
+        return (
+          <g key={i} className="world-tile">
+            {/* the spine colour behind every tile: shows while the cover loads, when it fails, and for a book without one */}
+            <rect x={tx} y={ty} width={TILE_W} height={TILE_H} fill={b.color} />
+            {b.coverUrl && !broken.has(b.coverUrl) && (
+              <image href={coverAtSize(b.coverUrl, 'S')} x={tx} y={ty} width={TILE_W} height={TILE_H} preserveAspectRatio="xMidYMid slice" onError={() => onBroken(b.coverUrl!)} />
+            )}
+          </g>
+        )
+      })}
+    </pattern>
+  )
+}
+
+/** A tiny cover in an imaginary land's row; a missing or broken cover is a spine-colour chip. */
+function LandCover({ book }: { book: Book }) {
+  const [broken, setBroken] = useState(false)
+  if (!book.coverUrl || broken)
+    return <span className="cover-chip" role="img" aria-label={book.title} title={book.title} style={{ background: book.color }} />
+  return (
+    <img
+      src={coverAtSize(book.coverUrl, 'M')}
+      alt={book.title}
+      title={book.title}
+      loading="lazy"
+      style={{ background: book.color }}
+      onError={() => setBroken(true)}
+    />
+  )
 }
 
 /**
@@ -175,7 +243,16 @@ function loadWorld(): Promise<CountryShape[]> {
       .map((f) => {
         const g = f.geometry!
         const polys = (g.type === 'Polygon' ? [g.coordinates] : g.coordinates) as number[][][][]
-        return { name: f.properties.name, d: polys.map((poly) => poly.map(ring).join('')).join('') }
+        // the top-left corner of its points, where its cover tiles start (T-0018)
+        let x = MAP_W
+        let y = MAP_H
+        for (const poly of polys)
+          for (const r of poly)
+            for (const [lon, lat] of r) {
+              x = Math.min(x, lon + 180)
+              y = Math.min(y, LAT_TOP - lat)
+            }
+        return { name: f.properties.name, d: polys.map((poly) => poly.map(ring).join('')).join(''), x, y }
       })
   })
   return worldShapes
@@ -195,10 +272,15 @@ export function BooksWorldMapCard({ books }: { books: Book[] }) {
   }, [])
   const known = useMemo(() => new Set((shapes ?? []).map((s) => s.name)), [shapes])
   const map = useMemo(() => worldMap(books, known), [books, known])
-  const max = Math.max(1, ...map.countries.values())
-  const top = [...map.countries].sort((a, b) => b[1] - a[1]).slice(0, 6)
-  const lands = byCount(map.imaginary)
-  const shade = (n: number) => 0.3 + 0.7 * Math.sqrt(n / max)
+  const lit = useMemo(() => byBooks(map.countries), [map])
+  const top = lit.slice(0, 6)
+  const lands = useMemo(() => byBooks(map.imaginary), [map])
+  const uid = 'world' + useId().replace(/[^a-zA-Z0-9_-]/g, '')
+  // covers that failed to load: Chrome draws a broken-image sign for them, so they're left out and the spine colour shows
+  const [broken, setBroken] = useState<ReadonlySet<string>>(() => new Set())
+  const markBroken = useCallback((url: string) => setBroken((s) => (s.has(url) ? s : new Set(s).add(url))), [])
+  const litShapes = shapes?.filter((s) => map.countries.has(s.name)) ?? []
+  const label = lit.length ? `World map of where your books are set: ${lit.map(([c]) => c).join(', ')}` : 'World map'
 
   return (
     <section className="dash-card world-card" aria-labelledby="world-title">
@@ -211,47 +293,60 @@ export function BooksWorldMapCard({ books }: { books: Book[] }) {
         <p className="muted small-text">Unfolding the map…</p>
       ) : (
         <>
-          <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} className="world-map" role="img" aria-label={top.map(([c, n]) => `${c}: ${n}`).join(', ') || 'World map'}>
-            {shapes.map((s) => {
-              const n = map.countries.get(s.name)
+          <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} className="world-map" role="img" aria-label={label}>
+            <defs>
+              {shapes.map((s, i) => {
+                const list = map.countries.get(s.name)
+                return list && <CoverPattern key={s.name} id={`${uid}-covers-${i}`} x={s.x} y={s.y} books={list} broken={broken} onBroken={markBroken} />
+              })}
+            </defs>
+            {shapes.map((s, i) => {
+              const list = map.countries.get(s.name)
               return (
-                <path key={s.name} d={s.d} className={n ? 'world-country lit' : 'world-country'} style={n ? { fillOpacity: shade(n) } : undefined}>
-                  <title>{n ? `${s.name}: ${n} ${n === 1 ? 'book' : 'books'}` : s.name}</title>
+                <path key={s.name} d={s.d} className={list ? 'world-country lit' : 'world-country'} style={list ? { fill: `url(#${uid}-covers-${i})` } : undefined}>
+                  <title>{list ? [s.name, ...list.map((b) => b.title)].join('\n') : s.name}</title>
                 </path>
               )
             })}
+            {/* lit countries' outlines above every filled country, so a lit neighbour can't paint over one */}
+            <g className="world-outlines" aria-hidden>
+              {litShapes.map((s) => (
+                <Fragment key={s.name}>
+                  <path d={s.d} className="world-outline-edge" />
+                  <path d={s.d} className="world-outline" />
+                </Fragment>
+              ))}
+            </g>
           </svg>
           {top.length > 0 && (
             <ul className="world-top">
-              {top.map(([c, n]) => (
-                <li key={c}>
-                  <span>{c}</span>
-                  <span className="muted small-text">{n}</span>
-                </li>
+              {top.map(([c]) => (
+                <li key={c}>{c}</li>
               ))}
             </ul>
           )}
           {lands.length > 0 && (
-            <p className="world-lands">
-              <span aria-hidden>🗺️ </span>
-              <strong>Imaginary lands:</strong>{' '}
-              {lands.map(([land, n], i) => (
-                <Fragment key={land}>
-                  {i > 0 && (
-                    <>
-                      <span className="visually-hidden">,</span>
-                      <span aria-hidden> · </span>
-                    </>
-                  )}
-                  {/* a non-breaking space: the count never starts a line on its own */}
-                  {land}
-                  {' '}
-                  <span className="muted">{n}</span>
-                </Fragment>
-              ))}
-            </p>
+            <div className="world-lands-block">
+              <h3 className="world-lands-title">
+                <span aria-hidden>🗺️ </span>Imaginary lands
+              </h3>
+              <ul className="world-lands">
+                {lands.map(([land, list]) => (
+                  <li key={land}>
+                    <span className="world-land-name">{land}</span>
+                    <ul className="world-land-books" aria-label={land}>
+                      {list.map((b) => (
+                        <li key={b.id}>
+                          <LandCover book={b} />
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
-          {map.waiting > 0 && <p className="muted small-text">Looking up where {map.waiting} more {map.waiting === 1 ? 'book is' : 'books are'} set…</p>}
+          {map.waiting > 0 && <p className="muted small-text">Looking up where more of your books are set…</p>}
           {map.waiting === 0 && top.length === 0 && lands.length === 0 && (
             <p className="muted small-text">Open Library doesn't know where your finished books are set yet.</p>
           )}

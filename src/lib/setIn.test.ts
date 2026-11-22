@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Book } from './library'
 import { MAP_COUNTRY_SET } from './mapCountries'
-import { byCount, needsPlaces, placesOf, placesPatch, worldMap } from './places'
+import { byBooks, needsPlaces, placesOf, placesPatch, worldMap } from './places'
 import { addPlace, landsOn, placeFromTyped, placeKind, placeLabel, placeSuggestions, removePlace } from './setIn'
 
 const book = (id: string, extra: Partial<Book> = {}): Book => ({
@@ -14,6 +14,9 @@ const book = (id: string, extra: Partial<Book> = {}): Book => ({
   readCount: 1,
   ...extra,
 })
+
+/** Each land with how many books it holds, most first (the block shows the books, never this number: D-0026). */
+const landSizes = (lands: Map<string, Book[]>) => byBooks(lands).map(([land, list]): [string, number] => [land, list.length])
 
 describe('Set in: what kind of place a chip is', () => {
   it('marks map countries, names the map turns into one, made-up places and the rest', () => {
@@ -93,7 +96,7 @@ describe('Set in: what she typed', () => {
     expect(unknown).toBe('Glimmerdale (Imaginary place)')
     expect(placesOf([unknown], MAP_COUNTRY_SET)).toEqual({ countries: [], imaginary: ['Glimmerdale'] })
     const m = worldMap([book('a', { places: addPlace([], unknown) })], MAP_COUNTRY_SET)
-    expect([...m.imaginary]).toEqual([['Glimmerdale', 1]])
+    expect(landSizes(m.imaginary)).toEqual([['Glimmerdale', 1]])
   })
 
   it('spells a land like the same land on another book', () => {
@@ -159,7 +162,7 @@ describe('the map: imaginary lands with counts', () => {
       book('g', { places: ['Atlantis'] }),
       book('h', { status: 'want', readCount: 0, places: ['Narnia (Imaginary place)'] }),
     ]
-    const lands = byCount(worldMap(books, MAP_COUNTRY_SET).imaginary)
+    const lands = landSizes(worldMap(books, MAP_COUNTRY_SET).imaginary)
     expect(lands).toEqual([
       ['Hogwarts', 4],
       ['Narnia', 2],
@@ -175,22 +178,22 @@ describe('the map: imaginary lands with counts', () => {
       book('c', { places: ['Hogwarts (Imaginary place)'] }),
       book('d', { places: ['Hogwarts School of Witchcraft and Wizardry (Imaginary place)'] }),
     ]
-    expect(byCount(worldMap(books, MAP_COUNTRY_SET).imaginary)).toEqual([['Hogwarts', 4]])
+    expect(landSizes(worldMap(books, MAP_COUNTRY_SET).imaginary)).toEqual([['Hogwarts', 4]])
   })
 
   it('counts a book with both Hogwarts names once', () => {
     const both = book('a', { places: ['Hogwarts (Imaginary place)', 'Hogwarts School of Witchcraft and Wizardry (Imaginary place)'] })
-    expect(byCount(worldMap([both], MAP_COUNTRY_SET).imaginary)).toEqual([['Hogwarts', 1]])
+    expect(landSizes(worldMap([both], MAP_COUNTRY_SET).imaginary)).toEqual([['Hogwarts', 1]])
   })
 
   it('counts Middle-earth and Middle Earth as one land', () => {
     const books = [book('a', { places: ['Middle-earth (Imaginary place)'] }), book('b', { places: ['Middle Earth'] })]
-    expect(byCount(worldMap(books, MAP_COUNTRY_SET).imaginary)).toEqual([['Middle Earth', 2]])
+    expect(landSizes(worldMap(books, MAP_COUNTRY_SET).imaginary)).toEqual([['Middle Earth', 2]])
   })
 
   it('counts the same other land in other capitals as one, under the first spelling', () => {
     const books = [book('a', { places: ['Velaris (Imaginary place)'] }), book('b', { places: ['velaris (Imaginary place)'] })]
-    expect(byCount(worldMap(books, MAP_COUNTRY_SET).imaginary)).toEqual([['Velaris', 2]])
+    expect(landSizes(worldMap(books, MAP_COUNTRY_SET).imaginary)).toEqual([['Velaris', 2]])
     expect(placesOf(['Velaris (Imaginary place)', 'velaris (imaginary place)'], MAP_COUNTRY_SET).imaginary).toEqual(['Velaris'])
   })
 
@@ -200,7 +203,7 @@ describe('the map: imaginary lands with counts', () => {
 
   it('counts a made-up place she added on a finished book', () => {
     const places = addPlace(['England'], placeFromTyped('Prythian', [])!.place)
-    expect(byCount(worldMap([book('a', { places })], MAP_COUNTRY_SET).imaginary)).toEqual([['Prythian', 1]])
+    expect(landSizes(worldMap([book('a', { places })], MAP_COUNTRY_SET).imaginary)).toEqual([['Prythian', 1]])
   })
 })
 
