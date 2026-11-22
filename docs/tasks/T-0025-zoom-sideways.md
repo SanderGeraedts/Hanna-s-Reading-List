@@ -449,10 +449,9 @@ cursor table and writes the values in *Test*.
 - [x] ‹ and › are 44 × 44 px, round, 16 px from the screen's left and right edges, level with each
       other, centred between the header and the bottom; › doesn't touch the zoom column at either
       size.
-- [ ] They look exactly like the zoom buttons (background, border, plum glyph, hover, focus ring)
+- [x] They look exactly like the zoom buttons (background, border, plum glyph, hover, focus ring)
       on lavender and midnight, and their edge is visible on white-washed and ebony.
-      *(Colours, border, glyph, focus ring and the woods match; the size and the dimmed hover
-      don't: must-fix 1 and 2 in the review below.)*
+      *(Size and dimmed hover fixed in 5463b50; see the re-review below.)*
 - [x] Hidden at zoom 1, with a book open, off the shelf and with no books; shown again when zoomed
       in, in the right state for where the pan is.
 - [x] At each end the button on that side is dimmed (`aria-disabled="true"`, opacity 0.5), keeps
@@ -525,6 +524,21 @@ white-washed and ebony the plum border and the light fill keep the button's edge
   the open book is placed in front of a zoomed camera: a different part of the scene, with its own
   check. Putting it here would hold up the fix Hanna asked for. Because she will now zoom and open
   books more, the architect raises it as its own task straight after this one.
+
+### Re-review (2026-11-22)
+
+**Verdict: pass.** Commit 5463b50 fixes both must-fixes; nothing else on screen changed.
+
+1. **Dimmed hover:** `.shelf-pan .btn[aria-disabled='true']:hover` keeps the white 0.78 fill and
+   plum border and is more specific than `.btn:hover:not(:disabled)`. In
+   `pan-right-end-hover-1280-lavender` the dimmed › under the mouse looks just like the unhovered
+   one: no see-through fill, no gold ring.
+2. **Zoom buttons 44 × 44:** the four zoom buttons dropped `icon`, so `.zoom-controls .btn` sizes
+   them; nothing else in `src` relied on `.zoom-controls .icon`. In `pan-middle-1280-lavender`,
+   `pan-middle-390-lavender` and `zoom-1-390-lavender`, › and + − ⤢ 🎨 are the same round size and
+   line up in one column, and › stays clear of the column at both sizes.
+
+All eight design checks are ticked. On to the tester; the follow-up above stays with the architect.
 
 # Build notes
 
@@ -643,3 +657,5 @@ To be written by the tester.
   `vite dev --port 3136` (no backend), all passed, no console errors; vite stopped, 3136 free.
   `pnpm test`: 90 files passed, 1 skipped, 865 tests passed, 9 skipped; `tsc --noEmit` clean;
   `harness check` all ✓. Lesson added. Handed back to the UX designer.
+- 2026-11-22 ux-designer: reviewed: pass. Both must-fixes checked on the diff and the four new
+  screenshots; all design checks ticked. Handed to the tester.
