@@ -62,11 +62,36 @@ export function shade(hex: string, amount: number) {
   return `#${f(r)}${f(g)}${f(b)}`
 }
 
-/** Dark or light text, whichever reads on `bg`. */
+const DARK_INK = '#1d1a16'
+const LIGHT_INK = '#f6efe1'
+
+function relativeLuminance(hex: string) {
+  const [r, g, b] = parseHex(hex).map((v) => {
+    const c = v / 255
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  })
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
+/** The WCAG contrast ratio of two colours (1–21). */
+export function contrastRatio(a: string, b: string) {
+  const la = relativeLuminance(a)
+  const lb = relativeLuminance(b)
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)
+}
+
+/**
+ * Dark or light text, whichever reads on `bg`: white on dark and dark on light
+ * by brightness (#180), switching to the other ink only where the first would
+ * read below 3:1 and the other reads better (T-0019, chosen spine colours).
+ */
 export function inkFor(bg: string) {
   const [r, g, b] = parseHex(bg)
   const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-  return lum > 0.6 ? '#1d1a16' : '#f6efe1'
+  const ink = lum > 0.6 ? DARK_INK : LIGHT_INK
+  const other = ink === DARK_INK ? LIGHT_INK : DARK_INK
+  const mine = contrastRatio(ink, bg)
+  return mine < 3 && contrastRatio(other, bg) > mine ? other : ink
 }
 
 function accentFor(bg: string) {

@@ -25,6 +25,7 @@ import { NO_SPICE, ratingText, spiceText } from '#/lib/ratings'
 import { backText } from './textures'
 import { MergeSection } from './MergeSection'
 import { EdgesField } from './EdgesField'
+import { SpineColourField } from './SpineColourField'
 import { SetInField } from './SetInField'
 import { EbookButton, EbookLinkField } from './EbookLink'
 import { PanelPriceField } from './PriceField'
@@ -439,6 +440,8 @@ export function BookPanel({
       <button className="btn change-cover" onClick={onChangeCover}>
         Change cover…
       </button>
+
+      <SpineColourField book={book} onChange={(color) => onUpdate({ color })} onFace={onFace} />
 
       <EdgesField book={book} onChange={(edges) => onUpdate({ edges })} />
 

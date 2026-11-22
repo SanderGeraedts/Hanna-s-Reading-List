@@ -2643,6 +2643,57 @@ textarea.input {
   cursor: pointer;
 }
 
+/* ---- spine colour (T-0019) -------------------------------------------- */
+.spine-colour-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  align-items: center;
+}
+.spine-swatch {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-small);
+  font-size: var(--fs-large);
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+.spine-swatch:hover {
+  border-color: var(--text);
+}
+.spine-swatch[aria-pressed='true'] {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.spine-swatch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+.spine-swatch.outside {
+  margin-left: var(--space-2);
+}
+.spine-colour-dominant {
+  white-space: nowrap;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.spine-colour-dominant .star {
+  color: var(--accent);
+}
+.spine-colour-back {
+  justify-self: start;
+}
+@media (max-width: 720px), (pointer: coarse) {
+  .spine-swatch {
+    width: var(--tap);
+    height: var(--tap);
+  }
+}
+
 /* ---- more for the dashboard: pace, heatmap, spice, year in review, bingo ---- */
 .goal-to-go {
   font-size: var(--fs-body);
