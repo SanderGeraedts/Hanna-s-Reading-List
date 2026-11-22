@@ -157,6 +157,35 @@ diagonal gold line on Russia, its covers reach Kamchatka and the Bering Strait, 
 filled shape at the left edge, Wrangel Island is whole, and the USA, Fiji and every other country
 look the same as before; nothing draws outside the map's panel.
 
+## Review after building (2026-11-22)
+
+**Verdict: matches the design, no must-fix.** Looked at all 16 `after-*` shots next to their
+`before-*` pair, and at `git diff main...HEAD -- src` (PR #231).
+
+- **Russia:** the pale wedge is gone on the plain map at both widths and on both wallpapers, and in
+  the lit shots the white triangle and its two diagonal gold lines are gone. The covers now run
+  through Kamchatka and up to the Bering Strait, and the gold outline follows only the coast
+  (`after-zoom-east-lit-1280-*`).
+- **Chukotka's tip:** a small filled shape at the far left, west of Alaska, with covers and gold
+  outline when lit, cut cleanly by the map's frame (`after-zoom-west-lit-1280-*`). On the plain map
+  the left-edge zoom is pixel-identical to before.
+- **Wrangel Island:** whole at the top right, lit with Russia.
+- **Fiji and the USA:** look the same as before, and so does Alaska. Russia's first cover tile
+  starts in the same place.
+- **Nothing else changed:** a pixel comparison of each before/after pair (threshold 60 on RGB)
+  shows that on `plain-*-lavender` the only changes are at 84 to 95 % of the card width,
+  y 180 to 248 at 1280. That's the far-east wedge. The lit and midnight shots also show a few
+  hundred scattered changed pixels across the card. Looking at the pairs, these are JPEG and
+  cover-image noise, not a shape change: the tiles, outlines and list look the same. The unit
+  test's real-atlas check (every country except Russia and Fiji gives the same `d`, the USA named)
+  covers this exactly.
+- **Code against the design:** `src/components/PictureBlocks.tsx` only swaps the old ring function
+  for `polygonsToPath` from `src/lib/worldPath.ts`. The corner for the cover tiles is still
+  computed from the atlas points. No CSS change: `.world-map` sets no `overflow`, so the inline
+  `svg` clips at its viewBox, and the shots show nothing outside the map's rounded panel. No text,
+  colour, stroke or token changed (D-0014, D-0020, D-0022), and the heading, list and
+  screen-reader label are the same.
+
 # Build notes
 
 - **`src/lib/worldPath.ts`** (new): `polygonsToPath(polys)` and `LAT_TOP`. Each ring is unwrapped
@@ -211,3 +240,5 @@ look the same as before; nothing draws outside the map's panel.
   designer's script (errors: none); compared with `before-*`: no wedge or diagonal gold line, covers
   reach Kamchatka and the Bering Strait, left edge and every other country unchanged, nothing
   outside the panel. Handed to the ux-designer for review.
+- 2026-11-22 ux-designer: reviewed: matches the design, no must-fix (all 16 `after-*` shots compared
+  with `before-*`, plus a pixel comparison of each pair and the `src` diff). Handed to the tester.
