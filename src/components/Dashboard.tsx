@@ -53,8 +53,11 @@ import {
   toggleFold,
   toggleFavourite,
   favouriteColumns,
+  favouritePlace,
+  moveFavouriteTo,
+  stepFavourite,
 } from '#/lib/dashboardLayout'
-import type { BlockId, SectionId } from '#/lib/dashboardLayout'
+import type { ArrowKey, BlockId, SectionId } from '#/lib/dashboardLayout'
 import { TodayStrip } from './TodayStrip'
 import { useDashboardLayout } from './useDashboardLayout'
 import { BadgesCard, CoverWallCard, RhythmCard } from './NewBlocks'
@@ -131,12 +134,19 @@ interface Drop {
   marker: string
 }
 
-interface Drag {
-  id: BlockId
-  dx: number
-  dy: number
-  drop: Drop | null
+/** Where a block dragged within Favourites would land (T-0020): a list place, and where the drop line shows. */
+interface FavDrop {
+  /** list place among the other favourites (past the end: the end) */
+  index: number
+  /** the favourite it goes before, or `fav-end:<n>` for the end of visual column n */
+  marker: string
 }
+
+/** A drag knows where it started: in a section, or in Favourites (the same block's other copy stays put). */
+type Drag = { id: BlockId; dx: number; dy: number } & (
+  | { place: 'section'; drop: Drop | null }
+  | { place: 'favourites'; drop: FavDrop | null }
+)
 
 export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChallenges, onOpenCalendar, onAdd }: DashboardProps) {
   const open = (section: ChallengeSection) => (onOpenChallenges ? () => onOpenChallenges(section) : undefined)
@@ -336,16 +346,76 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
     return { section, column: visual as 0 | 1, index: 0, marker: end }
   }
 
-  const handleProps = (id: BlockId) => ({
+  const favColumns = narrow ? 1 : 2
+
+  /**
+   * The drop place in Favourites (T-0020): only the Favourites grid counts, so a
+   * drag over a section keeps its line at the nearest Favourites place. Column
+   * c, before the block at row r (counted without the dragged one), is list
+   * place 2r + c of the others (r with one column); past the end it is the end,
+   * and the line shows at the end of the column where the end is.
+   */
+  const favDropAt = (x: number, y: number, id: BlockId): FavDrop | null => {
+    const grid = root.current?.querySelector<HTMLElement>('.dash-favourites-grid')
+    const cols = [...(grid?.querySelectorAll<HTMLElement>(':scope > .dash-column') ?? [])]
+    if (!cols.length) return null
+    const dist = (el: HTMLElement) => {
+      const r = el.getBoundingClientRect()
+      return x < r.left ? r.left - x : x > r.right ? x - r.right : 0
+    }
+    const visual = cols.reduce((best, el, i) => (dist(el) < dist(cols[best]) ? i : best), 0)
+    const others = [...cols[visual].querySelectorAll<HTMLElement>(':scope > .dash-block')].filter(
+      (el) => el.dataset.favourite !== id,
+    )
+    const row = others.findIndex((el) => {
+      const r = el.getBoundingClientRect()
+      return y < r.top + r.height / 2
+    })
+    const count = layout.favourites.length - 1
+    const r = row < 0 ? others.length : row
+    const index = favColumns === 2 ? 2 * r + visual : r
+    if (index >= count) return { index: count, marker: `fav-end:${favColumns === 2 ? count % 2 : 0}` }
+    return { index, marker: row < 0 ? `fav-end:${visual}` : others[row].dataset.favourite! }
+  }
+
+  // the screen-reader line in Favourites, and the handle to focus again after a key move
+  const [favSay, setFavSay] = useState('')
+  const refocus = useRef<BlockId | null>(null)
+  useEffect(() => {
+    const id = refocus.current
+    if (!id) return
+    refocus.current = null
+    root.current?.querySelector<HTMLElement>(`.dash-favourites-grid [data-favourite="${id}"] .block-handle`)?.focus()
+  }, [layout])
+  const say = (text: string) => {
+    if (text !== favSay) return setFavSay(text)
+    // the same words again: clear first, so they are read again
+    setFavSay('')
+    setTimeout(() => setFavSay(text), 50)
+  }
+  /** Puts a new Favourites order in place and says where the block went; nothing when nothing moved. */
+  const moveInFavourites = (id: BlockId, next: typeof layout) => {
+    if (next.favourites.every((x, i) => x === layout.favourites[i])) return false
+    setLayout(next)
+    const place = favouritePlace(next, id, favColumns)!
+    say(
+      favColumns === 2
+        ? `${BLOCKS[id]}: ${place.column === 0 ? 'left' : 'right'} column, row ${place.row + 1} of the favourites.`
+        : `${BLOCKS[id]}: place ${place.index + 1} of ${next.favourites.length} in the favourites.`,
+    )
+    return true
+  }
+
+  const handleProps = (id: BlockId, from: Drag['place'] = 'section') => ({
     onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => {
       if (e.button !== 0) return
       e.preventDefault()
       e.currentTarget.setPointerCapture(e.pointerId)
       start.current = { x: e.clientX, y: e.clientY, scroll: scroller()?.scrollTop ?? 0 }
-      setDrag({ id, dx: 0, dy: 0, drop: null })
+      setDrag({ id, dx: 0, dy: 0, place: from, drop: null } as Drag)
     },
     onPointerMove: (e: React.PointerEvent<HTMLButtonElement>) => {
-      if (drag?.id !== id) return
+      if (drag?.id !== id || drag.place !== from) return
       // scroll along near the top and bottom edges
       const el = scroller()
       if (el) {
@@ -353,22 +423,32 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
         else if (e.clientY > window.innerHeight - 60) el.scrollTop += 14
       }
       const scrolled = (el?.scrollTop ?? 0) - start.current.scroll
-      setDrag({
-        id,
-        dx: e.clientX - start.current.x,
-        dy: e.clientY - start.current.y + scrolled,
-        drop: dropAt(e.clientX, e.clientY, id),
-      })
+      const moved = { id, dx: e.clientX - start.current.x, dy: e.clientY - start.current.y + scrolled }
+      setDrag(
+        from === 'favourites'
+          ? { ...moved, place: from, drop: favDropAt(e.clientX, e.clientY, id) }
+          : { ...moved, place: from, drop: dropAt(e.clientX, e.clientY, id) },
+      )
     },
     onPointerUp: () => {
-      if (drag?.id === id && drag.drop) {
-        setLayout(moveBlock(layout, id, drag.drop.section, drag.drop.column, drag.drop.index))
+      if (drag?.id === id && drag.place === from && drag.drop) {
+        if (drag.place === 'favourites') moveInFavourites(id, moveFavouriteTo(layout, id, drag.drop.index))
+        else setLayout(moveBlock(layout, id, drag.drop.section, drag.drop.column, drag.drop.index))
       }
       setDrag(null)
     },
     onPointerCancel: () => setDrag(null),
     // without a pointer: arrow keys move the block; with Shift, up and down go to the next section
     onKeyDown: (e: React.KeyboardEvent<HTMLButtonElement>) => {
+      if (from === 'favourites') {
+        // within Favourites: by row and column; Shift does nothing (there is no other section)
+        if (e.shiftKey || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return
+        if (moveInFavourites(id, stepFavourite(layout, id, e.key as ArrowKey, favColumns))) {
+          e.preventDefault()
+          refocus.current = id
+        }
+        return
+      }
       const place = placeOf(layout, id)
       if (!place) return
       const s = SECTION_IDS.indexOf(place.section)
@@ -422,7 +502,13 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
               <button className="btn small" onClick={() => setLayout(resetLayout(layout))}>
                 Reset
               </button>
-              <button className="btn small primary" onClick={() => setArranging(false)}>
+              <button
+                className="btn small primary"
+                onClick={() => {
+                  setArranging(false)
+                  setFavSay('')
+                }}
+              >
                 Done
               </button>
             </div>
@@ -462,20 +548,49 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
             (layout.favourites.length === 0 ? (
               <p className="muted small-text dash-favourites-empty">Star blocks with ☆ to see them here, on top.</p>
             ) : (
-              // the favourites also stay in their own section; these are copies, not dragged from here
-              <div className={`dashboard-grid${arranging ? ' arranging' : ''}`}>
+              // the favourites also stay in their own section; these copies move only within Favourites (T-0020)
+              <div className={`dashboard-grid dash-favourites-grid${arranging ? ' arranging' : ''}`}>
                 {(narrow ? [singleColumn(favouriteColumns(layout))] : favouriteColumns(layout)).map((col, visual) => (
                   <div className="dash-column" key={visual}>
-                    {col.filter(showing).map((id) => (
-                      <div key={id} className="dash-block">
-                        {arranging && <div className="block-tools">{star(id)}</div>}
-                        {blocks[id]}
-                      </div>
-                    ))}
+                    {col.filter(showing).map((id) => {
+                      const moving = drag?.place === 'favourites' && drag.id === id
+                      const marked = drag?.place === 'favourites' && drag.drop?.marker === id
+                      return (
+                        <div
+                          key={id}
+                          data-favourite={id}
+                          className={`dash-block${moving ? ' moving' : ''}${marked ? ' drop-before' : ''}`}
+                          style={moving ? { transform: `translate(${drag.dx}px, ${drag.dy}px)` } : undefined}
+                        >
+                          {arranging && (
+                            <div className="block-tools">
+                              <button
+                                className="btn icon small block-handle"
+                                aria-label={`Move ${BLOCKS[id]} within the favourites: drag it, or use the arrow keys`}
+                                title="Drag to move"
+                                {...handleProps(id, 'favourites')}
+                              >
+                                <span aria-hidden>⠿</span>
+                              </button>
+                              {star(id)}
+                            </div>
+                          )}
+                          {blocks[id]}
+                        </div>
+                      )
+                    })}
+                    {drag?.place === 'favourites' && drag.drop?.marker === `fav-end:${visual}` && (
+                      <div className="drop-end" aria-hidden />
+                    )}
                   </div>
                 ))}
               </div>
             ))}
+          {arranging && (
+            <p className="visually-hidden" role="status" aria-live="polite">
+              {favSay}
+            </p>
+          )}
         </section>
       )}
       {SECTION_IDS.map((section) => {
@@ -506,12 +621,13 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
                 {columnsOf(section).map((col, visual) => (
                   <div className="dash-column" key={visual}>
                     {col.filter(showing).map((id) => {
-                      const moving = drag?.id === id
+                      const moving = drag?.place === 'section' && drag.id === id
+                      const marked = drag?.place === 'section' && drag.drop?.marker === id
                       return (
                         <div
                           key={id}
                           data-block={id}
-                          className={`dash-block${moving ? ' moving' : ''}${drag?.drop?.marker === id ? ' drop-before' : ''}`}
+                          className={`dash-block${moving ? ' moving' : ''}${marked ? ' drop-before' : ''}`}
                           style={moving ? { transform: `translate(${drag.dx}px, ${drag.dy}px)` } : undefined}
                         >
                           {arranging && (
@@ -539,7 +655,9 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
                         </div>
                       )
                     })}
-                    {drag?.drop?.marker === `end:${section}:${visual}` && <div className="drop-end" aria-hidden />}
+                    {drag?.place === 'section' && drag.drop?.marker === `end:${section}:${visual}` && (
+                      <div className="drop-end" aria-hidden />
+                    )}
                   </div>
                 ))}
               </div>

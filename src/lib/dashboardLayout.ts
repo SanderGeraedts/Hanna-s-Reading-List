@@ -206,6 +206,70 @@ export function favouriteColumns(layout: DashboardLayout): Columns {
   return [layout.favourites.filter((_, i) => i % 2 === 0), layout.favourites.filter((_, i) => i % 2 === 1)]
 }
 
+/**
+ * Moving within Favourites (T-0020, D-0028). The order of Favourites is the
+ * order of `layout.favourites`, apart from each block's place in its own
+ * section: these only ever change that order, never the sections, hidden or
+ * folded, and never add or remove a favourite.
+ *
+ * `columns` is how many columns the grid shows: 2 (dealt left, right, left…
+ * by favouriteColumns) or 1 on a narrow screen (the list itself).
+ */
+
+/** A favourite moved to list place `index` among the other favourites (the end when past it). */
+export function moveFavouriteTo(layout: DashboardLayout, id: BlockId, index: number): DashboardLayout {
+  if (!layout.favourites.includes(id)) return layout
+  const others = layout.favourites.filter((x) => x !== id)
+  others.splice(Math.max(0, Math.min(index, others.length)), 0, id)
+  return { ...layout, favourites: others }
+}
+
+/**
+ * A favourite dropped in column `column` before the block at row `row` of that
+ * column (rows counted without the dragged block): list place `2 × row + column`
+ * of the others with two columns, `row` with one, or the end when past it.
+ */
+export function moveFavourite(
+  layout: DashboardLayout,
+  id: BlockId,
+  column: 0 | 1,
+  row: number,
+  columns: 1 | 2 = 2,
+): DashboardLayout {
+  return moveFavouriteTo(layout, id, columns === 2 ? 2 * row + column : row)
+}
+
+/** Where a favourite shows: its list place, and its column and row in the grid; null when it isn't one. */
+export function favouritePlace(
+  layout: DashboardLayout,
+  id: BlockId,
+  columns: 1 | 2 = 2,
+): { index: number; column: 0 | 1; row: number } | null {
+  const index = layout.favourites.indexOf(id)
+  if (index < 0) return null
+  return columns === 2 ? { index, column: (index % 2) as 0 | 1, row: Math.floor(index / 2) } : { index, column: 0, row: index }
+}
+
+export type ArrowKey = 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight'
+
+/**
+ * An arrow key on a favourite's handle. Two columns: Up/Down a row (−2/+2),
+ * Left from the right column (−1), Right from the left one (+1). One column:
+ * Up/Down one place, Left/Right nothing. At an edge the same layout comes back.
+ */
+export function stepFavourite(layout: DashboardLayout, id: BlockId, key: ArrowKey, columns: 1 | 2 = 2): DashboardLayout {
+  const place = favouritePlace(layout, id, columns)
+  if (!place) return layout
+  const { index } = place
+  const step =
+    columns === 2
+      ? { ArrowUp: -2, ArrowDown: 2, ArrowLeft: place.column === 1 ? -1 : 0, ArrowRight: place.column === 0 ? 1 : 0 }[key]
+      : { ArrowUp: -1, ArrowDown: 1, ArrowLeft: 0, ArrowRight: 0 }[key]
+  const to = index + step
+  if (step === 0 || to < 0 || to > layout.favourites.length - 1) return layout
+  return moveFavouriteTo(layout, id, to)
+}
+
 /** Adds a hidden block back in its own section, at the top of the shorter column, where she sees it straight away. */
 export function showBlock(layout: DashboardLayout, id: BlockId): DashboardLayout {
   const next = without(layout, id)
