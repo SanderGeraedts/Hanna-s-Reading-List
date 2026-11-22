@@ -306,6 +306,67 @@ Night mode: nothing was asked; the fix ships with these picks and each is easy t
    still flies out of the shelf as before. Should the book also just appear, without flying?"
    (Only relevant if she uses that setting; if so, it is a small follow-up task.)
 
+## Review after building (2026-11-22)
+
+(UX designer. Looked at: `git diff origin/main...HEAD -- src`, the 21 screenshots in
+`docs/tasks/T-0026-screens/` (4 before, 17 after) and the checks in the developer's *Log*.)
+
+**Verdict: matches the design. No must-fix items.** Hand to the tester.
+
+### State by state
+
+| Design says | Seen | |
+|---|---|---|
+| Book at zoom 3 on the phone: whole, same size and place as at zoom 1, between the header and the sheet | `open-zoom3-390-*` against `open-zoom1-390-*`: the cover stands in the same spot and at the same size (top ≈ 363 px, bottom ≈ 882 px in both), whole, in front of the case | matches |
+| Panned to an end | `open-zoom3-panned-390-*`: whole and centred; the wall beside the case is dimmed too | matches |
+| Room as dark as at zoom 1, both wallpapers | lavender and midnight at zoom 3 look as dark as at zoom 1; on the computer the room is **now dimmed at 3×** (`open-zoom3-1280-*` against `before-open-zoom3-1280-lavender.jpg`) | matches |
+| Cover in full light, also the tallest book at zoom 1 | `open-zoom1-390-*`: Title 28 (the tallest) is bright; before, Title 5 was dull | matches |
+| Step back eases together with the flight, no frame with the book inside the case | `open-flight-390-lavender` (0.3 s): book whole, outside the case, the shelf still close (the camera is easing) | matches |
+| Closing: same zoom and pan, ‹ › as before | `open-closed-zoom3-390-lavender`: zoom 3, left end, ‹ off, › on | matches |
+| Reduced motion: the camera there in one frame | `open-zoom3-390-reduced-lavender` (0.1 s): shelf already at its stepped-back size, the book still at its slot, the dimming just starting | matches |
+| Search pop-up under the button, opening rightwards, on screen at every width; phone as on main | `search-1024/1280/1440/1920-*`: left edge in line with the search button, list fully on screen (24–408, 593–977, 1073–1457 px); `search-390-lavender` as on main | matches |
+| No new colours, words or hint text | none in the diff (D-0014, D-0020, D-0022) | matches |
+
+I also simulated the closing flight with motion on (camera `damp(…, 3)`, book `progress` at 4.5,
+zoom 3 on the phone): the book flying home is at most about 12 % larger than when it was open,
+and only for ~0.2 s, the same as the developer's 15 % for opening. That reads as "the same in
+reverse". The tester could add one screenshot about 0.2 s after × to see it.
+
+### The developer's notes
+
+1. **Turning reach is half the book's 3D diagonal, not half the cover's width.** Accepted. My
+   rule was there so a turned book never cuts the dimming; the 3D diagonal is what really keeps
+   that promise, at the cost of a few cm more step back, which no one sees behind the dimming.
+2. **Sheet at its highest (0.88): the book reaches under the header and the camera steps back
+   about 4 m.** **Follow-up, not must-fix.** Reasons: it only happens with the sheet dragged
+   almost to the top, where there is 2 % of the screen left for a book; the part under the header
+   is the same on main (where the book was also behind the case, so this build is already better);
+   the book stays whole and in front and the room stays dimmed (the case is about 4 m away, still
+   in front of the fog that starts at 6 m); and the right answer is a design choice, not a bug fix.
+   Follow-up task for the architect: while a book is out on the phone, either keep the sheet
+   lower than `SHEET_MAX` so a book always has room (my first pick: stop the sheet at the height
+   where `portraitInspect`'s minimum still fits under the header), or let the book shrink further.
+   Either way the 4 m step back then disappears with it. The paper clip of a bookmarked book
+   reaching under the dashboard buttons (`open-zoom3-panned-390-*`) belongs to the same task; it
+   is the same at zoom 1.
+3. **The flight stays on the camera's target; a book flying home keeps the last spot it had.**
+   Accepted. Without it the book would jump into the case the moment she closes it. The
+   simulation above shows the closing flight stays smooth.
+4. **Reduced motion: putting the book back, the camera jumps forward first and the book flies home
+   from close by, large for a moment.** **Follow-up, not must-fix.** It is what section 2 asked
+   for (camera straight back in the frame the book goes back, the book's flight unchanged), and it
+   is only seen with that setting on. By my sums the book looks about 1.8 × its open size for a
+   moment at zoom 3, which is the kind of sudden change reduced motion is meant to avoid. Fold it
+   into Hanna's question 2: if she uses the setting, the follow-up either makes the book appear and
+   disappear without flying, or (smaller) jumps the camera back only once the book is home.
+
+### Follow-ups (not blocking)
+
+- F1 (note 2): the sheet at its highest leaves no room for the book; decide sheet cap or smaller
+  book; also covers the 4 m step back and the bookmark clip under the header.
+- F2 (note 4): reduced motion, the book large for a moment when put back; decide with Hanna's
+  answer to question 2.
+
 # Build notes
 
 - **The sums (2):** new `src/components/inspectPlacement.ts`. `inspectPlacement({ cameraZ,
@@ -407,3 +468,10 @@ Night mode: nothing was asked; the fix ships with these picks and each is easy t
   the reduced-motion run: putting the book back, the camera jumps forward first and the book flies
   home from close by, large for a moment; that is the book's flight, kept as designed (Hanna's
   question 2). Draft PR #238. Handed to the ux-designer for the design check.
+- 2026-11-22 ux-designer: reviewed: matches, no must-fix. All 17 after-screenshots match the
+  design state by state (book at zoom 3 same size and place as at zoom 1, room dimmed on both
+  wallpapers and now at 3× on the computer, tallest cover bright, closing back to the same zoom and
+  pan, reduced motion, search pop-up on screen at 1024–1920). Notes 1 and 3 accepted; notes 2
+  (sheet at 0.88: book under the header, 4 m step back, same on main) and 4 (reduced motion: book
+  large for a moment when put back) are follow-ups F1 and F2 under *Review after building*. Handed
+  to the tester.
