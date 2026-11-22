@@ -2,7 +2,7 @@
 id: T-0034
 title: "Bring the hardcover books back on phones, lighter to draw, with a Detailed books switch in the room panel"
 description: "Phones show the hardcovers (pages, boards, spine, ridges) again instead of the simple blocks from T-0003, after making each hardcover one merged piece of at most two draws on the shelf; measured against the blocks at 390 × 844 with 150 books; a Detailed books on/off switch in the 🎨 room panel, per device, on by default; the SafeBookshelf note stays."
-status: Open
+status: Doing
 size: full
 depends_on: []
 decisions: [D-0002, D-0014, D-0020, D-0022, D-0035, G-0019, G-0031]
@@ -357,3 +357,55 @@ says so.
   the computer's except for T-0003's lighter settings, and the medal rim follows the phone, not
   the switch. Added design checks to *Done when* and a 12-row screenshot list. No new questions
   for Hanna. Handed to the **developer**.
+- 2026-11-22 developer: built (night mode, nothing asked). **Shelf hardcover:** `shelfHardcover(dims)`
+  is one indexed geometry (288 vertices, 990 indices, 11.2 kB; `main`'s parts were about 21.6 kB)
+  with two groups: paper (the page block's fore-edge, top, bottom; its hidden sides dropped) and
+  cloth (rounded spine and boards, `mergeVertices` + `mergeGeometries`). It is drawn with the
+  material pair the shelf block already used (`materials.shelf`), so the shelf look is unchanged.
+  The boards' outer faces sample one plain texel of the spine picture (u 0.5, 7.5 % from the
+  top), the book's own colour, where `main` used a plain-colour texture. Books of the same size
+  to 0.1 mm share the geometry (ref-counted; with heights hashed per book this rarely saves
+  much). **Ridges: one `InstancedMesh` for the whole shelf** (`ShelfRidges`, 4 places per book,
+  empty for a read book's bottom pair), not painted UVs: the gilded ridges keep `main`'s
+  metallic material (metalness 0.75), which the cloth group (0.02) can't give. Each book writes
+  its ridges' matrices from its own `useFrame` only when it moved, so they follow hover, drag and
+  take-out with no lag; 1 draw (+1 shadow) for every ridge. **Look:** `bookLook({ detailed,
+  takenOut })`; "taken out" now means out or still flying back (it used to stay on after the
+  first take-out), so a book returns to the light piece when it lands. `simple` became
+  `detailed` (follows `room.detailedBooks`) and `lite` (medal rim only). Switch, note action and
+  tooltip as designed; `decorKinds` now follows `room.decor` only, so switching relays nothing.
+  **Measured** (`pnpm run measure:shelf`, built app on port 3140, no `POCKETBASE_URL`, no
+  `.netlify` link, headless Chrome with SwiftShader, 150/400 demo books seeded, 3 s window;
+  phone = 390 × 844, DPR 3, touch, `isMobile`):
+
+  | 390 × 844, at rest | 150 on | 150 off | 400 on | 400 off | Budget | Result |
+  |---|---|---|---|---|---|---|
+  | Draw calls per frame | 95 | 94 | 95 | 94 | on ≤ 1.25 × off | 1.01 × ✓ |
+  | Draw calls per 3 s | 2,470 | 2,632 | 3,040 | 3,760 | on ≤ 1.25 × off | 0.94 / 0.81 × ✓ (frame rate varies under SwiftShader) |
+  | Picture bytes (allocated) | 23.20 MB | 23.20 MB | 23.47 MB | 23.47 MB | ± 5 % | 0 % ✓ |
+  | Geometry bytes (`bufferData`) | 0.980 MB | 0.696 MB | 1.045 MB | 0.696 MB | on ≤ 2 MB and ≤ off + 2 MB | ✓ |
+  | Draw calls behind the Dashboard (3 s) | 0 | 0 | 0 | 0 | 0 | ✓ |
+  | Live WebGL buffers / textures | 299 / 31 | 294 / 31 | 299 / 31 | 294 / 31 | (recorded) | |
+  | Contexts lost / note shown | 0 / no | 0 / no | 0 / no | 0 / no | (recorded) | |
+
+  | 1280 × 800, Detailed on | 150 branch | 150 `main` | 400 branch | 400 `main` | Budget | Result |
+  |---|---|---|---|---|---|---|
+  | Draw calls per frame (with shadow passes) | 926 | 8,544 | 2,199 | 21,321 | lower than `main` | about 9 × fewer ✓ |
+  | Picture bytes | 123.66 MB | 123.72 MB | 251.03 MB | 251.10 MB | ± 5 % | −0.05 % ✓ |
+  | Geometry bytes | 4.97 MB | 6.89 MB | 12.64 MB | 17.81 MB | (recorded) | |
+  | Live WebGL buffers / textures | 1,419 / 162 | 4,354 / 173 | 3,485 / 412 | 11,320 / 423 | (recorded) | |
+
+  Before/after, `main`'s hardcover forced on the phone (temporary build with `simple={false}`,
+  not committed), 150 books: 621 draw calls per frame, 14,904 per 3 s, 1.197 MB geometry,
+  23.27 MB pictures, 680 / 42 live buffers / textures (400 books: the same per frame). The phone
+  frames only the top of the case, so these count the books in view (frustum-culled books are
+  never uploaded or drawn), alike for every look. `renderer.info.memory` is not reachable from
+  the page without app code, so the script records live WebGL buffers and textures
+  (created − deleted) instead. All budgets met, so the phone default is the hardcovers.
+  Screenshots: all 12 rows of the design list in `T-0034-screens/` (preview build, 150 demo
+  books; row 3 is zoom 1.4³ ≈ 2.7, three presses of Zoom in; rows 8–11 by `WEBGL_lose_context`).
+  Tab from the last *Wallpaper* chip lands on *Detailed books* (390 and 1280); after *Show
+  simple books* the box is unticked. Row 12: `main` and the branch at 1280 look the same.
+  Checks: `pnpm test` 913 passed, 9 skipped (93 files); `tsc --noEmit` clean; `pnpm run build`
+  passes. Not done here (tester): toggling ten times and comparing memory counts, WebGL turned
+  off entirely (the unit tests cover the note), reload / other-profile checks in a browser.
