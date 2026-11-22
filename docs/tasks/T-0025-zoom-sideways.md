@@ -620,7 +620,125 @@ All eight design checks are ticked. On to the tester; the follow-up above stays 
 
 # Test
 
-To be written by the tester.
+(tester, 2026-11-22, branch `t-0025-zoom-sideways` at c9baadf, draft PR #236)
+
+**Verdict: passed.** Every *Done when* check I can run passed; the last one (Hanna on her phone
+and computer, on the live site after the merge) is hers, so the task stays *Doing* with a
+`Remaining:` line.
+
+## Commands (from `pnpm install --frozen-lockfile`)
+
+| Command | Output |
+|---|---|
+| `pnpm test` (before my test) | `Test Files 90 passed \| 1 skipped (91)`, `Tests 865 passed \| 9 skipped (874)` |
+| `pnpm test` (with my test) | `Test Files 91 passed \| 1 skipped (92)`, `Tests 869 passed \| 9 skipped (878)` |
+| `pnpm exec tsc --noEmit` | no output, exit 0 |
+| `pnpm run build` | `✓ built in 602ms` |
+| `pnpm exec harness check` | `✓ tasks: 25 tasks, index in step` · `✓ decisions: 35 records, index complete, 3 overrules valid` · `✓ engineers: 2 listed` · `✓ generated files: current` |
+| `git status` after build | only my new test; `src/routeTree.gen.ts` unchanged |
+
+The named existing tests (`SafeBookshelf.test.tsx`, `contextLoss.test.ts`, `BookMesh.test.ts`,
+`Dashboard.favourites.test.tsx`) are in the passing run. The developer's three new test files
+cover every bullet of *Done when* (clamp, edges, steps, arrow-key rule, mouse-press rule, camera
+at ±xMax / 0 / parallax, the buttons' states, clicks and names).
+
+## Test I added
+
+`src/components/shelfPanFraming.test.ts`, 4 tests:
+
+- **Zoom 1 never pans** on 10 screen shapes (360 × 780 up to 2560 × 1080, a phone on its side
+  and tablets) with 1, 12, 60 and 200 books, using the real `fitShelf` / `computeLayout` and
+  `frameCase`: `panEdges(...).canPan` is false, so ‹ › stay hidden and ← → do nothing there.
+  Zoomed in to 3× with 60 books, every shape can pan.
+- **The inspect view**: settled at either end and in the middle with no parallax (none while a
+  book is open), the camera looks straight ahead, and a point straight in front of the resting
+  camera (where an opened book flies to) projects to the middle of the screen (NDC 0, 0). While
+  gliding from one end to the other it keeps looking straight ahead each frame (no swing) and
+  doesn't jump.
+
+## Reading the diff (`git diff main...HEAD -- src`)
+
+- **Camera aim / inspect / search / parallax:** `aimCamera` eases `lookX` to the pan at the
+  same rate as the camera's x, and the parallax only moves the camera, so "no bobbing" stays. An
+  opened book goes to `cameraBase.x` (BookMesh), which is now straight ahead of the camera, so the
+  inspect view is centred even when panned (before it was off to one side). The search's
+  "pan to the first match" sets `scroll.current.x` and now really moves the view.
+- **Wall drag vs click vs book drag:** decided at the first move past 6 px; `pending` (set by
+  the book's own handler) or a running book drag wins. The press is only noted on the canvas, so
+  ‹ › and other HTML never start one; the scroll effect isn't there with a book open.
+- **Edge pan while dragging a book:** in the frame loop next to the top/bottom edge scroll, only
+  when the shelf can pan.
+- **← →:** one `window` listener, removed while a book is open or off the shelf; panels are
+  found at the key press (`[role="dialog"], dialog[open]`), so a closed panel can't leave the
+  arrows off (every panel unmounts when closed: RoomPanel, WishCard, QuickUpdate, WrapUpCard;
+  AddBookDialog and CoverPicker are `<dialog>`s, matched only when `open`). Inputs, selects,
+  star ratings (inside the book panel, and a book open turns the arrows off anyway) and the
+  dashboard's Shift + arrows keep their keys.
+- **Zoom buttons without `icon`:** `.btn.icon` only set width/height 2.4rem, `padding: 0`,
+  `inline-grid` and `line-height: 1`; `.zoom-controls .btn` already sets the size (44 px),
+  `padding: 0` and `grid`. Nothing in `src` looks the zoom buttons up by `.icon`; `.btn.icon`
+  elsewhere (menu, close buttons) is untouched.
+
+## Clicked through
+
+`pnpm exec vite dev --port 3137 --strictPort` (no backend, no `POCKETBASE_URL` in the
+environment, no `.env`), playwright-core with Chrome, 80 books seeded in localStorage (two being
+read, so the quick update shows). To tell whether the shelf moved, I measured the horizontal
+shift between two canvas screenshots (best-matching offset), with the mouse parked over the
+header so the parallax doesn't count. My own scripts, not the developer's.
+
+**1280 × 800, mouse: 46 checks, all passed, no console errors.**
+
+- Zoom 1: ‹ › hidden, wall cursor `auto`, → moves nothing (0 px). The four zoom buttons are
+  `btn` only and 44 × 44.
+- Zoom 3: both ready in the middle; › moved the content 584 px left and reached the right end in
+  one press (clamped), › dimmed; a press on the dimmed › moves 0 px.
+- Cursor (`canvas.style.cursor`): `grab` over the back wall and the wall past the right end,
+  `grabbing` during a wall pan, `grab` again after release, `grabbing` while dragging a book.
+- Wall drag 300 px right → content 300 px right; 225 px left → 220 px left (1:1). A wall pan
+  dragged down over a book and released there: no book opens, saved order unchanged. A
+  right-button drag on the wall: 0 px.
+- A click on the wall opens nothing and leaves focus on `body`; ← moved 248 px, → 252 px
+  (a fifth of 1280); Shift + ←, Alt + ← and ↑ moved nothing.
+- **Panels (as the UX reviewer asked):** room panel (closed with ×, with Escape and with 🎨
+  again), Make a wish (Escape, and a click on the backdrop) and quick update (× and Escape):
+  open, ← moved 0 px; closed, no dialog left in the page, and ← → worked again straight away
+  (focus on `body` after each close, or on 🎨 after the toggle, which counts as a shelf button)
+  and after a click on the wall.
+- Search box: ← ← moved the caret 5 → 3, the shelf 0 px (measured after the search's own pan
+  had settled). From the left end, searching "Title 80" panned the view to it (‹ ready again,
+  Title 80 on screen).
+- A click on a book while panned opens it centred in front; ‹ › hidden; ← with the book open
+  doesn't move the shelf; Escape closes it and ‹ › come back.
+- Dragging a book (cursor `grabbing`) to the right edge panned to the end (› dimmed), and
+  dropping it changed the saved order; nothing opened.
+- Sideways wheel to the right: content 288 px left (books to the right); Shift + scroll up:
+  292 px right.
+- ⤢ back to zoom 1: hidden, → 0 px. No horizontal page scroll.
+
+**390 × 844, `hasTouch` / `isMobile`, real CDP touch events (`Input.dispatchTouchEvent`): 23
+checks, all passed, no console errors.**
+
+- Touch confirmed (`maxTouchPoints > 0`, `pointer: coarse`). Zoom 1: hidden. A two-finger pinch
+  zooms in and ‹ › appear; ⤢ hides them; + to 3×: both ready.
+- A vertical swipe scrolls and leaves the pan alone (0 px sideways). A 150 px sideways swipe
+  moves the content 143 px; the right end in 3 swipes, the left end in 5; lifting the finger
+  opened nothing.
+- › taps reach the right end in 3, ‹ the left end in 3; a tap on the dimmed › moves 0 px and
+  opens nothing. › is 44 × 44 and ends 103 px above the zoom column. At the left end ‹ lies on
+  the case's side, beside the first book.
+- A tap opens a book (‹ › hidden); closing it brings them back. Press, hold 600 ms and drag a
+  book to the right edge: it panned to the end, and the drop changed the saved order; nothing
+  opened. ⤢: hidden again. No horizontal page scroll.
+
+Afterwards I stopped vite; port 3137 is free.
+
+## Not checked here
+
+- Real iPhone / Android hardware and a real trackpad: that is Hanna's check on the live site.
+- Seen in passing, not from this change: with the search open at 1280 the search field's
+  popover sits half off the left edge in my screenshot. This branch doesn't touch `SearchBox` or
+  its CSS; I didn't check main, so it is a note for the architect, not a reason to send this back.
 
 # Log
 
@@ -659,3 +777,11 @@ To be written by the tester.
   `harness check` all ✓. Lesson added. Handed back to the UX designer.
 - 2026-11-22 ux-designer: reviewed: pass. Both must-fixes checked on the diff and the four new
   screenshots; all design checks ticked. Handed to the tester.
+- 2026-11-22 tester: passed. `pnpm test` (869 passed, 9 skipped, with my new
+  `shelfPanFraming.test.ts`), `tsc --noEmit`, `pnpm run build` and `harness check` green;
+  clicked through on vite at 3137 with no backend (1280 mouse: 46 checks; 390 real touch: 23
+  checks; all passed, no console errors), including the room panel, Make a wish and quick update
+  opened and closed with ← → working again after each. Marked PR #236 ready.
+  Remaining: Hanna tries moving along the zoomed-in shelf on her phone and her computer on the
+  live site after the merge (‹ ›, swipe, wall drag, ← →) and says it works; then Done, and close
+  #234 by hand if auto-merge didn't.
