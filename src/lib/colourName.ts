@@ -25,6 +25,10 @@ export function colourName(hex: string): string {
     if (hue < 0) hue += 360
   }
 
+  // HSL saturation: how much colour there is for its lightness
+  const sat = chroma === 0 ? 0 : chroma / (1 - Math.abs(2 * light - 1))
+  const warm = hue < 68 || hue >= 340
+
   const prefix = light < 0.22 ? 'dark ' : light > 0.72 ? 'light ' : ''
   let name: string
   if (light > 0.8 && chroma < 0.25 && hue >= 30 && hue <= 65) name = 'cream'
@@ -32,8 +36,11 @@ export function colourName(hex: string): string {
     if (light < 0.12) name = 'black'
     else if (light > 0.93) name = 'white'
     else name = prefix + 'grey'
-  } else if (hue < 15 || hue >= 340) name = prefix + 'red'
-  else if (hue < 45) name = light < 0.35 ? (light < 0.15 ? 'dark brown' : 'brown') : prefix + 'orange'
+  }
+  // muted warm colours (dusty brown-red, tan, taupe) are what people call brown (T-0019 review, M1)
+  else if (warm && sat < 0.35 && light >= 0.15 && light <= 0.6) name = light < 0.22 ? 'dark brown' : 'brown'
+  else if (hue < 15 || hue >= 340) name = prefix + 'red'
+  else if (hue < 45) name = light < 0.45 ? (light < 0.15 ? 'dark brown' : 'brown') : prefix + 'orange'
   else if (hue < 68) name = light < 0.3 ? (light < 0.15 ? 'dark brown' : 'brown') : prefix + 'yellow'
   else if (hue < 160) name = prefix + 'green'
   else if (hue < 195) name = prefix + 'teal'

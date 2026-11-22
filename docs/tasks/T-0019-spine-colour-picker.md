@@ -530,3 +530,11 @@ To be written by the tester.
   36 screenshots. Accepted 10 colour groups, the thin focus-ring gap at 1× and doing nothing on a
   tap of the current swatch. Must fix M1: muted warm colours are named "Brown", not "Red" or
   "Orange". Handed back to the developer.
+- 2026-11-22 developer: fixed M1. `colourName` now names muted warm colours brown: a warm hue
+  (below 68° or from 340°) with HSL saturation under 0.35 and lightness 0.15–0.6 is "Brown" ("Dark
+  brown" under 0.22), and a mid-dark orange (lightness under 0.45) is "Brown". Added the review's
+  cases (`#72564d`, `#8a5a2b`, `#a8875f` → Brown; the others unchanged) and the real Harry Potter row
+  ("Brown, dominant", "Brown 2", "Dark blue", "Brown 3", "Dark grey", "Grey"). The component test's
+  palette has a muted brown, named "Brown". Lesson added. `pnpm test`: 82 files passed, 1 skipped;
+  649 tests passed, 9 skipped. `pnpm exec tsc --noEmit`: no errors. `pnpm exec harness check`: all ✓.
+  Back to the UX designer.

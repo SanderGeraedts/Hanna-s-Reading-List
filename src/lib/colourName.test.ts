@@ -12,7 +12,9 @@ describe('colourName (T-0019)', () => {
     ['#6b4c8a', 'Purple'],
     ['#c4467e', 'Pink'],
     ['#e07b1f', 'Orange'],
-    ['#8a5a2b', 'Orange'],
+    ['#8a5a2b', 'Brown'],
+    ['#72564d', 'Brown'],
+    ['#a8875f', 'Brown'],
     ['#5a3a1b', 'Brown'],
     ['#d1d100', 'Yellow'],
     ['#3d3d3d', 'Grey'],
@@ -45,5 +47,12 @@ describe('swatchNames (T-0019)', () => {
 
   it('has no dominant without cover swatches', () => {
     expect(swatchNames(['#7a2e2e'], false)).toEqual(['Red'])
+  })
+})
+
+describe('muted warm swatches are brown (T-0019 review, M1)', () => {
+  it('names the real Harry Potter cover row without a red or orange that isn’t there', () => {
+    const names = swatchNames(['#72564d', '#a17e5a', '#1c3654', '#583a39', '#322d32', '#534d60'], true)
+    expect(names).toEqual(['Brown, dominant', 'Brown 2', 'Dark blue', 'Brown 3', 'Dark grey', 'Grey'])
   })
 })

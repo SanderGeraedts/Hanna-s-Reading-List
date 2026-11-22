@@ -15,7 +15,7 @@ vi.mock('#/lib/cover', async (importOriginal) => ({
 const ANALYSIS: CoverAnalysis = {
   color: '#7a2e2e',
   aspect: 0.66,
-  palette: ['#7a2e2e', '#2e4a7a', '#d1d100', '#2f5d46'],
+  palette: ['#7a2e2e', '#2e4a7a', '#d1d100', '#72564d'],
 }
 
 function book(patch: Partial<Book>): Book {
@@ -135,6 +135,6 @@ describe('Spine colour row (T-0019)', () => {
     expect(swatches().every((s) => s.tagName === 'BUTTON')).toBe(true)
     expect(names.every((n) => n && !/#/.test(n))).toBe(true)
     expect(new Set(names).size).toBe(names.length)
-    expect(names).toEqual(['Red, dominant', 'Blue', 'Yellow', 'Green', 'Red 2'])
+    expect(names).toEqual(['Red, dominant', 'Blue', 'Yellow', 'Brown', 'Red 2'])
   })
 })
