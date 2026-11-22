@@ -261,6 +261,60 @@ screens, and `.visually-hidden`. Nothing new goes in `src/styles.css`.
 - The rest of the block (books waiting, the pages line, the pace line, the motivation part) is
   unchanged.
 
+## Review after building (2026-11-22)
+
+**Verdict: matches the design. No must-fix items.** Handed to the tester.
+
+Looked at: `git diff main...HEAD -- src` (`src/lib/pileHeight.ts`, `PileHeightLine` and `Height`
+in `src/components/DashboardExtras.tsx`, the two test files) and all 20 screenshots in
+`docs/tasks/T-0021-screens/` (5 cases × 390/1280 × lavender/midnight).
+
+The design checks, one by one:
+
+- [x] **Place and style.** On every screen with books the line sits between the grey pages line and
+  the pace line, in cream body text the same size and weight as the pace line, with no class of its
+  own (the developer measured `rgb(244, 234, 217)`, 16px, 400 for both). It starts with 📚, or 🎧 for
+  the all-audiobooks pile. Nothing was added to `src/styles.css`.
+- [x] **Wording.** Matches the table exactly:
+  - normal: "📚 Stacked up, your pile would be 1.62 m: about as tall as an adult (1.75 m)."
+  - big: "… 12.4 m: taller than a house (8 m)."
+  - tiny: "… 4 cm: not as tall as a mug (10 cm) yet."
+  - audiobooks: "🎧 Your pile is all audiobooks, so it takes up no room at all."
+  - empty: no line, and "0 books waiting" is still there.
+  
+  The normal pile has 3 Storytel-only books mixed in and shows no extra note, as designed.
+- [x] **Wrapping.** At 390 every line wraps over two lines with nothing cut off. At 1280 the big and
+  tiny lines move "(8 m)" and "(10 cm)" to the second line as a whole, which shows the non-breaking
+  space doing its job. The source has U+00A0 in `Height` and after both emoji. No horizontal
+  scroll at either width. Lavender and midnight look the same, because the card is walnut on both.
+- [x] **Screen reader.** Each height is an `aria-hidden` "1.62 m" plus a `.visually-hidden` "1.62
+  metres". The emoji is `aria-hidden`. The card test checks the heard text ("… 1.62 metres: about as
+  tall as an adult (1.75 metres).") and the singular forms ("1 metre", "1 centimetre"). The line
+  is a plain `<p>`, with no role, no live region and nothing that takes focus.
+- [x] **Rest of the block.** Books waiting, the pages · listening line, the pace line, the divider,
+  the in/out sentence, "Last 6 months" and the two jars are unchanged and in the same order on
+  every screen.
+
+**Developer choice 15 (closest by log distance): accepted.** "Closest by ratio" should treat
+"10% shorter" and "10% taller" as the same distance, and `|ln(pile ÷ thing)|` does that. It
+picks the same thing as comparing `max(r, 1/r)`. It also gives the answer the *Done when*
+requires (0.97 m → the kitchen counter, not the door handle), and she only ever sees the result,
+so nothing about it is visible as a design choice. Keep it.
+
+**Thousands comma: accepted, keep it.** Every number in the app uses `en-GB`, with a decimal point
+and a thousands comma, like "14,100 pages" two lines above. A height written as "1234 m" would be
+the odd one out. Screen readers say "1,234 metres" correctly. In practice the pile would need
+roughly 29,000 books before it shows a comma, so this only keeps the app consistent and doesn't
+change anything she will see.
+
+**Differences, none of them to fix:**
+
+- The screenshots are cropped to the card, so the wallpaper itself isn't visible. The card is the
+  same walnut surface on both, so this proves the "looks the same" check well enough. The tester may
+  take a wider shot if they want to.
+- The empty pile also has no pace line or "Finished on" note. That was already so on `main` and
+  this task doesn't touch it.
+
 # Build notes
 
 - **Code:** `src/lib/pileHeight.ts` (pure): `pileHeight(books)` → `{ metres, counted, listenOnly }`
@@ -314,3 +368,6 @@ To be written by the tester.
   new; `pnpm exec tsc --noEmit` → no errors; `pnpm run build` → built; `pnpm exec harness check`
   → tasks, decisions, engineers, generated files all ✓. 20 screenshots (5 cases × 390/1280 ×
   lavender/midnight), no console errors. Handed to the UX designer for review.
+- 2026-11-22 ux-designer: reviewed: matches the design, no must-fix items. All 20 screenshots and
+  the `src` diff checked against the design checks. Choice 15 (closest by log distance) and the
+  `en-GB` thousands comma accepted. Handed to the tester.
