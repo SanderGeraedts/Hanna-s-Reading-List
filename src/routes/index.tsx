@@ -473,6 +473,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             topInset={headerPx}
             paused={offShelf}
             room={room}
+            onRoom={setRoom}
             onPan={setPan}
             panControl={panControl}
           />
@@ -489,7 +490,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             <button className="btn" aria-label="Show the whole bookcase" title="Show the whole bookcase" disabled={zoom <= 1} onClick={() => setZoom(1)}>
               ⤢
             </button>
-            <button className="btn" aria-label="Your room" title="Your room: wood, wallpaper, decorations" aria-expanded={roomOpen} onClick={() => setRoomOpen(!roomOpen)}>
+            <button className="btn" aria-label="Your room" title="Your room: wood, wallpaper, books, decorations" aria-expanded={roomOpen} onClick={() => setRoomOpen(!roomOpen)}>
               🎨
             </button>
           </div>

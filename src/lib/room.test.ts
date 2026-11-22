@@ -19,6 +19,24 @@ describe('make the room yours', () => {
     expect(r.decor.length).toBe(DEFAULT_ROOM.decor.length)
   })
 
+  it('draws detailed books by default, and only a saved false turns them off (D-0035)', () => {
+    expect(DEFAULT_ROOM.detailedBooks).toBe(true)
+    expect(cleanRoom({}).detailedBooks).toBe(true)
+    for (const v of [undefined, null, 'no', 1, 0, 'false']) expect(cleanRoom({ detailedBooks: v }).detailedBooks).toBe(true)
+    expect(cleanRoom({ detailedBooks: false }).detailedBooks).toBe(false)
+    expect(cleanRoom({ ...DEFAULT_ROOM, detailedBooks: false }).detailedBooks).toBe(false)
+  })
+
+  it('loads a room saved before the switch with detailed books on and its other choices kept', () => {
+    const old = { wood: 'cherry', wallpaper: 'midnight', decor: [{ kind: 'mug', on: false }] }
+    const r = cleanRoom(JSON.parse(JSON.stringify(old)))
+    expect(r.detailedBooks).toBe(true)
+    expect(r.wood).toBe('cherry')
+    expect(r.wallpaper).toBe('midnight')
+    expect(r.decor[0]).toEqual({ kind: 'mug', on: false })
+    expect(r.decor.length).toBe(DEFAULT_ROOM.decor.length)
+  })
+
   it('switches decorations off and moves them up or down', () => {
     let r = toggleDecor(DEFAULT_ROOM, 'koala')
     expect(shownDecor(r)[0]).toBe('cat')

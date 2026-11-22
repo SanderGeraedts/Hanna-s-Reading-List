@@ -30,7 +30,7 @@ export function useRoom() {
   return [room, setRoom] as const
 }
 
-/** The 🎨 Room panel: wood, wallpaper and decorations; the shelf changes live behind it. */
+/** The 🎨 Room panel: wood, wallpaper, books and decorations; the shelf changes live behind it. */
 export function RoomPanel({ room, onRoom, onClose }: { room: Room; onRoom: (room: Room) => void; onClose: () => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -71,6 +71,15 @@ export function RoomPanel({ room, onRoom, onClose }: { room: Room; onRoom: (room
             </button>
           ))}
         </div>
+      </div>
+
+      {/* above the decorations, so it shows on a phone without scrolling (T-0034) */}
+      <div className="room-row" role="group" aria-label="Books">
+        <span className="muted small-text">Books</span>
+        <label className="room-toggle">
+          <input type="checkbox" checked={room.detailedBooks} onChange={() => onRoom({ ...room, detailedBooks: !room.detailedBooks })} />
+          <span>Detailed books</span>
+        </label>
       </div>
 
       <div className="room-row">
