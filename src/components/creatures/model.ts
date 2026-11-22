@@ -136,6 +136,11 @@ export function orientBetween(obj: THREE.Object3D, a: Vec3, b: Vec3): number {
   return length
 }
 
+/** z of the front surface of an ellipsoid (centre c, radii r) at x, y: where to put eyes, patches and markings. */
+export function front(c: Vec3, r: Vec3, x: number, y: number): number {
+  return c[2] + r[2] * Math.sqrt(Math.max(0, 1 - ((x - c[0]) / r[0]) ** 2 - ((y - c[1]) / r[1]) ** 2))
+}
+
 // ---------------------------------------------------------------------------
 // Materials: palette slots in, four shared kinds out (Design §3)
 // ---------------------------------------------------------------------------
@@ -359,7 +364,7 @@ export function finishCreature(root: THREE.Group, quality: CreatureQuality): THR
 
   // stand it on the floor
   root.updateMatrixWorld(true)
-  const box = new THREE.Box3().setFromObject(root)
+  const box = new THREE.Box3().setFromObject(root, true)
   const dy = root.position.y - box.min.y
   if (Number.isFinite(dy) && Math.abs(dy) > 1e-6) for (const c of root.children) if (isPart(c)) c.position.y += dy
   root.updateMatrixWorld(true)
@@ -423,7 +428,7 @@ export function inspectCreature(root: THREE.Object3D): CreatureStats {
     const g = m.geometry
     triangles += (g.index ? g.index.count : g.attributes.position.count) / 3
   })
-  return { triangles, drawCalls: meshes, meshes, box: new THREE.Box3().setFromObject(root) }
+  return { triangles, drawCalls: meshes, meshes, box: new THREE.Box3().setFromObject(root, true) }
 }
 
 /** Frees a creature's geometries (its materials are shared and stay). */

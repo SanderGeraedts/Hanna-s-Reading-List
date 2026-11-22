@@ -24,7 +24,7 @@ import { CREATURE_MODELS, MODEL_FILES } from './models'
  */
 
 /** Flip to true once all 20 model files exist (end of step A). */
-const EXPECT_ALL_MODELS = false
+const EXPECT_ALL_MODELS = true
 
 const MODELS_DIR = join(process.cwd(), 'src', 'components', 'creatures', 'models')
 const modelFiles = readdirSync(MODELS_DIR).filter((f) => f.endsWith('.ts') && f !== 'index.ts' && !f.endsWith('.test.ts'))

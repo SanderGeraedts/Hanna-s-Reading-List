@@ -594,6 +594,29 @@ Taken at night with the recommended option, without asking Hanna (all reversible
 7. **/style:** one canvas behind a grid of tiles, Lavender/Midnight buttons that change the
    wallpaper for this page only (the saved room stays), and a Shiny switch for Done when 7.
 
+## Developer notes (step B, part 2)
+
+Taken at night with the recommended option, without asking Hanna (all reversible):
+
+8. **Precise bounding box.** `inspectCreature` and `finishCreature`'s "stand it on y = 0" now
+   measure with `Box3.setFromObject(root, true)` (vertex-precise). The plain box measures each
+   geometry's own box after rotation, so it over-measures rotated parts (one agent saw `red-fox`
+   fail the raw "bottom at y = 0" check that way). No model was changed to work around it.
+9. **Shared `front(c, r, x, y)`** (z of an ellipsoid's front surface at x, y) moved into
+   `model.ts`; the five files that had an identical local copy (african-penguin, axolotl,
+   emperor-penguin, red-panda, ring-tailed-lemur) import it now. Their test numbers are unchanged.
+   Later Fable briefs may use it.
+10. **Screenshots** are of the Creatures section only, at exactly 390 × 844 and 1280 × 800, in
+    viewport-sized parts down the section (`-1`, `-2`: the WebGL canvas paints only what is on
+    screen). Time is frozen with Playwright's clock and moved on a few frames, so every creature
+    shows its ¾ start pose instead of a random point of the turn. Shiny shots on both wallpapers
+    at both sizes (Done when 7). No black silhouette shots: Done when does not ask for them; the
+    UX designer can ask.
+11. **Fable token log per batch, not per creature.** Step A ran as four Fable agents of four or
+    five creatures each (one creature per file), not one agent per creature as *Notes* planned;
+    the agents reported one total per batch, so Done when 5's "one line per creature" can only
+    list the creatures per batch. Per-creature numbers were not reported and are not invented.
+
 # Test
 
 # Log
@@ -615,3 +638,13 @@ Taken at night with the recommended option, without asking Hanna (all reversible
   palettes added to Design §7, gold / purple / night-sky). D-0033, the brief and T-0028 to T-0030
   updated. Saving her choices without a server change looked at again: see T-0028.
 - 2026-11-22 developer: step B part 1 on branch t-0027-book-creatures: the species list with palettes and shiny palettes for all 20 and its test (`src/lib/creatures/species.ts`); the shared `src/components/creatures/model.ts` (types, `SEG`, `radial`, geometry helpers, `creatureMaterials`, `anchor`, `ANCHORS`/`PARTS`, `STAGE_SCALE` and `applyStage`, vertex-colour bake and merge per part and kind in `finishCreature`); `makeCreature` and a file-name registry in `models/index.ts`; the model test (Done when 2 and 6) in `src/components/creatures/models.test.ts`; the Creatures section on /style; the house cat as the example model. Check: `pnpm test` 93 files passed, 883 tests passed (10 skipped, among them the all-20 check until step A); `model cat: 2638 / 1154 tris, 8 / 8 calls, 0.75 wide × 1.00 tall × 0.61 deep`; `tsc --noEmit` clean; `harness check` passed. /style seen in headless Chrome: the cat turns in its tile on lavender. Choices taken without asking: *Developer notes* above. Modelling brief for the Fable agents written. Remaining: step A (19 Fable models, tokens in *Log*), the four screenshots, the UX review, the Red List re-check on iucnredlist.org in a browser before merging, and the PR.
+- 2026-11-22 developer: step A done by four Fable agents (one file per creature, the 19 new model files in `src/components/creatures/models/`). Fable tokens as reported, per agent: batch 1 (red-fox, capybara, red-squirrel, adelie-penguin, hedgehog) 138,665; batch 2 (otter, platypus, koala, giant-panda, polar-bear) 145,830; batch 3 (red-panda, emperor-penguin, ring-tailed-lemur, african-penguin, axolotl) 181,225; batch 4 (book-dragon, library-owl, bookmark-fox, starlight-unicorn) 130,255; **total 595,975 (about 596,000)**. The cat was written by the developer (no Fable tokens). Per-creature numbers were not reported (*Developer notes* 11).
+- 2026-11-22 developer: step B part 2. Reviewed the 19 files against the Modelling brief (no colour literal, budget, parts, anchors, tags: all met; the test checks each). `EXPECT_ALL_MODELS = true`; bounding boxes now vertex-precise (`setFromObject(root, true)`) in `inspectCreature` and `finishCreature`; shared `front()` in `model.ts` for the five files that copied it. No model file changed its look. Check: `pnpm exec vitest run src/components/creatures src/lib/creatures`: 2 files, 110 tests passed; `pnpm test`: 93 files passed (1 skipped), 979 tests passed (9 skipped); `tsc --noEmit` clean; `pnpm run build` built; `harness check` passed. The model lines (high / low triangles, high / low draw calls, size):
+  - `cat` 2638 / 1154, 8 / 8, 0.75 × 1.00 × 0.61; `red-fox` 2516 / 1220, 8 / 8, 0.83 × 1.02 × 0.70; `capybara` 2296 / 1056, 7 / 7, 0.72 × 0.97 × 0.73; `red-squirrel` 2392 / 1176, 8 / 8, 0.82 × 1.13 × 0.74; `adelie-penguin` 2296 / 1036, 8 / 8, 0.76 × 0.96 × 0.74
+  - `hedgehog` 2716 / 1380, 7 / 7, 0.74 × 1.02 × 0.74; `otter` 2532 / 1200, 8 / 8, 0.78 × 0.96 × 0.65; `platypus` 2116 / 992, 8 / 7, 0.82 × 0.96 × 0.76; `koala` 2344 / 1144, 7 / 7, 0.75 × 0.97 × 0.60; `giant-panda` 2716 / 1276, 8 / 8, 0.67 × 0.98 × 0.66
+  - `polar-bear` 2416 / 1144, 8 / 8, 0.71 × 0.97 × 0.73; `red-panda` 2932 / 1444, 8 / 8, 0.92 × 0.98 × 0.71; `emperor-penguin` 2476 / 1160, 8 / 8, 0.69 × 1.08 × 0.71; `ring-tailed-lemur` 2960 / 1360, 8 / 8, 0.82 × 1.11 × 0.71; `african-penguin` 2608 / 1156, 8 / 8, 0.65 × 0.97 × 0.68
+  - `axolotl` 2524 / 1208, 7 / 7, 0.95 × 0.98 × 0.72; `book-dragon` 2604 / 1244, 11 / 10, 0.95 × 1.05 × 0.66; `library-owl` 2436 / 1192, 8 / 8, 0.72 × 0.98 × 0.58; `bookmark-fox` 2000 / 1000, 9 / 9, 0.93 × 1.08 × 0.76; `starlight-unicorn` 2936 / 1288, 10 / 9, 0.71 × 1.11 × 0.69
+- 2026-11-22 developer: notes from the Fable agents for the UX review (design judgement left to the UX designer): the book dragon's arms rest on its tummy, not folded at its sides as Design §4 says for wing-arms; the dragon's `back` anchor sits under the book wings; the unicorn's `hat` anchor sits near its horn; the red panda has a dark tummy on purpose (real red pandas are dark underneath); the emperor penguin is 1.08 tall (the tall one); the Adélie, African and emperor penguins have stub tails; the hedgehog is at the 40-primitive cap; the lemur's (2,960) and the red panda's (2,932) triangle budgets are tight. Found in review: the unicorn tags `satin` on three parts (hooves, horn, flank star), one more than Design §3's "at most two"; it costs no extra draw call, left as built for the UX designer.
+- 2026-11-22 developer: screenshots of the /style Creatures section in `docs/tasks/T-0027-screens/` (`390-…` at 390 × 844, `1280-…` at 1280 × 800; lavender, midnight, and `-shiny` on both; `-1`/`-2` are the top and bottom of the section). All 20 tiles render (none "Not modelled yet"), no page errors and no failed requests. Taken on the no-backend dev server (`vite dev --port 3141`), stopped afterwards and the port checked free.
+- 2026-11-22 developer: Red List re-check on iucnredlist.org in a real browser (Chrome through playwright-core, `channel: 'chrome'`): **the site still refuses automated access**. Headless gets Cloudflare's "Just a moment…" (403) at once. Headed Chrome got through twice: the species search now asks for a login ("Advanced Search is available to signed-in users"), and the red fox's page by taxon number opened on its *Mediterranean regional* assessment (Least Concern, 2008, e.T23062A9413836), not the global one. After that every page, headed, with a kept profile, after an 8-minute pause and 25 s between pages, got Cloudflare's challenge (403) again. I did not try to disguise the automation or to log in. The categories in the table stay as cited from the sources that quote the Red List (*The 20 creatures*). Remaining: a person opens the 15 real animals on iucnredlist.org by hand before merging and notes the date here.
+- 2026-11-22 developer: Remaining: the UX review (Done when 4 and 7, *Review*), the Red List check by hand (above), and the tester.
