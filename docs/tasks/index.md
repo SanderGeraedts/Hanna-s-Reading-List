@@ -14,6 +14,7 @@ None.
 - [T-0003 Show the bookshelf again on a phone](T-0003-show-the-shelf-on-a-phone.md): #181: the shelf isn't shown in the mobile version; find what broke it on narrow screens and fix it, with a test that keeps it fixed.
 - [T-0009 Keep the dashboard's favourites with the account, so every device shows the same ones](T-0009-favourites-follow-her-across-devices.md): #182: the starred dashboard blocks are saved per device today; keep them on the account's shelf record on the server, saved on their own like the reading goals.
 - [T-0025 Let her move left and right along the shelf when it is zoomed in](T-0025-zoom-sideways.md): #234: zoomed in, the camera turns round the middle of the case instead of moving along it, so the ends can't be reached on the phone or the computer; aim the camera where it is panned to, and add ‹ › buttons at the shelf's edges, a mouse drag on the empty wall, the ← → keys and a working one-finger swipe (D-0032).
+- [T-0026 Show the taken-out book in front of a zoomed-in shelf and dim the room, and keep the search pop-up on screen](T-0026-open-book-zoomed.md): Zoomed in, a book she opens flies to a spot inside the bookcase and the dimming sheet sits behind the case (phone at 1.5× and more; the dimming also at 3× on the computer); the camera steps back while a book is out so both land in front of the case. Also: at 1024–1400 px the search pop-up opens half off the left edge.
 
 ## Done
 
