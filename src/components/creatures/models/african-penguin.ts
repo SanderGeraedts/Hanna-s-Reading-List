@@ -33,9 +33,9 @@ export function buildAfricanPenguin(p: CreatureParams): THREE.Group {
     mesh(torus(0.155, 0.017, q, Math.PI * 1.2), m.accent, [0, -0.01, 0.234], [0, 0, -Math.PI * 0.1], [1, 1, 1.6]),
   )
   for (const [x, y] of [
-    [-0.06, 0.0],
-    [0.055, -0.07],
-    [0.03, 0.05],
+    [-0.07, -0.11],
+    [0.08, -0.13],
+    [0.01, -0.16],
   ]) {
     const spot = mesh(sphere(0.015, 'XS', q), m.accent, [x, y, front(bc, br, x, y)], [0, 0, 0], [1, 1, 0.5])
     spot.userData.detail = true

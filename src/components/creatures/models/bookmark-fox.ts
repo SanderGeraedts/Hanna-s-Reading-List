@@ -113,9 +113,9 @@ export function buildBookmarkFox(p: CreatureParams): THREE.Group {
   // each: [fan round z, strip length, end length, bend of the end, which ribbon colour]
   const tail = group('part:tail', [0, 0.12, -0.25])
   const ribbons: [number, number, number, number, THREE.Material][] = [
-    [0.7, 0.36, 0.24, 0.45, m.accent],
+    [0.45, 0.52, 0.26, 0.2, m.accent],
     [0, 0.6, 0.36, -0.22, m.accent2],
-    [-0.7, 0.36, 0.24, -0.45, m.accent],
+    [-0.45, 0.52, 0.26, -0.2, m.accent],
   ]
   for (const [fan, stripLength, endLength, bend, material] of ribbons) {
     const ribbon = group('ribbon', [0, 0, 0], [-0.12, 0, fan])

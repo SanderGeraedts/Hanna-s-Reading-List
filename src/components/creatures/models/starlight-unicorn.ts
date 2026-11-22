@@ -1,14 +1,14 @@
 /**
  * Starlight unicorn (T-0027 Design §8.20): a pearl plush pony with a spiral gold horn.
  *
- * Primitives (31): body, tummy, 2 gold hooves (the feet), flank star (a flat
- * 10-point shape); head, muzzle, 2 nostrils, 2 ears, horn + 3 spiral rings,
+ * Primitives (29): body, tummy, 2 gold hooves (the feet), flank star (a flat
+ * 10-point shape); head, muzzle, 2 ears, horn + 3 spiral rings,
  * 4 mane tufts, 2 blush; 2 eyes + 2 glints; 2 arms; tail: 2 tufts.
- * Tagged `detail` (dropped on low): the star, the nostrils, the middle horn ring.
+ * Tagged `detail` (dropped on low): the star, the middle horn ring.
  * Tagged `extra`: horn, rings, mane tufts, tail tufts. Tagged `foot`: the hooves.
  * Tagged `satin`: hooves and star (body), horn and rings (head).
- * Triangles: about 2,990 on high, 1,290 on low; 10 draw calls after the merge
- * (body, body satin, head, head nose, head blush, head satin, eyes, arm L, arm R, tail).
+ * Triangles: 2,864 on high, 1,288 on low; 9 draw calls after the merge
+ * (body, body satin, head, head blush, head satin, eyes, arm L, arm R, tail).
  */
 import * as THREE from 'three'
 import { anchor, capsule, cone, creatureMaterials, group, mesh, sphere, torus } from '../model'
@@ -61,13 +61,8 @@ export function buildStarlightUnicorn(p: CreatureParams): THREE.Group {
   // ---- head: pivot where head meets body (0, 0.56, 0.02) -------------------------------
   const head = group('part:head', [0, 0.56, 0.02])
   head.add(mesh(sphere(0.27, 'L', q), m.body, [0, 0.1, 0.01], [0, 0, 0], [1.08, 0.98, 0.95]))
-  // a longer, soft pony muzzle with two pink nostrils
+  // a longer, soft pony muzzle (no nostrils: the nose slot is unused, like the axolotl's)
   head.add(mesh(sphere(0.12, 'M', q), m.body, [0, 0.035, 0.2], [0, 0, 0], [0.95, 0.8, 1.05]))
-  for (const s of [-1, 1]) {
-    const nostril = mesh(sphere(0.014, 'XS', q), m.nose, [s * 0.04, 0.055, 0.313])
-    nostril.userData.detail = true
-    head.add(nostril)
-  }
   // small pointed ears
   for (const s of [-1, 1]) {
     head.add(mesh(cone(0.06, 0.15, q, 4), m.body, [s * 0.185, 0.33, -0.02], [0, Math.PI / 4, -s * 0.4]))
@@ -87,12 +82,12 @@ export function buildStarlightUnicorn(p: CreatureParams): THREE.Group {
     horn.add(h)
   }
   head.add(horn)
-  // lavender mane: four round tufts from the crown down the back of the head
+  // lavender mane: four round tufts from the crown down its left side (+x, the tail side), so it shows from the front
   for (const [x, y, z, r] of [
-    [0.015, 0.335, -0.115, 0.082],
-    [-0.02, 0.235, -0.21, 0.088],
-    [0.02, 0.105, -0.245, 0.082],
-    [-0.01, -0.01, -0.22, 0.07],
+    [0.17, 0.32, -0.08, 0.085],
+    [0.24, 0.22, -0.13, 0.09],
+    [0.27, 0.09, -0.14, 0.085],
+    [0.24, -0.03, -0.12, 0.075],
   ]) {
     const tuft = mesh(sphere(r, 'S', q), m.accent2, [x, y, z])
     tuft.userData.stageRole = 'extra'
@@ -110,7 +105,8 @@ export function buildStarlightUnicorn(p: CreatureParams): THREE.Group {
   const headAnchor = anchor('head', 0.27)
   headAnchor.position.set(0, 0.1, 0.01)
   const hat = anchor('hat', 0.22)
-  hat.position.set(0, 0.365, 0)
+  hat.position.set(0, 0.348, -0.08)
+  hat.rotation.x = -0.35
   const face = anchor('face', 0.29)
   face.position.set(0, 0.12, 0.25)
   head.add(headAnchor, hat, face)

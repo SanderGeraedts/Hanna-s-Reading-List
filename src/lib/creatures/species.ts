@@ -368,7 +368,7 @@ export const SPECIES: readonly Species[] = [
     tier: 'legendary',
     shiny: true,
     palette: pal('#f3e9d8', '#fffaf0', '#b0413e', '#d9a85b', '#2b2a2f'),
-    shinyPalette: pal('#f2d9a0', '#fbf0d6', '#6e4f8f', '#4a5aa8', '#2b2a2f'),
+    shinyPalette: pal('#f2d9a0', '#fbf0d6', '#9a5fb5', '#5f86d9', '#2b2a2f'),
   },
   {
     id: 'starlight-unicorn',

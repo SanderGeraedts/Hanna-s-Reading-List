@@ -41,14 +41,14 @@ export function buildCapybara(p: CreatureParams): THREE.Group {
   const head = group('part:head', [0, 0.56, 0.02])
   head.add(mesh(sphere(0.26, 'L', q), m.body, [0, 0.12, 0.03], [0, 0, 0], [1.1, 0.95, 1.2]))
   // long flat blunt snout with a darker top
-  head.add(mesh(sphere(0.15, 'M', q), m.body, [0, 0.02, 0.3], [0, 0, 0], [1.05, 0.77, 1]))
-  head.add(mesh(sphere(0.1, 'S', q), m.accent, [0, 0.1, 0.34], [0, 0, 0], [0.85, 0.35, 0.9]))
+  head.add(mesh(sphere(0.15, 'M', q), m.body, [0, 0.02, 0.32], [0, 0, 0], [1.1, 0.85, 1.25]))
+  head.add(mesh(sphere(0.1, 'S', q), m.accent, [0, 0.115, 0.34], [0, 0, 0], [1.0, 0.3, 1.5]))
   // broad nose on the blunt front
-  head.add(mesh(sphere(0.035, 'S', q), m.nose, [0, 0.07, 0.435], [0, 0, 0], [1.5, 0.9, 0.5]))
+  head.add(mesh(sphere(0.035, 'S', q), m.nose, [0, 0.06, 0.5], [0, 0, 0], [1.5, 0.9, 0.5]))
   // tiny round ears high on the head
   for (const s of [-1, 1]) {
-    head.add(mesh(sphere(0.055, 'S', q), m.body, [s * 0.165, 0.35, -0.02], [0, 0, 0], [1, 1, 0.6]))
-    const inner = mesh(sphere(0.03, 'XS', q), m.accent, [s * 0.165, 0.352, 0.01], [0, 0, 0], [1, 1, 0.5])
+    head.add(mesh(sphere(0.055, 'S', q), m.body, [s * 0.17, 0.35, -0.07], [0, 0, 0], [1, 1, 0.6]))
+    const inner = mesh(sphere(0.03, 'XS', q), m.accent, [s * 0.17, 0.352, -0.04], [0, 0, 0], [1, 1, 0.5])
     inner.userData.detail = true
     head.add(inner)
   }
