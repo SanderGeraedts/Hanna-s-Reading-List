@@ -6,7 +6,7 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 
 ## Open
 
-None.
+- [T-0024 Let the want-to-read pile's pace line follow the All · Paper · E-book · Audiobook switch](T-0024-pace-per-kind.md): With Paper, E-book or Audiobook picked in the Want-to-read pile block, the pace line counts only the waiting books of that kind at the pace she finishes books of that kind (D-0031); Audiobook works in hours (waiting listening time ÷ hours of audiobooks finished a month); a kind she hasn't finished in the last year gets a short no-pace line; All stays as it is.
 
 ## Doing
 
