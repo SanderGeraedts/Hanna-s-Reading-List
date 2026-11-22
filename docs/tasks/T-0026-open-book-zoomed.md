@@ -411,7 +411,81 @@ reverse". The tester could add one screenshot about 0.2 s after × to see it.
 
 # Test
 
-(tester)
+(tester, 2026-11-22, branch at 8399c08 plus the tests below)
+
+**Verdict: passed.** What remains is Hanna's check on her phone (see the last *Log* line).
+
+## CI's run (read, not repeated)
+
+`gh pr checks 238`: `checks / checks pass 50s` (run 45073857805), deploy preview `pass`; `e2e` and
+`shards` are skipped because this project gives no `e2e` command (`e2e:` empty in the run's inputs),
+as on every pull request here. From `gh run view 45073857805 --log`: `harness check` ✓,
+`src/components/inspectPlacement.test.ts (16 tests)` ✓, `Test Files 92 passed | 1 skipped (93)`,
+`Tests 885 passed | 9 skipped (894)`, `✓ built`. No retries in the log, nothing flaky.
+
+## Checked again here
+
+- `pnpm install --frozen-lockfile`: `Done`. `pnpm exec harness check`: `✓ tasks`, `✓ decisions`,
+  `✓ engineers`, `✓ generated files`.
+- The new and affected tests, 5 times in a row: `pnpm exec vitest run inspectPlacement.test.ts
+  cameraAim.test.ts shelfPanFraming.test.ts BookMesh.test.ts SafeBookshelf.test.tsx
+  contextLoss.test.ts` → `Test Files 6 passed (6)`, `Tests 37 passed (37)` every time.
+- **Fails before the fix, checked myself:** with today's sums put back into `inspectPlacement`
+  for a moment (camera at her zoom, dimming at camera − 1.25): `Tests 11 failed | 5 passed (16)`,
+  e.g. `390×844 zoom 3 sheet 0.450 … camera 0.936, book -0.226, dimming -0.314`. Restored with
+  `git checkout`.
+- `pnpm exec tsc --noEmit`: no output. `pnpm run build`: `✓ built`. `src/routeTree.gen.ts`
+  unchanged against main.
+- Code read: `inspectPlacement.ts` (the order camera → book → turning room → dimming → case + 0.06
+  holds; a hovered *and* glowing book would stick out 0.095, 1.5 cm past the 0.08, but hover is off
+  in practice while one is open, because the dimming in front of the shelf takes the pointer; not
+worth a change), `useCameraRig` (x and
+  y untouched, `scroll.current` untouched, the placement kept after closing so the dimming fades
+  where it stood), `BookMesh` (target only while selected), `BookPanel` (two exports, values
+  unchanged), `.search-pop` (`left: 0; right: auto`; the ≤ 720 px rule still sets 16 px both sides).
+
+## Tests added (gaps)
+
+In `src/components/inspectPlacement.test.ts`, a second `describe` (12 tests; the file now has 28):
+
+- **More screens**: phone turned sideways (844 × 390), 1024 × 800, 1920 × 1080, at zoom 1, 2, 3;
+  a short shelf (5 books) and a long one (200) on the phone and the computer; every book on the
+  shelf, not only the shortest and tallest.
+- **The dimming covers the whole view and isn't tinted by the fog** (it must stay nearer than the
+  fog's start at 6 m and inside the 20 × 20 plane), also with the sheet at its highest.
+- **A book turned any way by dragging** (500 turns: any way round, tilted up to 0.9 rad, leaning):
+  no corner reaches the dimming or the camera.
+- The same input gives the same placement; a camera already far enough is left where it is.
+- With today's sums they are red too: `Tests 17 failed | 11 passed (28)`. With the fix:
+  `Tests 28 passed (28)`, 3 runs in a row.
+
+## Tried to break it
+
+`vite dev --port 3139` (no backend, 70 books in `hannas-reading-list:v1`), Chrome via
+playwright-core; phone 390 × 844 with `hasTouch`/`isMobile` and CDP touch events, computer
+1280 × 800 with a mouse. Screens in the scratchpad, not committed.
+
+| Tried | Result |
+|---|---|
+| Phone: open at zoom 1, 2 (pinch), 3 in the middle and panned to the left end, close with × | book whole in front each time; a strip of the wall goes from brightness 109 → 62 (zoom 1), 84 → 49 (2), 78 → 48 (3), 178 → 92 (left end); after closing the screen is **the same as before opening** (0.0–0.2 % of pixels changed, against 64 % for one pan step); ‹ › and zoom buttons as before |
+| Phone at zoom 3 panned to the right end | the right end is the koala's nook, no book in reach to tap; fine |
+| Open, then zoom or pan while it's open (phone: pinch and swipe on the dimmed room, ← and + keys; computer: wheel, keys) | the zoom and ‹ › buttons are hidden while a book is out; pinch, swipe, keys and wheel don't zoom or pan (their handlers are off while a book is open); the book stays whole and in front; after closing, the same zoom and pan. The only change: after a swipe or pinch on the phone the whole view sits a few pixels sideways, which is the existing mouse parallax following the last touch (the same on main, not this task) |
+| Search while zoomed in (zoom 3, left end; 1280, 1024, 390), "Title 6", click the last result (Title 56) | pop-up at 24–408 (1280 and 1024) and 16–374 (390); the book opens whole, centred and in front, room dimmed; closing back at zoom 3 |
+| Rotate the phone while a book is open (390 × 844 → 844 × 390 → back) | stays open; back upright the book is whole between the header and the sheet, room dimmed; no horizontal scroll. Sideways the book stands half under the toolbar and the panel, **the same at zoom 1** (checked), so it is the sideways phone layout, not this task (see *Not checked / found*) |
+| Resize the computer window while a book is open (1280 → 1024 × 700 → 1920 × 1000 → 760 × 900 → 600 × 900 → 1280) | stays open, book in front, no horizontal scroll at any size. Closing after that it was zoom 3 but no longer at the right end (› on): the narrow sizes have a smaller pan range and clamp the pan (T-0025's rule), as expected |
+| Reduced motion on, zoom 3 | right after the tap the shelf behind is already at its stepped-back size; with it off the camera is still close and eases. Switching the setting while a book is open and then closing: back at the same view (1.6 / 1.7 % changed, the fairy lights) |
+| About 0.2 s after ×, motion on (the UX reviewer's shot), phone and computer | the book is already nearly in its slot, never larger than when open, never cut; the camera on its way back; at 0.35 s nearly home. Reads as the opening in reverse |
+| Twice in a row: close and open another book within 0.15 s | the new book flies out whole; no flash of a bright room in between |
+| Console errors | none in any run |
+
+## Not checked here / found
+
+- **Hanna's real phone** on the live site: Remaining.
+- Found, **not this task**: on a phone held sideways (844 × 390) an open book stands half under
+  the toolbar and the details panel, at every zoom including 1 (layout of the sideways phone). For
+  the architect, maybe with follow-up F1.
+- Found, **not this task**: on the phone the mouse parallax follows the last touch, so after a
+  swipe the view sits a few pixels sideways (same on main).
 
 # Log
 
@@ -475,3 +549,12 @@ reverse". The tester could add one screenshot about 0.2 s after × to see it.
   (sheet at 0.88: book under the header, 4 m step back, same on main) and 4 (reduced motion: book
   large for a moment when put back) are follow-ups F1 and F2 under *Review after building*. Handed
   to the tester.
+- 2026-11-22 tester: passed. CI green with no retries; the new and affected tests 5× green; the
+  test fails on today's sums (checked); 12 tests added (more screens, short and long shelves, the
+  dimming nearer than the fog and covering the view, a turned book never reaching the dimming).
+  Tried to break it on the phone and the computer (each zoom and pan, gestures while open, search
+  while zoomed, rotating, resizing, reduced motion, 0.2 s after ×): nothing broke. Two things found
+  that aren't this task: the sideways phone layout puts an open book under the toolbar (also at
+  zoom 1), and the parallax follows the last touch on the phone.
+- Remaining: Hanna opens a book while zoomed in on her phone on the live site and says it shows; and
+  her answers to the two morning questions under *Design*.

@@ -139,3 +139,83 @@ describe('the opened book and the dimming stand in front of the case (T-0026)', 
     }
   })
 })
+
+// T-0026, the tester: cases the first test doesn't cover.
+describe('the opened book and the dimming, more screens and a turned book (T-0026, tester)', () => {
+  const FOG_NEAR = 6 // <fog args={[…, 6, 14]}> in BookshelfScene: the dimming must stand nearer, or it changes colour
+  const BACKDROP_SIZE = 20 // Backdrop's planeGeometry is 20 × 20
+
+  function check(label: string, width: number, height: number, zoom: number, fill: number, bookCount: number) {
+    const aspect = width / height
+    const few = shelf(bookCount)
+    const layout = computeLayout(few, fitShelf(few, aspect))
+    const frame = frameCase(layout.caseWidth, layout.caseHeight, aspect, aspect < 0.8, zoom)
+    const zoomZ = cameraZ(frame.toCase)
+    for (const d of layout.dims.values()) {
+      const p = inspectPlacement({ cameraZ: zoomZ, caseFront: CASE_FRONT, bookH: d.h, bookW: d.w, bookT: d.t, fill, fov: FOV })
+      const what = `${label}, ${bookCount} books, book ${d.h.toFixed(3)}: camera ${p.cameraZ.toFixed(3)}, book ${p.bookZ.toFixed(3)}, dimming ${p.backdropZ.toFixed(3)}`
+      expect(p.bookZ, what).toBeLessThan(p.cameraZ - NEAR - INSPECT_MARGIN)
+      expect(p.backdropZ, what).toBeGreaterThanOrEqual(CASE_FRONT + MATCH_FORWARD + INSPECT_MARGIN - 1e-9)
+      expect(p.cameraZ, what).toBeGreaterThanOrEqual(zoomZ - 1e-9)
+      // the book keeps the size it has at her zoom: always `dist` from the camera
+      expect(p.cameraZ - p.bookZ, what).toBeCloseTo(inspectDistance(d.h, fill, FOV), 9)
+      // the dimming covers the whole view and is not tinted by the fog
+      const away = p.cameraZ - p.backdropZ
+      const viewH = 2 * away * Math.tan(THREE.MathUtils.degToRad(FOV / 2))
+      expect(Math.max(viewH, viewH * aspect), what).toBeLessThan(BACKDROP_SIZE)
+      expect(away, what).toBeLessThan(FOG_NEAR)
+    }
+  }
+
+  for (const zoom of [1, 2, 3]) {
+    it(`phone turned sideways, 844 × 390, zoom ${zoom}`, () => check('844×390', 844, 390, zoom, 0.6, 60))
+    it(`1024 × 800 and 1920 × 1080, zoom ${zoom}`, () => {
+      check('1024×800', 1024, 800, zoom, 0.6, 60)
+      check('1920×1080', 1920, 1080, zoom, 0.6, 60)
+    })
+    it(`a short shelf (5 books) and a long one (200), phone and computer, zoom ${zoom}`, () => {
+      for (const n of [5, 200]) {
+        const frame = { fill: 0, yShift: 0 }
+        portraitInspect(frame, 0.45, 390 / 844, HEADER_SHARE)
+        check('390×844', 390, 844, zoom, frame.fill, n)
+        check('1280×800', 1280, 800, zoom, 0.6, n)
+      }
+    })
+  }
+
+  it('the sheet at its highest still keeps the dimming nearer than the fog and covering the view', () => {
+    const frame = { fill: 0, yShift: 0 }
+    portraitInspect(frame, SHEET_MAX, 390 / 844, HEADER_SHARE)
+    for (const zoom of [1, 3]) check('390×844 sheet max', 390, 844, zoom, frame.fill, 60)
+  })
+
+  it('a book turned any way by dragging never reaches the dimming or the camera', () => {
+    const { zoomZ, tallest } = setting(cases().find((x) => x.label.startsWith('390×844 zoom 3 sheet 0.450'))!)
+    const frame = { fill: 0, yShift: 0 }
+    portraitInspect(frame, 0.45, 390 / 844, HEADER_SHARE)
+    const [h, w, t] = [tallest, tallest * WIDEST, 0.06]
+    const p = inspectPlacement({ cameraZ: zoomZ, caseFront: CASE_FRONT, bookH: h, bookW: w, bookT: t, fill: frame.fill, fov: FOV })
+    const corner = new THREE.Vector3()
+    let seed = 7
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+    for (let i = 0; i < 500; i++) {
+      // dragging turns it any way round sideways, tilts it up to 0.9 rad and leans it a little
+      const q = new THREE.Quaternion().setFromEuler(new THREE.Euler((rnd() * 2 - 1) * 0.9, rnd() * Math.PI * 2, -0.12 * rnd()))
+      for (const sx of [-1, 1])
+        for (const sy of [-1, 1])
+          for (const sz of [-1, 1]) {
+            corner.set((sx * w) / 2, (sy * h) / 2, (sz * t) / 2).applyQuaternion(q)
+            expect(p.bookZ + corner.z).toBeGreaterThan(p.backdropZ + INSPECT_MARGIN - 1e-9)
+            expect(p.bookZ + corner.z).toBeLessThan(p.cameraZ - NEAR)
+          }
+    }
+  })
+
+  it('her zoom is never moved: the same input gives the same placement, and a camera already far enough is kept', () => {
+    const input = { cameraZ: 0.9, caseFront: CASE_FRONT, bookH: 0.3, bookW: 0.2, bookT: 0.04, fill: 0.38, fov: FOV }
+    expect(inspectPlacement(input)).toEqual(inspectPlacement(input))
+    const far = inspectPlacement({ ...input, cameraZ: 10 })
+    expect(far.cameraZ).toBe(10)
+    expect(far.bookZ).toBeCloseTo(10 - inspectDistance(0.3, 0.38, FOV), 9)
+  })
+})
