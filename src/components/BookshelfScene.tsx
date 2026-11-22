@@ -22,7 +22,7 @@ import {
 import type { PanDirection, PanEdges } from '#/lib/shelfPan'
 import { arrangementSeparators } from '#/lib/separators'
 import type { ShelfLayout } from '#/lib/shelfLayout'
-import { BookMesh, RAINBOW } from './BookMesh'
+import { BookMesh, RAINBOW, ShelfRidges } from './BookMesh'
 import { Decorations, FairyLights, StillDecorations } from './Decorations'
 import { BookNooks } from './BookNook'
 import { SeriesDividers } from './SeriesDivider'
@@ -199,8 +199,19 @@ function Scene({
   // the case's width follows the screen, and widens on big screens so the books stay large (#39)
   const fit = useMemo(() => fitShelf(ordered, aspect, separators), [ordered, aspect, separators])
   const room = roomChoice ?? DEFAULT_ROOM
-  const decorKinds = useMemo(() => shownDecor(room), [room])
+  // the decorations only (not the wood or Detailed books), so switching those moves nothing
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const decorKinds = useMemo(() => shownDecor(room), [room.decor])
   const layout = useMemo(() => computeLayout(ordered, fit, separators, decorKinds), [ordered, fit, separators, decorKinds])
+  // Detailed books (D-0035): hardcovers, or the simple blocks, on any device
+  const detailed = room.detailedBooks
+  // every book on the shelf has a place for its ridges in one instanced mesh
+  const ridges = useRef<THREE.InstancedMesh>(null)
+  const ridgeSlots = useMemo(() => {
+    const slots = new Map<string, number>()
+    for (const b of ordered) if (layout.slots.has(b.id) && layout.dims.has(b.id)) slots.set(b.id, slots.size)
+    return slots
+  }, [ordered, layout])
 
   // keep the case size stable while dragging so the camera doesn't jump around
   const stableLayout = useRef<ShelfLayout>(layout)
@@ -582,6 +593,7 @@ function Scene({
         <FairyLights width={caseLayout.innerWidth} top={caseLayout.caseHeight} />
       </StillDecorations.Provider>
 
+      {detailed && <ShelfRidges books={ridgeSlots.size} meshRef={ridges} />}
       {ordered.map((book) => {
         const slot = layout.slots.get(book.id)
         const dims = layout.dims.get(book.id)
@@ -590,7 +602,10 @@ function Scene({
           <BookMesh
             key={book.id}
             book={book}
-            simple={lite}
+            detailed={detailed}
+            lite={lite}
+            ridges={ridges}
+            ridgeSlot={ridgeSlots.get(book.id)}
             clipColor={clipColors.get(book.id)}
             sleep={sleepIds.has(book.id)}
             dims={dims}

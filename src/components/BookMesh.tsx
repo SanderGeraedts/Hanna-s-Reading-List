@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
+import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import type { ThreeEvent } from '@react-three/fiber'
 import type { Book } from '#/lib/library'
 import { hasMedal, timesRead } from '#/lib/library'
@@ -24,10 +25,16 @@ export interface BookMeshProps {
   /** a sleep read: a small moon on the spine */
   sleep?: boolean
   /**
-   * on a phone: the book as one simple block, as before the hardcovers (#181):
-   * one piece to draw instead of about nine, so a full shelf fits on the phone
+   * Detailed books (D-0035): the book as a hardcover; off, as one simple block,
+   * as before the hardcovers (#181). Follows the room panel, not the device.
    */
-  simple?: boolean
+  detailed?: boolean
+  /** a phone (T-0003): medals without their rim */
+  lite?: boolean
+  /** the shelf's gilded ridges, one instanced mesh for every book (see ShelfRidges) */
+  ridges?: RefObject<THREE.InstancedMesh | null>
+  /** this book's place in `ridges` */
+  ridgeSlot?: number
   dims: BookDims
   slot: Slot
   selected: boolean
@@ -144,7 +151,10 @@ export function BookMesh(props: BookMeshProps) {
     fov,
     inspectFrame,
     sleep = false,
-    simple = false,
+    detailed = true,
+    lite = false,
+    ridges,
+    ridgeSlot = 0,
   } = props
   const group = useRef<THREE.Group>(null)
 
@@ -152,6 +162,10 @@ export function BookMesh(props: BookMeshProps) {
   // the back and the cover are only needed once the book has been taken out, and kept after that
   const [takenOut, setTakenOut] = useState(selected)
   if (selected && !takenOut) setTakenOut(true)
+  // out of the shelf right now, or still flying back: the full parts; on the shelf, the light piece
+  const [out, setOut] = useState(selected)
+  if (selected && !out) setOut(true)
+  const look = bookLook({ detailed, takenOut: out })
   const { tex: cover, failed: coverFailed } = useCoverTexture(takenOut ? book.coverUrl : undefined, dims.w / dims.h)
   const paint = facesToPaint({ coverUrl: book.coverUrl, coverFailed, takenOut })
   // repaint only when something visible changes
@@ -209,7 +223,8 @@ export function BookMesh(props: BookMeshProps) {
       spine: [edge, spine, edge, edge, edge, edge],
       // the simple block: fore-edge, spine, top, bottom, front, back
       block: [fore, spine, topBottom, topBottom, front, back],
-      // the simple block on the shelf: the paper, then the spine (see shelfBlock)
+      // on the shelf, the simple block or the merged hardcover: the paper, then the
+      // spine's cloth (see shelfBlock and shelfHardcover)
       shelf: [topBottom, spine],
     }
     // painted is a new object every render: depend on the textures in it
@@ -219,27 +234,28 @@ export function BookMesh(props: BookMeshProps) {
 
   // every book is a hardcover: two boards and a spine round a page block that
   // is a little smaller, so the covers stick out past the pages (a few mm),
-  // with softly rounded board edges
+  // with softly rounded board edges. On the shelf it is one merged piece of two
+  // draws (D-0035); only the book that is out gets the separate parts.
   const parts = useMemo(() => {
-    if (simple) return { block: new THREE.BoxGeometry(dims.w, dims.h, dims.t), shelfBlock: shelfBlock(dims) }
-    // thick enough boards and a clear overhang, so it reads as a hardcover from the shelf
-    const board = THREE.MathUtils.clamp(dims.t * 0.1, 0.0018, 0.0032)
-    const over = Math.min(0.0045, dims.w * 0.04, dims.h * 0.025)
-    const round = board * 0.45
-    const pagesW = dims.w - board - over
+    if (look === 'block') return { block: new THREE.BoxGeometry(dims.w, dims.h, dims.t) }
+    if (look === 'shelf-block') return { shelfBlock: shelfBlock(dims) }
+    if (look === 'shelf-hardcover') return { shelfHardcover: takeShelfHardcover(dims) }
+    const { board, round, pagesW, pagesX, over } = hardcoverSizes(dims)
     return {
       hardcover: {
         board,
-        pages: { geometry: new THREE.BoxGeometry(pagesW, dims.h - 2 * over, dims.t - 2 * board), x: -dims.w / 2 + board + pagesW / 2 },
+        pages: { geometry: new THREE.BoxGeometry(pagesW, dims.h - 2 * over, dims.t - 2 * board), x: pagesX },
         board3: new RoundedBoxGeometry(dims.w - board, dims.h, board, 1, round),
         spine: new RoundedBoxGeometry(board, dims.h, dims.t, 1, round),
       },
     }
-  }, [dims.w, dims.h, dims.t, simple])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dims.w, dims.h, dims.t, look])
   useEffect(
     () => () => {
       parts.block?.dispose()
       parts.shelfBlock?.dispose()
+      parts.shelfHardcover?.release()
       parts.hardcover?.pages.geometry.dispose()
       parts.hardcover?.board3.dispose()
       parts.hardcover?.spine.dispose()
@@ -247,6 +263,12 @@ export function BookMesh(props: BookMeshProps) {
     [parts],
   )
   const hc = parts.hardcover
+
+  // the gilded ridges: this book's matrices in the shelf's one instanced mesh
+  const isRead = book.status === 'read'
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const ridgeMatrices = useMemo(() => ridgeLayout(dims, isRead).map(ridgeMatrix), [dims.w, dims.h, dims.t, isRead])
+  const ridgeState = useRef({ mesh: null as THREE.InstancedMesh | null, slot: -1, ridges: ridgeMatrices, matrix: new THREE.Matrix4() })
 
   // ---- animation --------------------------------------------------------
   const anim = useRef({
@@ -322,6 +344,28 @@ export function BookMesh(props: BookMeshProps) {
         m.color.setScalar(shade)
       }
     }
+
+    // back on the shelf: the light piece again
+    if (!selected && out && a.progress < 0.001) setOut(false)
+
+    // the ridges follow the book (hover, drag, taken out), written only when it moved
+    const rm = ridges?.current
+    if (rm && detailed) {
+      g.updateMatrix()
+      const st = ridgeState.current
+      const base = ridgeSlot * RIDGES_PER_BOOK
+      if (base + RIDGES_PER_BOOK <= rm.instanceMatrix.count && (st.mesh !== rm || st.slot !== ridgeSlot || st.ridges !== ridgeMatrices || !g.matrix.equals(st.matrix))) {
+        for (let k = 0; k < RIDGES_PER_BOOK; k++) {
+          const local = ridgeMatrices[k]
+          rm.setMatrixAt(base + k, local ? ridgeTmp.multiplyMatrices(g.matrix, local) : NO_RIDGE)
+        }
+        rm.instanceMatrix.needsUpdate = true
+        st.mesh = rm
+        st.slot = ridgeSlot
+        st.ridges = ridgeMatrices
+        st.matrix.copy(g.matrix)
+      }
+    }
   })
 
   // what every part of the book shares: shadows and being picked up
@@ -342,13 +386,10 @@ export function BookMesh(props: BookMeshProps) {
 
   return (
     <group ref={group} position={[slot.x, slot.y, slot.z]} rotation={[0, SPINE_OUT, 0]}>
-      {parts.block &&
-        // on the shelf two draws (paper and spine) instead of six; taken out, every side with its picture
-        (takenOut ? (
-          <mesh {...part} material={materials.block} geometry={parts.block} />
-        ) : (
-          <mesh {...part} material={materials.shelf} geometry={parts.shelfBlock} />
-        ))}
+      {/* on the shelf two draws (paper and spine) instead of six or more; out, every side with its picture */}
+      {parts.block && <mesh {...part} material={materials.block} geometry={parts.block} />}
+      {parts.shelfBlock && <mesh {...part} material={materials.shelf} geometry={parts.shelfBlock} />}
+      {parts.shelfHardcover && <mesh {...part} material={materials.shelf} geometry={parts.shelfHardcover.geometry} />}
       {hc && (
         <>
           <mesh {...part} material={materials.pages} geometry={hc.pages.geometry} position={[hc.pages.x, 0, 0]} />
@@ -360,10 +401,129 @@ export function BookMesh(props: BookMeshProps) {
       {(book.status === 'reading' || book.status === 'paused') && (
         <Bookmark dims={dims} progress={book.progress ?? 0} color={props.clipColor ?? RAINBOW[0]} />
       )}
-      {hasMedal(book) && <Medal dims={dims} count={timesRead(book)} rim={!simple} />}
-      {!simple && <SpineRidges dims={dims} read={book.status === 'read'} />}
+      {/* the rim follows the phone, not Detailed books (T-0034 design) */}
+      {hasMedal(book) && <Medal dims={dims} count={timesRead(book)} rim={!lite} />}
     </group>
   )
+}
+
+export type BookLook = 'shelf-hardcover' | 'hardcover' | 'shelf-block' | 'block'
+
+/**
+ * Which look a book gets (D-0035), on a phone or a computer alike: with
+ * Detailed books a hardcover, as one merged piece on the shelf and as its
+ * separate parts (cover picture, painted back) while it is taken out; without,
+ * the simple block, on the shelf or taken out.
+ */
+export function bookLook({ detailed, takenOut }: { detailed: boolean; takenOut: boolean }): BookLook {
+  if (detailed) return takenOut ? 'hardcover' : 'shelf-hardcover'
+  return takenOut ? 'block' : 'shelf-block'
+}
+
+/**
+ * The hardcover's measurements: boards thick enough and a clear overhang, so it
+ * reads as a hardcover from the shelf; the page block sits between the boards.
+ */
+export function hardcoverSizes(dims: BookDims) {
+  const board = THREE.MathUtils.clamp(dims.t * 0.1, 0.0018, 0.0032)
+  const over = Math.min(0.0045, dims.w * 0.04, dims.h * 0.025)
+  const round = board * 0.45
+  const pagesW = dims.w - board - over
+  return { board, over, round, pagesW, pagesX: -dims.w / 2 + board + pagesW / 2 }
+}
+
+/**
+ * Where on the spine picture the boards' outer faces take their colour: the
+ * plain cloth in the middle of the spine (u 0.5, where the shading is the book's
+ * own colour), between the top bands and the title (7.5 % from the top).
+ * On the shelf those faces lie against the neighbouring books.
+ */
+const CLOTH_UV = [0.5, 0.925] as const
+
+/**
+ * A hardcover on the shelf as ONE geometry with two groups (D-0035): first the
+ * paper (the page block's fore-edge, top and bottom), then the cloth (the
+ * rounded spine with its picture, and the two rounded boards). The same
+ * shapes, sizes and places as the separate parts of a taken-out book, so
+ * nothing jumps when it leaves or reaches the shelf.
+ */
+export function shelfHardcover(dims: BookDims) {
+  const s = hardcoverSizes(dims)
+  // only the page block's sides that show: the spine and the boards cover the others
+  const box = new THREE.BoxGeometry(s.pagesW, dims.h - 2 * s.over, dims.t - 2 * s.board)
+  const pages = keepSides(box, [0, 2, 3]).translate(s.pagesX, 0, 0)
+  box.dispose()
+  const rounded = (w: number, d: number, x: number, z: number, outer: number | null) => {
+    const g = new RoundedBoxGeometry(w, dims.h, d, 1, s.round)
+    // RoundedBoxGeometry is unindexed, side after side in BoxGeometry order (+x, -x, +y, -y, +z, -z)
+    if (outer !== null) {
+      const uv = g.attributes.uv
+      const per = uv.count / 6
+      for (let i = outer * per; i < (outer + 1) * per; i++) uv.setXY(i, CLOTH_UV[0], CLOTH_UV[1])
+    }
+    g.translate(x, 0, z)
+    // share the corners of each side's grid: about a sixth of the vertices
+    const merged = mergeVertices(g, 1e-7)
+    g.dispose()
+    return merged
+  }
+  const spine = rounded(s.board, dims.t, -dims.w / 2 + s.board / 2, 0, null)
+  const front = rounded(dims.w - s.board, s.board, s.board / 2, dims.t / 2 - s.board / 2, 4)
+  const back = rounded(dims.w - s.board, s.board, s.board / 2, -dims.t / 2 + s.board / 2, 5)
+  const pieces = [pages, spine, front, back]
+  const g = mergeGeometries(pieces, false)
+  pieces.forEach((p) => p.dispose())
+  const paper = pages.index!.count
+  g.clearGroups()
+  g.addGroup(0, paper, 0)
+  g.addGroup(paper, g.index!.count - paper, 1)
+  return g
+}
+
+/** Only the given sides of a one-segment BoxGeometry, with only the vertices they use. */
+function keepSides(box: THREE.BufferGeometry, sides: number[]) {
+  const index = box.index!.array
+  const idx = sides.flatMap((i) => Array.from(index.slice(i * 6, i * 6 + 6)))
+  const used = [...new Set(idx)].sort((a, b) => a - b)
+  const at = new Map(used.map((v, i) => [v, i]))
+  const g = new THREE.BufferGeometry()
+  for (const name of ['position', 'normal', 'uv']) {
+    const a = box.getAttribute(name)
+    const arr = new Float32Array(used.length * a.itemSize)
+    used.forEach((v, i) => {
+      for (let k = 0; k < a.itemSize; k++) arr[i * a.itemSize + k] = a.array[v * a.itemSize + k]
+    })
+    g.setAttribute(name, new THREE.BufferAttribute(arr, a.itemSize))
+  }
+  g.setIndex(idx.map((v) => at.get(v)!))
+  return g
+}
+
+/**
+ * Books of the same size (to 0.1 mm) share one shelf hardcover geometry; it is
+ * freed when the last of them lets go of it.
+ */
+const shelfHardcovers = new Map<string, { geometry: THREE.BufferGeometry; users: number }>()
+function takeShelfHardcover(dims: BookDims) {
+  const key = [dims.w, dims.h, dims.t].map((v) => Math.round(v * 1e4)).join(':')
+  let entry = shelfHardcovers.get(key)
+  if (!entry) {
+    entry = { geometry: shelfHardcover(dims), users: 0 }
+    shelfHardcovers.set(key, entry)
+  }
+  entry.users++
+  const e = entry
+  let released = false
+  return {
+    geometry: e.geometry,
+    release: () => {
+      if (released) return
+      released = true
+      if (--e.users > 0) return
+      e.geometry.dispose()
+      shelfHardcovers.delete(key)
+    },
+  }
 }
 
 /**
@@ -532,21 +692,55 @@ function Medal({ dims, count, rim = true }: { dims: BookDims; count: number; rim
 // ---------------------------------------------------------------------------
 // Raised bands: the gilded ridges across the spine of an old hardcover, a
 // pair near the top and a pair near the bottom (none at the bottom when a
-// medal hangs there).
+// medal hangs there). Every ridge on the shelf is one instance of a single
+// InstancedMesh (D-0035: no draw per book); each book writes its own ridges'
+// matrices as it moves, so they follow it on hover, drag and taken out.
 // ---------------------------------------------------------------------------
 
 const ridgeMaterial = new THREE.MeshStandardMaterial({ color: '#c99a45', metalness: 0.75, roughness: 0.35 })
 
-function SpineRidges({ dims, read }: { dims: BookDims; read: boolean }) {
-  const ys = [0.06, 0.085, ...(read ? [] : [0.89, 0.915])].map((f) => dims.h / 2 - f * dims.h)
+/** Room for this many ridges per book in the shelf's instanced mesh. */
+export const RIDGES_PER_BOOK = 4
+const NO_RIDGE = new THREE.Matrix4().makeScale(0, 0, 0)
+const ridgeTmp = new THREE.Matrix4()
+
+/** A book's ridges in its own frame (spine at -x): where they sit and their size. */
+export function ridgeLayout(dims: BookDims, read: boolean) {
   const height = Math.max(0.0014, dims.h * 0.006)
-  return (
-    <>
-      {ys.map((y) => (
-        <mesh key={y} material={ridgeMaterial} position={[-dims.w / 2 - 0.0006, y, 0]} castShadow>
-          <boxGeometry args={[0.0014, height, dims.t * 0.9]} />
-        </mesh>
-      ))}
-    </>
+  return [0.06, 0.085, ...(read ? [] : [0.89, 0.915])].map((f) => ({
+    position: [-dims.w / 2 - 0.0006, dims.h / 2 - f * dims.h, 0] as const,
+    size: [0.0014, height, dims.t * 0.9] as const,
+  }))
+}
+
+function ridgeMatrix(r: ReturnType<typeof ridgeLayout>[number]) {
+  return new THREE.Matrix4().compose(new THREE.Vector3(...r.position), new THREE.Quaternion(), new THREE.Vector3(...r.size))
+}
+
+/**
+ * Every book's ridges as one InstancedMesh: one draw for the whole shelf (and
+ * one for its shadow). It sits beside the books, in the same frame as their
+ * groups. Room for RIDGES_PER_BOOK × `books`; unused places stay empty.
+ */
+export function ShelfRidges({ books, meshRef }: { books: number; meshRef: RefObject<THREE.InstancedMesh | null> }) {
+  const capacity = Math.max(64, 2 ** Math.ceil(Math.log2(Math.max(1, books * RIDGES_PER_BOOK))))
+  const mesh = useMemo(() => {
+    const m = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), ridgeMaterial, capacity)
+    for (let i = 0; i < capacity; i++) m.setMatrixAt(i, NO_RIDGE)
+    m.castShadow = true
+    // the books move it about: no bounds to cull by
+    m.frustumCulled = false
+    return m
+  }, [capacity])
+  useLayoutEffect(() => {
+    mesh.count = Math.min(capacity, books * RIDGES_PER_BOOK)
+  }, [mesh, capacity, books])
+  useEffect(
+    () => () => {
+      mesh.geometry.dispose()
+      mesh.dispose()
+    },
+    [mesh],
   )
+  return <primitive object={mesh} ref={meshRef} />
 }
