@@ -253,6 +253,33 @@ describe('PileCard: the switch and the lines (T-0023)', () => {
   })
 })
 
+describe('PileCard: the grey line has the 🎧 line’s hours (T-0036, D-0036)', () => {
+  /** The grey line: the paragraph right after “N books waiting”, if it is the pages and hours line. */
+  const grey = (container: HTMLElement) => {
+    const p = container.querySelector('.big-number')?.nextElementSibling
+    return p?.matches('p.muted.small-text') ? p : null
+  }
+
+  it('on the mixed shelf: “1,200 pages · 22 h to listen”, the same hours as 🎧 Audiobook', () => {
+    const { container } = render(<PileCard books={mixed()} />)
+    expect(grey(container)!.textContent).toBe('1,200 pages · 22 h to listen')
+    press('Audiobook')
+    expect(seen(heightLine(container)!)).toContain(`22${nb}h`)
+    expect(grey(container)!.textContent).toBe('1,200 pages · 22 h to listen')
+  })
+
+  it('one Storytel book without a length: “9 h 20 min to listen” and no pages half', () => {
+    const { container } = render(<PileCard books={[book('s', { formats: ['storytel'] })]} />)
+    expect(grey(container)!.textContent).toBe('9 h 20 min to listen')
+  })
+
+  it('one paperback without pages: no grey line', () => {
+    const { container } = render(<PileCard books={[book('p', { formats: ['paperback'] })]} />)
+    expect(grey(container)).toBeNull()
+    expect(container.textContent).not.toMatch(/\d pages|to listen/)
+  })
+})
+
 describe('PileCard: height line edge cases (tester, T-0021, updated for T-0023)', () => {
   it('a pile of 1 book: seen and heard in centimetres, with the mug line', () => {
     const { container } = render(<PileCard books={[finished, book('one', { pages: 400, format: 'paperback' })]} />)
