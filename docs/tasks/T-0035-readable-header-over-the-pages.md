@@ -164,6 +164,73 @@ Hanna wasn't asked anything (night mode). The architect took these:
 
 Nothing before the build (small). The UX designer's review after the build goes here.
 
+## Review after building (2026-11-23)
+
+**Verdict: matches *Done when*. Nothing must be fixed. On to the tester.**
+
+Looked at: `git diff main...HEAD -- src`, all 16 branch screenshots and the 16 `main-*` shots
+next to them in `T-0035-screens/`, `screens-branch.txt` and `focus-after-branch.txt`.
+
+**The band and the fade, lavender.** At 390, 360 and 1280, scrolled, on the Dashboard,
+Challenges and Calendar: a clean pale band behind the title, the stats line, the round buttons
+and the page tabs. No card text, cover or button shows through. On `main` the same shots have
+"Waiting for you", "The Garden of Summer 1", "Set up" and the bingo card's month labels running
+through the header. With the page at the top (`390-lavender-dashboard-top`) the band is almost
+the same as the haze on `main`: the pale part is just a little deeper before it fades into the
+wallpaper. It still reads as the same cosy header, not a new toolbar. The `var(--space-3)` fade
+ends the band softly. Where a dark walnut card is under it, the fade leaves a thin pale mist
+along the card's top edge. That is the soft edge the task asked for (Choice 4), it's calm, and
+it sits in the gap above the first card, so it is acceptable.
+
+**The band and the fade, midnight.** A deep-blue band (`30, 40, 88`) with cream title, lilac
+stats line and lilac-grey buttons. It sits a shade darker than the midnight wallpaper, so it
+looks like part of the night sky rather than a separate block. The fade into a dark card is
+barely visible, which is right. It looks good on every page and at both widths.
+
+**Readable.** On both wallpapers the title, the stats line (ellipsis unchanged), 🔍 ↻, the gold
+*+ Add* and the four tabs, with the gold active tab, are fully readable in every scrolled shot.
+On the computer the labelled tabs (Bookshelf / Dashboard / Challenges / Calendar) and *+ Add
+book* are the same. Colours, sizes and spacing come from the existing tokens only (D-0020). The
+header height is unchanged (143.4 px / 129.2 px, the same as `main`), so the first card still
+starts below it when the page opens (#181).
+
+**Bookshelf.** `390-lavender-shelf` and `1280-lavender-shelf` look exactly like their `main-*`
+shots: the haze over the room, the ☰ button and the shelf toolbar all unchanged. The header is
+also 162.4 / 184.2 px there, the same as on `main` (D-0022 kept).
+
+**Focus and scroll targets.** `focus=bingo` puts the bingo card fully below the header with
+breathing room, and August puts the Calendar card and the month bar fully below it.
+`focus-after-branch.txt`: 0 of all focusable elements under the header or the Arrange bar, at
+both sizes, on all three pages, also with Arrange on and with 6 blocks hidden. Before (on
+`main`) it was 576.
+
+**The developer's deviations:**
+
+1. **A new hook, `useArrangeBarHeight`, in `Dashboard.tsx` / `ChallengesPage.tsx`:**
+   accepted. A fixed number in the CSS would fail as soon as the "Hidden:" chips wrap, and
+   then a focused block would hide under the bar. Measuring it is the only way to keep WCAG
+   2.4.11 there. The hook changes no pixels: it only sets `--arrange-h` on `.dashboard`, and the
+   `:has(.dashboard-bar.arranging)` rule only uses it while arranging. It's still group 1. A
+   small thing, not for this task: when `ResizeObserver` is missing, the hook returns before it
+   sets up its cleanup, so `--arrange-h` stays on `.dashboard` after the bar goes. Nothing
+   visible comes of it (the rule only applies while arranging), and every browser she uses has
+   `ResizeObserver`.
+2. **The Arrange-bar check counts only elements that overlap the bar:** accepted. The Today
+   strip sits *above* the bar before the bar sticks, and nothing covers it. Counting it as
+   hidden would be a false failure. What matters to her is that nothing she can focus is
+   covered, and nothing is.
+3. **No new `--header-band` token:** accepted. The band is solid, so it has no opacity to hold.
+   `colours.test.ts` reads the opacity straight from the `.topbar.on-page` rule, so if someone
+   makes it see-through later, the check catches it.
+4. **Real Shift+Tab presses, scripted headless, instead of the by-hand keyboard check:**
+   accepted for this review: 199 steps at 390 and 1280, with 0 under the header and 0 focus
+   rings cut off. The tester can still do one real pass by hand on the preview.
+
+**Noted, not to fix here (for the architect):** `focus=bingo` lands at 265 px, about 110 px
+lower than the scroll padding alone would put it. The card is fully visible and the month card's
+*Set up* above it is a fine context cue, so it's no problem for her. If it should land tighter,
+that's a separate follow-up about when the `scrollIntoView` runs on mount.
+
 # Build notes
 
 - **How the pages are told apart:** `src/routes/index.tsx` gives the header the class
@@ -253,3 +320,7 @@ Nothing before the build (small). The UX designer's review after the build goes 
   `Dashboard.tsx` / `ChallengesPage.tsx` (outside "only styles.css + a class"); the
   Arrange-bar check counts only elements that overlap the bar. Handed to the **UX designer**
   for the screenshot review, then the tester.
+- 2026-11-23 ux-designer: reviewed: matches, no must-fix. Clean, calm band and soft fade on
+  lavender and midnight. Header text, stats and tabs readable at 360/390/1280 on all three
+  pages. Bookshelf unchanged against `main`. Deviations 1–4 accepted (see *Design* review).
+  Handed to the **tester**.
