@@ -157,10 +157,109 @@ These were taken by the architect; the UX designer may refine the wording and pl
 8. **Placed in the existing block**, under the pages line, not as a new block.
 9. **A decision record (D-0029)**, because leaving listen-only books out is an exception to D-0008
    and a later change shouldn't quietly add a second thickness formula.
+10. **The words stay the architect's** (UX designer): `Stacked up, your pile would be <height>:
+    <comparison>.`, with no "tall" after the height, so "tall" isn't said twice.
+11. **Plain body text, not grey small text** (UX designer): the line is a fact, like the pace line
+    under it, so it gets the same style. The grey small line above stays the only "details" line.
+12. **A small emoji in front, hidden from screen readers** (UX designer): 📚 for a pile, 🎧 for an
+    all-audiobook pile.
+13. **Units spoken in full** (UX designer): a screen reader hears "1.62 metres" and "48
+    centimetres", not "m" and "cm".
+14. **A height never breaks away from its unit** (UX designer): a non-breaking space between the
+    number and the unit, and between the emoji and the first word.
 
 # Design
 
-To be written by the UX designer.
+One new line of text in the **Want-to-read pile** block. No new class, colour, text size, spacing
+or corner (D-0020), no hint text (D-0014), and nothing else in the block changes.
+
+## Where and how it looks
+
+- **Place:** a new `<p>` right after the grey "1,234 pages · 10 h 25 min to listen" line and before
+  the pace line ("At your pace of …" or the "Finished on" note). So the block reads: **N** books
+  waiting / pages · listening / **height line** / pace line / motivation part.
+- **Style:** a plain `<p>` with no class: `--text` (cream), `--fs-body`, regular weight, the body
+  font, the same as the pace line. No bold, no gold, no serif. The space above and below it is the
+  card's own grid gap (`--space-3`). It gets no margin of its own (`.dash-card p` already sets
+  `margin: 0`).
+- **Emoji:** the line starts with a small emoji at the same text size, then a non-breaking space:
+  - 📚 before the height line;
+  - 🎧 before the all-audiobooks line.
+
+  The emoji goes in `<span aria-hidden="true">`, so a screen reader skips it. It is only
+  decoration: the line must read fully without it.
+
+## The words, case by case
+
+`<height>` and the thing's height use the rounding from section 2 (`"48 cm"`, `"1.62 m"`,
+`"12.4 m"`, `"123 m"`), with a **non-breaking space** (U+00A0) between the number and the unit.
+
+| Case | What she sees |
+|---|---|
+| Normal (about as tall) | 📚 Stacked up, your pile would be 1.62 m: about as tall as an adult (1.75 m). |
+| Big (taller than) | 📚 Stacked up, your pile would be 12.4 m: taller than a house (8 m). |
+| Tiny (shorter than a mug) | 📚 Stacked up, your pile would be 4 cm: not as tall as a mug (10 cm) yet. |
+| Only audiobooks | 🎧 Your pile is all audiobooks, so it takes up no room at all. |
+| Some audiobooks, some others | the normal, big or tiny line for the other books; no extra note |
+| Empty pile (no want-to-read books) | no line at all; the block shows "0 books waiting" as it does now |
+
+The text is exactly as above: sentence case, a colon after the height, a full stop at the end, and
+the thing's height in round brackets.
+
+## What a screen reader hears
+
+Every height (the pile's and the thing's) is written twice in the markup:
+
+```html
+<span aria-hidden="true">1.62&nbsp;m</span><span class="visually-hidden">1.62 metres</span>
+```
+
+This uses the existing `.visually-hidden` class. The spoken units are `metres` and `centimetres`,
+with the singular for exactly 1 (`1 metre`, `1 centimetre`), in British spelling. The number is
+spoken as shown (`1.62`, `12.4`, `48`). So the whole line is heard as:
+
+- "Stacked up, your pile would be 1.62 metres: about as tall as an adult (1.75 metres)."
+- "Stacked up, your pile would be 4 centimetres: not as tall as a mug (10 centimetres) yet."
+- "Your pile is all audiobooks, so it takes up no room at all." (the emoji isn't read)
+
+The line is an ordinary paragraph in reading order, between the pages line and the pace line. It
+has no `role` and no live region (it only changes when the shelf changes), and nothing in it takes
+focus.
+
+## Phone (390) and computer (1280)
+
+- **390:** the card fills the content width with 1 rem padding, so the line wraps onto two or
+  three lines. It wraps like normal text: no `nowrap` on the line, no ellipsis, no smaller text.
+  Because of the non-breaking spaces, "1.62 m" and "(1.75 m)" never split across two lines, and
+  the emoji never ends up alone at the end of a line. The longest thing, "the Leaning Tower of
+  Pisa", simply wraps.
+- **1280:** the block is one dashboard column wide, and the line fits on one or two lines. The same
+  rules apply.
+- Nothing in the block pushes sideways, and there is no horizontal scroll at either width.
+
+## Both wallpapers
+
+The block is a walnut card (`--surface`, `--border`) on both **lavender and midnight**. The line is
+`--text` on `--surface`, a pair `colours.test.ts` already checks, so it looks the same on both
+wallpapers and no colour pair needs adding. The emoji are the device's own colour emoji.
+
+## Tokens reused
+
+`--text`, `--fs-body`, the `.dash-card` grid gap (`--space-3`), the 1 rem card padding on narrow
+screens, and `.visually-hidden`. Nothing new goes in `src/styles.css`.
+
+## Design checks (on the screenshots and in the dev server)
+
+- The height line sits between the grey pages line and the pace line, in cream body text the same
+  size as the pace line, and starts with 📚 (or 🎧 for an all-audiobook pile).
+- The wording matches the table exactly for the 40–50 book pile, the big pile and the
+  audiobook-only pile. The empty pile shows no line and still says "0 books waiting".
+- At 390 the line wraps without being cut off, and no height is split from its unit. At 1280 it
+  fits in the block. Lavender and midnight look the same.
+- In the accessibility tree (or with a screen reader) the line says "metres" and "centimetres" in
+  full, and the emoji isn't read.
+- The rest of the block (books waiting, the pages line, the pace line, the motivation part) is
+  unchanged.
 
 # Test
 
@@ -172,3 +271,6 @@ To be written by the tester.
   that the height is the shelf thickness added up, without books she only listens to; wording,
   rounding, comparison list and the empty and audiobook-only cases under *Choices made by the team*;
   group 1, no new stored fields; handed to the UX designer.
+- 2026-11-22 ux-designer: designed: one body-text line under the pages line, with a 📚 or 🎧 that
+  screen readers skip, units spoken in full through `.visually-hidden`, non-breaking spaces, no new
+  tokens; choices 10–14 added; handed to the developer.
