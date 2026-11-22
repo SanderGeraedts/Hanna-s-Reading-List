@@ -6,7 +6,7 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 
 ## Open
 
-None.
+- [T-0026 Show the taken-out book in front of a zoomed-in shelf and dim the room, and keep the search pop-up on screen](T-0026-open-book-zoomed.md): Zoomed in, a book she opens flies to a spot inside the bookcase and the dimming sheet sits behind the case (phone at 1.5× and more; the dimming also at 3× on the computer); the camera steps back while a book is out so both land in front of the case. Also: at 1024–1400 px the search pop-up opens half off the left edge.
 
 ## Doing
 
