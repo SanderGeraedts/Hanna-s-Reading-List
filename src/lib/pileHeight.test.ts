@@ -366,3 +366,63 @@ describe('compareHeight: boundaries and ties (tester, T-0021)', () => {
     expect(comparisonText(compareHeight(1e6))).toBe('taller than the Eiffel Tower (330 m)')
   })
 })
+
+describe('pile edge cases (tester, T-0023)', () => {
+  it('a book with Hardcover and E-book is a hardcover in All and Paper, a paperback in E-book', () => {
+    const pile = pileHeights([book('h', { formats: ['hardcover', 'ebook'], pages: 300 })])
+    expect(pile.all).toBeCloseTo(0.026, 10)
+    expect(pile.paper).toBeCloseTo(0.026, 10)
+    expect(pile.ebook).toBeCloseTo(0.022, 10)
+    expect(pile.counts).toEqual({ all: 1, paper: 1, ebook: 1, audio: 0 })
+  })
+
+  it('a listen-only book with Other as well still uses minutes ÷ 2 and counts only in Audiobook', () => {
+    const b = book('a', { formats: ['audiobook', 'other'], pages: 600, minutes: 600 })
+    expect(bookThickness(b)).toBeCloseTo(0.022, 10)
+    expect(bookKinds(b)).toEqual(['audio'])
+  })
+
+  it('a listen-only book whose pages copy its minutes counts its minutes once, not pages × 2', () => {
+    expect(audioMinutes(book('s', { formats: ['storytel'], pages: 600, minutes: 600 }))).toBe(600)
+  })
+
+  it('an e-book + audiobook book uses its own pages for the height and its minutes for the time', () => {
+    const b = book('x', { formats: ['ebook', 'audiobook'], pages: 400, minutes: 600 })
+    expect(bookThickness(b)).toBeCloseTo(0.029, 10)
+    expect(pileHeights([b])).toMatchObject({ audioMinutes: 600, counts: { all: 1, paper: 0, ebook: 1, audio: 1 } })
+  })
+
+  it('old books with the single format field still count by it', () => {
+    expect(bookThickness(book('h', { format: 'hardcover', pages: 300 }))).toBeCloseTo(0.026, 10)
+    expect(bookKinds(book('s', { format: 'storytel', storytelId: 'x' }))).toEqual(['audio'])
+    expect(bookKinds(book('e', { format: 'ebook' }))).toEqual(['ebook'])
+  })
+})
+
+describe('compareDuration: boundaries (tester, T-0023)', () => {
+  it.each([
+    [80, 'not as long as a football match (1 h 30 min) yet'],
+    [81, 'about as long as a football match (1 h 30 min)'],
+    [99, 'about as long as a football match (1 h 30 min)'],
+    [100, 'longer than a football match (1 h 30 min)'],
+    [1100, 'about as long as the nonstop flight from Perth to London (17 h 20 min)'],
+    [1110, 'about as long as all eight Harry Potter films back to back (19 h 39 min)'],
+    [2640, 'about as long as a work week (40 h)'],
+    [2879, 'longer than a work week (40 h)'],
+    [4679, 'about as long as listening nonstop for 3 days'],
+    [4680, 'about as long as listening nonstop for 3½ days'],
+    [15120, 'about as long as listening nonstop for 10½ days'],
+  ])('%s min → %s', (minutes, text) => {
+    expect(durationComparisonText(compareDuration(minutes))).toBe(text)
+  })
+
+  it('days are spoken with "and a half" also past 10', () => {
+    expect(daysSpoken(10.5)).toBe('10 and a half days')
+  })
+
+  it('the spoken time always says the same numbers as the shown time', () => {
+    for (let n = 1; n <= 6000; n++) {
+      expect(timeSpoken(n).replace(/ hours?/, ' h').replace(/ minutes?/, ' min')).toBe(formatDuration(n))
+    }
+  })
+})

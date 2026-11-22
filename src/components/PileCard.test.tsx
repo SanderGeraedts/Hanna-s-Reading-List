@@ -255,3 +255,33 @@ describe('PileCard: height line edge cases (tester, T-0021, updated for T-0023)'
     expect(heard(line)).toBe('Stacked up, your pile would be 660 metres: taller than the Eiffel Tower (330 metres).')
   })
 })
+
+describe('PileCard: more switch cases (tester, T-0023)', () => {
+  it('e-books and audiobooks only: All, E-book and Audiobook, and each line', () => {
+    const shelf = [book('e', { formats: ['ebook'], pages: 300 }), book('a', { formats: ['storytel'], minutes: 560 })]
+    const { container } = render(<PileCard books={shelf} />)
+    expect(buttonNames()).toEqual(['true:All', 'false:📱 E-book', 'false:🎧 Audiobook'])
+    press('Audiobook')
+    expect(seen(heightLine(container)!)).toBe(`🎧${nb}Your audiobook is 9${nb}h${nb}20${nb}min: longer than a working day (8${nb}h).`)
+    expect(heard(heightLine(container)!)).toBe('Your audiobook is 9 hours 20 minutes: longer than a working day (8 hours).')
+    press('E-book')
+    expect(seen(heightLine(container)!)).toBe(`📱${nb}Your e-book would stand 2${nb}cm: not as tall as a mug (10${nb}cm) yet.`)
+  })
+
+  it('the switch goes when only one kind is left, and the line is no longer a live region', () => {
+    const { rerender, container } = render(<PileCard books={mixed()} />)
+    press('Paper')
+    rerender(<PileCard books={mixed().filter((b) => ['A', 'B'].includes(b.id))} />)
+    expect(theSwitch()).toBeNull()
+    expect(seen(heightLine(container)!)).toMatch(/^📚/)
+    expect(heightLine(container)!.getAttribute('aria-live')).toBeNull()
+  })
+
+  it('pressing the same button twice keeps it pressed', () => {
+    const { container } = render(<PileCard books={mixed()} />)
+    press('Paper')
+    press('Paper')
+    expect(screen.getByRole('button', { name: 'Paper' }).getAttribute('aria-pressed')).toBe('true')
+    expect(seen(heightLine(container)!)).toMatch(/^📖/)
+  })
+})

@@ -2,11 +2,11 @@
 id: T-0023
 title: "Measure the want-to-read pile like real books, count audiobooks and e-books, and add an All · Paper · E-book · Audiobook switch"
 description: "The pile's height in the Want-to-read pile block uses the thickness of real printed books instead of the 3D shelf's (D-0030): audiobooks she only listens to count as the printed book (minutes ÷ 2 pages), e-books as paperbacks, and a switch like the Genre flower's shows the height of paper books and e-books, and the total listening time of the audiobooks, each with its own everyday comparison."
-status: Doing
+status: Done
 depends_on: [T-0021]
 decisions: [D-0008, D-0010, D-0014, D-0020, D-0022, D-0030]
 raised_on: 2026-11-22
-done_on: ""
+done_on: "2026-11-22"
 result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/232"]
 ---
 
@@ -620,7 +620,65 @@ To the tester.
 
 # Test
 
-To be written by the tester.
+Tester, 2026-11-22, on `t-0023-better-pile-height` at a34a0d2 after `pnpm install --frozen-lockfile`
+(done in 1s).
+
+**Commands (actual output):**
+
+- `pnpm test` (before my tests) → Test Files 87 passed | 1 skipped (88); Tests 790 passed | 9 skipped (799).
+- `pnpm exec tsc --noEmit` → no output, exit 0.
+- `pnpm run build` → ✓ built in 532ms, exit 0.
+- `pnpm exec harness check` → ✓ tasks: 23 tasks, index in step; ✓ decisions: 33 records, index
+  complete, 3 overrules valid; ✓ engineers: 2 listed; ✓ generated files: current.
+- After adding my tests: `pnpm test` → Test Files 87 passed | 1 skipped (88); Tests 811 passed |
+  9 skipped (820); `pnpm exec tsc --noEmit` → exit 0.
+- `git diff main...HEAD --stat` on `src/lib/shelfLayout.ts` (`bookDims`), its test,
+  `src/lib/listening.ts` (`thicknessPages`, `lengthPatch`), `src/lib/library.ts`,
+  `src/lib/shelfMerge.ts`, `src/server/`, `deploy/` and `src/routeTree.gen.ts` → empty: the 3D
+  shelf, the stored data and its sync are untouched.
+
+**What I checked in `git diff main...HEAD -- src`:**
+
+- D-0030 thickness: `0.07 × p + 1` mm paperback, `+ 5` mm hardcover, constants named in one place;
+  hardcover only when Hardcover is among the formats; e-books always as paperbacks (also in the
+  E-book kind when the book has Hardcover too).
+- Listen-only books (D-0008): minutes ÷ 2 first, then pages, then 280; others pages first; only
+  values above 0 (NaN, 0 and negative fall through). `listenOnly` ignores Other, so Audiobook + Other
+  is still listen-only.
+- Several formats: once in All (`bookThickness` once per book), in every kind under the switch;
+  the kinds may add up to more than All.
+- Storytel imports: `formatsOf` turns a lone `storytelId` and the old single `format` field into
+  formats, so old books count in the right kind; no format → All only, as a 280-page paperback.
+- Switch: buttons only for kinds with books, shown only with two or more kinds; the choice falls
+  back to All (state reset during render, no loop: it only sets when it differs) and is not saved.
+- Listening time: minutes → pages × 2 → 560; the 10% rule is inclusive (0.9 and 1.1), closest by log
+  ratio; nonstop days from 48 h rounded to the half day; "longer than" the longest beaten thing;
+  "not as long as a football match yet" below 90 min. `timeSpoken` rounds exactly like
+  `formatDuration`.
+- The rest of the block (books waiting, pages · listening, pace, motivation) is rendered outside
+  `PileHeightLine` and not affected. The code only reads the shelf: nothing is written, so her
+  data can't be harmed.
+
+**Tests I added** (`src/lib/pileHeight.test.ts` +18, `src/components/PileCard.test.tsx` +3, all pass):
+
+- Hardcover + E-book: 26 mm in All and Paper, 22 mm in E-book; Audiobook + Other listen-only: minutes
+  ÷ 2, only in Audiobook; a listen-only book with `pages = minutes = 600` counts 600 min, not 1,200;
+  an e-book + audiobook book uses its pages (29 mm) and its minutes (600); old single `format`
+  (hardcover, storytel + `storytelId`, ebook) counts by it.
+- Duration boundaries: 80 → not as long as a football match; 81 and 99 → about as long as a football
+  match (exactly 0.9 and 1.1); 100 → longer than; 1,100 → Perth–London and 1,110 → Harry Potter (either
+  side of the log midpoint); 2,640 → about a work week; 2,879 (47 h 59) → longer than a work week;
+  4,679 → 3 days, 4,680 → 3½ days; 15,120 → 10½ days, heard "10 and a half days"; for every total from
+  1 to 6,000 minutes the spoken time says the same numbers as the shown one.
+- Component: e-books + audiobooks only → All, 📱 E-book, 🎧 Audiobook, "Your audiobook is 9 h 20 min:
+  longer than a working day (8 h)." seen with non-breaking spaces and heard in full, and the singular
+  e-book line; the switch disappears (and the line stops being a live region) when only one kind is
+  left after choosing Paper; pressing the same button twice keeps it pressed.
+
+**Record:** status, `result` (PR #232) and Log were current; D-0030 exists and replaces D-0029; the
+UX review and re-review are under *Design*; 32 screenshots in `docs/tasks/T-0023-screens/`.
+
+**Verdict: passed.** Nothing left for a human.
 
 # Log
 
@@ -659,3 +717,4 @@ To be written by the tester.
 - 2026-11-22 ux-designer: reviewed: pass (re-review). The radius line on `.pile-kinds` and the
   360×800 shots on both wallpapers show a tidy two-row switch; one row is unchanged. Handed to the
   tester.
+- 2026-11-22 tester: passed. `pnpm test` 811 passed / 9 skipped, `tsc`, build and `harness check` green; added 21 edge-case tests (formats, old imports, 10% and days boundaries, spoken time, switch cases); `bookDims` and the stored data untouched.
