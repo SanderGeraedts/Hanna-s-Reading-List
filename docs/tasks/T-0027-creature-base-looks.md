@@ -84,6 +84,13 @@ Red List". Each entry keeps its source URL and year for the card's small source 
 4. The UX designer confirms in *Design* that the 20 read as one family (same style, proportions,
    eye style) and that each animal is recognisable at the size of a dashboard block (about 120 px).
 5. *Log* lists the Fable agents' reported token totals, one line per creature and a total.
+6. (UX) The model test also finds, for every creature: at most **1,500 triangles on `low`**; the
+   required parts `part:body`, `part:head`, `part:eyes`, `part:armL`, `part:armR` (Design §5);
+   every anchor with a `userData.size` above 0; a bounding box 0.95–1.15 high, at most 1.1 wide;
+   and no colour literal in `src/components/creatures/models/*.ts` (all colours come from the
+   palette, so a shiny is a palette swap).
+7. (UX) In the screenshots, building a creature with another palette (one shiny from Design §7)
+   changes every visible colour except the eyes, glints and blush.
 
 # Notes
 
@@ -157,13 +164,355 @@ when she's back.
     game until Sander's part is live.
 15. **Bought room decorations** belong to her on every device, but shown or hidden per device like
     the other decorations (D-0022). Options: this (taken) / shown everywhere at once.
+16. **The house cat's colour** (UX designer): apricot-ginger with tabby stripes, so it doesn't
+    look like the grey koala. Options: apricot (taken) / grey like the sleeping cat on the shelf.
+17. **Size on the shelf** (UX designer): a grown-up creature is a little smaller than the koala
+    decoration (books stay the main thing); a baby is half that. Options: a little smaller (taken)
+    / as big as the koala.
+18. **Shiny colours** (UX designer): mostly gold, purple and night-sky twists, e.g. a plum Adélie
+    penguin, an amethyst book dragon, a night-sky unicorn, a silver fox. Options: these (taken) /
+    other colours for some of them.
+19. **Everyone sits like a plush toy** (UX designer), also the fox, capybara and otter, so all 20
+    look like one family next to the koala. Options: all sitting (taken) / animals in their own
+    natural pose (standing, lying).
 
 # Design
 
-For the UX designer, before step A: a one-page style sheet in this section that every Fable agent
-gets: proportions (big head, short body, round shapes; baby → grown-up), eyes (one shared style),
-outline or not, palette rules on both wallpapers, the pose (sitting, facing the viewer, ¾ turn), and
-the size check at 120 px. After the build: the review of the four screenshots (Done when 4).
+UX designer, 2026-11-22, before step A. This is **the style sheet every Fable agent gets** (with
+the shared `model.ts` and its creature's row from the table and from *The 20 at a glance* below).
+Goal: 20 animals built by 20 different agents read as **one family of plush toys** that sits next
+to the shelf's koala and sleeping cat (`src/components/Decorations.tsx`). Those two set the look:
+smooth round primitives, soft matte fur (`roughness: 1`), tiny glossy black bead eyes, pink blush
+cheeks, no outline, no mouth, warm muted colours. After the build, the review of the screenshots
+goes under *Review* (Done when 4).
+
+## 1. The family look in one breath
+
+A chubby plush that **sits upright facing you**: an egg-shaped body, a round head as wide as the
+body resting right on it (no neck), two stubby feet pointing forward, short arms resting on the
+tummy, a lighter tummy patch, two small glossy bead eyes with a white glint, pink blush, a small
+nose. What makes each species is **its silhouette**: ears, tail, snout or beak, and one or two
+markings. Never realism: no claws, teeth, whiskers, fur texture or thin spiky detail.
+
+## 2. Proportions and scale
+
+Each model is built in **model units: about 1 unit tall**, origin at the bottom centre under the
+hips (y = 0 is the floor), facing **+z**, symmetric left/right except the tail. The shelf and den
+scale the whole group; a model never knows where it stands.
+
+Grown-up, in model units (the koala decoration × 4, eyes a little bigger):
+
+| Part | Shape | Centre (x, y, z) | Size |
+|---|---|---|---|
+| Body | sphere | 0, 0.31, 0 | r 0.29, scale [1, 1.08, 0.88]: bottom at ≈ 0, top ≈ 0.62 |
+| Tummy patch (belly colour) | sphere | 0, 0.29, 0.18 | r 0.19, scale [0.95, 1.15, 0.55] |
+| Feet | 2 spheres | ±0.17, 0.075, 0.20 | r 0.11, scale [1, 0.7, 1.35] |
+| Arms | 2 capsules | shoulder ±0.21, 0.42, 0.13 | r 0.075, length 0.18, resting on the tummy (koala: rot [-0.9, 0, ±0.75]) |
+| Head | sphere | 0, 0.66, 0.03 | r 0.27, scale [1.08, 0.98, 0.95]: width ≈ 0.58, top ≈ 0.92 |
+| Eyes | 2 spheres | ±0.105, 0.68, on the face surface | r 0.04 (≈ 0.15 of the head radius), slightly sunk in |
+| Eye glint | 2 spheres | eye centre + (±0.012 outward, +0.014, +0.03) | r 0.012, white |
+| Blush | 2 squashed spheres | ±0.17, 0.62, on the surface | r 0.05, scale [1, 0.7, 0.3] |
+| Nose | per species | ≈ 0, 0.64, front of the face | small (r ≈ 0.03) unless the species says otherwise |
+
+Rules that keep the family together:
+
+- **Height:** bounding box 0.95 to 1.10 units including ears; horns, ear tufts and an upright tail
+  may reach 1.15. Head top (without ears) between 0.88 and 0.95.
+- **Head : body** about 1 : 1 in width; the head is about 45 % of the height. Long animals (otter,
+  capybara, platypus) stay sitting plushes: their length shows in snout, tail and a slightly wider
+  body (scale x up to 1.15), never by lying down.
+- **Width** at most 0.75 without tail, wings or ribbons; with them at most 1.1. Depth at most 0.8
+  with tail.
+- **Eyes are the same on all 20**: size, height, spacing, black `eye` colour and white glint. Only
+  the owl may have a facial disc around them (§7); nobody gets bigger, coloured or anime eyes.
+- Ears, snouts and tails come from the species line; every other number above stays within ±10 %.
+
+**On the shelf** (one shelf row is 0.44 high, about 0.41 inside): the placement group scales a
+**grown-up to 0.22 world units tall** (the koala decoration is 0.25, a book about 0.2–0.3), a
+**young one to 0.17** and a **baby to 0.12**. A hat adds up to 0.06, still well below the shelf
+above. The model stands at the front of the board and is turned a little toward the viewer like the
+koala (`rotY` between −0.25 and 0.15); that ¾ turn belongs to the placement, never to the model.
+
+**Stages** (built by T-0029 in the shared builder from these factors, not by Fable; Fable builds
+the grown-up only and tags the parts):
+
+| Stage | Head | Body | Arms, feet | Tail | Eyes | Extras (horns, wings, ribbons, gills, tufts, mane) | Shelf height |
+|---|---|---|---|---|---|---|---|
+| baby | × 1.18 | × 0.85 | × 0.8 | × 0.75 | × 1.15 | × 0.7 | 0.12 |
+| young | × 1.08 | × 0.93 | × 0.9 | × 0.9 | × 1.07 | × 0.85 | 0.17 |
+| grown | × 1 | × 1 | × 1 | × 1 | × 1 | × 1 | 0.22 |
+
+Each part scales around its own pivot (§5), then the whole model is put back on y = 0.
+
+## 3. Construction and budget (phone first)
+
+- **three.js primitives only**: `SphereGeometry`, `CapsuleGeometry`, `CylinderGeometry`,
+  `ConeGeometry`, `TorusGeometry`, `BoxGeometry`, and for flat shapes (a star, a ribbon end, a
+  wing) `ShapeGeometry`/`ExtrudeGeometry` with at most 12 points. No model files, no textures, no
+  canvas painting, no new package.
+- **Smooth, not faceted** (`flatShading: false`), like the decorations: "low-poly" means low
+  segment counts, not a faceted look. Exception: small cone ears may have 4 sides, like the
+  sleeping cat's.
+- **Segments come only from the shared `SEG` table** in `model.ts`, never typed in:
+
+  | Size | Use | high (sphere w × h) | low |
+  |---|---|---|---|
+  | `L` | body, head | 16 × 12 | 10 × 8 |
+  | `M` | tummy, feet, ears, snout, tail ball | 10 × 8 | 8 × 6 |
+  | `S` | eyes, nose, inner ears, markings | 8 × 6 | 6 × 4 |
+  | `XS` | glints, blush, tiny spots | 6 × 4 | 5 × 3 |
+
+  Cylinders, cones, capsules, tori: 12 radial segments high, 8 low (capsule caps 3 / 2).
+- **Per creature**: at most **40 primitives** before merging; at most **3,000 triangles on `high`**
+  and **1,500 on `low`**; at most **12 draw calls** after the shared merge (aim for 8–10). The
+  shared body above (body, tummy, feet, arms, head, eyes, glints, blush, nose, two ears with
+  insides) is about 2,200 triangles on high, which leaves about 800 for the species' own features.
+- **Low quality** also drops meshes tagged `userData.detail = true` (small spots, inner-ear
+  patches, the third tail ring and the like). The creature must still be recognisable without them.
+
+**Materials (shared rules).** Fable never makes a material or writes a colour. It takes the
+palette slot materials from `creatureMaterials(p)` (`m.body`, `m.belly`, `m.accent`, `m.accent2`,
+`m.eye`, `m.nose`, `m.glint`, `m.blush`). The shared `finishCreature` then bakes each slot's colour
+into vertex colours and merges every part's meshes into one mesh per **material kind**:
+
+| Kind | Slots | Material (one instance shared by every creature) |
+|---|---|---|
+| `matte` | body, belly, accent, accent2 | `MeshStandardMaterial`, `vertexColors`, roughness 1, metalness 0 |
+| `gloss` | eye, glint, nose | the same with roughness 0.2 |
+| `satin` | accent or accent2 on a mesh tagged `userData.satin = true` (gold horns, hooves, ribbons, beaks) | roughness 0.45, metalness 0.25; use on at most two parts |
+| `blush` | blush | colour `#e8a6a6`, transparent, opacity 0.55, roughness 1, no shadow |
+
+So a shiny is the same model built with another palette, and a den full of pets shares four
+materials. Everything casts and receives shadows except eyes, glints and blush. Colours are given
+as sRGB hex; the builder converts them with `THREE.Color` (colour management stays on).
+
+## 4. Face, expression and neutral pose
+
+- **Eyes**: §2. Black glossy beads (`#111114`, the koala's), each with one white glint up and
+  outward. On a dark face (panda patches, penguins, otter) the glint keeps them readable; the eye
+  colour never changes.
+- **Blush**: always, same place, same colour: the family's signature.
+- **Nose**: a small rounded nose in the `nose` colour; beaks and bills are the nose slot (or
+  `accent` when the species line says), built as a rounded cone or flattened sphere, never sharp.
+- **No mouth** in the base model (koala rule). Expressions (happy ^ ^, sleepy, sad) are made later
+  by squashing or swapping the `eyes` part.
+- **Neutral pose**: sitting upright, head straight, looking straight ahead along +z, arms resting
+  on the tummy (penguins: flippers down along the sides, 15° out; dragon and owl: wing-arms folded
+  against the sides), feet forward. The tail lies behind and curls out to the creature's left (+x),
+  so it shows in the silhouette from the front. Wings, ribbons and a mane point up and back, never
+  forward over the face.
+
+## 5. Parts, pivots and anchors
+
+The model is a `THREE.Group` named with the species id. Its children are **part groups**, named
+exactly as below, each **positioned at its joint** so that rotating it moves the part naturally.
+Meshes go inside a part; nothing else on the root but parts and the `seat` anchor.
+
+| Part | Pivot (its group position) | Holds | Required |
+|---|---|---|---|
+| `part:body` | 0, 0.31, 0 (body centre) | body, tummy, feet, markings, back spines, hooves | yes |
+| `part:head` | 0, 0.56, 0.02 (where head meets body) | head, snout, nose, ears, horns, mane, blush | yes |
+| `part:eyes` | inside `part:head`, at the eyes' height, x = 0 | both eyes and glints | yes |
+| `part:armL`, `part:armR` | the shoulders | arm or flipper or wing-arm | yes |
+| `part:tail` | where the tail meets the body | tail(s), ribbon tails | if the species has a tail |
+| `part:wings` | between the shoulder blades | real wings (book dragon only) | no |
+
+`L` and `R` are the creature's own left (+x) and right (−x). Ears stay inside the head (one draw
+call), so later animation moves head, eyes, arms, tail and wings, and squashes the body.
+
+**Anchors** are empty `THREE.Object3D`s with exactly these names (found with `getObjectByName`),
+each with `userData.size` in model units so outfits can size themselves per species:
+
+| Anchor | Inside | Where | `userData.size` |
+|---|---|---|---|
+| `seat` | root | 0, 0, 0: where it sits on a cushion or a pile of books | body width |
+| `neck` | `part:body` | the ring where head meets body (≈ y 0.56), centred, y up | ring radius (for a scarf or bow) |
+| `back` | `part:body` | middle of the back surface (≈ 0, 0.36, −0.25), facing −z | back width (backpack) |
+| `head` | `part:head` | the head sphere's centre | head radius |
+| `hat` | `part:head` | the top of the skull between the ears, on the surface, y up | free width between the ears |
+| `face` | `part:head` | the face surface at eye height, facing +z | outer width of the two eyes (glasses) |
+| `paw` | `part:armR` | the front tip of the right paw | paw radius (holds a sign or a tiny book) |
+
+Tags Fable sets on meshes for the shared builder: `userData.stageRole = 'extra'` on horns, wings,
+ribbons, gills, ear tufts and manes; `userData.detail = true` on what low quality may drop;
+`userData.satin = true` (see §3).
+
+## 6. The shared interface (developer writes `model.ts` first)
+
+This keeps the architect's `build<Name>(p: CreatureParams): THREE.Group` and `CreatureParams`
+(palette, stage, quality), with one more palette slot (`accent2`) and one extra export per file.
+
+```ts
+// src/components/creatures/model.ts (developer, before step A)
+export type CreatureStage = 'baby' | 'young' | 'grown'
+export type CreatureQuality = 'low' | 'high'
+export interface CreaturePalette {
+  body: string     // main fur, feathers or skin
+  belly: string    // tummy, muzzle, inner ear, face
+  accent: string   // the species' marking: mask, socks, stripes, bill, horn
+  accent2: string  // a second marking (same as accent when the species has none)
+  eye: string      // '#111114' for every species
+  nose: string     // nose, beak or bill tip
+}
+export interface CreatureParams { palette: CreaturePalette; stage: CreatureStage; quality: CreatureQuality }
+export const ANCHORS = ['seat', 'neck', 'back', 'head', 'hat', 'face', 'paw'] as const
+export const PARTS = ['part:body', 'part:head', 'part:eyes', 'part:armL', 'part:armR', 'part:tail', 'part:wings'] as const
+export const SEG: Record<CreatureQuality, Record<'L' | 'M' | 'S' | 'XS', [number, number]>> // §3
+export function radial(q: CreatureQuality): number // 12 or 8
+export function creatureMaterials(p: CreatureParams): Record<'body' | 'belly' | 'accent' | 'accent2' | 'eye' | 'nose' | 'glint' | 'blush', THREE.Material>
+export function anchor(name: (typeof ANCHORS)[number], size: number): THREE.Object3D
+export interface CreatureModel { id: SpeciesId; palette: CreaturePalette; build: (p: CreatureParams) => THREE.Group }
+/** The only way the app gets a creature: default palette, build, stage factors (T-0029), low-quality drop, merge, checks. */
+export function makeCreature(id: SpeciesId, opts: { stage?: CreatureStage; quality?: CreatureQuality; palette?: CreaturePalette }): THREE.Group
+```
+
+```ts
+// src/components/creatures/models/<id>.ts (Fable, one file per creature, imports only three and ../model)
+export function buildRedFox(p: CreatureParams): THREE.Group { /* parts, meshes, anchors, tags */ }
+export const redFox: CreatureModel = { id: 'red-fox', palette: { /* §7 row */ }, build: buildRedFox }
+```
+
+The developer adds `models/index.ts` (the 20 in species order) and `finishCreature` (merge per part
+and kind, shadows, dispose of the parts' geometries). A Fable file never merges, animates, reads
+`p.stage` (it builds the grown-up whatever the stage) or touches anything outside its file.
+
+## 7. Palettes, shinies and both wallpapers
+
+Rules for every palette:
+
+- Warm and muted, like the koala and cat (no neon, no pure white `#fff` or pure black body): fur
+  whites are cream (`#f3efe6`–`#fbf6ee`), blacks are soft (`#2b2a2f` for small parts; a black
+  **body** no darker than `#30313b`, always with a light tummy facing the viewer).
+- **Readable on both wallpapers**: no body colour in the lavender band of the wall (`#a990cf` to
+  `#ece4f5`) and none in the midnight band (`#0f1536` to `#2a3670`). Lavender and purple are fine
+  for accents (mane, wings), Hanna's favourite colour.
+- The gold accent `#d9a85b` (the app's one accent) is the fantasy creatures' colour: gold on the
+  legendaries tells they are special.
+- Everyone: `eye` `#111114`, glint white, blush `#e8a6a6`.
+
+**Shiny**: the same model with a whole other palette (body, belly, accent, accent2; eyes and blush
+stay), clearly a different hue at 120 px, not just lighter, plus a soft gold sparkle that T-0030
+adds around it. The shiny palettes below are the design; T-0030 puts them in code.
+
+| id | body | belly | accent | accent2 | nose | shiny (body / belly / accent / accent2 / nose) |
+|---|---|---|---|---|---|---|
+| `cat` | `#e8b07a` apricot | `#f6ead8` | `#c97f45` tabby stripes | `#e8a9a4` inner ears | `#d98a8a` | snow and gold: `#f2eee8` / `#fffaf0` / `#d9a85b` / `#e8a9a4` / `#d98a8a` |
+| `red-fox` | `#df7a35` | `#f7efe4` | `#3a2a24` socks, ear backs | `#3a2a24` | `#2b2a2f` | silver fox: `#c9ccd6` / `#fbfaf7` / `#5a5f6e` / `#5a5f6e` / `#2b2a2f` |
+| `capybara` | `#a87a52` | `#c49a70` | `#6e4d33` snout top | `#6e4d33` | `#4a3628` | — |
+| `red-squirrel` | `#b5481f` chestnut | `#f3e6d2` | `#8f3816` tufts, tail edge | `#8f3816` | `#3a2a24` | — |
+| `adelie-penguin` | `#33343f` | `#f7f7f4` | `#f7f7f4` eye ring | `#e7a3a0` feet | `#2b2a2f` | plum: `#6e4f8f` / `#fbf6ee` / `#d9a85b` / `#e7a3a0` / `#2b2a2f` |
+| `hedgehog` | `#8a6a4e` spines | `#e8d4b8` face, tummy | `#5e4634` spine tips | `#5e4634` | `#2b2a2f` | blonde: `#e8c9a0` / `#fff4ea` / `#d9a85b` / `#d9a85b` / `#2b2a2f` |
+| `otter` | `#7a5236` | `#d9bfa0` | `#5e3d27` | `#5e3d27` | `#2b2a2f` | — |
+| `platypus` | `#8a6440` | `#c9a27a` | `#5a5c66` bill, feet | `#5a5c66` | `#2b2a2f` | opal: `#5fa8a0` / `#cfe8e2` / `#d9a85b` / `#d9a85b` / `#2b2a2f` |
+| `koala` | `#9196a0` (the decoration's) | `#ece6dc` | `#ece6dc` ear fluff | `#ece6dc` | `#2b2a2f` | honey: `#dcb882` / `#fbf3e3` / `#fbf3e3` / `#fbf3e3` / `#5a3e2a` |
+| `giant-panda` | `#f4f1ea` | `#f4f1ea` | `#2e2c30` ears, patches, limbs | `#2e2c30` | `#2b2a2f` | — |
+| `polar-bear` | `#f3efe6` | `#f3efe6` | `#e3d9c6` muzzle | `#e3d9c6` | `#2b2a2f` | — |
+| `red-panda` | `#c1552a` | `#f7efe4` face | `#3a2622` legs, tear marks | `#8a3a1c` tail rings | `#2b2a2f` | amber: `#e0a64e` / `#fffaf0` / `#5a3b2a` / `#b07a30` / `#2b2a2f` |
+| `emperor-penguin` | `#3a3d48` | `#f7f5ef` | `#f2b23e` ear patches, beak stripe | `#fbe7b0` chest wash | `#2b2a2f` | — |
+| `ring-tailed-lemur` | `#a19a94` | `#f4f1ea` face, rings | `#2b2a2f` eye patches, rings, snout | `#f4f1ea` | `#2b2a2f` | — |
+| `african-penguin` | `#33343f` | `#f7f5ef` | `#2b2a2f` chest band, spots | `#e88a8a` eye patch | `#2b2a2f` | — |
+| `axolotl` | `#f4b6c4` | `#fbd9e0` | `#e0607e` gills | `#e0607e` | `#d98a8a` | gold: `#f5d27a` / `#fbebc0` / `#e98a6a` / `#e98a6a` / `#d98a8a` |
+| `book-dragon` | `#6f9a7c` sage | `#f0e2c0` belly plates, pages | `#d9a85b` horns, spikes (satin) | `#8a3a4a` book-cover wings | `#2b2a2f` | amethyst: `#8f6fb8` / `#f6ecd6` / `#d9a85b` / `#4a5aa8` / `#2b2a2f` |
+| `library-owl` | `#8a6a52` | `#efe2cc` facial disc, chest | `#5e4634` tufts, wing tips | `#d9a85b` chest chevrons | `#d9a85b` beak | — |
+| `bookmark-fox` | `#f3e9d8` paper cream | `#fffaf0` | `#b0413e` ribbon red (satin) | `#d9a85b` ribbon gold (satin) | `#2b2a2f` | — |
+| `starlight-unicorn` | `#fbf6ee` pearl | `#fbf6ee` | `#d9a85b` horn, hooves, star (satin) | `#9d86d1` lavender mane, tail | `#e8a9a4` | night sky: `#4a5aa8` / `#dfe3f5` / `#f4d68c` / `#f4d68c` / `#e8a9a4` |
+
+## 8. The 20 at a glance (key silhouette features)
+
+The silhouette test: filled solid black at 120 px, each must still be recognisable from the
+others. These are the features that carry it; everything else follows §2–§5.
+
+1. **`cat`**: two upright pointed cone ears (4-sided, pink inside), small pink triangle nose, three
+   short accent stripes on the forehead and three on the back, a long tail curling up at the +x
+   side with a ringed tip. Rounder face than the fox, no snout.
+2. **`red-fox`**: big triangular ears with dark backs, a pointed cream-tipped snout (cone, 0.14
+   long), cream chest and cheeks, dark socks on feet and arm tips, a very big bushy tail (stretched
+   sphere, cream tip) sweeping round to the front at +x.
+3. **`capybara`**: the calm one: wide barrel body (x 1.15), boxy head (sphere scaled [1.1, 0.95,
+   1.2]) with a long flat blunt snout and a darker top, tiny round ears high on the head, eyes 0.02
+   higher than usual (still the same eyes), no visible tail.
+4. **`red-squirrel`**: pointed ears with tall accent ear tufts (`extra`), small snout, a huge
+   S-shaped tail standing up behind it taller than the head (two or three stacked stretched
+   spheres), cream tummy.
+5. **`adelie-penguin`**: the small round penguin (body scale [1, 1.1, 0.9], head merged into body
+   with a slight dip), all-dark head and back, white front from the chin down, a **white ring
+   around each eye**, short dark beak, pink feet, flippers down.
+6. **`hedgehog`**: a cream face with a pointed little snout and a round black nose, small round
+   ears; the back of the head and the whole back covered by a dome of 20–28 short rounded cones
+   (spines, 5 radial, brown with darker tips) that makes a round spiky outline; cream tummy.
+7. **`otter`**: sleek: smaller rounded head with a wide cream muzzle and a round dark nose, tiny
+   round ears low on the sides, arms held together in front of the chest (like holding a pebble,
+   but empty), a thick tapering tail lying on the floor and curving to +x.
+8. **`platypus`**: a broad flat duck bill (flattened sphere [1.3, 0.35, 1.0], slate) sticking out
+   0.18 at the front, no visible ears, webbed slate feet, a flat paddle tail (squashed sphere)
+   behind on the floor. The head is a bit smaller than usual (−10 %).
+9. **`koala`**: exactly the decoration made big: huge round fluffy ears with cream insides, the
+   big dark oval nose (r 0.085, scale [0.8, 1.2, 0.7]), arms hugging the tummy, no tail.
+10. **`giant-panda`**: cream with black round ears, **black teardrop eye patches** tilted down and
+    out (eyes sit on them), black arms and feet, a black band over the shoulders, tiny white tail.
+11. **`polar-bear`**: all cream, small round ears, a longer rounded muzzle (0.12) in a slightly
+    warmer cream with a black nose; bigger, flatter feet. Recognised by the muzzle and the white.
+12. **`red-panda`**: big pointed ears with cream rims, a cream face mask with dark **tear marks**
+    from eyes to cheeks, dark legs and arms, a long fat tail with 4–5 alternating rings (`accent2`).
+13. **`emperor-penguin`**: the tall one: pear body (scale [0.95, 1.18, 0.9]), smaller dark head on
+    top, **golden-yellow ear patches** behind the eyes fading into the pale-yellow chest, a long
+    slim slightly curved beak with an orange stripe. Flippers down.
+14. **`ring-tailed-lemur`**: a pointed fox-like face (white) with **black eye patches** (the eyes sit on
+    them) and a black snout, rounded ears, and a very long upright tail with 6–7 black and white
+    rings rising in a question-mark curve above its head (the tallest silhouette, up to 1.15).
+15. **`african-penguin`**: middle-sized penguin with a white face stripe arching from the beak over
+    the eye to the chest, a **pink patch above each eye**, a black band across the white chest and
+    a few black chest spots (`detail`). Same body as Adélie but slightly slimmer.
+16. **`axolotl`**: a wide round head (x 1.15) with three feathery gill fronds on each side (capsules
+    fanning out and up, `extra`, deep pink), a friendly face of just eyes and blush (no mouth),
+    a tail with a soft fin behind; no ears, no nose (nose slot unused).
+17. **`book-dragon`**: sage green with a cream plated belly, two small gold horns and three gold
+    back spikes, a pointed tail with a little gold spade; its **wings are an open book** on its back
+    (`part:wings`): two flat cover boards in `accent2` with a cream page block between them, opened
+    in a V, poking up behind the head.
+18. **`library-owl`**: a round body and head almost in one (head merged lower), two upright **ear
+    tufts**, a heart-shaped cream facial disc around the eyes (the only creature with something
+    around its eyes; eyes the normal size), small gold beak, gold chevron "page edge" marks on the
+    chest, wings as folded arms with dark tips, no tail showing.
+19. **`bookmark-fox`**: a cream paper fox (fox head and ears, gold inner ears), and instead of one
+    tail **three ribbon bookmarks** (flat strips 0.06 wide, red–gold–red, satin) fanning up and back
+    from the tail base, each with a V-notched end. Tells it from the red fox at once.
+20. **`starlight-unicorn`**: a pearl pony head (longer muzzle, small pointed ears), a **spiral gold
+    horn** (cone with 3 torus rings) between the ears, a lavender mane in 4–5 round tufts down the
+    back of the head and a matching tufty tail, gold hooves as the feet, and one small gold star on its left flank
+    (`detail`).
+
+## 9. Both wallpapers, the shelf and the den
+
+- **One look everywhere.** Colours never change with the wallpaper or the room. On the shelf the
+  creature stands against the bookcase's wooden back, lit by the room's warm light; in the den
+  and on `/style` the same lights are used (warm hemisphere + soft ambient + warm key light from
+  the top left, as in `BookshelfScene.tsx`), plus **one soft back light** (`#fff3e0`, about 0.5)
+  from behind and above, so dark backs (penguins, otter) keep a light edge on the midnight
+  wallpaper.
+- **On the shelf** (T-0033): grown-up 0.22 high, §2. Quality `low` and no shadows on a phone, like
+  the decorations; `high` with shadows on a computer. It sits still like the koala unless T-0033
+  animates it.
+- **In the den** (T-0029, T-0032): the same model and materials, seen a little from above (about
+  10° down) and ¾ turned. Their size there and the den itself are designed in those tasks.
+- **On `/style`** (this task): a **Creatures** section with one 3D canvas (not 20: browsers allow
+  only about 16 canvases) showing all 20 in a grid in species order, each slowly turning (one turn
+  in about 12 s), with its name, tier and Red List label as normal text under it. On 390 px: 3 per
+  row, each tile about 120 × 120 px (the size check of Done when 4). On 1280 px: 5 per row, tiles
+  160 px. The section sits on the page's wallpaper and follows the wallpaper set in the 🎨 Room
+  panel; the screenshots are made once with lavender and once with midnight. The canvas stops
+  turning when the page is hidden.
+
+## 10. What Fable hands in
+
+Per creature: the one file of §6, which builds with defaults inside the budget of §3, with all
+required parts and anchors, and a short comment at the top listing its primitives, its tagged
+`extra` and `detail` meshes and its estimated triangle count. If something in this style sheet
+cannot be met for its animal, the agent says so in its reply instead of breaking the family rule.
+
+## Review
+
+(after the build: the four screenshots, family check and the 120 px check, Done when 4)
 
 # Test
 
@@ -174,3 +523,9 @@ the size check at 120 px. After the build: the review of the four screenshots (D
   koala Vulnerable); split modelling into a Fable step (one agent per creature, base look only) and
   a normal-agent step; recorded D-0033 and D-0034; 15 questions taken with the recommended option
   for the morning. Size: full (new data, new 3D models, visible on /style).
+- 2026-11-22 ux-designer: designed. Style sheet for the Fable agents in *Design* (proportions in
+  model units, budget 3,000/1,500 triangles and 12 draw calls, shared vertex-colour materials,
+  parts and anchors, the shared `model.ts` interface, 20 palettes with 10 shiny palettes, a
+  silhouette line per creature, wallpapers, shelf and den); Done when 6–7 added; questions 16–19
+  taken with the recommended option for the morning. Hand-over to the developer: write `model.ts`
+  as Design §6, then step A.
