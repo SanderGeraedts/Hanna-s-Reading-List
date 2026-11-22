@@ -6,13 +6,14 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 
 ## Open
 
-- [T-0020 Let her drag blocks within Favourites in Arrange, in an order of their own that follows her to every device](T-0020-arrange-favourites.md): In Arrange the ★ Favourites blocks get the same ⠿ handle, drag and arrow keys as the other sections; a move reorders layout.favourites (separate from the block's own section), and the account sync sends it as an unstar and re-star of the shortest tail, worked out against the account's list, so a reorder isn't undone by the next pull and no server change is needed (D-0028).
+None.
 
 ## Doing
 
 - [T-0001 Adopt the harness at v0.7.0](T-0001-adopt-the-harness.md): D-0001: switch to pnpm, install the harness at v0.7.0 with harness adopt, thin AGENTS.md and CLAUDE.md, CI and auto-merge as callers of the harness's workflows with the backend workflow wired in, and the harness's ruleset on main.
 - [T-0003 Show the bookshelf again on a phone](T-0003-show-the-shelf-on-a-phone.md): #181: the shelf isn't shown in the mobile version; find what broke it on narrow screens and fix it, with a test that keeps it fixed.
 - [T-0009 Keep the dashboard's favourites with the account, so every device shows the same ones](T-0009-favourites-follow-her-across-devices.md): #182: the starred dashboard blocks are saved per device today; keep them on the account's shelf record on the server, saved on their own like the reading goals.
+- [T-0020 Let her drag blocks within Favourites in Arrange, in an order of their own that follows her to every device](T-0020-arrange-favourites.md): In Arrange the ★ Favourites blocks get the same ⠿ handle, drag and arrow keys as the other sections; a move reorders layout.favourites (separate from the block's own section), and the account sync sends it as an unstar and re-star of the shortest tail, worked out against the account's list, so a reorder isn't undone by the next pull and no server change is needed (D-0028).
 
 ## Done
 

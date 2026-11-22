@@ -2,7 +2,7 @@
 id: T-0020
 title: "Let her drag blocks within Favourites in Arrange, in an order of their own that follows her to every device"
 description: "In Arrange the ★ Favourites blocks get the same ⠿ handle, drag and arrow keys as the other sections; a move reorders layout.favourites (separate from the block's own section), and the account sync sends it as an unstar and re-star of the shortest tail, worked out against the account's list, so a reorder isn't undone by the next pull and no server change is needed (D-0028)."
-status: Open
+status: Doing
 depends_on: []
 decisions: [D-0003, D-0005, D-0014, D-0020, D-0022, D-0028]
 raised_on: 2026-11-22

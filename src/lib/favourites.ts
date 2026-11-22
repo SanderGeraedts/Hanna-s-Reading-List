@@ -62,3 +62,66 @@ export function meetAccount(
   const own = cleanFavourites(local)
   return { favourites: own, push: own }
 }
+
+/**
+ * A move within Favourites (T-0020, D-0028), as it waits in the device's
+ * unsent queue: the block, and the blocks before it in her new order (its
+ * anchors). It is worked out against the account's list only when it is sent.
+ */
+export interface FavouritesMove {
+  move: BlockId
+  before: BlockId[]
+}
+
+/** One entry in the device's unsent queue: a star/unstar, or a move. */
+export type UnsentChange = FavouritesChange | FavouritesMove
+
+export const isMove = (c: UnsentChange): c is FavouritesMove => 'move' in c
+
+/** A saved queue entry made safe (junk becomes an empty change, which sends nothing harmful). */
+export function cleanUnsent(raw: unknown): UnsentChange {
+  const c = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  if (isBlock(c.move)) return { move: c.move, before: cleanFavourites(c.before).filter((id) => id !== c.move) }
+  return { add: cleanFavourites(c.add), remove: cleanFavourites(c.remove) }
+}
+
+/**
+ * What to queue when the favourites went from `before` to `after` with the same
+ * blocks in another order: one move per block moved. A single drag or key
+ * moves one block; anything else becomes a move for each block in her order,
+ * which builds the same order.
+ */
+export function orderMoves(before: readonly BlockId[], after: readonly BlockId[]): FavouritesMove[] {
+  if (before.length !== after.length || before.every((id, i) => id === after[i])) return []
+  for (const id of after) {
+    const a = before.filter((x) => x !== id)
+    const b = after.filter((x) => x !== id)
+    if (a.every((x, i) => x === b[i])) return [{ move: id, before: after.slice(0, after.indexOf(id)) }]
+  }
+  return after.map((id, i) => ({ move: id, before: after.slice(0, i) }))
+}
+
+/**
+ * A move worked out against the account's list as it is now: the block goes
+ * right after the last of its anchors still on the account (first when none
+ * is), every other block keeps the account's order. The route can only unstar
+ * and append, so it becomes an unstar of the shortest tail and a re-star of it
+ * in the new order, as two changes (one request ignores a block named in both
+ * lists). Nothing to send (`[]`) when the block is no longer on the account or
+ * already there.
+ */
+export function moveToChanges(account: readonly BlockId[], id: BlockId, before: readonly BlockId[]): FavouritesChange[] {
+  if (!account.includes(id)) return []
+  const rest = account.filter((x) => x !== id)
+  const anchor = [...before].reverse().find((x) => x !== id && rest.includes(x))
+  const at = anchor ? rest.indexOf(anchor) + 1 : 0
+  const wanted = [...rest.slice(0, at), id, ...rest.slice(at)]
+  for (let n = 0; n <= wanted.length; n++) {
+    const tail = wanted.slice(wanted.length - n)
+    const kept = account.filter((x) => !tail.includes(x))
+    if (kept.every((x, i) => x === wanted[i])) {
+      return n === 0 ? [] : [{ add: [], remove: tail }, { add: tail, remove: [] }]
+    }
+  }
+  return []
+}

@@ -116,3 +116,101 @@ describe('favourites on top', async () => {
     expect(DEFAULT_LAYOUT.sections.today[0]).not.toContain('fact')
   })
 })
+
+describe('moving within Favourites (T-0020, D-0028)', async () => {
+  const { favouriteColumns, favouritePlace, moveFavourite, stepFavourite, toggleFavourite } = await import(
+    './dashboardLayout'
+  )
+  // a, b, c, d, e: columns [a, c, e] / [b, d]
+  const [a, b, c, d, e] = ['goal', 'reading', 'calendar', 'pace', 'fact'] as BlockId[]
+  const five: DashboardLayout = { ...structuredClone(DEFAULT_LAYOUT), favourites: [a, b, c, d, e] }
+
+  it('a drop in column c before row r is list place 2r + c of the others, or the end', () => {
+    expect(favouriteColumns(five)).toEqual([
+      [a, c, e],
+      [b, d],
+    ])
+    const eFirst = moveFavourite(five, e, 0, 0)
+    expect(eFirst.favourites).toEqual([e, a, b, c, d])
+    expect(favouriteColumns(eFirst)[0][0]).toBe(e)
+    const aRight = moveFavourite(five, a, 1, 1)
+    expect(aRight.favourites).toEqual([b, c, d, a, e])
+    expect(favouriteColumns(aRight)[1][1]).toBe(a)
+    expect(moveFavourite(five, a, 1, 2).favourites).toEqual([b, c, d, e, a])
+    expect(moveFavourite(five, a, 1, 9).favourites).toEqual([b, c, d, e, a])
+    // the block shows where it was dropped whenever the list is long enough
+    for (const id of five.favourites)
+      for (const column of [0, 1] as const)
+        for (let row = 0; row < 3; row++) {
+          if (2 * row + column > 4) continue
+          const next = moveFavourite(five, id, column, row)
+          expect(favouriteColumns(next)[column][row]).toBe(id)
+          expect(favouritePlace(next, id)).toEqual({ index: 2 * row + column, column, row })
+        }
+  })
+
+  it('with one column the place in the column is the place in the list', () => {
+    expect(moveFavourite(five, e, 0, 1, 1).favourites).toEqual([a, e, b, c, d])
+    expect(favouritePlace(five, d, 1)).toEqual({ index: 3, column: 0, row: 3 })
+  })
+
+  it('keys: Up/Down a row with two columns, a place with one; Left/Right to the other column', () => {
+    expect(stepFavourite(five, c, 'ArrowUp').favourites).toEqual([c, a, b, d, e])
+    expect(stepFavourite(five, c, 'ArrowDown').favourites).toEqual([a, b, d, e, c])
+    expect(stepFavourite(five, d, 'ArrowLeft').favourites).toEqual([a, b, d, c, e])
+    expect(stepFavourite(five, c, 'ArrowRight').favourites).toEqual([a, b, d, c, e])
+    expect(stepFavourite(five, c, 'ArrowUp', 1).favourites).toEqual([a, c, b, d, e])
+    expect(stepFavourite(five, c, 'ArrowDown', 1).favourites).toEqual([a, b, d, c, e])
+  })
+
+  it('keys at an edge leave the layout as it is', () => {
+    expect(stepFavourite(five, a, 'ArrowUp')).toBe(five)
+    expect(stepFavourite(five, b, 'ArrowUp')).toBe(five)
+    expect(stepFavourite(five, d, 'ArrowDown')).toBe(five)
+    expect(stepFavourite(five, e, 'ArrowDown')).toBe(five)
+    expect(stepFavourite(five, a, 'ArrowLeft')).toBe(five) // left column already
+    expect(stepFavourite(five, b, 'ArrowRight')).toBe(five) // right column already
+    expect(stepFavourite(five, e, 'ArrowRight')).toBe(five) // no room on its row
+    expect(stepFavourite(five, a, 'ArrowUp', 1)).toBe(five)
+    expect(stepFavourite(five, e, 'ArrowDown', 1)).toBe(five)
+    expect(stepFavourite(five, c, 'ArrowLeft', 1)).toBe(five)
+    expect(stepFavourite(five, c, 'ArrowRight', 1)).toBe(five)
+    const one = { ...five, favourites: [a] }
+    for (const k of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'] as const) expect(stepFavourite(one, a, k)).toBe(one)
+    // two side by side: Left/Right swaps them, Up/Down do nothing; one column: Up/Down swaps
+    const two = { ...five, favourites: [a, b] }
+    expect(stepFavourite(two, a, 'ArrowRight').favourites).toEqual([b, a])
+    expect(stepFavourite(two, a, 'ArrowDown')).toBe(two)
+    expect(stepFavourite(two, a, 'ArrowDown', 1).favourites).toEqual([b, a])
+    // not a favourite: nothing
+    expect(stepFavourite(five, 'bingo', 'ArrowUp')).toBe(five)
+    expect(moveFavourite(five, 'bingo', 0, 0)).toBe(five)
+  })
+
+  it('a favourites move changes only their order; a section move never changes it', () => {
+    const arranged = toggleFold(hideBlock(moveBlock(five, 'bingo', 'today', 1, 0), 'records'), 'stats')
+    const moved = [
+      moveFavourite(arranged, e, 0, 0),
+      moveFavourite(arranged, a, 0, 2, 1),
+      stepFavourite(arranged, d, 'ArrowLeft'),
+    ]
+    for (const next of moved) {
+      expect(next.sections).toEqual(arranged.sections)
+      expect(next.hidden).toEqual(arranged.hidden)
+      expect(next.folded).toEqual(arranged.folded)
+      expect([...next.favourites].sort()).toEqual([...arranged.favourites].sort())
+      expect(next.favourites).not.toEqual(arranged.favourites)
+    }
+    expect(moveBlock(five, c, 'fun', 0, 0).favourites).toEqual(five.favourites)
+    expect(moveBlock(five, e, 'today', 1, 2).favourites).toEqual(five.favourites)
+    // a new star still goes to the end; Reset keeps the order
+    const ordered = moveFavourite(five, e, 0, 0)
+    expect(toggleFavourite(ordered, 'bingo').favourites).toEqual([e, a, b, c, d, 'bingo'])
+    expect(resetLayout(ordered).favourites).toEqual([e, a, b, c, d])
+  })
+
+  it('cleanLayout keeps the favourites in her order (saved and loaded again)', () => {
+    const ordered = moveFavourite(five, a, 1, 1)
+    expect(cleanLayout(JSON.parse(JSON.stringify(ordered))).favourites).toEqual([b, c, d, a, e])
+  })
+})

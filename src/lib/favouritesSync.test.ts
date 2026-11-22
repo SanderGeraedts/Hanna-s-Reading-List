@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { resetLayout, toggleFavourite, type BlockId, type DashboardLayout } from './dashboardLayout'
+import { moveFavouriteTo, resetLayout, toggleFavourite, type BlockId, type DashboardLayout } from './dashboardLayout'
 
 /**
  * The favourites following the account (#182), with two devices, against an
@@ -133,6 +133,10 @@ class Device {
   async star(id: BlockId) {
     this.tap(id)
     await settle()
+  }
+  /** drags a favourite to list place `index` among the others (T-0020), without waiting for anything */
+  move(id: BlockId, index: number) {
+    act(() => this.hook!.result.current[1](moveFavouriteTo(this.layout, id, index)))
   }
   /** the dashboard comes back into view */
   async comeBack() {
@@ -399,6 +403,170 @@ describe('favourites follow the account (#182)', () => {
     expect(server.requests).toEqual([])
     expect(JSON.parse(guest.storage.get('hannas-reading-list:dashboard:local')!).favourites).toEqual(['goal'])
     guest.close()
+  })
+
+  describe('the order she drags them into (T-0020, D-0028)', () => {
+    const FOUR: BlockId[] = ['goal', 'reading', 'calendar', 'pace']
+
+    it('a reorder on one device is on the account in that order, and the other device shows it after its next pull', async () => {
+      server.record!.favourites = [...FOUR]
+      const laptop = new Device().open()
+      const phone = new Device().open()
+      await settle()
+      expect(phone.favourites).toEqual(FOUR)
+      laptop.move('pace', 0)
+      expect(laptop.favourites).toEqual(['pace', 'goal', 'reading', 'calendar'])
+      await settle()
+      expect(server.record!.favourites).toEqual(['pace', 'goal', 'reading', 'calendar'])
+      await phone.comeBack()
+      expect(phone.favourites).toEqual(['pace', 'goal', 'reading', 'calendar'])
+    })
+
+    it("is not undone by the device's own next pull", async () => {
+      server.record!.favourites = [...FOUR]
+      const laptop = new Device().open()
+      await settle()
+      laptop.move('goal', 2) // [reading, calendar, goal, pace]
+      await laptop.comeBack()
+      expect(laptop.favourites).toEqual(['reading', 'calendar', 'goal', 'pace'])
+      await laptop.comeBack()
+      expect(laptop.favourites).toEqual(['reading', 'calendar', 'goal', 'pace'])
+      expect(server.record!.favourites).toEqual(['reading', 'calendar', 'goal', 'pace'])
+      // and the dashboard opened again (a reload) shows it too
+      laptop.close()
+      laptop.open()
+      await settle()
+      expect(laptop.favourites).toEqual(['reading', 'calendar', 'goal', 'pace'])
+    })
+
+    it('a reorder made offline goes up when the server is back', async () => {
+      server.record!.favourites = [...FOUR]
+      const laptop = new Device().open()
+      await settle()
+      server.online = false
+      laptop.move('calendar', 0)
+      await laptop.comeBack() // still offline
+      expect(laptop.favourites).toEqual(['calendar', 'goal', 'reading', 'pace'])
+      expect(server.record!.favourites).toEqual(FOUR)
+      server.online = true
+      await laptop.comeBack()
+      expect(server.record!.favourites).toEqual(['calendar', 'goal', 'reading', 'pace'])
+      expect(laptop.favourites).toEqual(['calendar', 'goal', 'reading', 'pace'])
+    })
+
+    it('a reorder made offline is still sent after the app was closed', async () => {
+      server.record!.favourites = [...FOUR]
+      const laptop = new Device().open()
+      await settle()
+      server.online = false
+      laptop.move('reading', 3)
+      await settle()
+      laptop.close()
+      server.online = true
+      laptop.open()
+      expect(laptop.favourites).toEqual(['goal', 'calendar', 'pace', 'reading'])
+      await settle()
+      expect(server.record!.favourites).toEqual(['goal', 'calendar', 'pace', 'reading'])
+      expect(laptop.favourites).toEqual(['goal', 'calendar', 'pace', 'reading'])
+    })
+
+    it('a block unstarred on the other device meanwhile stays unstarred, and the moved block lands where she put it', async () => {
+      server.record!.favourites = [...FOUR]
+      const laptop = new Device().open()
+      const phone = new Device().open()
+      await settle()
+      server.online = false
+      laptop.move('pace', 0) // past goal, reading and calendar
+      await settle()
+      server.online = true
+      await phone.star('reading') // takes the star off
+      expect(server.record!.favourites).toEqual(['goal', 'calendar', 'pace'])
+      await laptop.comeBack()
+      expect(server.record!.favourites).toEqual(['pace', 'goal', 'calendar'])
+      expect(laptop.favourites).toEqual(['pace', 'goal', 'calendar'])
+      await phone.comeBack()
+      expect(phone.favourites).toEqual(['pace', 'goal', 'calendar'])
+    })
+
+    it('a block starred on the other device at the same time stays, and no block is in the list twice', async () => {
+      server.record!.favourites = [...FOUR]
+      const laptop = new Device().open()
+      const phone = new Device().open()
+      await settle()
+      laptop.move('pace', 0)
+      phone.tap('fact') // neither has gone up yet
+      await settle()
+      await laptop.comeBack()
+      await phone.comeBack()
+      const account = server.record!.favourites as BlockId[]
+      expect([...account].sort()).toEqual(['calendar', 'fact', 'goal', 'pace', 'reading'])
+      expect(new Set(account).size).toBe(account.length)
+      expect(account[0]).toBe('pace')
+      expect(account.filter((id) => id !== 'fact')).toEqual(['pace', 'goal', 'reading', 'calendar'])
+      expect(laptop.favourites).toEqual(account)
+      expect(phone.favourites).toEqual(account)
+    })
+
+    it('sends only stars and unstars, never the shelf, one save at a time', async () => {
+      server.record!.favourites = [...FOUR]
+      const laptop = new Device().open()
+      await settle()
+      laptop.move('pace', 0)
+      laptop.move('goal', 3) // before the first has gone up
+      laptop.move('calendar', 1)
+      await settle()
+      expect(laptop.favourites).toEqual(['pace', 'calendar', 'reading', 'goal'])
+      expect(server.record!.favourites).toEqual(['pace', 'calendar', 'reading', 'goal'])
+      expect(writes().length).toBeGreaterThan(0)
+      for (const w of writes()) {
+        expect(w.path).toBe('/api/collections/libraries/favourites')
+        expect(Object.keys(w.body as object).sort()).toEqual(['add', 'remove'])
+      }
+      expect(server.record!.books).toEqual(BOOKS)
+      expect(server.record!.arrangement).toBe('title')
+      expect(server.mostAtOnce).toBe(1)
+    })
+
+    it('a move to the end sends just that block', async () => {
+      server.record!.favourites = [...FOUR]
+      const laptop = new Device().open()
+      await settle()
+      laptop.move('reading', 3)
+      await settle()
+      expect(writes().map((w) => w.body)).toEqual([
+        { add: [], remove: ['reading'] },
+        { add: ['reading'], remove: [] },
+      ])
+    })
+
+    it('signed out, a reorder stays on the device and the server is never asked', async () => {
+      const guest = new Device(null)
+      guest.storage.set('hannas-reading-list:dashboard:local', withFavourites([...FOUR]))
+      guest.open()
+      await settle()
+      guest.move('pace', 0)
+      await guest.comeBack()
+      expect(guest.favourites).toEqual(['pace', 'goal', 'reading', 'calendar'])
+      expect(server.requests).toEqual([])
+      expect(JSON.parse(guest.storage.get('hannas-reading-list:dashboard:local')!).favourites).toEqual([
+        'pace',
+        'goal',
+        'reading',
+        'calendar',
+      ])
+    })
+
+    it('while the server has no favourites field, a reorder stays on the device and nothing is written', async () => {
+      server.hasField = false
+      const laptop = new Device()
+      laptop.storage.set(LAYOUT_KEY, withFavourites([...FOUR]))
+      laptop.open()
+      await settle()
+      laptop.move('pace', 0)
+      await laptop.comeBack()
+      expect(laptop.favourites).toEqual(['pace', 'goal', 'reading', 'calendar'])
+      expect(writes()).toEqual([])
+    })
   })
 
   it('ignores junk the server sends back', async () => {

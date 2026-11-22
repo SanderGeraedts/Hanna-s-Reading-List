@@ -1,12 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { DEFAULT_LAYOUT, cleanLayout, type BlockId, type DashboardLayout } from '#/lib/dashboardLayout'
-import { cleanFavourites, favouritesChange, meetAccount, type FavouritesChange } from '#/lib/favourites'
+import {
+  cleanUnsent,
+  favouritesChange,
+  isMove,
+  meetAccount,
+  moveToChanges,
+  orderMoves,
+  type UnsentChange,
+} from '#/lib/favourites'
 import { loadFavourites, saveFavourites } from '#/server/favourites'
 
 export const layoutKey = (accountId: string | null) => `hannas-reading-list:dashboard:${accountId ?? 'local'}`
 /** set once this device has met the account's favourites (see meetAccount) */
 export const favouritesMetKey = (accountId: string) => `hannas-reading-list:favourites-met:${accountId}`
-/** stars and unstars made on this device that the account hasn't got yet, oldest first */
+/** stars, unstars and moves (T-0020) made on this device that the account hasn't got yet, oldest first */
 export const favouritesUnsentKey = (accountId: string) => `hannas-reading-list:favourites-unsent:${accountId}`
 
 /** this browser's storage, or the one a test hands in */
@@ -29,13 +37,10 @@ function write(st: Store, key: string, value: string | null) {
   }
 }
 
-function readUnsent(st: Store, key: string): FavouritesChange[] {
+function readUnsent(st: Store, key: string): UnsentChange[] {
   try {
     const list: unknown = JSON.parse(read(st, key) ?? '[]')
-    return (Array.isArray(list) ? list : []).map((c) => ({
-      add: cleanFavourites(c?.add),
-      remove: cleanFavourites(c?.remove),
-    }))
+    return (Array.isArray(list) ? list : []).map(cleanUnsent)
   } catch {
     return []
   }
@@ -49,6 +54,9 @@ const sameList = (a: readonly BlockId[], b: readonly BlockId[]) => a.length === 
  *
  * - every star and unstar is kept on the device until the account has it, and
  *   sent one at a time, oldest first (also after being offline);
+ * - a move within Favourites is kept as a move, and turned into an unstar and
+ *   re-star of the shortest tail against the account's list when it is sent
+ *   (T-0020, D-0028), so the next pull doesn't undo it;
  * - the account's favourites are read when the dashboard opens and whenever it
  *   comes back into view, after this device's unsent changes have gone up;
  * - the first time, the device meets the account (see meetAccount).
@@ -103,6 +111,18 @@ export function useDashboardLayout(accountId: string | null, storage?: Storage) 
     for (;;) {
       const [first] = readUnsent(st, unsentKey)
       if (!first) return true
+      if (isMove(first)) {
+        // a move is worked out against the account's list as it is now (D-0028)
+        const account = await loadFavourites()
+        if (!account.kept) {
+          write(st, unsentKey, null)
+          return false
+        }
+        const changes = moveToChanges(account.favourites, first.move, first.before)
+        // the move leaves the queue for its two changes; anything newer stays behind them
+        write(st, unsentKey, JSON.stringify([...changes, ...readUnsent(st, unsentKey).slice(1)]))
+        continue
+      }
       const saved = await saveFavourites({ data: first })
       if (!saved.kept) {
         write(st, unsentKey, null)
@@ -161,9 +181,12 @@ export function useDashboardLayout(accountId: string | null, storage?: Storage) 
       store(next)
       if (!accountId) return
       const change = favouritesChange(before, next.favourites)
-      if (change.add.length === 0 && change.remove.length === 0) return
+      // the same blocks in another order is a move within Favourites (T-0020), else stars and unstars
+      const queued: UnsentChange[] =
+        change.add.length === 0 && change.remove.length === 0 ? orderMoves(before, next.favourites) : [change]
+      if (queued.length === 0) return
       const unsentKey = favouritesUnsentKey(accountId)
-      write(st, unsentKey, JSON.stringify([...readUnsent(st, unsentKey), change]))
+      write(st, unsentKey, JSON.stringify([...readUnsent(st, unsentKey), ...queued]))
       // before the first meeting, a pull does the meeting and then sends it
       run(() => (read(st, favouritesMetKey(accountId)) === '1' ? flush(unsentKey) : pull(accountId)))
     },
