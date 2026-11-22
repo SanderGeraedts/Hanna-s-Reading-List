@@ -218,6 +218,11 @@ larger because it fills in books without minutes.
     "all audiobooks" text;
   - an empty pile shows no line and no switch;
   - after rendering the card again (unmount and mount) it starts on All;
+  - the switch is a group named "Which part of the pile", its buttons are named "All", "Paper",
+    "E-book" and "Audiobook" (emoji not in the name), and it comes right before the height line
+    (after the pages · listening line); while the switch shows, the height line has
+    `aria-live="polite"` and `aria-atomic="true"`, and without a switch it has no `aria-live`;
+  - the times in the Audiobook line have non-breaking spaces inside ("86 h 20 min");
   - "books waiting", the pages · listening line, the pace line and the motivation part are there and
     don't change when the switch changes;
   - the T-0021 edge-case tests are updated to the new thickness (e.g. one 400-page paperback is
@@ -311,9 +316,165 @@ comparison, not a height and not her own pace. Taken by the architect for it:
     appear in the comparison.
 22. **Spoken in full:** "hours", "minutes", "3 and a half days".
 
+D. Taken by the UX designer (2026-11-22), the recommended option without asking Hanna:
+
+23. **The switch sits directly above the height line,** on its own row, not in the card head: it
+    changes only that line, and in the head it would look as if the whole block were filtered.
+24. **One small CSS rule** on a second class next to `.segmented`: `justify-self: start`, plus
+    `max-width: 100%` and `flex-wrap: wrap` as a safety net on narrow phones or with large text.
+    `.segmented` itself doesn't change.
+25. **Emoji hidden from screen readers inside the buttons;** button names are "All", "Paper",
+    "E-book", "Audiobook". The group is called "Which part of the pile".
+26. **The line is announced** when it changes: `aria-live="polite"` and `aria-atomic="true"` on the
+    height line, only while the switch shows.
+27. **The architect's words are kept** ("would stand", "are"), and a time never splits across lines
+    (non-breaking spaces inside it).
+
 # Design
 
-To be written by the UX designer.
+T-0021's design stays the starting point: the height line is a plain `<p>` in cream body text
+(`--text`, `--fs-body`, regular, no class), with the emoji in `<span aria-hidden="true">` and each
+height written twice (`aria-hidden` "1.62 m" plus `.visually-hidden` "1.62 metres"). This task adds
+the switch, three new lines and one small CSS rule. No new colour, text size, spacing or corner
+(D-0020), and no hint text (D-0014).
+
+## Where the switch sits
+
+- **Above the line, not in the card head.** The switch sits on its own row **directly above the
+  height line**, between the grey "1,234 pages · 10 h 25 min to listen" line and the height line.
+  The card head stays the plain "Want-to-read pile" title.
+
+  Why: on the Genre flower and "What I read" the switch changes the whole block, so it sits next to
+  the title. Here it changes **one line in the middle**. In the head it would look as if "N books
+  waiting" and the pace line were filtered too. Right above the line, it is clear what it changes,
+  and a screen reader reaches the line as the very next thing.
+- **The block then reads:** **N** books waiting / pages · listening / **switch** / **height line** /
+  pace line / motivation part. The switch is a child of the card's grid, so the space above and
+  below it is the card's own gap (`--space-3`). It gets no margin of its own.
+- **Without a switch** (one kind or none) the block is exactly as in T-0021: the height line follows
+  the pages line directly.
+
+## How the switch looks
+
+- It is the existing `.segmented` group: the sunken pill (`--surface-sunken`, `--border`,
+  `--radius-pill`), buttons in `--fs-small` and `--muted`, and the pressed button in gold
+  (`--accent`, `--accent-ink`, semibold). It looks the same as the Genre flower's "2026 / All time".
+- **Buttons, in this order, each only when that kind has books:** `All`, `📖 Paper`, `📱 E-book`,
+  `🎧 Audiobook`. The emoji go in `<span aria-hidden="true">` followed by a normal space, so the
+  visible label is "📖 Paper" and the button's name is "Paper".
+- **All is pressed** every time the block first shows.
+- **One small CSS rule**, on a second class next to `.segmented` (e.g. `pile-kinds`):
+  - `justify-self: start`: a grid child would otherwise stretch the pill across the whole card;
+  - `max-width: 100%` and `flex-wrap: wrap` (with `row-gap: 3px`, the pill's own padding), as a
+    safety net so a narrow phone or a large text setting wraps the buttons onto a second row instead
+    of pushing the card sideways.
+
+  Nothing else is added to `src/styles.css`. The `.segmented` rules themselves don't change, so the
+  other switches in the app stay as they are.
+
+## Phone 390 and computer 1280
+
+- **390:** the card's text area is about 332 px wide (0.75 rem dashboard padding, 1 rem card padding
+  and the border on each side). The four buttons in `--fs-small` come to roughly 320 px, so the
+  switch should fit **on one row**, left-aligned, with little room to spare. The developer measures
+  it in the dev server; if it does wrap at 390, that is acceptable (the safety net above), but say
+  so in the build notes with a screenshot. Two or three buttons always fit on one row.
+- **Touch size:** on a touch screen (`pointer: coarse`) every `.segmented` button is already at
+  least 44 px tall (`--tap`), so nothing needs adding. The narrowest button, "All", is about 42 px
+  wide with its padding; next to its neighbours in one pill that is fine, as it is for the other
+  switches.
+- **1280:** the block is one dashboard column (about 33 rem); the switch takes about half the width,
+  left-aligned, on one row.
+- The height line wraps like normal text at both widths (T-0021): no `nowrap`, no ellipsis. No
+  horizontal scroll at either width.
+
+## The line for each choice
+
+The rounding, the list of things, the `en-GB` numbers and the spoken units stay as in T-0021. Text
+exactly as below: sentence case, a colon after the height or time, the thing's size in round
+brackets, a full stop at the end. Examples are the mixed shelf of *Done when*.
+
+| Choice | What she sees |
+|---|---|
+| All | 📚 Stacked up, your pile would be 13 cm: taller than a mug (10 cm). |
+| Paper (several) | 📖 Your paper books would stand 7 cm: not as tall as a mug (10 cm) yet. |
+| Paper (one) | 📖 Your paper book would stand 3 cm: not as tall as a mug (10 cm) yet. |
+| E-book (several) | 📱 Your e-books would stand 15 cm: taller than a mug (10 cm). |
+| E-book (one) | 📱 Your e-book would stand 2 cm: not as tall as a mug (10 cm) yet. |
+| Audiobook (several) | 🎧 Your audiobooks are 22 h: about as long as a whole day and night (24 h). |
+| Audiobook (many) | 🎧 Your audiobooks are 86 h 20 min: about as long as listening nonstop for 3½ days. |
+| Audiobook (one) | 🎧 Your audiobook is 9 h 20 min: longer than a working day (8 h). |
+
+- The architect's words are kept. "Would stand" already says it is a what-if, also for e-books.
+- **Non-breaking spaces** (U+00A0): between number and unit in every height and time, **and inside a
+  time** ("86 h 20 min" never splits across two lines), between "3½" and "days", and after the
+  emoji. The thing's size in brackets stays with its brackets.
+- The emoji are only decoration: each line reads fully without them.
+
+## Cases
+
+| Case | Switch | Line |
+|---|---|---|
+| Mixed pile (two or more kinds) | yes, only the kinds with books | the chosen kind's line; All at first |
+| Only one kind (e.g. only paper books, maybe plus Other) | none | the 📚 All line |
+| Only audiobooks she listens to | none | the 📚 All line with a height, e.g. "📚 Stacked up, your pile would be 33 cm: taller than a cat (25 cm)." No "all audiobooks" line any more |
+| Only Other / no-format books | none | the 📚 All line |
+| Empty pile | none | no line; the block shows "0 books waiting" as now |
+| The chosen kind runs out (shelf changed) | the button goes; All is pressed | the All line |
+
+If the switch itself disappears (only one kind left), the block goes back to the T-0021 layout.
+
+## Keyboard and screen reader
+
+- **The group:** `role="group"` with `aria-label="Which part of the pile"`. Each button has
+  `aria-pressed` (`true` on the pressed one, `false` on the others) and the `active` class, as on
+  the Genre flower. A screen reader says e.g. "Which part of the pile, group. All, toggle button,
+  pressed."
+- **Button names** are the words without emoji: "All", "Paper", "E-book", "Audiobook".
+- **Keyboard:** they are ordinary buttons: Tab moves through them, Enter or Space presses. The
+  browser's own focus ring stays visible (`.segmented` doesn't remove it). Pressing a button doesn't
+  move focus.
+- **The changed line is announced.** When the switch is shown, the height line's `<p>` gets
+  `aria-live="polite"` and `aria-atomic="true"`, so after pressing "Audiobook" she hears the whole
+  new sentence: "Your audiobooks are 22 hours: about as long as a whole day and night (24 hours)."
+  The emoji and the `aria-hidden` short forms are skipped, the `.visually-hidden` long forms are
+  read. Nothing is announced when the page first loads. Without a switch the line has no live
+  region, as in T-0021. (The other switches in the app change a whole block, which would be too much
+  to read out; this one changes one sentence, which is just right.)
+- **What is heard, per choice:**
+  - "Stacked up, your pile would be 13 centimetres: taller than a mug (10 centimetres)."
+  - "Your paper books would stand 7 centimetres: not as tall as a mug (10 centimetres) yet."
+  - "Your audiobooks are 86 hours 20 minutes: about as long as listening nonstop for 3 and a half
+    days."
+- **When the pressed button disappears** while it has focus (rare: only when the shelf changes
+  while she is on the dashboard), focus may simply be lost; no special handling is needed.
+
+## Both wallpapers
+
+The block is a walnut card on both **lavender and midnight**, and the switch uses the same tokens as
+the Genre flower's switch, which already sits on that card on both wallpapers. The line is `--text`
+on `--surface` as in T-0021. No new colour pair, so `colours.test.ts` needs nothing new.
+
+## Design checks (on the screenshots and in the dev server)
+
+- [ ] **Place:** on a mixed pile the switch sits on its own row directly above the height line,
+  under the grey pages line, left-aligned, not in the card head. The title row is only "Want-to-read
+  pile".
+- [ ] **Look:** the same pill as the Genre flower's switch: All pressed in gold at first, the others
+  muted. Labels "All", "📖 Paper", "📱 E-book", "🎧 Audiobook", in that order, only the kinds with
+  books.
+- [ ] **390:** the switch is on one row (or, if it wraps, nothing is cut off and the build notes say
+  so); the line wraps without cutting off, no height or time is split ("86 h 20 min", "(24 h)",
+  "3½ days" stay whole); no horizontal scroll. **1280:** switch on one row, line on one or two lines.
+- [ ] **Touch:** on a phone each button is at least 44 px tall.
+- [ ] **Wording:** each choice's line matches the table, including the singular for one book.
+- [ ] **Only listen-only books:** the 📚 All line with a height, no switch, no "all audiobooks"
+  text. **Empty pile:** no switch, no line, "0 books waiting".
+- [ ] **Screen reader:** the group is called "Which part of the pile"; buttons are "All", "Paper",
+  "E-book", "Audiobook" with `aria-pressed`; the line is a polite live region only when the switch
+  shows; units heard in full ("centimetres", "hours", "3 and a half days"); emoji not read.
+- [ ] **Rest of the block:** books waiting, the pages line, the pace line and the motivation part
+  don't change when the switch changes. Lavender and midnight look the same.
 
 # Test
 
@@ -328,3 +489,7 @@ To be written by the tester.
   the team*; group 1, no new stored fields. Hanna's extra change the same day added: 🎧 Audiobook
   shows total listening time with an everyday comparison (section 5, choices 17–22, in D-0030);
   handed to the UX designer.
+- 2026-11-22 ux-designer: designed: the switch on its own row directly above the height line
+  (`.segmented` plus one small rule), the line for each choice, screen reader (group "Which part of
+  the pile", `aria-pressed`, the line a polite live region while the switch shows), the cases
+  without a switch, 390 and 1280 on both wallpapers; choices 23–27; handed to the developer.
