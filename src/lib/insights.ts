@@ -2,10 +2,12 @@ import type { Book } from './library'
 import { FORMAT_LABELS, formatsOf, timesRead } from './library'
 import { languageName } from './languages'
 import { listenOnly } from './listening'
+import type { PileKind } from './pileHeight'
+import { audioMinutes, bookKinds, pileHeights } from './pileHeight'
 import type { DayEntry } from './readingLog'
 import { dayEntries } from './readingLog'
 import { seriesGroups } from './series'
-import type { Period } from './stats'
+import type { Finish, Period } from './stats'
 import { allFinishes, periodStats } from './stats'
 
 /** The dashboard extras (#66). */
@@ -85,10 +87,7 @@ export function wantPile(books: Book[], now = new Date()): Pile {
     if (listenOnly(b)) minutes += b.minutes ?? 0
     else pages += b.pages ?? 0
   }
-  const yearAgo = ymd(new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()))
-  const today = ymd(now)
-  const lastYear = allFinishes(books).filter((f) => f.day && f.day > yearAgo && f.day <= today).length
-  const perMonth = lastYear / 12
+  const perMonth = finishesLastYear(books, now).length / 12
   return {
     books: want.length,
     pages,
@@ -96,6 +95,106 @@ export function wantPile(books: Book[], now = new Date()): Pile {
     perMonth,
     ...(perMonth > 0 && want.length > 0 && { months: Math.ceil(want.length / perMonth) }),
   }
+}
+
+/**
+ * Every finish with a day after the same date a year ago and not after today
+ * (local dates): re-reads count each time, sleep reads count, finishes without
+ * a day don't, whatever the book's status now. The window of every pace (D-0031).
+ */
+export function finishesLastYear(books: Book[], now = new Date()): Finish[] {
+  const yearAgo = ymd(new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()))
+  const today = ymd(now)
+  return allFinishes(books).filter((f) => f.day !== undefined && f.day > yearAgo && f.day <= today)
+}
+
+export interface KindPace {
+  kind: PileKind
+  /** what is waiting: books for Paper and E-book, listening minutes for Audiobook */
+  waiting: number
+  /** a month over the last year: books finished for Paper and E-book, minutes listened for Audiobook */
+  perMonth: number
+  /** months to get through the waiting part at that pace, when there is a pace */
+  months?: number
+}
+
+/** A kind's pace that has a time to show. */
+export type KindPaceWithTime = KindPace & { months: number }
+
+/**
+ * The pace line of one kind under the pile switch (T-0024, D-0031): the
+ * waiting books of that kind at the pace she finished books of that kind in
+ * the last year; Audiobook in minutes (`audioMinutes`, as the 🎧 line).
+ */
+export function kindPace(books: Book[], kind: PileKind, now = new Date()): KindPace {
+  const pile = pileHeights(books)
+  const waiting = kind === 'audio' ? pile.audioMinutes : pile.counts[kind]
+  let done = 0
+  for (const f of finishesLastYear(books, now)) {
+    if (!bookKinds(f.book).includes(kind)) continue
+    done += kind === 'audio' ? audioMinutes(f.book) : 1
+  }
+  const perMonth = done / 12
+  return {
+    kind,
+    waiting,
+    perMonth,
+    ...(perMonth > 0 && waiting > 0 && { months: Math.ceil(waiting / perMonth) }),
+  }
+}
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString('en-GB')} ${n === 1 ? one : many}`
+
+/** "7 months", "about 2 years": the time of a pace line, as All writes it. */
+export function paceTime(months: number): string {
+  return months < 12 ? plural(months, 'month') : `about ${plural(Math.round(months / 12), 'year')}`
+}
+
+/** A pace a month as the pace line writes it: one decimal, ".0" dropped ("1.1", "1", "0.3"). */
+export function paceNumber(perMonth: number): string {
+  return perMonth.toFixed(1).replace(/\.0$/, '')
+}
+
+/** The listening pace in hours as shown: "5.1", "14", at least "0.1". */
+export function paceHours(minutesPerMonth: number): string {
+  const h = paceNumber(minutesPerMonth / 60)
+  return h === '0' ? '0.1' : h
+}
+
+const KIND_BOOKS: Record<Exclude<PileKind, 'audio'>, [string, string]> = {
+  paper: ['paper book', 'paper books'],
+  ebook: ['e-book', 'e-books'],
+}
+
+/** The words of a kind's pace line around the hours ("At your pace of " … " a month, …"); for books, all in `before`. */
+export function kindPaceWords(p: KindPaceWithTime): { before: string; after: string } {
+  if (p.kind === 'audio') return { before: 'At your pace of ', after: ` a month, that's ${paceTime(p.months)} of listening.` }
+  const n = paceNumber(p.perMonth)
+  const [one, many] = KIND_BOOKS[p.kind]
+  return { before: `At your pace of ${n} ${n === '1' ? one : many}`, after: ` a month, that's ${paceTime(p.months)} of reading.` }
+}
+
+/** "At your pace of 5.1 h a month, that's 7 months of listening." Pass a non-breaking space as `space` for the screen. */
+export function kindPaceText(p: KindPaceWithTime, space = ' '): string {
+  const { before, after } = kindPaceWords(p)
+  return p.kind === 'audio' ? `${before}${paceHours(p.perMonth)}${space}h${after}` : `${before}${after}`
+}
+
+/** What a screen reader hears: "At your pace of 5.1 hours a month, …", "1 hour". */
+export function kindPaceSpoken(p: KindPaceWithTime): string {
+  const { before, after } = kindPaceWords(p)
+  return p.kind === 'audio' ? `${before}${hoursSpoken(paceHours(p.perMonth))}${after}` : `${before}${after}`
+}
+
+/** "5.1 hours", "1 hour" */
+export function hoursSpoken(hours: string): string {
+  return `${hours} ${hours === '1' ? 'hour' : 'hours'}`
+}
+
+/** The muted line for a kind with no finishes in the last year. */
+export function noPaceLine(kind: PileKind): string {
+  const what = kind === 'paper' ? 'a paper book' : kind === 'ebook' ? 'an e-book' : 'an audiobook'
+  return `You haven't finished ${what} in the last year, so there's no pace yet.`
 }
 
 export interface Lent {

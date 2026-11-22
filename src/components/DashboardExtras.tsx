@@ -7,7 +7,15 @@ import { formatDuration } from '#/lib/listening'
 import {
   breakdown,
   goalProgress,
+  hoursSpoken,
+  kindPace,
+  kindPaceText,
+  kindPaceWords,
   lentOut,
+  noPaceLine,
+  paceHours,
+  paceNumber,
+  paceTime,
   monthlyCounts,
   onThisDay,
   paused,
@@ -36,7 +44,7 @@ import {
   timeSpoken,
   timeText,
 } from '#/lib/pileHeight'
-import type { PileKind } from '#/lib/pileHeight'
+import type { Pile as HeightPile, PileKind } from '#/lib/pileHeight'
 import { belowZero, buyingJarLabel, coinText } from '#/lib/price'
 import type { PileMonth } from '#/lib/pile'
 import { goalForecast } from '#/lib/finishEstimate'
@@ -561,12 +569,14 @@ export function RecordsCard({ books, period, label, onShowBook }: Props & { peri
 
 export function PileCard({ books }: { books: Book[] }) {
   const pile = wantPile(books)
-  const time =
-    pile.months === undefined
-      ? undefined
-      : pile.months < 12
-        ? plural(pile.months, 'month')
-        : `about ${plural(Math.round(pile.months / 12), 'year')}`
+  const heights = useMemo(() => pileHeights(books), [books])
+  const kinds = pileKinds(heights)
+  // the switch's choice reaches the height line and the pace line (T-0024); not saved anywhere
+  const [choice, setChoice] = useState<PileChoice>('all')
+  const hasSwitch = kinds.length > 1
+  const shown: PileChoice = hasSwitch && choice !== 'all' && kinds.includes(choice) ? choice : 'all'
+  // the chosen kind ran out (the shelf changed): fall back to All
+  if (choice !== shown) setChoice(shown)
   return (
     <section className="dash-card" aria-labelledby="pile-title">
       <h2 id="pile-title">Want-to-read pile</h2>
@@ -583,17 +593,29 @@ export function PileCard({ books }: { books: Book[] }) {
             .join(' · ')}
         </p>
       )}
-      <PileHeightLine books={books} />
-      {time ? (
-        <p>
-          At your pace of {pile.perMonth.toFixed(1).replace(/\.0$/, '')} a month, that's {time} of reading.
-        </p>
-      ) : (
-        pile.books > 0 && (
-          <p className="muted small-text">
-            Once some books have a “Finished on” date, this shows how long the pile would take.
-          </p>
-        )
+      {hasSwitch && (
+        <div className="segmented pile-kinds" role="group" aria-label="Which part of the pile">
+          {PILE_BUTTONS.filter((b) => b.kind === 'all' || kinds.includes(b.kind)).map((b) => (
+            <button
+              key={b.kind}
+              type="button"
+              className={shown === b.kind ? 'active' : ''}
+              aria-pressed={shown === b.kind}
+              onClick={() => setChoice(b.kind)}
+            >
+              {b.emoji && <span aria-hidden="true">{b.emoji}</span>}
+              {b.emoji && ' '}
+              {b.label}
+            </button>
+          ))}
+        </div>
+      )}
+      {pile.books > 0 && (
+        // one polite live region for the height and pace lines while the switch shows (T-0024)
+        <div className="pile-said" {...(hasSwitch ? { 'aria-live': 'polite' as const, 'aria-atomic': true } : {})}>
+          <PileHeightLine pile={heights} shown={shown} />
+          <PilePaceLine books={books} shown={shown} />
+        </div>
       )}
       <PileMotivation books={books} />
     </section>
@@ -636,18 +658,9 @@ const PILE_EMOJI: Record<PileChoice, string> = { all: '📚', paper: '📖', ebo
 /**
  * How tall the want-to-read pile would stand, as real books (T-0023, D-0030),
  * with the All · Paper · E-book · Audiobook switch when two or more kinds have
- * books. The switch starts on All and is not saved anywhere.
+ * books. The switch (in `PileCard`) starts on All and is not saved anywhere.
  */
-function PileHeightLine({ books }: { books: Book[] }) {
-  const pile = useMemo(() => pileHeights(books), [books])
-  const kinds = pileKinds(pile)
-  const [choice, setChoice] = useState<PileChoice>('all')
-  const hasSwitch = kinds.length > 1
-  const shown: PileChoice = hasSwitch && choice !== 'all' && kinds.includes(choice) ? choice : 'all'
-  // the chosen kind ran out (the shelf changed): fall back to All
-  if (choice !== shown) setChoice(shown)
-  if (pile.counts.all === 0) return null
-
+function PileHeightLine({ pile, shown }: { pile: HeightPile; shown: PileChoice }) {
   let line: ReactNode
   if (shown === 'audio') {
     const comparison = compareDuration(pile.audioMinutes)
@@ -684,29 +697,47 @@ function PileHeightLine({ books }: { books: Book[] }) {
   }
 
   return (
-    <>
-      {hasSwitch && (
-        <div className="segmented pile-kinds" role="group" aria-label="Which part of the pile">
-          {PILE_BUTTONS.filter((b) => b.kind === 'all' || kinds.includes(b.kind)).map((b) => (
-            <button
-              key={b.kind}
-              type="button"
-              className={shown === b.kind ? 'active' : ''}
-              aria-pressed={shown === b.kind}
-              onClick={() => setChoice(b.kind)}
-            >
-              {b.emoji && <span aria-hidden="true">{b.emoji}</span>}
-              {b.emoji && ' '}
-              {b.label}
-            </button>
-          ))}
-        </div>
-      )}
-      <p {...(hasSwitch ? { 'aria-live': 'polite' as const, 'aria-atomic': true } : {})}>
-        <span aria-hidden="true">{`${PILE_EMOJI[shown]}${NBSP}`}</span>
-        {line}
+    <p>
+      <span aria-hidden="true">{`${PILE_EMOJI[shown]}${NBSP}`}</span>
+      {line}
+    </p>
+  )
+}
+
+/**
+ * The pace line under the height line: the whole pile on All (as before), or
+ * the chosen kind at the pace she finishes that kind, Audiobook in hours
+ * (T-0024, D-0031).
+ */
+function PilePaceLine({ books, shown }: { books: Book[]; shown: PileChoice }) {
+  if (shown === 'all') {
+    const pile = wantPile(books)
+    if (pile.months === undefined) {
+      return (
+        <p className="muted small-text">
+          Once some books have a “Finished on” date, this shows how long the pile would take.
+        </p>
+      )
+    }
+    return (
+      <p>
+        At your pace of {paceNumber(pile.perMonth)} a month, that's {paceTime(pile.months)} of reading.
       </p>
-    </>
+    )
+  }
+  const pace = kindPace(books, shown)
+  if (pace.months === undefined) return <p className="muted small-text">{noPaceLine(shown)}</p>
+  const withTime = { ...pace, months: pace.months }
+  if (shown !== 'audio') return <p>{kindPaceText(withTime)}</p>
+  const { before, after } = kindPaceWords(withTime)
+  const hours = paceHours(pace.perMonth)
+  return (
+    <p>
+      {before}
+      <span aria-hidden="true">{`${hours}${NBSP}h`}</span>
+      <span className="visually-hidden">{hoursSpoken(hours)}</span>
+      {after}
+    </p>
   )
 }
 

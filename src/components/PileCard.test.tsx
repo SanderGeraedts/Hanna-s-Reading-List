@@ -67,12 +67,18 @@ const theSwitch = () => screen.queryByRole('group', { name: 'Which part of the p
 const buttonNames = () => within(theSwitch()!).getAllByRole('button').map((b) => b.getAttribute('aria-pressed') + ':' + b.textContent)
 const press = (name: string) => fireEvent.click(within(theSwitch()!).getByRole('button', { name }))
 
-/** Everything in the block except the switch and the height line. */
+const PACE = /At your pace of|Once some books have|so there's no pace yet/
+
+/** The pace line (or a no-pace line), if there is one. */
+const paceLine = (container: HTMLElement) => [...container.querySelectorAll('p')].find((p) => PACE.test(p.textContent ?? ''))
+
+/** Everything in the block except the switch, the height line and the pace line. */
 const rest = (container: HTMLElement) => {
   const copy = container.cloneNode(true) as HTMLElement
   copy.querySelector('.pile-kinds')?.remove()
   const line = [...copy.querySelectorAll('p')].find((p) => LINE.test(p.textContent ?? ''))
   line?.remove()
+  paceLine(copy)?.remove()
   return copy.textContent
 }
 
@@ -179,10 +185,15 @@ describe('PileCard: the switch and the lines (T-0023)', () => {
       .slice(1)
       .forEach((b) => expect(b.querySelector('[aria-hidden="true"]')).toBeTruthy())
     const line = heightLine(container)!
-    expect(group.nextElementSibling).toBe(line)
+    // T-0024: the height line and the pace line share one live region right after the switch
+    const said = group.nextElementSibling!
+    expect([...said.children]).toEqual([line, paceLine(container)])
     expect(group.previousElementSibling?.textContent).toMatch(/pages · .* to listen/)
-    expect(line.getAttribute('aria-live')).toBe('polite')
-    expect(line.getAttribute('aria-atomic')).toBe('true')
+    expect(said.getAttribute('aria-live')).toBe('polite')
+    expect(said.getAttribute('aria-atomic')).toBe('true')
+    expect(line.hasAttribute('aria-live')).toBe(false)
+    expect(line.hasAttribute('aria-atomic')).toBe(false)
+    expect(container.querySelectorAll('[aria-live]')).toHaveLength(1)
     cleanup()
 
     const { container: single } = render(<PileCard books={[book('a', { formats: ['paperback'], pages: 300 })]} />)
@@ -190,6 +201,7 @@ describe('PileCard: the switch and the lines (T-0023)', () => {
     expect(plain.hasAttribute('aria-live')).toBe(false)
     expect(plain.hasAttribute('aria-atomic')).toBe(false)
     expect(plain.className).toBe('')
+    expect(single.querySelector('[aria-live]')).toBeNull()
   })
 
   it('keeps the time whole with non-breaking spaces, and says nonstop days in full', () => {
@@ -213,17 +225,20 @@ describe('PileCard: the switch and the lines (T-0023)', () => {
     expect(seen(heightLine(container)!)).toBe(`🎧${nb}Your audiobook is 9${nb}h${nb}20${nb}min: longer than a working day (8${nb}h).`)
   })
 
-  it('the rest of the block shows the whole pile and does not change with the switch', () => {
+  it('the rest of the block shows the whole pile and does not change with the switch (the pace line does, T-0024)', () => {
     const { container } = render(<PileCard books={mixed()} />)
     expect(container.textContent).toContain('6 books waiting')
     expect(screen.getByText(/pages · .* to listen/)).toBeTruthy()
     expect(screen.getByText(/At your pace of/)).toBeTruthy()
     expect(screen.getByText('Last 6 months')).toBeTruthy()
     const before = rest(container)
+    const paces = new Set<string>()
     for (const name of ['Paper', 'E-book', 'Audiobook', 'All']) {
       press(name)
       expect(rest(container)).toBe(before)
+      paces.add(paceLine(container)!.textContent!)
     }
+    expect(paces.size).toBe(4)
   })
 
   it('keeps the block’s order: pages line, switch, height line, pace line', () => {
@@ -231,9 +246,10 @@ describe('PileCard: the switch and the lines (T-0023)', () => {
     const kids = [...container.querySelector('section')!.children]
     const pages = kids.findIndex((el) => /pages · .* to listen/.test(el.textContent ?? ''))
     const sw = kids.indexOf(theSwitch()!)
-    const line = kids.indexOf(heightLine(container)!)
-    const pace = kids.findIndex((el) => /At your pace of/.test(el.textContent ?? ''))
-    expect([sw, line, pace]).toEqual([pages + 1, pages + 2, pages + 3])
+    const said = kids.indexOf(heightLine(container)!.parentElement!)
+    expect([sw, said]).toEqual([pages + 1, pages + 2])
+    expect([...kids[said].children]).toEqual([heightLine(container), paceLine(container)])
+    expect(kids[said + 1].textContent).toMatch(/This month/i)
   })
 })
 
@@ -275,6 +291,7 @@ describe('PileCard: more switch cases (tester, T-0023)', () => {
     expect(theSwitch()).toBeNull()
     expect(seen(heightLine(container)!)).toMatch(/^📚/)
     expect(heightLine(container)!.getAttribute('aria-live')).toBeNull()
+    expect(container.querySelector('[aria-live]')).toBeNull()
   })
 
   it('pressing the same button twice keeps it pressed', () => {
@@ -283,5 +300,144 @@ describe('PileCard: more switch cases (tester, T-0023)', () => {
     press('Paper')
     expect(screen.getByRole('button', { name: 'Paper' }).getAttribute('aria-pressed')).toBe('true')
     expect(seen(heightLine(container)!)).toMatch(/^📖/)
+  })
+})
+
+describe('PileCard: the pace line follows the switch (T-0024, D-0031)', () => {
+  const read = (id: string, days: number[], extra: Partial<Book>) =>
+    book(id, { status: 'read', finished: days.map(daysAgo), ...extra })
+  /** The pace shelf of T-0024's Done when. */
+  const paceShelf = () => [
+    ...[1, 2, 3, 4, 5, 6].map((n) => read(`P${n}`, [n * 20], { formats: ['paperback'], pages: 300 })),
+    ...[1, 2, 3].map((n) => read(`E${n}`, [n * 30], { formats: ['ebook'], pages: 300 })),
+    read('S1', [40, 200], { formats: ['storytel'], minutes: 600 }),
+    read('S2', [50], { formats: ['storytel'] }),
+    read('X', [60], { formats: ['paperback', 'storytel'], pages: 300, minutes: 720 }),
+    read('Z', [70], { formats: ['storytel'], sleepRead: true, minutes: 1200 }),
+    read('O', [80], { formats: ['other'], pages: 200 }),
+    read('Old', [400], { formats: ['paperback'], pages: 300 }),
+    book('N', { status: 'read', readCount: 1, formats: ['paperback'], pages: 300 }),
+    ...Array.from({ length: 11 }, (_, i) => book(`W${i + 1}`, { formats: ['paperback'], pages: 300 })),
+    book('WE', { formats: ['ebook'], pages: 300 }),
+    book('WS1', { formats: ['storytel'], minutes: 600 }),
+    book('WS2', { formats: ['storytel'], minutes: 600 }),
+    book('WX', { formats: ['paperback', 'storytel'], pages: 300, minutes: 720 }),
+  ]
+  const ALL = "At your pace of 1.3 a month, that's about 1 year of reading."
+
+  it('shows the All line, then each kind’s line, then the All line again', () => {
+    const { container } = render(<PileCard books={paceShelf()} />)
+    expect(paceLine(container)!.textContent).toBe(ALL)
+    press('Paper')
+    expect(paceLine(container)!.textContent).toBe("At your pace of 0.6 paper books a month, that's about 2 years of reading.")
+    expect(paceLine(container)!.className).toBe('')
+    press('E-book')
+    expect(paceLine(container)!.textContent).toBe("At your pace of 0.3 e-books a month, that's 4 months of reading.")
+    press('Audiobook')
+    const audio = paceLine(container)!
+    expect(seen(audio)).toBe(`At your pace of 5.1${nb}h a month, that's 7 months of listening.`)
+    expect(heard(audio)).toBe("At your pace of 5.1 hours a month, that's 7 months of listening.")
+    expect(audio.className).toBe('')
+    press('All')
+    expect(paceLine(container)!.textContent).toBe(ALL)
+  })
+
+  it('on the mixed shelf (its only finish has no format) each kind shows its no-pace line, All its pace line', () => {
+    const { container } = render(<PileCard books={mixed()} />)
+    expect(paceLine(container)!.textContent).toBe("At your pace of 0.1 a month, that's about 6 years of reading.")
+    const lines = {
+      Paper: "You haven't finished a paper book in the last year, so there's no pace yet.",
+      'E-book': "You haven't finished an e-book in the last year, so there's no pace yet.",
+      Audiobook: "You haven't finished an audiobook in the last year, so there's no pace yet.",
+    }
+    for (const [name, text] of Object.entries(lines)) {
+      press(name)
+      const line = paceLine(container)!
+      expect(line.textContent).toBe(text)
+      expect(line.className).toBe('muted small-text')
+      expect(container.textContent).not.toMatch(/At your pace of/)
+    }
+    press('All')
+    expect(paceLine(container)!.textContent).toMatch(/^At your pace of 0\.1 a month/)
+  })
+
+  it('with no finish day at all: All shows the “Finished on” line, a kind its no-pace line', () => {
+    const { container } = render(<PileCard books={mixed().filter((b) => b.id !== 'done')} />)
+    expect(paceLine(container)!.textContent).toBe('Once some books have a “Finished on” date, this shows how long the pile would take.')
+    press('E-book')
+    expect(paceLine(container)!.textContent).toBe("You haven't finished an e-book in the last year, so there's no pace yet.")
+    expect(container.textContent).not.toMatch(/Once some books have/)
+  })
+
+  it('a pile with one kind only (no switch) shows the All line only', () => {
+    const shelf = [finished, book('a', { formats: ['paperback'], pages: 300 }), book('b', { formats: ['hardcover'], pages: 300 })]
+    const { container } = render(<PileCard books={shelf} />)
+    expect(theSwitch()).toBeNull()
+    expect(paceLine(container)!.textContent).toBe("At your pace of 0.1 a month, that's about 2 years of reading.")
+    expect(container.textContent).not.toMatch(/paper book|no pace yet/)
+  })
+
+  it('starts on All with the All pace line after unmount and mount', () => {
+    const first = render(<PileCard books={paceShelf()} />)
+    press('Audiobook')
+    expect(paceLine(first.container)!.textContent).toMatch(/of listening/)
+    first.unmount()
+    const { container } = render(<PileCard books={paceShelf()} />)
+    expect(paceLine(container)!.textContent).toBe(ALL)
+  })
+})
+
+describe('PileCard: the pace line, more cases (tester, T-0024)', () => {
+  const shelf = () => [
+    book('p', { status: 'read', formats: ['paperback'], pages: 300, finished: [daysAgo(20)] }),
+    book('a', { status: 'read', formats: ['storytel'], minutes: 600, finished: [daysAgo(30)] }),
+    book('wp', { formats: ['paperback'], pages: 300 }),
+    book('we', { formats: ['ebook'], pages: 300 }),
+    book('wa', { formats: ['storytel'], minutes: 600 }),
+  ]
+  const liveRegion = (container: HTMLElement) => container.querySelector<HTMLElement>('[aria-live]')
+
+  it('keeps the same live region element across presses, with both lines in it in order', () => {
+    const { container } = render(<PileCard books={shelf()} />)
+    const region = liveRegion(container)!
+    expect(region.className).toBe('pile-said')
+    for (const name of ['Paper', 'E-book', 'Audiobook', 'All', 'Audiobook']) {
+      press(name)
+      expect(liveRegion(container)).toBe(region)
+      expect(container.querySelectorAll('[aria-live]')).toHaveLength(1)
+      expect([...region.children]).toEqual([heightLine(container), paceLine(container)])
+    }
+    // heard height line first, then the pace line, all inside the one region
+    expect(heard(region)).toMatch(/^Your audiobook is .*At your pace of 0\.8 hours a month, that's about 1 year of listening\.$/)
+  })
+
+  it('never shows “h”, “hours” or “of listening” outside Audiobook, nor a no-pace line next to a pace line', () => {
+    const { container } = render(<PileCard books={shelf()} />)
+    for (const name of ['All', 'Paper', 'E-book']) {
+      press(name)
+      const line = paceLine(container)!
+      expect(line.textContent).not.toMatch(/\bh\b|hours?|of listening/)
+      const paces = [...container.querySelectorAll('p')].filter((p) => PACE.test(p.textContent ?? ''))
+      expect(paces).toHaveLength(1)
+    }
+    expect(paceLine(container)!.textContent).toBe("You haven't finished an e-book in the last year, so there's no pace yet.")
+    press('Paper')
+    expect(paceLine(container)!.textContent).toBe("At your pace of 0.1 paper books a month, that's about 1 year of reading.")
+  })
+
+  it('falls back to the All pace line when the chosen kind runs out', () => {
+    const { container, rerender } = render(<PileCard books={shelf()} />)
+    press('E-book')
+    expect(paceLine(container)!.textContent).toMatch(/an e-book/)
+    rerender(<PileCard books={shelf().filter((b) => b.id !== 'we')} />)
+    expect(buttonNames()[0]).toBe('true:All')
+    expect(paceLine(container)!.textContent).toBe("At your pace of 0.2 a month, that's about 1 year of reading.")
+  })
+
+  it('an empty pile shows no pace line and no live region, on any shelf', () => {
+    const { container } = render(<PileCard books={shelf().filter((b) => b.status !== 'want')} />)
+    expect(paceLine(container)).toBeUndefined()
+    expect(liveRegion(container)).toBeNull()
+    expect(container.querySelector('.pile-said')).toBeNull()
   })
 })
