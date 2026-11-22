@@ -1601,7 +1601,10 @@ textarea.input {
   border: 1px solid var(--accent);
   border-radius: var(--radius);
   position: sticky;
-  top: max(5rem, calc(var(--header-h, 0px) + var(--space-2)));
+  /* .dashboard (the scroll container) already starts under the header with its padding-top, and
+     sticky offsets count from inside that padding: so just a small gap, or the header counts twice
+     and the bar covers what is under it (T-0020) */
+  top: var(--space-2);
   z-index: 3;
 }
 .dashboard-bar p {
@@ -2050,7 +2053,7 @@ textarea.input {
     padding: max(5.25rem, calc(var(--header-h, 0px) + var(--space-2))) 0.75rem 1.5rem;
   }
   .dashboard-bar.arranging {
-    top: max(4.75rem, calc(var(--header-h, 0px) + var(--space-1)));
+    top: var(--space-1);
   }
   .dash-card {
     padding: 1rem;

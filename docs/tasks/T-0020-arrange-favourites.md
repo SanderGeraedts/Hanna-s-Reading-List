@@ -429,11 +429,17 @@ Added by the developer (2026-11-22).
   3. *Handle size on a touch screen*: the handles are the sections' handles exactly (`.btn.small`,
      which the existing CSS makes 36 px tall under `pointer: coarse`, not 44 px as *Design* says).
      Kept the same as the sections rather than changing every small button; for the UX designer.
-- **Found, not fixed here** (for the architect): in Arrange the sticky bar with Reset/Done
-  (`top: max(5rem, header height + space)`) sits over the top of the ★ Favourites section when the
-  page is at the top, so the heading, the empty note and a drop line before the first row are
-  partly behind it (seen at 390 and 1280, before this change too). The screenshots drag to row 2 so
-  the line is visible.
+- **The sticky Reset/Done bar, fixed after the review** (`src/styles.css`, CSS only): `.dashboard`
+  is the scroll container and already starts under the header with its `padding-top`, and sticky
+  offsets count from inside that padding, so `top: max(5rem, header height + space)` counted the
+  header twice and pushed the bar about 70 px over the top of ★ Favourites (and about 270 px down the
+  screen when scrolled). `top` is now `var(--space-2)` (`var(--space-1)` under 720 px). Measured
+  after the fix, at 390 and 1280 on both wallpapers: at the top of the page the "★ Favourites"
+  heading starts 17 px below the bar, the empty note 57 px and the first block's tools 67 px; the
+  drop line before the first block is 46 px below it; scrolled, the bar's top is 12 px (390) and
+  20 px (1280) under the header. The Challenges page uses the same bar inside `.dashboard`: at the
+  top it sits in its own place between the A–Z chips and the blocks, and scrolled it sticks just
+  under the header too.
 
 ## Screenshots (`docs/tasks/T-0020-screens/`)
 
@@ -443,7 +449,10 @@ backend, layout seeded in `hannas-reading-list:dashboard:local`:
 `4` / `4b` (1280) a drop below the right column's last block with 4 others: the line at the end of
 the left column, and the block landing there, `4c` (1280) a drag over the Today section with the
 line kept in Favourites, `5` the same blocks in their own section unchanged, `6` after Done and a
-reload, `7`–`9` 0, 1 and 2 favourites in Arrange. What the run printed: the drags left `sections`
+reload, `7`–`9` 0, 1 and 2 favourites in Arrange. Added after the review: `2b` a drag at the top of
+the page with the line before the first block (left column at 1280), and `10` Arrange scrolled
+down with the bar just under the header. All 46 shots were taken again after the bar fix. What the
+run printed: the drags left `sections`
 deep-equal; the status line read "Reading goal: right column, row 2 of the favourites." (1280) and
 "Reading goal: place 2 of 5 in the favourites." (390); focus stayed on the handle after a key; with 1
 favourite a drag and a key changed nothing and said nothing; with 2, Right (1280) / Down (390)
@@ -483,3 +492,13 @@ To be written by the tester.
   developer choices. Must fix here: the sticky Reset/Done bar covers the ★ Favourites heading, the
   first row's ⠿ / ★ and the drop line before the first block; then new screenshots 1, 2b, 7 and 8
   and one scrolled shot. Details under *Review after building*. Back to the developer.
+- 2026-11-22 developer: fixed must-fix 1: the Arrange bar's sticky `top` is `var(--space-2)`
+  (`var(--space-1)` under 720 px), because `.dashboard` already starts under the header with its
+  padding (CSS only, `src/styles.css`). At the top of the page the bar now sits in its own place
+  above the Favourites heading (heading 17 px, first block's tools 67 px below it), and scrolled it
+  sticks 12 px / 20 px under the header. The Challenges page's bar was checked at the top and
+  scrolled. Must-fix 2: all screenshots taken again (46), plus new `2b-drop-before-first` and
+  `10-arrange-scrolled` at 390 and 1280 on lavender and midnight; no console errors. Must-fix 3: a
+  line in `docs/lessons.md`. `pnpm test`: "Test Files 84 passed | 1 skipped (85), Tests 685 passed |
+  9 skipped (694)"; `pnpm exec tsc --noEmit`: no errors; `pnpm exec harness check`: all ✓. Back to
+  the UX designer for a look at the new shots.
