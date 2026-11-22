@@ -21,6 +21,13 @@ const server = vi.hoisted(() => ({
   mostAtOnce: 0,
   /** calls of any kind still being answered */
   busy: 0,
+  /**
+   * tester (T-0020): after this many more favourites saves the connection
+   * drops; with `loseAnswer` the save that drops it is applied but its answer
+   * never arrives
+   */
+  dropAfterSaves: null as number | null,
+  loseAnswer: false,
 }))
 
 vi.mock('#/server/pocketbase', async () => {
@@ -69,6 +76,11 @@ vi.mock('#/server/pocketbase', async () => {
         remove: cleanFavourites(body?.remove),
       })
       server.record.favourites = next
+      if (server.dropAfterSaves !== null && --server.dropAfterSaves <= 0) {
+        server.dropAfterSaves = null
+        server.online = false
+        if (server.loseAnswer) throw new Error("The reading-list server can't be reached right now.")
+      }
       return { favourites: structuredClone(next) }
     }
     throw new Error(`unexpected ${method} ${path}`)
@@ -186,6 +198,8 @@ beforeEach(() => {
   server.requests = []
   server.saving = 0
   server.mostAtOnce = 0
+  server.dropAfterSaves = null
+  server.loseAnswer = false
 })
 
 describe('favourites follow the account (#182)', () => {
@@ -554,6 +568,158 @@ describe('favourites follow the account (#182)', () => {
         'reading',
         'calendar',
       ])
+    })
+
+    describe('tester (T-0020): what could go wrong between and around the two saves', () => {
+      const UNSENT_KEY = `hannas-reading-list:favourites-unsent:${ACCOUNT}`
+      const MET_KEY = `hannas-reading-list:favourites-met:${ACCOUNT}`
+
+      it('the connection drops after the unstar: the device keeps the re-star and sends it later, nothing lost', async () => {
+        server.record!.favourites = [...FOUR]
+        const laptop = new Device().open()
+        await settle()
+        server.dropAfterSaves = 1 // the unstar of the tail lands, then the connection is gone
+        laptop.move('pace', 0)
+        await settle()
+        expect(server.record!.favourites).toEqual(['pace']) // the partial state on the account
+        expect(laptop.favourites).toEqual(['pace', 'goal', 'reading', 'calendar'])
+        expect(JSON.parse(laptop.storage.get(UNSENT_KEY)!)).toEqual([
+          { add: ['goal', 'reading', 'calendar'], remove: [] },
+        ])
+        laptop.close() // and the app is closed in between
+        server.online = true
+        laptop.open()
+        await settle()
+        expect(server.record!.favourites).toEqual(['pace', 'goal', 'reading', 'calendar'])
+        expect(laptop.favourites).toEqual(['pace', 'goal', 'reading', 'calendar'])
+        expect(laptop.storage.get(UNSENT_KEY) ?? '[]').toBe('[]')
+      })
+
+      it('the unstar lands but its answer is lost: sending it again does no harm and the order ends right', async () => {
+        server.record!.favourites = [...FOUR]
+        const laptop = new Device().open()
+        await settle()
+        server.dropAfterSaves = 1
+        server.loseAnswer = true
+        laptop.move('pace', 0)
+        await settle()
+        expect(server.record!.favourites).toEqual(['pace'])
+        server.online = true
+        await laptop.comeBack()
+        expect(server.record!.favourites).toEqual(['pace', 'goal', 'reading', 'calendar'])
+        expect(laptop.favourites).toEqual(['pace', 'goal', 'reading', 'calendar'])
+      })
+
+      it('another device that pulls between the two saves gets the whole list back after the re-star', async () => {
+        server.record!.favourites = [...FOUR]
+        const laptop = new Device().open()
+        await settle()
+        server.dropAfterSaves = 1
+        laptop.move('pace', 0)
+        await settle()
+        server.online = true
+        // (comeBack wakes every open device, so the phone is opened here to see the partial state alone)
+        const phone = new Device().open()
+        await settle()
+        expect(phone.favourites).toEqual(['pace'])
+        await laptop.comeBack() // the re-star goes up (the phone pulls too)
+        await phone.comeBack()
+        expect(phone.favourites).toEqual(['pace', 'goal', 'reading', 'calendar'])
+        expect(server.record!.favourites).toEqual(['pace', 'goal', 'reading', 'calendar'])
+      })
+
+      it('a star on another device between the two saves stays, once, with every block back', async () => {
+        server.record!.favourites = [...FOUR]
+        const laptop = new Device().open()
+        const phone = new Device().open()
+        await settle()
+        server.dropAfterSaves = 1
+        laptop.move('pace', 0)
+        await settle()
+        server.online = true
+        await phone.star('fact')
+        await laptop.comeBack()
+        await phone.comeBack()
+        const account = server.record!.favourites as BlockId[]
+        expect([...account].sort()).toEqual(['calendar', 'fact', 'goal', 'pace', 'reading'])
+        expect(new Set(account).size).toBe(account.length)
+        expect(account.filter((id) => id !== 'fact')).toEqual(['pace', 'goal', 'reading', 'calendar'])
+        expect(laptop.favourites).toEqual(account)
+        expect(phone.favourites).toEqual(account)
+      })
+
+      it('a move of a block unstarred on another device meanwhile is dropped: it stays unstarred', async () => {
+        server.record!.favourites = [...FOUR]
+        const laptop = new Device().open()
+        const phone = new Device().open()
+        await settle()
+        server.online = false
+        laptop.move('pace', 0)
+        await settle()
+        server.online = true
+        await phone.star('pace') // takes the star off pace on the phone
+        await laptop.comeBack()
+        expect(server.record!.favourites).toEqual(['goal', 'reading', 'calendar'])
+        expect(laptop.favourites).toEqual(['goal', 'reading', 'calendar'])
+        expect(writes().filter((w) => JSON.stringify(w.body).includes('pace'))).toEqual([
+          expect.objectContaining({ body: { add: [], remove: ['pace'] } }),
+        ])
+      })
+
+      it('repeated moves made offline, there and back again, end in her last order after the app was closed', async () => {
+        server.record!.favourites = [...FOUR]
+        const laptop = new Device().open()
+        await settle()
+        server.online = false
+        laptop.move('pace', 0)
+        laptop.move('pace', 3)
+        laptop.move('goal', 2)
+        laptop.move('reading', 0)
+        await settle()
+        const want = laptop.favourites
+        expect(want).toEqual(['reading', 'calendar', 'goal', 'pace'])
+        laptop.close()
+        server.online = true
+        laptop.open()
+        await settle()
+        expect(server.record!.favourites).toEqual(want)
+        expect(laptop.favourites).toEqual(want)
+        expect(server.mostAtOnce).toBe(1)
+      })
+
+      it('a queue in the old format (stars and unstars only) still loads and goes up', async () => {
+        server.record!.favourites = ['goal', 'reading']
+        const laptop = new Device()
+        laptop.storage.set(LAYOUT_KEY, withFavourites(['goal', 'calendar', 'fact']))
+        laptop.storage.set(MET_KEY, '1')
+        // as an app before T-0020 left it, with a junk entry in between
+        laptop.storage.set(
+          UNSENT_KEY,
+          JSON.stringify([{ add: [], remove: ['reading'] }, null, { add: ['calendar', 'nonsense'] }, { add: ['fact'], remove: [] }]),
+        )
+        laptop.open()
+        await settle()
+        expect(server.record!.favourites).toEqual(['goal', 'calendar', 'fact'])
+        expect(laptop.favourites).toEqual(['goal', 'calendar', 'fact'])
+        expect(laptop.storage.get(UNSENT_KEY) ?? '[]').toBe('[]')
+      })
+
+      it('the old queue and a new move together: the stars go first, then the move, in her order', async () => {
+        server.record!.favourites = ['goal', 'reading']
+        const laptop = new Device()
+        laptop.storage.set(LAYOUT_KEY, withFavourites(['goal', 'reading', 'fact']))
+        laptop.storage.set(MET_KEY, '1')
+        laptop.storage.set(UNSENT_KEY, JSON.stringify([{ add: ['fact'], remove: [] }]))
+        server.online = false
+        laptop.open()
+        await settle()
+        laptop.move('fact', 0)
+        await settle()
+        server.online = true
+        await laptop.comeBack()
+        expect(server.record!.favourites).toEqual(['fact', 'goal', 'reading'])
+        expect(laptop.favourites).toEqual(['fact', 'goal', 'reading'])
+      })
     })
 
     it('while the server has no favourites field, a reorder stays on the device and nothing is written', async () => {

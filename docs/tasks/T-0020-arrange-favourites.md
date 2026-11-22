@@ -2,11 +2,11 @@
 id: T-0020
 title: "Let her drag blocks within Favourites in Arrange, in an order of their own that follows her to every device"
 description: "In Arrange the ★ Favourites blocks get the same ⠿ handle, drag and arrow keys as the other sections; a move reorders layout.favourites (separate from the block's own section), and the account sync sends it as an unstar and re-star of the shortest tail, worked out against the account's list, so a reorder isn't undone by the next pull and no server change is needed (D-0028)."
-status: Doing
+status: Done
 depends_on: []
 decisions: [D-0003, D-0005, D-0014, D-0020, D-0022, D-0028]
 raised_on: 2026-11-22
-done_on: ""
+done_on: "2026-11-22"
 result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/229"]
 ---
 
@@ -481,7 +481,79 @@ console errors.
 
 # Test
 
-To be written by the tester.
+Tested by the tester on 2026-11-22, on branch `t-0020-arrange-favourites` at 40c5e88, after
+`pnpm install --frozen-lockfile`.
+
+**Commands (actual output)**
+
+- `pnpm test` (as the developer left it): "Test Files 84 passed | 1 skipped (85), Tests 685 passed |
+  9 skipped (694)". Run five more times with the JSON reporter: 694 total, 685 passed, 0 failed,
+  9 skipped every time, so no flaky test. **The "684" in the developer's handover after the rework
+  was a typo in its chat summary only:** every `pnpm test` the developer actually ran printed
+  "685 passed | 9 skipped (694)", and the Log above says 685 both times. No test went missing.
+- `pnpm test` with the tester's 8 new tests: "Test Files 84 passed | 1 skipped (85), Tests 693
+  passed | 9 skipped (702)". `favouritesSync.test.ts` alone, three runs in a row: "35 passed (35)".
+- `pnpm exec tsc --noEmit`: no output, exit 0.
+- `pnpm run build`: "✓ built in 903ms", exit 0.
+- `pnpm exec harness check`: "✓ tasks: 20 tasks, index in step", "✓ decisions: 31 records, index
+  complete, 3 overrules valid", "✓ engineers: 2 listed", "✓ generated files: current".
+- `git diff --name-only main...HEAD`: D-0028, the decisions index, `docs/lessons.md`, this task and
+  its screenshots, the tasks index, `Dashboard.tsx`, `Dashboard.favourites.test.tsx`,
+  `useDashboardLayout.ts`, `dashboardLayout.ts` (+ test), `favourites.ts` (+ test),
+  `favouritesSync.test.ts` and `styles.css`. **No CODEOWNERS path** (`deploy/nas/`, `.github/`,
+  `netlify*`, `shelfMerge.ts`, `src/server/shelf.ts`, `CLAUDE.md`, `.claude/`, `AGENTS.md`,
+  `.harness/`, `.githooks/`, the guardrails), nothing in `src/server/` or `library.ts`, and
+  `src/routeTree.gen.ts` unchanged.
+
+**Done when, item by item:** the unit tests for the moving functions (6) and for working out a move
+against the account (7), the 10 two-device tests, the 6 Dashboard component tests, the screenshots
+(46, checked by the UX designer), the design checks and the three commands are all there and pass.
+
+**The sync (D-0028), read line by line in `useDashboardLayout.ts` and `favourites.ts`, and tried**
+
+The account's list is only ever changed through the existing star/unstar route; a move is kept on
+the device until it is worked out against the account's list and its two changes have both gone
+up. The shelf is never sent (the books and arrangement in the stand-in stay as they were in every
+test). What I checked, with the tests I added (`favouritesSync.test.ts`, "tester (T-0020): what
+could go wrong between and around the two saves", 8 tests):
+
+- *A reorder is not undone by the next load:* a pull takes over the account's list only when nothing
+  is unsent, and a move leaves the queue only for its two changes. Covered by the developer's test,
+  also after a reload.
+- *Offline reorders go up later:* covered (also after the app was closed). Added: **four moves made
+  offline, there and back again, the app closed, then online**: the account ends in her last order,
+  one save at a time.
+- *Star or unstar on another device during a move:* covered for before the move goes up. Added: **a
+  star on another device between the unstar and the re-star**: it stays, once, and every block comes
+  back in her order.
+- *A move of a block that is no longer a favourite:* added: the phone unstars the block the laptop
+  moved offline: the move is dropped, the block stays unstarred, and the only write naming it is the
+  phone's unstar.
+- *Repeated moves:* three moves before the first goes up (developer) and the four offline moves
+  above end right; worked through by hand: each move puts the block after the last block before it
+  in her order, so applied in turn they rebuild her order step by step.
+- *A failed save between the two saves:* added: **the connection drops right after the unstar**:
+  the account briefly holds only the moved block, the device keeps `{ add: tail }` in its queue, the
+  app is closed and opened again, and the re-star goes up: the account and the device end in her
+  order with an empty queue. Also **the unstar lands but its answer is lost**: the unstar is sent
+  again (harmless, nothing left to remove) and the order ends right. And **another device opened
+  in that gap** shows only the moved block for that moment, and gets the whole list back on its next
+  pull after the re-star.
+- *The old queue format in her localStorage:* added: a queue left by the app before this change
+  (`{ add, remove }` entries, with a `null` and an unknown block in between) still loads and goes up
+  in order; and an old queued star plus a new move: the star goes first, then the move.
+
+**What can still happen (accepted, not a risk to her books):** between the unstar and the re-star
+the account holds the shorter list. Another device that pulls in that moment shows only part of
+her favourites until the re-star has gone up (tested above); if the device that moved is closed
+offline right there, that lasts until it is opened again, and then it fixes itself. A device that
+had not pulled since, and unstars one of those tail blocks exactly in that gap, would see it come
+back with the re-star (one tap takes it off again). This needs a lost connection in the
+milliseconds between two saves, touches only which blocks are starred, never the shelf, and the
+device that moved always ends with the full list. No favourite is lost for good and no book is
+touched.
+
+**Verdict: passed.** Nothing remains for a human.
 
 # Log
 
@@ -525,3 +597,8 @@ To be written by the tester.
 - 2026-11-22 ux-designer: reviewed: pass. The Arrange bar sits in its own place above ★ Favourites
   and sticks just under the header when scrolled; the line before the first favourite shows
   (`2b`). Details under *Re-review*. Handed to the tester.
+- 2026-11-22 tester: passed. `pnpm test` 685 passed (the "684" in the developer's handover was a
+  typo; every run printed 685), 693 with 8 new sync tests for a save failing between the unstar and
+  the re-star, a lost answer, a star in that gap, a move of a block unstarred elsewhere, repeated
+  offline moves and the old queue format; tsc, build and `harness check` pass; no CODEOWNERS path.
+  Details under *Test*.
