@@ -2,7 +2,7 @@
 id: T-0019
 title: "Let her pick a book's spine colour from swatches taken from its cover, with Back to automatic"
 description: "The book panel gets a Spine colour row with 5–6 swatches from the book's cover (the dominant one first, marked ★ Dominant, the current one ✓); a tap sets book.color and the spine and back repaint at once; Back to automatic gives the cover's colour again, or colorFromString(title) for a book without a cover."
-status: Open
+status: Doing
 depends_on: [T-0004]
 decisions: [D-0002, D-0007, D-0009, D-0014, D-0020, D-0022, D-0027]
 raised_on: 2026-11-22
@@ -151,6 +151,52 @@ spine (edges set "From the cover" stay as stored).
   D-0020 / D-0022: tokens only, readable on lavender and midnight.
 - Page edges: `edgesFromCover` reads `book.color` when she taps "From the cover", so after a new
   spine colour that button gives edges in the new colour; stored edges don't change by themselves.
+
+## Build notes (developer)
+
+- `src/lib/cover.ts`: the pixel work is split out into `analyzePixels(data)` → `{ color, palette }`.
+  `color` is computed exactly as before (same loop, `0.82 / wsum`), so no existing spine moves.
+  The palette is a weighted k-means (weights `0.15 + sat²`), seeded with the weighted mean and
+  then, each time, the pixel with the largest `weight × distance²` to every seed (no randomness),
+  8 rounds; empty clusters drop out. Each centre is darkened × 0.82, sorted by weight, and kept
+  only if it is at least `MIN_SWATCH_DISTANCE` (RGB distance) from every earlier swatch; `color`
+  is always first, at most 6. `analyzeCover(url)` keeps its loader and returns
+  `{ color, aspect, palette }`; its callers are unchanged. Also `automaticColour(book, analysis)`
+  and `sameColour(a, b)` (case-insensitive).
+- **Numbers picked (recommended option, nothing asked):** `MIN_SWATCH_DISTANCE = 36` and **10
+  clusters**, not the suggested k = 6. With k = 6 and distance 48 the real covers in the
+  screenshots (Harry Potter, The Hobbit, The Alchemist, a Storytel cover) gave only 3 swatches
+  each, because several clusters land on near-identical shades and are merged. With k = 10 and 36
+  they give 5–6 swatches that still look clearly different. The tests hold either way.
+- `src/lib/colourName.ts`: `colourName(hex)` (hue → red, orange, yellow, green, teal, blue,
+  purple, pink; brown for dark orange or yellow; grey, black, white or cream for low colour; "Dark
+  "/"Light " by lightness) and `swatchNames(hexes, dominantFirst)` (", dominant" on the first,
+  " 2", " 3" for repeats). A dusty brown-red like `#72564d` (hue 14°) is named "Red", as the
+  design's hue list puts it.
+- `src/components/textures.ts`: `inkFor` keeps the brightness rule and switches to the other ink
+  only when the first reads under 3:1 and the other reads better; `contrastRatio` is exported for
+  the test. `spineColours` still picks the bands from the ink. The swatch ✓ uses the same
+  `inkFor`.
+- `src/components/SpineColourField.tsx`, placed in `BookPanel` between "Change cover…" and "Page
+  edges". The analysis runs once per book / cover (`[book.id, coverUrl]`) and is dropped when you
+  switch books. Tapping the current swatch does nothing (it doesn't turn the book either). After
+  "Back to automatic", focus goes to the swatch that is now pressed. CSS block
+  `/* ---- spine colour (T-0019) */` next to page edges: 36 px swatches, 44 px (`--tap`) under
+  `(max-width: 720px), (pointer: coarse)`; tokens only.
+- Group 1: no change to `Book`, saving or syncing, no new package, no new route.
+- Screenshots (`docs/tasks/T-0019-screens/`, 36 JPEGs: `<width>-<wallpaper>-<n>-<state>`): 1 Open
+  Library cover (`/api/cover`), 2 after tapping "Dark blue" (book turned to its spine), 3 its back
+  in the new colour, 4 the shelf with the panel closed, 5 after "Back to automatic", 6 the keyboard
+  focus ring on the pressed swatch, 7 a Storytel cover (`/api/remote-cover`) with an outside colour
+  as the extra ✓ swatch, 8 no cover, 9 a cover that can't be loaded. Run on
+  `vite dev --port 3129` with no backend and a seeded `hannas-reading-list:v1`. Measured: swatches
+  44 × 44 at 390 and 36 × 36 at 1280, one line each (7 on the Storytel book), no sideways scroll;
+  after a reload the stored colour was still `#1c3654`; no page, canvas or CORS errors.
+- At 1× pixel ratio the 2 px gap between the gold "current" ring and the focus outline is thin in
+  the focus screenshots; the outline is there (`:focus-visible` true, `2px solid` gold, offset
+  4 px), and it shows clearly at 2×.
+- Noticed, not fixed (for the architect): an earlier session's dev server was still running on
+  port 3129; I stopped it before starting my own.
 
 ## Choices made by the team
 
@@ -394,3 +440,9 @@ To be written by the tester.
   to automatic), the loading, failed and no-cover states, the turn to the spine on a tap, buttons
   with aria-pressed and plain colour names, and the exact wording; choices 11–17 added, and design
   checks added to *Done when*; handed to the developer.
+- 2026-11-22 developer: built the Spine colour row (`SpineColourField`, `analyzePixels` palette,
+  `automaticColour`, `colourName`, `inkFor` 3:1 fallback); 10 clusters and distance 36 picked, see
+  *Build notes*. `pnpm test`: 82 files passed, 1 skipped; 646 tests passed, 9 skipped.
+  `pnpm exec tsc --noEmit`: no errors. `pnpm run build`: built. `pnpm exec harness check`: tasks,
+  decisions, engineers, generated files all ✓. 36 screenshots at 390 and 1280 on lavender and
+  midnight, no console errors; handed to the UX designer for review.
