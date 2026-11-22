@@ -6,7 +6,7 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 
 ## Open
 
-None.
+- [T-0023 Measure the want-to-read pile like real books, count audiobooks and e-books, and add an All · Paper · E-book · Audiobook switch](T-0023-better-pile-height.md): The pile's height in the Want-to-read pile block uses the thickness of real printed books instead of the 3D shelf's (D-0030): audiobooks she only listens to count as the printed book (minutes ÷ 2 pages), e-books as paperbacks, and a switch like the Genre flower's shows the height of paper books and e-books, and the total listening time of the audiobooks, each with its own everyday comparison.
 
 ## Doing
 
