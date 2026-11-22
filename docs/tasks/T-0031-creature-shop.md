@@ -36,7 +36,7 @@ result: []
 
 # Done when
 
-1. `pnpm test` passes and includes: the balance after buying (earned + gift − paid), buying refused
+1. `pnpm test` passes and includes: the balance after buying (earned − paid), buying refused
    when the balance is too low or below zero, an item bought once (no double buy from two quick
    taps; bought twice only for food and eggs), wearing one item per slot and only owned items, a
    bought egg hatching like a milestone egg of its tier, a bought decoration in the room panel's

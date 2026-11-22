@@ -18,8 +18,8 @@ blessing anyway").
    designs by the normal agents.
 2. **Saving her choices with her account** (T-0028, waits for Sander's review): purchases, names,
    outfits and the like follow her to every device.
-3. **First creature and growing** (T-0029): a welcome egg (with a starting pile of cookies from her
-   past reading) hatches her first creature. Every minute she reads or listens earns 🍪 cookies
+3. **First creature and growing** (T-0029): a welcome egg (just the egg, no cookies) from which she
+   **chooses** her first creature among the five commons. Every minute she reads or listens earns 🍪 cookies
    (a page ≈ 1.5 min, a finished book a special treat, sleep reads half); feeding grows the
    creature, and on days she reads it also grows a little by itself. Baby → young → grown-up, with
    levels in between and after. A suggested cute name she can keep or change. After a few days
@@ -30,9 +30,11 @@ blessing anyway").
    5th book, every 10 hours, a finished series, a full bingo card, a challenge done; bigger
    milestones give rarer eggs). Eggs hatch a surprise. An album with a card for each of the 20
    (unknown ones as silhouettes), rarity from the IUCN Red List for real animals (a small label
-   with the source on each card), fantasy creatures legendary. Some creatures have shiny variants.
-   Duplicates: she chooses keep as a new pet / turn into cookies / power up her existing one;
-   duplicates are more often shiny. A shiny is never swapped, used up or removed by accident.
+   with the source on each card), fantasy creatures legendary. **All 20 have a shiny variant**
+   (gold, purple and night-sky twists). Duplicates: she chooses keep as a new pet / turn into
+   cookies / power up her existing one; duplicates are more often shiny. She can **release a pet**
+   after a clear confirm step; a shiny is never swapped, used up or released by accident: it needs a
+   "This is a shiny!" warning and press-and-hold on top.
 5. **The shop** (T-0031): food, outfits and accessories (hats, scarves, glasses...), home upgrades
    (cushions, lamp, mini bookcase, window with weather), eggs of every rarity (a common egg about a
    week of reading, legendary noticeably longer), toys and playtime (ball, yarn, slide...),
@@ -53,12 +55,18 @@ More creatures when she asks for them or has collected all 20.
 ## Out of scope
 
 - A creature walking along the shelf; several creatures on the shelf at once.
-- Creatures that get hungry, ill or run away; anything she can lose.
+- Creatures that get hungry, ill or run away; anything she can lose without choosing to.
 - Live Red List lookups (they need a key): the statuses are checked at build time and kept in the
   code.
 
 ## Open
 
-Nothing waits on the Engineer: Sander approved the account part. Its pull request still needs his
-code-owner review before it is merged (T-0028). Questions taken with the recommended option while
-Hanna slept are listed in T-0027 under *Questions to re-ask Hanna in the morning*.
+Nothing waits on a decision: Sander approved the account part. Hanna and Sander asked for a way
+without changing the server; the architect looked again and found no safe one (the reasons, in
+plain words, are in T-0028). So its pull request still needs **one review from Sander** on GitHub;
+after that it merges and deploys by itself. The game doesn't wait for it: until then each device
+keeps its own choices.
+
+The questions taken while Hanna slept were answered on 2026-11-22 (T-0027, *Questions re-asked*):
+she kept the numbers and the look, and changed four things this brief already shows (welcome gift
+just an egg, she chooses her first creature, pets can be released with care, all 20 have a shiny).

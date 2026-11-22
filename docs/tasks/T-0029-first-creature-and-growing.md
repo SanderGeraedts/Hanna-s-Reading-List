@@ -1,7 +1,7 @@
 ---
 id: T-0029
 title: "Hatch her first book creature from a welcome egg, earn cookies by reading, and let it grow, with a Creatures tab and a dashboard block"
-description: "CR1 of the book creatures (D-0033): cookies worked out from the reading log, a welcome egg and starting cookies, the first creature (a surprise common) with a name, feeding and growing by itself on reading days, baby/young/grown-up stages, a missing-you look; a Creatures tab (home) and a dashboard block; hatches and level-ups in Waiting for you; her choices kept on the device and sent to the account once T-0028 is live (D-0034)."
+description: "CR1 of the book creatures (D-0033): cookies worked out from the reading log, a welcome egg (no starting cookies) from which she chooses her first creature among the five commons, with a name, feeding and growing by itself on reading days, baby/young/grown-up stages, a missing-you look; a Creatures tab (home) and a dashboard block; hatches and level-ups in Waiting for you; her choices kept on the device and sent to the account once T-0028 is live (D-0034)."
 status: Open
 size: full
 depends_on: [T-0027]
@@ -18,12 +18,15 @@ this Hanna has one creature that grows as she reads.
 
 1. **Cookies** (`src/lib/creatures/cookies.ts`), worked out from her books from `CREATURES_START`
    (the day this goes live, a constant): 1 🍪 per 5 minutes read or listened, +10 per finished book,
-   sleep reads half, exactly as D-0033 §2. The balance = earned + welcome gift − spent (spent comes
-   from her choices). Below zero after a fixed past day: shown as is, feeding waits.
-2. **Welcome gift**: on the start day a common egg waits in Waiting for you with the starting pile
-   (D-0033 §3). Tapping **Hatch** shows the egg cracking (short, on her tap; not a pop-up) and her
-   first creature: a surprise among the five commons, fixed by the egg id (D-0033 §7), with a
-   suggested cute name she can keep or change; she can rename later.
+   sleep reads half, exactly as D-0033 §2. The balance = earned − spent (spent comes from her
+   choices); it starts at 0 on the start day. Below zero after a fixed past day: shown as is,
+   feeding waits.
+2. **Welcome egg**: on the start day a common egg waits in Waiting for you, with **no starting
+   cookies** (D-0033 §3). Tapping **Hatch** opens, in the Creatures tab (not a pop-up), the five
+   commons to **choose** from (house cat, red fox, capybara, red squirrel, Adélie penguin), each
+   shown with its name; she picks one, the egg cracks (short, on her tap) and her first creature
+   appears with a suggested cute name she can keep or change; she can rename later. Whether it is
+   shiny follows D-0033 §7. Her pick is saved as the `hatch` choice.
 3. **Growing**: **Feed** gives the creature cookies (the food bowl); each feed gives growth; on days
    she reads it also grows a little by itself, skipped days pause (D-0033 §10). Level, and visible
    stages baby → young → grown-up (D-0033 §11) made from Fable's base model by scaling its parts as
@@ -45,14 +48,15 @@ this Hanna has one creature that grows as she reads.
 
 1. `pnpm test` passes and includes tests for: cookies from a reading log (pages, listen-only
    minutes, a book without length as 280 pages, a sleep read at half, a finished-book treat, nothing
-   before the start, fixing a past day lowers the total, rounding on the total); the welcome gift
-   (30 days, cap 150); the hatch (the same egg id gives the same creature every time; always a
-   common); growth by itself only on reading days; stages by level; missing-you after 3 days without
+   before the start, fixing a past day lowers the total, rounding on the total); the welcome egg
+   (one common egg on the start day, no cookies; balance 0 before any reading); the first hatch
+   (only the five commons can be picked; the picked one is the creature on every device; shiny or
+   not is the same for the same egg every time); growth by itself only on reading days; stages by level; missing-you after 3 days without
    reading and gone on the next reading day; the choices log merge (union by id, newest setting per
    key, nothing doubled) and that the app keeps working when the server answers 404 (like
    `favouritesSync.test.ts`).
-2. On `pnpm run dev` with demo data: the welcome egg waits in Waiting for you; Hatch shows a common
-   creature with a suggested name; renaming works and stays after a reload; Feed lowers the balance
+2. On `pnpm run dev` with demo data: the welcome egg waits in Waiting for you; Hatch shows the five
+   commons to pick from, and the picked one hatches with a suggested name; renaming works and stays after a reload; Feed lowers the balance
    and raises growth; the dashboard block and the Creatures tab show the same creature, level and
    balance; at 390 × 844 and 1280 × 800, both wallpapers. Screenshots in
    `docs/tasks/T-0029-screens/`.
@@ -97,3 +101,5 @@ for you lines and the hatch moment, phone and computer, both wallpapers.
 - 2026-11-22 architect: wrote CR1 from Hanna's brief; earned things are derived from the reading
   log, choices kept on the device and synced once T-0028 is live; no Fable work in this task. Size:
   full (new tab, new block, new data).
+- 2026-11-22 architect: Hanna's answers: the welcome egg comes without cookies, and she chooses her
+  first creature from the five commons (not a surprise). Size unchanged: full.

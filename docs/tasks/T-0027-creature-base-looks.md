@@ -19,8 +19,8 @@ so this task makes them first:
 
 1. **The species list** in the code (`src/lib/creatures/species.ts`): the 20 creatures below, each
    with an id, a name, its tier, for a real animal the scientific name, IUCN Red List category,
-   assessment year where known and source, and whether it has a shiny variant. Order: commons first,
-   so the first egg is common.
+   assessment year where known and source, and its shiny palette (every creature has one). Order:
+   commons first; she picks her first creature from those five (D-0033 §3).
 2. **One base model per creature**: a cute, chunky, low-poly look built from three.js primitives
    (no model files, no new package, D-0002), designed **once per animal by an agent on the Fable
    model**. Each model is a function that builds a `THREE.Group` from a shared set of parameters, so
@@ -39,23 +39,23 @@ re-checks each one on iucnredlist.org in a browser before merging** and notes th
 |---|---|---|---|---|---|---|---|
 | 1 | `cat` | House cat | *Felis catus* | Not on the list (domestic) | common | yes | [Mammal Diversity Database: Not Evaluated, domesticated](https://mammaldiversity.org/taxon/1005985) |
 | 2 | `red-fox` | Red fox | *Vulpes vulpes* | Least Concern | common | yes | [IUCN SSC Canid Specialist Group](https://canids.org/species/view/PREKLP237241), [EUNIS (IUCN)](https://eunis.eea.europa.eu/species/11350) |
-| 3 | `capybara` | Capybara | *Hydrochoerus hydrochaeris* | Least Concern (2016) | common | no | [Mammal Diversity Database](https://www.mammaldiversity.org/taxon/1001209), [National Geographic](https://www.nationalgeographic.com/animals/mammals/facts/capybara) |
-| 4 | `red-squirrel` | Eurasian red squirrel | *Sciurus vulgaris* | Least Concern | common | no | [Mammal Diversity Database](https://www.mammaldiversity.org/taxon/1001701) |
+| 3 | `capybara` | Capybara | *Hydrochoerus hydrochaeris* | Least Concern (2016) | common | yes | [Mammal Diversity Database](https://www.mammaldiversity.org/taxon/1001209), [National Geographic](https://www.nationalgeographic.com/animals/mammals/facts/capybara) |
+| 4 | `red-squirrel` | Eurasian red squirrel | *Sciurus vulgaris* | Least Concern | common | yes | [Mammal Diversity Database](https://www.mammaldiversity.org/taxon/1001701) |
 | 5 | `adelie-penguin` | Adélie penguin | *Pygoscelis adeliae* | Least Concern | common | yes | [BirdLife DataZone factsheet](https://datazone.birdlife.org/species/factsheet/adelie-penguin-pygoscelis-adeliae/summary) |
 | 6 | `hedgehog` | European hedgehog | *Erinaceus europaeus* | Near Threatened (2024) | uncommon | yes | [IUCN press release Oct 2024](https://iucn.org/press-release/202410/more-one-three-tree-species-worldwide-faces-extinction-iucn-red-list), [Mammal Society](https://mammal.org.uk/press-hub/breaking-european-hedgehog-listed-as-near-threatened-on-iucn-red-listnbsp) |
-| 7 | `otter` | Eurasian otter | *Lutra lutra* | Near Threatened (2022) | uncommon | no | [IUCN SSC Otter Specialist Group](https://otterspecialistgroup.org/osg-newsite/?p=788) (Loy et al. 2022, e.T12419A218069689) |
+| 7 | `otter` | Eurasian otter | *Lutra lutra* | Near Threatened (2022) | uncommon | yes | [IUCN SSC Otter Specialist Group](https://otterspecialistgroup.org/osg-newsite/?p=788) (Loy et al. 2022, e.T12419A218069689) |
 | 8 | `platypus` | Platypus | *Ornithorhynchus anatinus* | Near Threatened (2016) | uncommon | yes | [Mammal Diversity Database](https://mammaldiversity.org/taxon/1000001), [Australian Museum](https://australian.museum/Platypus) |
 | 9 | `koala` | Koala | *Phascolarctos cinereus* | Vulnerable (2016) | rare | yes | [Mongabay, May 2026: latest IUCN assessment still Vulnerable](https://news.mongabay.com/2026/05/australias-new-national-park-links-habitat-to-protect-koalas/), [IFAW](https://www.ifaw.org/international/journal/koala-faq) |
-| 10 | `giant-panda` | Giant panda | *Ailuropoda melanoleuca* | Vulnerable (2016) | rare | no | [Smithsonian's National Zoo](https://www.nationalzoo.si.edu/animals/news/giant-panda-status-upgraded-endangered-vulnerable) |
-| 11 | `polar-bear` | Polar bear | *Ursus maritimus* | Vulnerable (2015) | rare | no | [IUCN SSC Polar Bear Specialist Group](https://www.iucn-pbsg.org/iucn-redlist/), [IUCN press release](https://www.iucn.org/content/new-assessment-highlights-climate-change-most-serious-threat-polar-bear-survival-iucn-red-list) |
+| 10 | `giant-panda` | Giant panda | *Ailuropoda melanoleuca* | Vulnerable (2016) | rare | yes | [Smithsonian's National Zoo](https://www.nationalzoo.si.edu/animals/news/giant-panda-status-upgraded-endangered-vulnerable) |
+| 11 | `polar-bear` | Polar bear | *Ursus maritimus* | Vulnerable (2015) | rare | yes | [IUCN SSC Polar Bear Specialist Group](https://www.iucn-pbsg.org/iucn-redlist/), [IUCN press release](https://www.iucn.org/content/new-assessment-highlights-climate-change-most-serious-threat-polar-bear-survival-iucn-red-list) |
 | 12 | `red-panda` | Red panda | *Ailurus fulgens* | Endangered (2015) | very rare | yes | [GBIF (IUCN)](https://gbif.org/species/113392444), [National Geographic](https://www.nationalgeographic.com/animals/mammals/facts/red-panda) |
-| 13 | `emperor-penguin` | Emperor penguin | *Aptenodytes forsteri* | Endangered (2026) | very rare | no | [IUCN press release, 9 April 2026: Near Threatened → Endangered](https://iucn.org/node/46369), [Smithsonian](https://www.smithsonianmag.com/smart-news/as-their-antarctic-habitat-melts-away-emperor-penguins-are-now-considered-an-endangered-species-180988520/) |
-| 14 | `ring-tailed-lemur` | Ring-tailed lemur | *Lemur catta* | Endangered (since 2012) | very rare | no | [National Geographic](https://www.nationalgeographic.com/animals/mammals/facts/ring-tailed-lemur), [Mongabay](https://news.mongabay.com/2013/12/madagascars-most-famous-lemur-facing-big-threats/) |
-| 15 | `african-penguin` | African penguin | *Spheniscus demersus* | Critically Endangered (2024) | epic | no | [BirdLife DataZone factsheet](https://datazone.birdlife.org/species/factsheet/african-penguin-spheniscus-demersus/summary), [SANCCOB](https://sanccob.co.za/news/african-penguin-newly-classified-as-critically-endangered-as-breeding-pairs-fall-below-10000/) |
+| 13 | `emperor-penguin` | Emperor penguin | *Aptenodytes forsteri* | Endangered (2026) | very rare | yes | [IUCN press release, 9 April 2026: Near Threatened → Endangered](https://iucn.org/node/46369), [Smithsonian](https://www.smithsonianmag.com/smart-news/as-their-antarctic-habitat-melts-away-emperor-penguins-are-now-considered-an-endangered-species-180988520/) |
+| 14 | `ring-tailed-lemur` | Ring-tailed lemur | *Lemur catta* | Endangered (since 2012) | very rare | yes | [National Geographic](https://www.nationalgeographic.com/animals/mammals/facts/ring-tailed-lemur), [Mongabay](https://news.mongabay.com/2013/12/madagascars-most-famous-lemur-facing-big-threats/) |
+| 15 | `african-penguin` | African penguin | *Spheniscus demersus* | Critically Endangered (2024) | epic | yes | [BirdLife DataZone factsheet](https://datazone.birdlife.org/species/factsheet/african-penguin-spheniscus-demersus/summary), [SANCCOB](https://sanccob.co.za/news/african-penguin-newly-classified-as-critically-endangered-as-breeding-pairs-fall-below-10000/) |
 | 16 | `axolotl` | Axolotl | *Ambystoma mexicanum* | Critically Endangered (2020) | epic | yes | [AmphibiaWeb (cites the 2020 IUCN assessment)](https://amphibiaweb.org/species/3842) |
 | 17 | `book-dragon` | Book dragon | fantasy | — | legendary | yes | — |
-| 18 | `library-owl` | Library owl | fantasy | — | legendary | no | — |
-| 19 | `bookmark-fox` | Bookmark fox (ribbon-bookmark tails) | fantasy | — | legendary | no | — |
+| 18 | `library-owl` | Library owl | fantasy | — | legendary | yes | — |
+| 19 | `bookmark-fox` | Bookmark fox (ribbon-bookmark tails) | fantasy | — | legendary | yes | — |
 | 20 | `starlight-unicorn` | Starlight unicorn | fantasy | — | legendary | yes | — |
 
 Tiers: 5 common, 3 uncommon, 3 rare, 3 very rare, 2 epic, 4 legendary. Two corrections to the
@@ -72,8 +72,8 @@ Red List". Each entry keeps its source URL and year for the card's small source 
 1. `pnpm test` passes and includes `src/lib/creatures/species.test.ts`, which checks: exactly 20
    species with unique ids; tiers 5/3/3/3/2/4; every real animal has a scientific name, a Red List
    category that matches its tier by D-0033's mapping, and a source URL; fantasy ones are
-   legendary with no category; the first in the list is common; exactly the 10 shiny species of
-   D-0033 have `shiny: true`.
+   legendary with no category; the first five in the list are the commons; all 20 have
+   `shiny: true` and a shiny palette (D-0033 §5).
 2. A test builds every base model with default parameters and finds: a `THREE.Group`, at most
    **3,000 triangles** and **12 draw calls** per creature (phone budget), the named anchor points
    every model must have (`head`, `hat`, `face`, `neck`, `back`, `paw`, `seat`), and that the model
@@ -130,51 +130,30 @@ warmth on both wallpapers (D-0022).
 - The /style page: `src/routes/style.tsx` (unlinked, D-0020).
 - No model files and no new package; three.js and react-three-fiber are already there.
 
-## Questions to re-ask Hanna in the morning
+## Questions re-asked: Hanna's answers (2026-11-22)
 
-Hanna was asleep (22:30–08:00 rule): each was taken with the recommended option. Ask her again
-when she's back.
+While Hanna slept, the architect and the UX designer took 19 questions with the recommended option.
+She answered them all on 2026-11-22; D-0033, the brief and T-0028 to T-0033 follow her answers.
 
-1. **Emperor penguin** is now Endangered on the Red List (since April 2026), so it is very rare, not
-   uncommon as in her example. Options: follow the Red List (taken) / keep her example. 
-2. **The 20 creatures** above, with three penguins (one per level). Options: this list (taken) /
-   swap a penguin or another animal for one she'd rather have.
-3. **The fantasy four**: book dragon, library owl, bookmark fox, starlight unicorn. Options: these
-   (taken) / other names or creatures.
-4. **Which have a shiny**: 10 of 20 (listed above). Options: these 10 (taken) / all 20 / fewer.
-5. **Cookie speed**: 1 🍪 per 5 minutes of reading or listening (about every 3 pages), +10 for a
-   finished book, so a common egg (60 🍪) is about a week at 45 minutes a day, close to her example
-   prices. Options: this (taken) / faster / slower.
-6. **Egg prices**: common 60, uncommon 90, rare 120, very rare 160, epic 200, legendary 300.
-   Options: these (taken) / her example 50 / 100 / 150.
-7. **Welcome gift**: a common egg plus the cookies of her last 30 days of reading, at most 150.
-   Options: this (taken) / all past reading at a lower rate / a fixed amount.
-8. **First creature**: a surprise among the five commons (not always the cat). Options: surprise
-   (taken) / always the cat / she picks.
-9. **Duplicates**: turn into cookies = half the egg's price; power-up = +3 levels. Options: these
-   (taken) / other amounts.
-10. **Release a pet**: there is no way to release or delete a pet at all for now (nothing can be
-    lost). Options: none (taken, most cautious) / a release with the shiny-style confirmation.
-11. **"Missing you"**: after 3 days without reading. Options: 3 days (taken) / 2 / 5.
-12. **"Sleepy late at night"** starts at 22:30. Options: 22:30 (taken) / 22:00 / 23:00.
-13. **The Creatures tab** is a new page tab next to Calendar (the planned Stats tab would make six).
-    Options: a tab (taken) / reached only from its dashboard block.
-14. **Before Sander's part is live**, choices (names, purchases...) stay on the device where she
-    made them and move into her account once it is. Options: this (taken) / wait with the whole
-    game until Sander's part is live.
-15. **Bought room decorations** belong to her on every device, but shown or hidden per device like
-    the other decorations (D-0022). Options: this (taken) / shown everywhere at once.
-16. **The house cat's colour** (UX designer): apricot-ginger with tabby stripes, so it doesn't
-    look like the grey koala. Options: apricot (taken) / grey like the sleeping cat on the shelf.
-17. **Size on the shelf** (UX designer): a grown-up creature is a little smaller than the koala
-    decoration (books stay the main thing); a baby is half that. Options: a little smaller (taken)
-    / as big as the koala.
-18. **Shiny colours** (UX designer): mostly gold, purple and night-sky twists, e.g. a plum Adélie
-    penguin, an amethyst book dragon, a night-sky unicorn, a silver fox. Options: these (taken) /
-    other colours for some of them.
-19. **Everyone sits like a plush toy** (UX designer), also the fox, capybara and otter, so all 20
-    look like one family next to the koala. Options: all sitting (taken) / animals in their own
-    natural pose (standing, lying).
+**Kept as taken:** follow the Red List (emperor penguin very rare, koala rare); the 20 creatures as
+listed, with three penguins; the fantasy four; cookie speed 1 🍪 per 5 minutes plus 10 per finished
+book; egg prices 60 / 90 / 120 / 160 / 200 / 300; duplicates half the egg price or +3 levels;
+missing-you after 3 days, sleepy from 22:30; the own Creatures tab; choices kept on the device until
+they can be saved with her account; bought room decorations shown or hidden per device; the
+apricot cat, a little smaller than the koala on the shelf, and everyone sitting like a plush toy;
+the gold, purple and night-sky shiny colours.
+
+**Changed by Hanna:**
+
+1. **Welcome gift**: just a common egg, **no starting cookies** (D-0033 §3).
+2. **First creature**: **she chooses** it from the five commons; it is not a surprise (D-0033 §3,
+   T-0029).
+3. **Releasing a pet is possible, with care**: a clear confirm step; for a shiny also the "This is a
+   shiny!" warning and press-and-hold (D-0033 §9, T-0030). Tests cover it.
+4. **All 20 creatures get a shiny**, not 10 (D-0033 §5; the ten new shiny palettes are in Design
+   §7).
+5. **Saving her choices without a server change**: Hanna and Sander asked to look again, harder.
+   The architect did; the answer, in plain words, is in T-0028 (*Why it needs the server*).
 
 # Design
 
@@ -392,29 +371,33 @@ Rules for every palette:
 
 **Shiny**: the same model with a whole other palette (body, belly, accent, accent2; eyes and blush
 stay), clearly a different hue at 120 px, not just lighter, plus a soft gold sparkle that T-0030
-adds around it. The shiny palettes below are the design; T-0030 puts them in code.
+adds around it. The shiny palettes below are the design; T-0030 puts them in code. **All 20 have
+a shiny** (Hanna, 2026-11-22); the architect added the second ten (capybara, red squirrel, otter,
+giant panda, polar bear, emperor penguin, ring-tailed lemur, African penguin, library owl, bookmark
+fox) as gold, purple and night-sky twists within the rules above. The UX designer checks them at
+the review (Done when 7) and may adjust a hex within the same twist.
 
 | id | body | belly | accent | accent2 | nose | shiny (body / belly / accent / accent2 / nose) |
 |---|---|---|---|---|---|---|
 | `cat` | `#e8b07a` apricot | `#f6ead8` | `#c97f45` tabby stripes | `#e8a9a4` inner ears | `#d98a8a` | snow and gold: `#f2eee8` / `#fffaf0` / `#d9a85b` / `#e8a9a4` / `#d98a8a` |
 | `red-fox` | `#df7a35` | `#f7efe4` | `#3a2a24` socks, ear backs | `#3a2a24` | `#2b2a2f` | silver fox: `#c9ccd6` / `#fbfaf7` / `#5a5f6e` / `#5a5f6e` / `#2b2a2f` |
-| `capybara` | `#a87a52` | `#c49a70` | `#6e4d33` snout top | `#6e4d33` | `#4a3628` | — |
-| `red-squirrel` | `#b5481f` chestnut | `#f3e6d2` | `#8f3816` tufts, tail edge | `#8f3816` | `#3a2a24` | — |
+| `capybara` | `#a87a52` | `#c49a70` | `#6e4d33` snout top | `#6e4d33` | `#4a3628` | gold: `#d9a95e` / `#efd3a0` / `#a8763a` / `#a8763a` / `#4a3628` |
+| `red-squirrel` | `#b5481f` chestnut | `#f3e6d2` | `#8f3816` tufts, tail edge | `#8f3816` | `#3a2a24` | black and gold: `#3e3a48` / `#f3e6d2` / `#d9a85b` / `#d9a85b` / `#2b2a2f` |
 | `adelie-penguin` | `#33343f` | `#f7f7f4` | `#f7f7f4` eye ring | `#e7a3a0` feet | `#2b2a2f` | plum: `#6e4f8f` / `#fbf6ee` / `#d9a85b` / `#e7a3a0` / `#2b2a2f` |
 | `hedgehog` | `#8a6a4e` spines | `#e8d4b8` face, tummy | `#5e4634` spine tips | `#5e4634` | `#2b2a2f` | blonde: `#e8c9a0` / `#fff4ea` / `#d9a85b` / `#d9a85b` / `#2b2a2f` |
-| `otter` | `#7a5236` | `#d9bfa0` | `#5e3d27` | `#5e3d27` | `#2b2a2f` | — |
+| `otter` | `#7a5236` | `#d9bfa0` | `#5e3d27` | `#5e3d27` | `#2b2a2f` | plum: `#7a5a8a` / `#efe0d6` / `#5a3f6a` / `#5a3f6a` / `#2b2a2f` |
 | `platypus` | `#8a6440` | `#c9a27a` | `#5a5c66` bill, feet | `#5a5c66` | `#2b2a2f` | opal: `#5fa8a0` / `#cfe8e2` / `#d9a85b` / `#d9a85b` / `#2b2a2f` |
 | `koala` | `#9196a0` (the decoration's) | `#ece6dc` | `#ece6dc` ear fluff | `#ece6dc` | `#2b2a2f` | honey: `#dcb882` / `#fbf3e3` / `#fbf3e3` / `#fbf3e3` / `#5a3e2a` |
-| `giant-panda` | `#f4f1ea` | `#f4f1ea` | `#2e2c30` ears, patches, limbs | `#2e2c30` | `#2b2a2f` | — |
-| `polar-bear` | `#f3efe6` | `#f3efe6` | `#e3d9c6` muzzle | `#e3d9c6` | `#2b2a2f` | — |
+| `giant-panda` | `#f4f1ea` | `#f4f1ea` | `#2e2c30` ears, patches, limbs | `#2e2c30` | `#2b2a2f` | gold panda: `#fbf3e3` / `#fbf3e3` / `#b07a30` / `#b07a30` / `#2b2a2f` |
+| `polar-bear` | `#f3efe6` | `#f3efe6` | `#e3d9c6` muzzle | `#e3d9c6` | `#2b2a2f` | aurora: `#cfe6e0` / `#f3faf7` / `#9d86d1` / `#d9a85b` / `#2b2a2f` |
 | `red-panda` | `#c1552a` | `#f7efe4` face | `#3a2622` legs, tear marks | `#8a3a1c` tail rings | `#2b2a2f` | amber: `#e0a64e` / `#fffaf0` / `#5a3b2a` / `#b07a30` / `#2b2a2f` |
-| `emperor-penguin` | `#3a3d48` | `#f7f5ef` | `#f2b23e` ear patches, beak stripe | `#fbe7b0` chest wash | `#2b2a2f` | — |
-| `ring-tailed-lemur` | `#a19a94` | `#f4f1ea` face, rings | `#2b2a2f` eye patches, rings, snout | `#f4f1ea` | `#2b2a2f` | — |
-| `african-penguin` | `#33343f` | `#f7f5ef` | `#2b2a2f` chest band, spots | `#e88a8a` eye patch | `#2b2a2f` | — |
+| `emperor-penguin` | `#3a3d48` | `#f7f5ef` | `#f2b23e` ear patches, beak stripe | `#fbe7b0` chest wash | `#2b2a2f` | night sky: `#46508f` / `#f7f5ef` / `#f4d68c` / `#fbe7b0` / `#2b2a2f` |
+| `ring-tailed-lemur` | `#a19a94` | `#f4f1ea` face, rings | `#2b2a2f` eye patches, rings, snout | `#f4f1ea` | `#2b2a2f` | amethyst: `#8f7fa8` / `#f4f1ea` / `#4a3a5e` / `#f4f1ea` / `#2b2a2f` |
+| `african-penguin` | `#33343f` | `#f7f5ef` | `#2b2a2f` chest band, spots | `#e88a8a` eye patch | `#2b2a2f` | bronze and gold: `#7a5a2e` / `#fbf3e3` / `#d9a85b` / `#e88a8a` / `#2b2a2f` |
 | `axolotl` | `#f4b6c4` | `#fbd9e0` | `#e0607e` gills | `#e0607e` | `#d98a8a` | gold: `#f5d27a` / `#fbebc0` / `#e98a6a` / `#e98a6a` / `#d98a8a` |
 | `book-dragon` | `#6f9a7c` sage | `#f0e2c0` belly plates, pages | `#d9a85b` horns, spikes (satin) | `#8a3a4a` book-cover wings | `#2b2a2f` | amethyst: `#8f6fb8` / `#f6ecd6` / `#d9a85b` / `#4a5aa8` / `#2b2a2f` |
-| `library-owl` | `#8a6a52` | `#efe2cc` facial disc, chest | `#5e4634` tufts, wing tips | `#d9a85b` chest chevrons | `#d9a85b` beak | — |
-| `bookmark-fox` | `#f3e9d8` paper cream | `#fffaf0` | `#b0413e` ribbon red (satin) | `#d9a85b` ribbon gold (satin) | `#2b2a2f` | — |
+| `library-owl` | `#8a6a52` | `#efe2cc` facial disc, chest | `#5e4634` tufts, wing tips | `#d9a85b` chest chevrons | `#d9a85b` beak | night owl: `#3f4a7a` / `#dfe3f5` / `#2b2f4f` / `#f4d68c` / `#d9a85b` |
+| `bookmark-fox` | `#f3e9d8` paper cream | `#fffaf0` | `#b0413e` ribbon red (satin) | `#d9a85b` ribbon gold (satin) | `#2b2a2f` | gilded page, plum and blue ribbons: `#f2d9a0` / `#fbf0d6` / `#6e4f8f` / `#4a5aa8` / `#2b2a2f` |
 | `starlight-unicorn` | `#fbf6ee` pearl | `#fbf6ee` | `#d9a85b` horn, hooves, star (satin) | `#9d86d1` lavender mane, tail | `#e8a9a4` | night sky: `#4a5aa8` / `#dfe3f5` / `#f4d68c` / `#f4d68c` / `#e8a9a4` |
 
 ## 8. The 20 at a glance (key silhouette features)
@@ -529,3 +512,8 @@ cannot be met for its animal, the agent says so in its reply instead of breaking
   silhouette line per creature, wallpapers, shelf and den); Done when 6–7 added; questions 16–19
   taken with the recommended option for the morning. Hand-over to the developer: write `model.ts`
   as Design §6, then step A.
+- 2026-11-22 architect: Hanna answered the 19 questions; kept all but four: the welcome gift is
+  just an egg, she chooses her first creature from the commons, releasing a pet is possible with a
+  confirm step (and the shiny warning with hold), and all 20 creatures get a shiny (ten more
+  palettes added to Design §7, gold / purple / night-sky). D-0033, the brief and T-0028 to T-0030
+  updated. Saving her choices without a server change looked at again: see T-0028.

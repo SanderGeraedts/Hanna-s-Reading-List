@@ -30,7 +30,7 @@ result: []
 # Done when
 
 1. `pnpm test` passes and includes: which creature is on the shelf from the choices (newest wins,
-   none after Take off), night hours, the cheer only on a finish day and once, the streak sign only
+   none after Take off, her first remaining pet when the one on the shelf is released, D-0033 §9), night hours, the cheer only on a finish day and once, the streak sign only
    on streak days, the spot never overlapping a book or sign in `shelfLayout` for a full and a nearly
    empty shelf.
 2. On `pnpm run dev` with demo data: the creature in its spot zoomed out and zoomed in (D-0032), at

@@ -29,13 +29,23 @@ The architect checked every store that already syncs (2026-11-22):
   50, the oldest dropped over the limit. Choices would be lost. No.
 - **Per-book fields** (D-0002): choices aren't about one book. No.
 
+Hanna and Sander asked on 2026-11-22 to look again, harder, for a way without a server change,
+including what harness v0.9.0 offers. The second look (T-0028, *Why it needs the server*) also
+ruled out: one fake book per choice (append-only by nature, but they'd be books), choices inside a
+real book's field (two devices overwrite each other), packing them into favourites or challenges
+with a client-side encoding (older devices and the size limits lose them), the Storytel login
+record, a store on Netlify (a new data store outside the server at Sander's home, which needs him
+anyway), and the harness (v0.9.0 has no way around the code-owner review; its `hold-paths` even
+holds backend changes for the Engineer on purpose).
+
 So a server change is unavoidable. It touches `deploy/nas/` (code owners: Sander) and changes the
 live database, so it is its own needs-sander task (T-0028); everything else stays group 1.
 
 # Decision
 
-1. **A log of choice events.** Each choice is an event `{ id, at, kind, ... }`: hatch an egg,
-   duplicate choice (keep / cookies / power-up), name a pet, feed, buy (with the price paid), wear an
+1. **A log of choice events.** Each choice is an event `{ id, at, kind, ... }`: hatch an egg (for
+   the welcome egg with the creature she chose), duplicate choice (keep / cookies / power-up),
+   release a pet, name a pet, feed, buy (with the price paid), wear an
    item, place a home item, pick a habitat, pick the current pet, put a creature on the shelf. Event
    ids are unique, made on the device. "Setting" kinds (name, wear, place, habitat, current, shelf)
    also carry a `key`; for those

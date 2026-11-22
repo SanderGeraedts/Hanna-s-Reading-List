@@ -1,7 +1,7 @@
 ---
 id: T-0030
 title: "Give her free eggs at reading milestones and an album of all 20 creatures with their rarity, shinies and a choice for duplicates"
-description: "CR2 of the book creatures (D-0033): milestone eggs that hatch a fixed surprise of the right rarity, an album card per creature (silhouette until found) with tier and IUCN Red List label and source, shiny variants, and keep / cookies / power-up for duplicates with an extra confirmation for a shiny; several pets, one of them current."
+description: "CR2 of the book creatures (D-0033): milestone eggs that hatch a fixed surprise of the right rarity, an album card per creature (silhouette until found) with tier and IUCN Red List label and source, shiny variants, and keep / cookies / power-up for duplicates, releasing a pet with a confirm step, and an extra warning with hold-to-confirm for a shiny; several pets, one of them current."
 status: Open
 size: full
 depends_on: [T-0029]
@@ -20,9 +20,9 @@ result: []
    Waiting for you and in the Creatures tab; the dashboard block's "next unlock" names the nearest
    milestone.
 2. **Hatching** a surprise of the egg's tier, fixed by the egg id; shiny by the second hash (1 in 20,
-   1 in 5 for a duplicate), only for the 10 species with a shiny (D-0033 §5, §7).
-3. **Shiny looks**: a shiny colour palette per shiny species plus a soft sparkle, built on the
-   normal model from Fable's base models (no new Fable work).
+   1 in 5 for a duplicate); every species can be shiny (D-0033 §5, §7).
+3. **Shiny looks**: the shiny palette of each of the 20 (T-0027 Design §7) plus a soft gold
+   sparkle, built on the normal model from Fable's base models (no new Fable work).
 4. **Album** in the Creatures tab: a card per species in list order, grouped by tier; a found one
    shows the creature, name, tier and the Red List label in words with a small source line ("IUCN
    Red List, 2024"); an unknown one is a dark silhouette with only its tier. A ✨ mark on a card when
@@ -30,18 +30,27 @@ result: []
 5. **Duplicates** (D-0033 §8): a hatch of a species she has asks, in the tab (not a pop-up): Keep as
    a new pet / Turn into N 🍪 / Power up <name> (+3 levels). A shiny is kept by default; turning a
    shiny into cookies or a power-up needs the "This is a shiny!" warning and a press-and-hold to
-   confirm (D-0033 §9). There is no release or delete.
+   confirm (D-0033 §9).
 6. **Several pets**: a pet list in the tab; she picks the current one (shown on the dashboard).
+7. **Release a pet, with care** (D-0033 §9): in a pet's card, "Release…" asks a clear confirm that
+   names the pet ("Release Biscuit? This can't be undone.") with Release and Keep, Keep focused
+   first. For a shiny, also the "This is a shiny!" warning and press-and-hold (about 2 s) to
+   confirm. Her last pet can't be released (the button is disabled). A released pet leaves her pets;
+   the album still shows its species as found; no cookies come back; if it was the current pet (or
+   on the shelf), her first remaining pet takes its place. Saved as a `release` choice (D-0034).
 
 # Done when
 
 1. `pnpm test` passes and includes: each milestone gives its egg once, on the right day, with the
    right tier, and nothing before the start; the hatch of an egg id is the same every time and of its
-   tier; shiny only for shiny species and more often for duplicates (statistical check over many egg
+   tier; every species can come out shiny, and duplicates more often (statistical check over many egg
    ids); a duplicate choice of cookies adds half the tier price and a power-up adds 3 levels;
    **shiny safety**: a shiny can't become cookies or a power-up without the confirm step (the
    function refuses without it, and the component test shows the hold-to-confirm), a shiny hatch is
-   kept when nothing is chosen, no action removes a pet.
+   kept when nothing is chosen; **release**: refused without the confirm, refused for her last pet,
+   refused for a shiny without the warning and the hold (function and component test), a released
+   pet gone from her pets but its species still found in the album, the current pet moving to the
+   first remaining one, the same result on two devices from the same choices.
 2. On `pnpm run dev` with demo data reaching a few milestones: eggs wait, hatch, the album shows
    found cards with labels and silhouettes for the rest, a duplicate offers the three choices, a
    shiny duplicate needs the hold; 390 × 844 and 1280 × 800, both wallpapers; screenshots in
@@ -73,3 +82,5 @@ lines, the duplicate choice and the shiny confirmation, phone and computer, both
 
 - 2026-11-22 architect: wrote CR2 from Hanna's brief and D-0033 (milestones, tiers, shiny safety).
   Size: full.
+- 2026-11-22 architect: Hanna's answers: all 20 creatures have a shiny, and a pet can be released
+  with a clear confirm (for a shiny also the warning and the hold), with tests. Size unchanged: full.
