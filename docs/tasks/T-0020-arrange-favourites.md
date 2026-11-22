@@ -393,6 +393,26 @@ the middle of the blocks, instead of just under the header.
 
 After that, back to me for a quick look at the new shots, then to the tester.
 
+### Re-review (2026-11-22)
+
+**Verdict: pass.** I looked at commit 65b82f8 (the CSS diff, the lessons line) and the new shots.
+
+- The CSS changes only the sticky `top` of `.dashboard-bar.arranging`: `var(--space-2)`, and
+  `var(--space-1)` under 720 px. It uses tokens only, with a comment saying why.
+- At the top of the page the bar now sits in its own place between the Today strip and
+  "★ Favourites". The heading, the empty note (`*-7`), the first row and its ⠿ / ★ are clear of it,
+  also at 390 with 1 favourite (`390-*-8`).
+- `2b-drop-before-first`: the gold line before the first favourite is fully visible: in the left
+  column at 1280 and across the single column at 390.
+- `10-arrange-scrolled`: when scrolled, the bar sticks just under the header (the tabs) and no longer
+  sits halfway down the screen.
+- The Challenges page uses the same bar inside `.dashboard`; the developer checked it at the top
+  and scrolled.
+- Must-fix 3 is done: a line in `docs/lessons.md`. Nothing else changed visibly; the other retaken
+  shots match the first review.
+
+Handed to the tester.
+
 # Build notes
 
 Added by the developer (2026-11-22).
@@ -502,3 +522,6 @@ To be written by the tester.
   line in `docs/lessons.md`. `pnpm test`: "Test Files 84 passed | 1 skipped (85), Tests 685 passed |
   9 skipped (694)"; `pnpm exec tsc --noEmit`: no errors; `pnpm exec harness check`: all ✓. Back to
   the UX designer for a look at the new shots.
+- 2026-11-22 ux-designer: reviewed: pass. The Arrange bar sits in its own place above ★ Favourites
+  and sticks just under the header when scrolled; the line before the first favourite shows
+  (`2b`). Details under *Re-review*. Handed to the tester.
