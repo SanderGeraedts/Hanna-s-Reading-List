@@ -486,6 +486,29 @@ Looked at: `git diff main...HEAD -- src` (`SpineColourField.tsx`, `colourName.ts
 are now something like "Brown, dominant", "Brown 2" or "Light brown", "Blue", and so on, and that no
 warm muted swatch is called "Red" or "Orange".
 
+### Re-review (2026-11-22)
+
+**Verdict: pass.** M1 is fixed in 8218429.
+
+- **`colourName`:** a warm hue (below 68° or from 340° up) with HSL saturation below 0.35 and
+  lightness 0.15–0.6 is now "Brown" ("Dark brown" below 0.22). Mid-dark oranges count as brown up
+  to lightness 0.45. Cream, grey, black and white are still checked first. This is the rule M1 asked
+  for.
+- **Tests:** `#72564d`, `#8a5a2b` and `#a8875f` are now `Brown`. The cases that had to stay
+  (`#7a2e2e` Red, `#4a0d0d` Dark red, `#e07b1f` Orange, `#d1d100` Yellow, `#5a3a1b` Brown,
+  `#f2e6c8` Cream, `#3d3d3d` Grey, `#c4467e` Pink) are unchanged and still pass. There's a new test
+  on the real Harry Potter row: "Brown, dominant", "Brown 2", "Dark blue", "Brown 3", "Dark grey",
+  "Grey". There's no red or orange that isn't on the cover any more.
+- **Component test:** the palette's fourth colour is now `#72564d`, named "Brown". The names are
+  still unique, with ", dominant" on the first and " 2" for the outside red.
+- I ran `vitest` on `colourName.test.ts` and `SpineColourField.test.tsx`: 2 files and 33 tests
+  passed. A lesson line is in `docs/lessons.md`.
+- Three swatches in one row named "Brown", "Brown 2" and "Brown 3" is what the design's numbering
+  rule gives. That's fine: they're told apart by number and by position, and none of the names is
+  wrong.
+
+Handed to the tester. The hover-name check above still applies.
+
 ## Reuse
 
 - **Components and classes:** `.field` (the label style), the `role="group"` + `aria-labelledby`
@@ -538,3 +561,6 @@ To be written by the tester.
   palette has a muted brown, named "Brown". Lesson added. `pnpm test`: 82 files passed, 1 skipped;
   649 tests passed, 9 skipped. `pnpm exec tsc --noEmit`: no errors. `pnpm exec harness check`: all ✓.
   Back to the UX designer.
+- 2026-11-22 ux-designer: reviewed: pass. M1 fixed in 8218429 (muted warm colours named brown, the
+  kept cases unchanged, the real Harry Potter row tested); colourName and SpineColourField tests: 33
+  passed. Handed to the tester.
