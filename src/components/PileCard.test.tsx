@@ -386,3 +386,58 @@ describe('PileCard: the pace line follows the switch (T-0024, D-0031)', () => {
     expect(paceLine(container)!.textContent).toBe(ALL)
   })
 })
+
+describe('PileCard: the pace line, more cases (tester, T-0024)', () => {
+  const shelf = () => [
+    book('p', { status: 'read', formats: ['paperback'], pages: 300, finished: [daysAgo(20)] }),
+    book('a', { status: 'read', formats: ['storytel'], minutes: 600, finished: [daysAgo(30)] }),
+    book('wp', { formats: ['paperback'], pages: 300 }),
+    book('we', { formats: ['ebook'], pages: 300 }),
+    book('wa', { formats: ['storytel'], minutes: 600 }),
+  ]
+  const liveRegion = (container: HTMLElement) => container.querySelector<HTMLElement>('[aria-live]')
+
+  it('keeps the same live region element across presses, with both lines in it in order', () => {
+    const { container } = render(<PileCard books={shelf()} />)
+    const region = liveRegion(container)!
+    expect(region.className).toBe('pile-said')
+    for (const name of ['Paper', 'E-book', 'Audiobook', 'All', 'Audiobook']) {
+      press(name)
+      expect(liveRegion(container)).toBe(region)
+      expect(container.querySelectorAll('[aria-live]')).toHaveLength(1)
+      expect([...region.children]).toEqual([heightLine(container), paceLine(container)])
+    }
+    // heard height line first, then the pace line, all inside the one region
+    expect(heard(region)).toMatch(/^Your audiobook is .*At your pace of 0\.8 hours a month, that's about 1 year of listening\.$/)
+  })
+
+  it('never shows “h”, “hours” or “of listening” outside Audiobook, nor a no-pace line next to a pace line', () => {
+    const { container } = render(<PileCard books={shelf()} />)
+    for (const name of ['All', 'Paper', 'E-book']) {
+      press(name)
+      const line = paceLine(container)!
+      expect(line.textContent).not.toMatch(/\bh\b|hours?|of listening/)
+      const paces = [...container.querySelectorAll('p')].filter((p) => PACE.test(p.textContent ?? ''))
+      expect(paces).toHaveLength(1)
+    }
+    expect(paceLine(container)!.textContent).toBe("You haven't finished an e-book in the last year, so there's no pace yet.")
+    press('Paper')
+    expect(paceLine(container)!.textContent).toBe("At your pace of 0.1 paper books a month, that's about 1 year of reading.")
+  })
+
+  it('falls back to the All pace line when the chosen kind runs out', () => {
+    const { container, rerender } = render(<PileCard books={shelf()} />)
+    press('E-book')
+    expect(paceLine(container)!.textContent).toMatch(/an e-book/)
+    rerender(<PileCard books={shelf().filter((b) => b.id !== 'we')} />)
+    expect(buttonNames()[0]).toBe('true:All')
+    expect(paceLine(container)!.textContent).toBe("At your pace of 0.2 a month, that's about 1 year of reading.")
+  })
+
+  it('an empty pile shows no pace line and no live region, on any shelf', () => {
+    const { container } = render(<PileCard books={shelf().filter((b) => b.status !== 'want')} />)
+    expect(paceLine(container)).toBeUndefined()
+    expect(liveRegion(container)).toBeNull()
+    expect(container.querySelector('.pile-said')).toBeNull()
+  })
+})

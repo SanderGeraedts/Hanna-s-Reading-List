@@ -2,11 +2,11 @@
 id: T-0024
 title: "Let the want-to-read pile's pace line follow the All · Paper · E-book · Audiobook switch"
 description: "With Paper, E-book or Audiobook picked in the Want-to-read pile block, the pace line counts only the waiting books of that kind at the pace she finishes books of that kind (D-0031); Audiobook works in hours (waiting listening time ÷ hours of audiobooks finished a month); a kind she hasn't finished in the last year gets a short no-pace line; All stays as it is."
-status: Doing
+status: Done
 depends_on: [T-0023]
 decisions: [D-0008, D-0010, D-0014, D-0020, D-0022, D-0030, D-0031]
 raised_on: 2026-11-22
-done_on: ""
+done_on: 2026-11-22
 result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/235"]
 ---
 
@@ -426,7 +426,75 @@ the architect; not for this task.
 
 # Test
 
-(Tester)
+(Tester, 2026-11-22)
+
+**Verdict: passed.** Nothing left for a human.
+
+**Commands**, on branch `t-0024-pace-per-kind` at `9cb5138` after `pnpm install --frozen-lockfile`
+(exit 0):
+
+- `pnpm test` → `Test Files 87 passed | 1 skipped (88)`, `Tests 823 passed | 9 skipped (832)`.
+  After the tester's tests: `Tests 835 passed | 9 skipped (844)`.
+- `pnpm exec tsc --noEmit` → no output, exit 0 (also after the tester's tests).
+- `pnpm run build` → `✓ built in 720ms` (and `696ms` after the tester's tests).
+- `pnpm exec harness check` → `✓ tasks: 24 tasks, index in step`, `✓ decisions: 34 records, index
+  complete, 3 overrules valid`, `✓ engineers: 2 listed`, `✓ generated files: current`.
+- `src/routeTree.gen.ts` unchanged (`git status` clean after build).
+
+**Read in `git diff main...HEAD -- src`, against *Done when* and the design**
+
+- **All is word for word the same:** the line still uses `toFixed(1)` with ".0" dropped and the same
+  `plural` (`toLocaleString('en-GB')`, now a copy in `insights.ts`, identical); `wantPile` now calls
+  `finishesLastYear`, which is the old filter (`f.day !== undefined` instead of `f.day &&`; an empty
+  day fails `> yearAgo` either way). The "Once some books have a “Finished on” date…" line still
+  shows only with a non-empty pile (`pileHeights().counts.all` and `wantPile().books` both count
+  `status === 'want'`).
+- **The same window and finishes for a kind:** `kindPace` filters `finishesLastYear`, so re-reads,
+  sleep reads, any current status and "no day, no count" are shared with All by construction.
+  Tested: today counts, the day after a year ago counts, exactly a year ago and tomorrow don't;
+  a want-to-read book with an earlier finish counts.
+- **Several formats:** `bookKinds` puts a book in each of its kinds; tested hardcover + e-book +
+  audiobook (finished) and library + e-book + audiobook (waiting): it counts in all three kinds and
+  once in All.
+- **Old Storytel imports:** through `formatsOf`; covered by the developer's test.
+- **Minutes rule:** the listening pace uses `audioMinutes`, the waiting total's rule; tested
+  minutes first (over pages), else pages × 2, else 560, and `minutes: 0, pages: 0` → 560.
+  `audioMinutes` is never 0, so a finished audiobook always gives a pace.
+- **No-pace lines and singulars:** the three lines exactly as section 3; "1 paper book", "1 e-book",
+  "1 h" heard "1 hour"; a pace that rounds to 1 (0.97 h) also shows "1 h" / "1 hour".
+- **Very small paces:** books can't show "0" (one finish a year is 0.083 → "0.1 paper books");
+  hours have the "0.1" floor (tested 30 min and 1 min a year). Note: `toFixed(1)` rounds 0.95 down
+  to "0.9" (binary floating point), the same as All always did; not a defect.
+- **Years vs months:** tested 1, 2, 11 → months; 12 and 17 → "about 1 year"; 18 and 29 → "about 2
+  years"; 18,000 months → "about 1,500 years".
+- **Months rounding:** `Math.ceil(waiting / perMonth)` with a float pace can give one month too many
+  (e.g. 65 waiting, 13 finishes → 61, not 60). That's the same formula All has always used, and in
+  every books case up to 600 waiting × 400 finishes and 3 million random listening cases it never
+  changed the words shown. Not a defect.
+- **Spoken text:** "h" is `aria-hidden` with a non-breaking space; `.visually-hidden` says "hours".
+  Tested in the component: what she hears from the live region on Audiobook is the height sentence
+  and then "At your pace of 0.8 hours a month, that's about 1 year of listening.", no "h".
+- **The shared live region:** one `.pile-said` with `aria-live="polite"` / `aria-atomic="true"`
+  only while the switch shows; tested that it stays **the same element** across five presses (a
+  live region that remounted wouldn't be announced), always holds the height line then the pace
+  line, and that there is exactly one `[aria-live]` in the block; with an empty pile there is no
+  wrapper and no live region.
+- **Fallback:** E-book picked, then the last e-book leaves the pile → All is pressed and the All pace
+  line shows.
+- **Screenshots:** looked at `pile-pace-audiobook-360-midnight.jpg` and
+  `pile-pace-ebook-nopace-390-lavender.jpg`: "3.9 h" whole, "of listening", the no-pace line muted
+  and small in the pace line's place, the switch in two rows at 360. The header overlap is older
+  than this task (the UX review's follow-up).
+
+**Tests added by the tester** (all pass):
+
+- `src/lib/insights.test.ts`, "the pile’s pace per kind: more cases (tester, T-0024)": 8 tests:
+  window edges, status doesn't matter, several formats, the minutes rule, small paces, rounding to
+  "1 h" / "1 hour", months and years, no `Infinity` / `NaN` / "0 h" on a no-pace kind.
+- `src/components/PileCard.test.tsx`, "the pace line, more cases (tester, T-0024)": 4 tests: the
+  same live region element across presses and what is heard from it, no hours words outside
+  Audiobook and never two pace lines, falling back to All, no wrapper or live region with an empty
+  pile.
 
 # Log
 
@@ -454,3 +522,4 @@ the architect; not for this task.
   the diff checked; design checks ticked; choices 13–14 agreed. Follow-up (older than this task):
   the see-through phone header lets scrolled dashboard content show under it (Hanna's #233
   screenshot), and `.dashboard` has no `scroll-padding-top`. Handed to the tester.
+- 2026-11-22 tester: passed. `pnpm test` 835 passed / 9 skipped, `tsc` clean, build and `harness check` green; 12 tests added (window edges, several formats, minutes rule, small paces, rounding, years, the one live region, fallback to All). Nothing remains for a human.

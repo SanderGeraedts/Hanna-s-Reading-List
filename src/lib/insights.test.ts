@@ -263,3 +263,91 @@ describe('the pile’s pace per kind (T-0024, D-0031)', () => {
     expect(noPaceLine('audio')).toBe("You haven't finished an audiobook in the last year, so there's no pace yet.")
   })
 })
+
+describe('the pile’s pace per kind: more cases (tester, T-0024)', () => {
+  const words = (books: Book[], kind: 'paper' | 'ebook' | 'audio') => {
+    const p = kindPace(books, kind, NOW)
+    return p.months === undefined ? undefined : kindPaceText({ ...p, months: p.months })
+  }
+
+  it('uses the same window as All for a kind: today counts, a future day and the day a year ago do not', () => {
+    const shelf = [
+      read('today', '2026-11-07', { formats: ['ebook'] }),
+      read('dayAfter', '2025-11-08', { formats: ['ebook'] }),
+      read('yearAgo', '2025-11-07', { formats: ['ebook'] }),
+      read('tomorrow', '2026-11-08', { formats: ['ebook'] }),
+      book('w', { formats: ['ebook'] }),
+    ]
+    expect(kindPace(shelf, 'ebook', NOW).perMonth).toBe(2 / 12)
+    expect(wantPile(shelf, NOW).perMonth).toBe(2 / 12)
+  })
+
+  it('counts a finish whatever the book’s status now (a re-read back on the pile)', () => {
+    const again = book('again', { status: 'want', formats: ['ebook'], finished: ['2026-06-01'] })
+    const p = kindPace([again], 'ebook', NOW)
+    expect(p).toEqual({ kind: 'ebook', waiting: 1, perMonth: 1 / 12, months: 12 })
+    expect(wantPile([again], NOW).perMonth).toBe(1 / 12)
+  })
+
+  it('counts a book with several formats in each of its kinds, waiting and finished', () => {
+    const shelf = [
+      read('pe', '2026-10-01', { formats: ['hardcover', 'ebook', 'audiobook'], pages: 250 }),
+      book('w', { formats: ['library', 'ebook', 'audiobook'], pages: 100 }),
+    ]
+    expect(kindPace(shelf, 'paper', NOW)).toMatchObject({ waiting: 1, perMonth: 1 / 12, months: 12 })
+    expect(kindPace(shelf, 'ebook', NOW)).toMatchObject({ waiting: 1, perMonth: 1 / 12, months: 12 })
+    // audiobook: no minutes, so pages × 2 on both sides (500 finished, 200 waiting)
+    expect(kindPace(shelf, 'audio', NOW)).toMatchObject({ waiting: 200, perMonth: 500 / 12, months: 5 })
+    // the book counts once in All
+    expect(wantPile(shelf, NOW).perMonth).toBe(1 / 12)
+  })
+
+  it('uses the waiting total’s minutes rule for the listening pace: minutes, else pages × 2, else 560', () => {
+    const shelf = [
+      read('m', '2026-10-01', { formats: ['audiobook'], minutes: 90, pages: 999 }),
+      read('p', '2026-10-01', { formats: ['audiobook'], pages: 100 }),
+      read('none', '2026-10-01', { formats: ['audiobook'] }),
+      read('zero', '2026-10-01', { formats: ['audiobook'], minutes: 0, pages: 0 }),
+      book('w', { formats: ['audiobook'] }),
+    ]
+    expect(kindPace(shelf, 'audio', NOW).perMonth).toBe((90 + 200 + 560 + 560) / 12)
+    expect(kindPace(shelf, 'audio', NOW).waiting).toBe(560)
+  })
+
+  it('writes small paces: one paper book a year is “0.1 paper books”, never “0”', () => {
+    const shelf = [read('p', '2026-10-01', { formats: ['paperback'] }), book('w', { formats: ['paperback'] })]
+    expect(words(shelf, 'paper')).toBe("At your pace of 0.1 paper books a month, that's about 1 year of reading.")
+    const tinyListen = [read('a', '2026-10-01', { formats: ['audiobook'], minutes: 1 }), book('w', { formats: ['audiobook'], minutes: 1 })]
+    expect(words(tinyListen, 'audio')).toBe("At your pace of 0.1 h a month, that's about 1 year of listening.")
+  })
+
+  it('rounds the hours like the books: 0.97 h a month shows as “1 h”, heard “1 hour”', () => {
+    // 696 minutes in a year = 58 a month = 0.97 h
+    const shelf = [read('a', '2026-10-01', { formats: ['audiobook'], minutes: 696 }), book('w', { formats: ['audiobook'], minutes: 58 })]
+    const p = kindPace(shelf, 'audio', NOW)
+    expect(kindPaceText({ ...p, months: p.months! })).toBe("At your pace of 1 h a month, that's 1 month of listening.")
+    expect(kindPaceSpoken({ ...p, months: p.months! })).toBe("At your pace of 1 hour a month, that's 1 month of listening.")
+  })
+
+  it('writes months and years like All', () => {
+    expect([1, 2, 11, 12, 17, 18, 29, 30, 12 * 1500].map(paceTime)).toEqual([
+      '1 month',
+      '2 months',
+      '11 months',
+      'about 1 year',
+      'about 1 year',
+      'about 2 years',
+      'about 2 years',
+      'about 3 years',
+      'about 1,500 years',
+    ])
+  })
+
+  it('a no-pace line never says “Infinity”, “NaN” or “0 h”', () => {
+    for (const kind of ['paper', 'ebook', 'audio'] as const) {
+      const shelf = [book('w', { formats: kind === 'paper' ? ['paperback'] : kind === 'ebook' ? ['ebook'] : ['storytel'] })]
+      expect(kindPace(shelf, kind, NOW).months).toBeUndefined()
+      expect(noPaceLine(kind)).not.toMatch(/Infinity|NaN|\b0 h/)
+    }
+  })
+})
