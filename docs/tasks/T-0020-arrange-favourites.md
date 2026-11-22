@@ -175,9 +175,147 @@ These were taken by the architect; the UX designer may refine the visual ones un
 9. **A decision record (D-0028)** for the separate order and how it syncs, so a later change doesn't
    quietly send the whole list or change the server route on Hanna's instance.
 
+Added by the UX designer (2026-11-22), taking the recommended option each time:
+
+10. **A drop past the end shows its line where the block will really land.** In two columns a
+    drop below the last block of a column can land at the end of the list, and the end of the list
+    may be in the other column. The drop line then goes at the end of that other column, so the line
+    never shows a place the block won't take.
+11. **A screen reader hears where the block went** after every move in Favourites (keys or drag)
+    through one hidden polite status line. In two columns it names the column and row, because
+    that is the order a screen reader reads the grid in (left column first). The sections stay as
+    they are; giving them the same line would be a separate small task.
+12. **A move that hasn't gone up yet shows nothing**, just like a star today: no "not synced"
+    mark, no error text (D-0014). The new order shows at once on this device and stays there after
+    a reload. It goes up by itself when the server can be reached.
+13. **The handle stays with 1 favourite**, even though nothing can move. It keeps the tools the
+    same on every block, and a drag or key there just does nothing.
+14. **A drag that goes outside Favourites keeps its line in Favourites**, at the nearest place,
+    and letting go drops it there, as in the sections (letting go always lands where the line is;
+    there is no cancel zone).
+
 # Design
 
-To be written by the UX designer.
+The Favourites grid in Arrange gets the same look and behaviour as a section grid in Arrange. No
+new colour, text size, spacing or corner value (D-0020), no new visible text (D-0014). Everything
+below that isn't listed under **What differs** is exactly the same as in a section: reuse
+`.block-tools`, `.block-handle`, `.dash-block.moving`, `.dash-block.drop-before` and `.drop-end`
+as they are.
+
+## What stays the same as in a section
+
+- **Block tools:** top right of each block, `position: absolute; top: 0.6rem; right: 0.6rem`, gap
+  0.3rem, buttons on `--surface-solid`. The card gets the same dashed `--accent-line` outline in
+  Arrange (already true, because the Favourites grid has `dashboard-grid arranging`).
+- **The handle:** `button.btn.icon.small.block-handle` with `<span aria-hidden>⠿</span>`,
+  `title="Drag to move"`, `cursor: grab` (`grabbing` while dragging), `touch-action: none`. On a
+  touch screen it grows to the 44 px tap size like every `.btn.small` (`pointer: coarse`).
+- **While dragging:** the block follows the pointer with `transform: translate(dx, dy)` and gets
+  `.moving` (raised, `opacity: 0.9`, the big shadow). The page scrolls along near the top and bottom
+  edges, as in the sections.
+- **The drop line:** the 3 px gold (`--accent`) bar with rounded ends, either above a block
+  (`.drop-before`, sitting in the gap between two blocks) or at the end of a column (`.drop-end`).
+  The Favourites grid has the same `gap: 1.25rem` and column gap as a section grid, so the line
+  sits in the same place.
+- **Focus:** the gold focus ring every button has.
+- **Outside Arrange** there are no tools at all, as now.
+
+## What differs from a section
+
+1. **Tools are ⠿ then ★, no ×.** Order: handle first, then the star (as in a section, without the
+   × after it). The star does what it does now (takes the block out of Favourites).
+2. **Accessible name of the handle:** `Move <block> within the favourites: drag it, or use the
+   arrow keys`, e.g. "Move Finish by within the favourites: drag it, or use the arrow keys". There is
+   no "(Shift for another section)", because Shift does nothing here. The same name on a narrow
+   screen (the arrow keys still work there).
+3. **The drag only knows Favourites.** The Favourites grid gets its own class (e.g.
+   `dash-favourites-grid`) and its blocks their own data attribute (e.g. `data-favourite`), and its
+   drop function only looks at that grid. So:
+   - a drag that starts on a Favourites handle only ever shows its line inside Favourites; when the
+     pointer goes over a section, the line stays at the nearest Favourites place (nearest column,
+     then before the first block whose middle is below the pointer, or that column's end);
+   - a drag that starts in a section never shows a line in Favourites, as now;
+   - only the dragged copy gets `.moving`; the same block in its own section stays where it is and
+     looks normal (and the reverse).
+4. **The drop line in two columns.** The line follows the pointer column by column, like a section:
+   before the block whose middle is below the pointer, counting without the dragged block, or at the
+   end of that column. The place it stands for is list place `2 × row + column` of the other
+   favourites (the architect's rule). Only one case differs from a section:
+   - **past the end:** when that place is past the end of the list (dropping below the last block of
+     a column with not enough blocks after it), the block goes to the end of the list. The line then
+     shows at the end of the column where the last place is: the left column when the other
+     favourites are an even number, the right column when odd. So with 3 other favourites, a drop
+     below the left column's last block shows the line at the end of the right column (choice 10).
+   - After the drop the others are dealt out again and some may switch column; there is no
+     animation for that (the dashboard has none for the sections either).
+5. **One column on a narrow screen** (the existing `(max-width: 860px)`, so the phone at 390): the
+   favourites are one list in their order, the line is before a block or at the end of the list,
+   and the place is the list place. Left/Right do nothing.
+6. **Keys** as in the task: two columns, Up/Down ±2, Left from the right column −1, Right from the
+   left column +1; one column, Up/Down ±1. Shift+arrows do nothing. At an edge nothing happens and
+   the key is not swallowed. Focus stays on the moved block's handle, also when it changes column
+   (the handle element must be found again after the re-render, by its block, and focused).
+7. **A status line for screen readers** (new; choice 11). One
+   `<p className="visually-hidden" role="status" aria-live="polite">` inside the Favourites section,
+   present (empty) for the whole time she's in Arrange, so it is in the page before the first
+   message. After every move in Favourites that changed the order (keys or drag) it gets:
+   - two columns: `<block>: left column, row 2 of the favourites.` (or `right column`), with the row
+     counted from 1;
+   - one column: `<block>: place 2 of 5 in the favourites.`
+   Each message replaces the last one (if the same text comes twice, e.g. moving back and forth,
+   clear it first so it is read again). Nothing is said when nothing moved (an edge, or a drop where
+   it already was). The text is never visible. It is emptied when she presses Done.
+
+## Phone (390) and computer (1280), lavender and midnight
+
+- **1280:** Favourites is two columns, the handle and star top right of each block. The drop line
+  runs across one column's width.
+- **390:** one column, the blocks the full content width; the tools are 44 px each (two of them, so
+  they take less room than the three in a section and never cover the block's title more than a
+  section's do).
+- **Both wallpapers:** the tools and blocks are walnut (`--surface`, `--surface-solid`), the same on
+  lavender and midnight. The drop line is the gold `--accent` the sections already use on both
+  wallpapers, so no new colour pair for `colours.test.ts`. The "★ Favourites" heading sits on the
+  wallpaper as now.
+
+## States
+
+- **0 favourites, in Arrange:** as now: the heading and the empty note "Star blocks with ☆ to see
+  them here, on top." No handles, no line, no status message.
+- **1 favourite:** the block has ⠿ and ★ (choice 13). A drag shows the line before or after it in
+  its own column; letting go changes nothing, saves nothing and says nothing. Arrow keys do
+  nothing.
+- **2 favourites:** at 1280, side by side; Left/Right swaps them, Up/Down do nothing. On the phone
+  one above the other; Up/Down swaps them.
+- **Many favourites (taller than the screen):** the page scrolls along while dragging near the top
+  or bottom, as in the sections.
+- **A favourite that is hidden on this device** isn't in Favourites (as now); "Waiting for you" is
+  shown in Arrange even when nothing waits (as now), so it can be moved too.
+- **Favourites folded:** in Arrange Favourites is always open (the head is disabled), as now.
+- **Offline, a move that hasn't gone up, or a send that failed:** she sees nothing different
+  (choice 12). The order shows at once, stays after a reload, and goes up on its own later, like a
+  star. No banner, mark or error text.
+- **Another device changed the favourites meanwhile:** when the next pull brings the account's list
+  (after her move has gone up), the grid simply shows it, as now for stars; no message.
+- **Signed out:** the same look; the order stays on this device.
+
+## Design checks (on the screenshots and in the dev server)
+
+- In Arrange each Favourites block has exactly two tools, ⠿ then ★, top right, the same size and
+  look as in the sections; no × in Favourites; no tools outside Arrange. 44 px in the 390 shots.
+- A drag in Favourites shows the 3 px gold line, the dragged block raised with its shadow, and the
+  same block in its own section unchanged; at 1280 the line is in one column; at 390 the
+  favourites are one column.
+- A drop below the last block of a column, when the block will land in the other column, shows the
+  line at the end of that other column, and after the drop the block is there.
+- A drag that goes over a section keeps its line in Favourites; a section drag never shows a line
+  in Favourites.
+- The handle's accessible name is "Move <block> within the favourites: drag it, or use the arrow
+  keys"; after a key move the status line reads the column and row (two columns) or the place
+  (one column), and focus is still on that block's handle, also after Left/Right.
+- With 0 favourites only the empty note shows; with 1 a move changes nothing and says nothing.
+- No visible text other than what was there before; lavender and midnight look the same apart
+  from the wallpaper; no console errors.
 
 # Test
 
@@ -191,3 +329,9 @@ To be written by the tester.
   the sections and syncs a move as an unstar and re-star of the shortest tail, worked out against
   the account's list, with no server change; group 1, nothing for Sander. Choices under *Choices
   made by the team*. Handed to the UX designer.
+- 2026-11-22 ux-designer: designed. The Favourites grid reuses the sections' Arrange look (handle,
+  raised drag, gold drop line); differences: ⠿ and ★ without ×, a handle name "within the
+  favourites", a drag that only knows Favourites, a drop past the end shown in the column it lands
+  in, one column under 860 px, and a hidden status line naming where the block went. Nothing shown
+  for a move that hasn't synced. New choices 10–14; design checks under *Design*. Handed to the
+  developer.
