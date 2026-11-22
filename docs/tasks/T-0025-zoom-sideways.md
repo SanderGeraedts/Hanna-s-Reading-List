@@ -2,7 +2,7 @@
 id: T-0025
 title: "Let her move left and right along the shelf when it is zoomed in"
 description: "#234: zoomed in, the camera turns round the middle of the case instead of moving along it, so the ends can't be reached on the phone or the computer; aim the camera where it is panned to, and add ‹ › buttons at the shelf's edges, a mouse drag on the empty wall, the ← → keys and a working one-finger swipe (D-0032)."
-status: Open
+status: Doing
 depends_on: []
 decisions: [D-0002, D-0014, D-0020, D-0022, D-0032]
 raised_on: 2026-11-22
@@ -463,6 +463,84 @@ cursor table and writes the values in *Test*.
 - [ ] No hint text anywhere; no new colour, size or spacing beyond the tokens and the zoom
       buttons' existing values.
 
+# Build notes
+
+- **The aim (2):** new `src/components/cameraAim.ts`. `frameCase(caseWidth, caseHeight, aspect,
+  portrait, zoom)` is the rig's old framing sums moved out unchanged (`toCase`, `viewH`, `viewW`,
+  `xMax` with the same 0.05 m end margin, `fitsH`); `aimCamera(camera, target, aim, parallax, dt)`
+  eases `lookX` to the pan at rate 3 (as the camera's x), `lookY` at 6 and the tilt at 3, moves the
+  camera to `target.x + parallax.x`, and calls `lookAt(lookX, lookY, 0)`. `useCameraRig` calls both;
+  the first-mount jump aims at `base.x`. `FOV` lives there now.
+- **Pure rules:** new `src/lib/shelfPan.ts`: `clampPan`, `panEdges` (0.03 m threshold, 1 mm ends),
+  `sameEdges`, `buttonStep` (0.75) / `keyStep` (0.2), `keyTarget(target, canvas)` → `body` /
+  `canvas` / `shelf-button` (a `button` inside `[data-shelf-controls]`) / `other`,
+  `arrowKeyDirection(...)`, `mousePress(...)` → `undecided` / `book` / `wall` / `none`.
+- **Scene (`BookshelfScene.tsx`):** `scroll.current.x` stays the one source of the pan (it also
+  keeps `viewW`, the visible width at the case). A `useFrame` works out `panEdges` and, only when it
+  changes, sets local state and calls the new `onPan` prop. The new `panControl` prop (a ref) gets a
+  function that moves one ‹ › step. ← → are one `keydown` listener on `window`, there only while no
+  book is open and the shelf is showing; it acts through `arrowKeyDirection`. The wall drag is in
+  the scroll effect: a mouse `pointerdown` on the canvas notes the press, the first `pointermove`
+  past 6 px decides through `mousePress` (with `pending` set by the book's handler → the book's, as
+  before), a wall pan captures the pointer on the canvas and moves `panBy` / `scrollBy` 1:1, and
+  ends on `pointerup` / `pointercancel` / `lostpointercapture`. The edge pan while a book is dragged
+  sits next to the top/bottom edge scroll in the frame loop (`pointer.x` beyond ±0.7, up to
+  1.2 m/s). The cursor effect adds `grab` on the wall when the shelf can pan and `grabbing` during a
+  wall pan, and leaves the cursor alone while a book is open.
+- **Page and CSS:** `ShelfPanButtons` (`src/components/ShelfPanButtons.tsx`) renders in
+  `index.tsx` after the canvas and before the zoom group, with the zoom group's conditions plus
+  "can pan". Both groups have `data-shelf-controls`. CSS: `.shelf-pan .btn` joins the zoom buttons'
+  rules (background, border, plum glyph, hover, 44 × 44); the wrapper spans the stage with
+  `pointer-events: none`; `top: min(centre between --header-h and the bottom, above the zoom column
+  − space-2)`; `[aria-disabled='true']` gets opacity 0.5, `cursor: default`, no hover, no press.
+- **Developer choices (recommended option, Hanna not asked):**
+  16. **The sideways wheel now goes the right way:** `panBy` follows a finger (finger right → view
+      left), and the wheel handler called it with the wheel's delta, so a trackpad scroll to the
+      right (and Shift + scroll down) moved the view to the **left**. It couldn't be noticed while
+      the camera aimed at the middle. Now `panBy(-sideways)`: scrolling right shows the books to the
+      right, as a browser page does. One sign, in the wheel handler only. (Deviation: the task says
+      only that it should "still pan".)
+  17. **"A panel is open"** means any `[role="dialog"]` or open `<dialog>` in the page (room
+      panel, Make a wish, quick update, wrap-up, adding a book, the cover picker), checked at the
+      key press, so a new panel is covered without wiring.
+  18. **Books don't lift under a wall pan:** hover is ignored while a wall pan is on, so dragging
+      the wall across books doesn't look like grabbing them.
+  19. **The ‹ › buttons are `.btn` without `.icon`**, so they really are 44 × 44 px. The existing
+      zoom buttons measure 38 × 38 px on the computer and 38 × 44 on the phone, because `.btn.icon`
+      (later in `styles.css`) overrides the width/height of `.zoom-controls .btn`. Not changed here
+      (see the Log).
+  20. **The end margin stays 0.05 m:** on every end shot the button lies on the wall or the case's
+      side, beside the last book, not on it, so `xMax` wasn't widened.
+- **Clicked through** on `pnpm exec vite dev --port 3136 --strictPort` (no backend, no
+  `POCKETBASE_URL`), 90 books seeded in `hannas-reading-list:v1`, playwright-core with Chrome.
+  1280 × 800 with a mouse, 44 checks, all passed. The checks: ‹ › hidden at zoom 1, and ← → do
+  nothing there. At 3× both are ready in the middle, and › / ‹ run to each end and disable. Cursors:
+  `auto` on the wall at zoom 1, `grab` zoomed in, `grabbing` during a wall pan and a book drag,
+  `grab` again after. A wall drag moves the view both ways, also up a row like a map, and releasing
+  it over a book opens nothing. A click on the wall opens nothing and leaves focus on `body`. → took
+  6 presses to the right end, and ← moved back. Shift + ← and ↑ leave the shelf alone. In the search
+  box ← moved the caret 3 → 1 and the shelf stayed put. A click opens a book, the buttons hide, and
+  ← with a book open did nothing. Dragging a book changes the saved order, and dragging one to the
+  right edge pans to the end and drops it there. Shift + scroll and the sideways wheel pan. Tab
+  goes ‹ → › → Zoom out (Zoom in is disabled at 3×). After Enter to the end, › is dimmed
+  (`aria-disabled`, opacity 0.5) and keeps focus, and ← works with focus on ›. › is 44 × 44, 16 px
+  from the edge.
+  390 × 844 with `hasTouch` / `isMobile` and real CDP touch events (`Input.dispatchTouchEvent`), 32
+  checks, all passed. The checks: a two-finger pinch zooms in and the buttons appear. + to 3×. A
+  vertical swipe scrolls and leaves the pan alone. One-finger sideways swipes reach the right end
+  (2 swipes) and the left end (4), and lifting the finger opens nothing. › / ‹ taps reach each end
+  (3 taps), and a tap on the dimmed › does nothing. › sits 103 px above the zoom column. A tap
+  opens a book and the buttons hide. Press, hold and drag moves a book (the saved order changes);
+  dropped near the right edge, it also panned. Zoom 1 hides the buttons. No console errors and no
+  horizontal page scroll at either size.
+- **Screenshots:** 21 JPEGs in `docs/tasks/T-0025-screens/`, every row of the *Screenshots needed*
+  table (`pan-left-end`, `pan-middle`, `pan-right-end` at 1280 and 390 on both wallpapers; `zoom-1`
+  at both sizes; `pan-middle-white-washed` / `-ebony` at 1280 on both; `pan-focus`,
+  `pan-right-end-focus`, `book-open-390-lavender`). On the phone every row near the top ends in a
+  decoration (the koala, the cat), so its right-end shots show the case's right side and the
+  decoration next to the dimmed ›, not a spine. On midnight the dimmed › over the dark wood is
+  faint, as the disabled zoom buttons are.
+
 # Test
 
 To be written by the tester.
@@ -475,3 +553,16 @@ To be written by the tester.
   to the ux-designer for the ‹ › buttons and the wall-drag cursor.
 - 2026-11-22 ux-designer: designed (the ‹ › buttons' place, look, states and names, the wall
   cursor, what a screen reader hears, the screenshots and design checks). Handed to the developer.
+- 2026-11-22 developer: built it as specified, with these files: `cameraAim.ts` (the aim at the
+  pan), `shelfPan.ts`, the ‹ › buttons, the wall drag, ← →, the edge pan while dragging a book, and
+  the cursor. Also fixed the sideways wheel's direction (choice 16). Checks run:
+  `pnpm test`: 90 files passed, 1 skipped, 865 tests passed, 9 skipped. The new tests are
+  `shelfPan.test.ts`, `cameraAim.test.ts` and `ShelfPanButtons.test.tsx`; `cameraAim.test.ts` fails
+  3 of 5 with the old `lookAt(0, …)`, checked by putting it back. `pnpm exec tsc --noEmit`: clean.
+  `pnpm run build`: built. `pnpm exec harness check`: all ✓. `src/routeTree.gen.ts` unchanged.
+  Clicked through on both sizes: 44 + 32 checks passed, 21 screenshots, no console errors. For the
+  architect, not fixed here: (a) the zoom buttons are 38 px, not the 44 px tap size, because
+  `.btn.icon` overrides `.zoom-controls .btn` (D-0020); (b) on the phone, opening a book while
+  zoomed in shows no book in front and doesn't dim the room. It is the same on main's code (checked
+  by stashing this work), so it comes from the zoom and not from this change. Handed to the UX
+  designer for review.

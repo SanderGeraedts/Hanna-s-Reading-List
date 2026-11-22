@@ -4,7 +4,19 @@ import * as THREE from 'three'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import type { Book, SortKey } from '#/lib/library'
-import { FRAME, SHELF, computeLayout, fitShelf, rowFloorY, topGap } from '#/lib/shelfLayout'
+import { SHELF, computeLayout, fitShelf, rowFloorY, topGap } from '#/lib/shelfLayout'
+import { FOV, aimCamera, cameraZ, frameCase, newAim } from './cameraAim'
+import {
+  buttonStep,
+  clampPan,
+  keyStep,
+  keyTarget,
+  arrowKeyDirection,
+  mousePress,
+  panEdges,
+  sameEdges,
+} from '#/lib/shelfPan'
+import type { PanDirection, PanEdges } from '#/lib/shelfPan'
 import { arrangementSeparators } from '#/lib/separators'
 import type { ShelfLayout } from '#/lib/shelfLayout'
 import { BookMesh, RAINBOW } from './BookMesh'
@@ -40,12 +52,15 @@ export interface BookshelfSceneProps {
   paused?: boolean
   /** the browser dropped the 3D drawing (WebGL context lost), e.g. when a phone runs out of memory */
   onContextLost?: () => void
+  /** zoomed in: whether the shelf can move sideways and whether it is at an end; called when that changes */
+  onPan?: (edges: PanEdges) => void
+  /** the scene puts a function here that moves the shelf one ‹ › step to the left (-1) or right (1) */
+  panControl?: RefObject<((direction: PanDirection) => void) | null>
 }
 
 export const ZOOM_MAX = 3
 export const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(1, z))
 
-const FOV = 35
 const DEFAULT_INSPECT = { fill: 0.6, yShift: 0 }
 /** share of a phone screen taken by the header at the top, until its real height is known */
 const HEADER_SHARE = 0.1
@@ -133,9 +148,23 @@ function Scene({
   onZoom,
   topInset = 0,
   room: roomChoice,
+  paused = false,
+  onPan,
+  panControl,
   lite = false,
 }: BookshelfSceneProps & { lite?: boolean }) {
-  const [hovered, setHovered] = useState<string | null>(null)
+  const [hovered, setHoveredState] = useState<string | null>(null)
+  // a mouse drag on the empty wall is moving the shelf (T-0025); books don't lift under it meanwhile
+  const [wallPanning, setWallPanningState] = useState(false)
+  const wallPanRef = useRef(false)
+  const setWallPanning = useCallback((on: boolean) => {
+    wallPanRef.current = on
+    setWallPanningState(on)
+  }, [])
+  const setHovered = useCallback((id: string | null) => {
+    if (id && wallPanRef.current) return
+    setHoveredState(id)
+  }, [])
   const [drag, setDrag] = useState<DragState | null>(null)
   // handlers read the ref so back-to-back pointer events never see stale state
   const dragRef = useRef<DragState | null>(null)
@@ -174,7 +203,7 @@ function Scene({
   if (!drag) stableLayout.current = layout
   const caseLayout = drag ? stableLayout.current : layout
 
-  const scroll = useRef<ScrollState>({ y: null, min: 0, max: 0, worldPerPx: 0, x: 0, xMax: 0 })
+  const scroll = useRef<ScrollState>({ y: null, min: 0, max: 0, worldPerPx: 0, x: 0, xMax: 0, viewW: 0 })
   const cameraBase = useCameraRig(caseLayout.caseWidth, caseLayout.caseHeight, {
     parallax: !selectedId,
     portrait,
@@ -203,9 +232,64 @@ function Scene({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [highlight])
 
+  // ---- moving along the zoomed-in shelf (T-0025) -----------------------------
+  // `scroll.current.x` is the one source of the pan; the page hears when "can pan" or an end changes
+  const [pan, setPan] = useState<PanEdges>({ canPan: false, atStart: false, atEnd: false })
+  const panRef = useRef(pan)
+  const onPanRef = useRef(onPan)
+  onPanRef.current = onPan
+  useFrame(() => {
+    const s = scroll.current
+    const edges = panEdges(s.x, s.xMax)
+    if (sameEdges(edges, panRef.current)) return
+    panRef.current = edges
+    setPan(edges)
+    onPanRef.current?.(edges)
+  })
+  // the ‹ › buttons: three quarters of the visible width per press, eased by the camera
   useEffect(() => {
-    gl.domElement.style.cursor = drag ? 'grabbing' : hovered && !selectedId ? 'grab' : 'auto'
-  }, [gl, hovered, drag, selectedId])
+    if (!panControl) return
+    panControl.current = (direction) => {
+      const s = scroll.current
+      s.x = clampPan(s.x + buttonStep(direction, s.viewW), s.xMax)
+    }
+    return () => {
+      panControl.current = null
+    }
+  }, [panControl])
+  // ← →: a fifth of the visible width, only while nothing else has the keyboard
+  useEffect(() => {
+    if (selectedId || paused) return
+    const key = (e: KeyboardEvent) => {
+      const s = scroll.current
+      const direction = arrowKeyDirection({
+        key: e.key,
+        shiftKey: e.shiftKey,
+        ctrlKey: e.ctrlKey,
+        altKey: e.altKey,
+        metaKey: e.metaKey,
+        defaultPrevented: e.defaultPrevented,
+        target: keyTarget(e.target, gl.domElement),
+        bookOpen: !!selectedId,
+        offShelf: paused,
+        // the room panel, Make a wish, the quick update, the wrap-up, adding a book, …
+        panelOpen: !!document.querySelector('[role="dialog"], dialog[open]'),
+        canPan: panEdges(s.x, s.xMax).canPan,
+      })
+      if (direction === null) return
+      e.preventDefault()
+      s.x = clampPan(s.x + keyStep(direction, s.viewW), s.xMax)
+    }
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  }, [selectedId, paused, gl])
+
+  // one place decides the cursor; with a book open the turn-the-book drag sets its own
+  useEffect(() => {
+    if (selectedId) return
+    gl.domElement.style.cursor =
+      drag || wallPanning ? 'grabbing' : hovered ? 'grab' : pan.canPan ? 'grab' : 'auto'
+  }, [gl, hovered, drag, selectedId, wallPanning, pan.canPan])
 
   // ---- drag-to-reorder --------------------------------------------------
   const dragPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 0, 1), 0), [])
@@ -331,15 +415,57 @@ function Scene({
       const sideways = e.shiftKey ? e.deltaY : e.deltaX
       if (sideways && scroll.current.xMax > 0) {
         e.preventDefault()
-        panBy(sideways * unit)
+        // scrolling to the right shows the books to the right (panBy follows a finger, so the other way round)
+        panBy(-sideways * unit)
       }
       if (!e.shiftKey && e.deltaY && scroll.current.max > scroll.current.min) {
         e.preventDefault()
         scrollBy(-e.deltaY * unit)
       }
     }
+    // a mouse press: decided at the first move past 6 px, once a book's own handler has had its say
+    let press: { id: number; x: number; y: number; button: number; wall: boolean } | null = null
+    const endWallPan = () => {
+      if (!press) return
+      if (press.wall) {
+        if (el.hasPointerCapture(press.id)) el.releasePointerCapture(press.id)
+        setWallPanning(false)
+      }
+      press = null
+    }
+    const mouseMove = (e: PointerEvent) => {
+      if (!press || e.pointerId !== press.id) return
+      if (!press.wall) {
+        const decided = mousePress({
+          moved: Math.hypot(e.clientX - press.x, e.clientY - press.y),
+          pending: !!pending.current || !!dragRef.current,
+          button: press.button,
+          canPan: panEdges(scroll.current.x, scroll.current.xMax).canPan,
+          bookOpen: false,
+        })
+        if (decided === 'undecided') return
+        if (decided !== 'wall') {
+          // a book drag (exactly as before), or nothing
+          press = null
+          return
+        }
+        press.wall = true
+        el.setPointerCapture(e.pointerId)
+        setWallPanning(true)
+        setHovered(null)
+      }
+      // like dragging a map: 1:1 with the mouse, sideways and, when the case is taller than the screen, up and down
+      panBy(e.clientX - press.x)
+      scrollBy(e.clientY - press.y)
+      press.x = e.clientX
+      press.y = e.clientY
+    }
     const down = (e: PointerEvent) => {
-      if (e.pointerType === 'mouse') return
+      if (e.pointerType === 'mouse') {
+        endWallPan()
+        press = { id: e.pointerId, x: e.clientX, y: e.clientY, button: e.button, wall: false }
+        return
+      }
       touches.set(e.pointerId, { x: e.clientX, y: e.clientY })
       if (touches.size === 2) {
         // a second finger: a pinch, not a swipe or moving a book
@@ -353,6 +479,7 @@ function Scene({
       swipe = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), scrolling: false }
     }
     const move = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse') return mouseMove(e)
       if (touches.has(e.pointerId)) touches.set(e.pointerId, { x: e.clientX, y: e.clientY })
       if (pinch && touches.size === 2) {
         zoomTo(pinch.zoom * (gap() / Math.max(1, pinch.dist)))
@@ -374,23 +501,30 @@ function Scene({
       swipe.y = e.clientY
     }
     const up = (e: PointerEvent) => {
+      if (press && e.pointerId === press.id) endWallPan()
       touches.delete(e.pointerId)
       if (touches.size < 2) pinch = null
       if (swipe && e.pointerId === swipe.id) swipe = null
     }
+    const lost = (e: PointerEvent) => {
+      if (press?.wall && e.pointerId === press.id) endWallPan()
+    }
     el.addEventListener('wheel', wheel, { passive: false })
     el.addEventListener('pointerdown', down)
+    el.addEventListener('lostpointercapture', lost)
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
     window.addEventListener('pointercancel', up)
     return () => {
+      endWallPan()
       el.removeEventListener('wheel', wheel)
       el.removeEventListener('pointerdown', down)
+      el.removeEventListener('lostpointercapture', lost)
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
       window.removeEventListener('pointercancel', up)
     }
-  }, [selectedId, gl])
+  }, [selectedId, gl, setHovered, setWallPanning])
 
   // ---- inspecting: drag anywhere to turn the book -------------------------
   useEffect(() => {
@@ -487,6 +621,8 @@ interface ScrollState {
   /** zoomed in: how far the camera has moved sideways, and how far it may */
   x: number
   xMax: number
+  /** width of the view at the bookcase, in world units (a ‹ › press moves 3/4 of it) */
+  viewW: number
 }
 
 const LONG_PRESS_MS = 350
@@ -504,30 +640,20 @@ function useCameraRig(
   const camera = useThree((s) => s.camera)
   const size = useThree((s) => s.size)
   const base = useMemo(() => new THREE.Vector3(), [])
-  /** height the camera looks at; eased like the camera so the view never jolts */
-  const lookY = useRef<number | null>(null)
-  /** vertical parallax offset, eased gently like the sideways one */
-  const tiltY = useRef(0)
+  /** where the camera looks (the pan and the shelf height) and its tilt, eased between frames */
+  const aim = useMemo(newAim, [])
+  const parallax = useMemo(() => ({ x: 0, y: 0 }), [])
 
   const aspect = size.width / Math.max(1, size.height)
-  const tan = Math.tan(THREE.MathUtils.degToRad(FOV / 2))
-  // phones use (nearly) the full width; desktops keep a margin round the case
-  const marginW = opts.portrait ? 1.09 : FRAME.horizontal
-  const distW = (caseWidth * marginW) / 2 / (tan * aspect)
-  // leave room for the header at the top
-  const distH = (caseHeight * FRAME.vertical) / 2 / tan
-  // desktops show the whole case; phones held upright scroll through it
-  const fitted = Math.max(distW, opts.portrait ? 0 : distH, 0.9)
-  // zooming in brings the camera closer (1: the whole case, as before)
-  const toCase = Math.max(0.35, fitted / Math.max(1, opts.zoom))
-  base.z = toCase + SHELF.depth / 2
+  const { toCase, viewH, xMax, fitsH } = frameCase(caseWidth, caseHeight, aspect, opts.portrait, opts.zoom)
+  base.z = cameraZ(toCase)
 
   const s = opts.scroll.current
-  const viewH = 2 * toCase * tan
   s.worldPerPx = viewH / Math.max(1, size.height)
+  s.viewW = s.worldPerPx * size.width
   // zoomed in, the camera can move sideways as far as the case reaches
-  s.xMax = Math.max(0, caseWidth / 2 - (viewH * aspect) / 2 + 0.05)
-  s.x = THREE.MathUtils.clamp(s.x, -s.xMax, s.xMax)
+  s.xMax = xMax
+  s.x = clampPan(s.x, s.xMax)
   // the pages' wallpaper uses the same stripe width on screen as the 3D wall:
   // one stripe is half a repeat, seen at the wall (a little further than the case)
   const stripePx = ((WALLPAPER_REPEAT_M / 2) / s.worldPerPx) * (toCase / (toCase + SHELF.depth))
@@ -536,7 +662,7 @@ function useCameraRig(
       document.documentElement.style.setProperty('--wall-stripe-px', `${Math.round(stripePx)}px`)
     }
   }, [stripePx])
-  if (distH <= toCase) {
+  if (fitsH) {
     // everything fits: centre it, as before
     s.min = s.max = caseHeight / 2 + caseHeight * 0.04
   } else {
@@ -557,26 +683,23 @@ function useCameraRig(
       const speed = edge > 0.7 ? (edge - 0.7) / 0.3 : edge < -0.7 ? (edge + 0.7) / 0.3 : 0
       sc.y = THREE.MathUtils.clamp(sc.y + speed * 1.2 * d, sc.min, sc.max)
     }
+    // zoomed in, dragging a book near the left or right edge pans, so it can go anywhere (T-0025)
+    if (opts.dragging && panEdges(sc.x, sc.xMax).canPan) {
+      const edge = state.pointer.x
+      const speed = edge > 0.7 ? (edge - 0.7) / 0.3 : edge < -0.7 ? (edge + 0.7) / 0.3 : 0
+      sc.x = clampPan(sc.x + speed * 1.2 * d, sc.xMax)
+    }
     if (sc.y !== null) base.y = sc.y
     base.x = sc.x
-    // a touch of parallax following the mouse
-    const px = opts.parallax ? state.pointer.x * 0.06 : 0
-    const py = opts.parallax ? state.pointer.y * 0.04 : 0
-    lookY.current = THREE.MathUtils.damp(lookY.current ?? base.y, base.y, 6, d)
-    tiltY.current = THREE.MathUtils.damp(tiltY.current, py, 3, d)
-    c.position.set(
-      THREE.MathUtils.damp(c.position.x, base.x + px, 3, d),
-      lookY.current + tiltY.current,
-      THREE.MathUtils.damp(c.position.z, base.z, 3, d),
-    )
-    // look straight ahead at the shelf height (not following the parallax),
-    // easing at the same rate as the camera so scrolling stays level
-    c.lookAt(0, lookY.current, 0)
+    // a touch of parallax following the mouse: it moves the camera, never the aim (no bobbing)
+    parallax.x = opts.parallax ? state.pointer.x * 0.06 : 0
+    parallax.y = opts.parallax ? state.pointer.y * 0.04 : 0
+    aimCamera(c, base, aim, parallax, dt)
   })
 
   useEffect(() => {
     camera.position.copy(base)
-    camera.lookAt(0, base.y, 0)
+    camera.lookAt(base.x, base.y, 0)
     // jump there on first mount; afterwards the frame loop eases toward the target
   }, [camera])
 

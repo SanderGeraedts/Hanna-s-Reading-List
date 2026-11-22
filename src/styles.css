@@ -790,12 +790,14 @@ textarea.input {
 /* ---- finding and zooming on the shelf -------------------------------- */
 /* on the lavender wall: light buttons with dark plum text, like ↻ */
 .zoom-controls .btn,
+.shelf-pan .btn,
 .topbar .btn.search-clear {
   background: rgba(255, 255, 255, 0.78);
   color: var(--pill-ink);
   border-color: rgba(45, 32, 56, 0.2);
 }
 .zoom-controls .btn:hover:not(:disabled),
+.shelf-pan .btn:hover:not(:disabled):not([aria-disabled='true']),
 .topbar .btn.search-clear:hover:not(:disabled) {
   background: #fff;
 }
@@ -808,13 +810,43 @@ textarea.input {
   flex-direction: column;
   gap: var(--space-2);
 }
-.zoom-controls .btn {
+.zoom-controls .btn,
+.shelf-pan .btn {
   width: var(--tap);
   height: var(--tap);
   padding: 0;
   display: grid;
   place-items: center;
   font-size: var(--fs-large);
+}
+/* zoomed in: ‹ › at the shelf's left and right edges (T-0025), centred between the header and
+   the bottom of the screen, and never down on the zoom column (four buttons, 16 px from the bottom) */
+.shelf-pan {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.shelf-pan .btn {
+  position: absolute;
+  top: min(
+    calc((var(--header-h, 0px) + 100%) / 2 - var(--tap) / 2),
+    calc(100% - var(--space-4) - 5 * var(--tap) - 4 * var(--space-2))
+  );
+  pointer-events: auto;
+}
+.shelf-pan .shelf-pan-left {
+  left: var(--space-4);
+}
+.shelf-pan .shelf-pan-right {
+  right: var(--space-4);
+}
+.shelf-pan .btn[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: default;
+}
+.shelf-pan .btn[aria-disabled='true']:active {
+  transform: none;
 }
 .search-clear {
   white-space: nowrap;

@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ClientOnly, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { ZOOM_MAX, clampZoom } from '#/components/BookshelfScene'
 import { SafeBookshelf } from '#/components/SafeBookshelf'
+import { ShelfPanButtons } from '#/components/ShelfPanButtons'
+import type { PanDirection, PanEdges } from '#/lib/shelfPan'
+import { SHELF_CONTROLS_ATTR } from '#/lib/shelfPan'
 import { AddBookDialog } from '#/components/AddBookDialog'
 import { BookPanel } from '#/components/BookPanel'
 import { CoverPicker } from '#/components/CoverPicker'
@@ -124,6 +127,10 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   // the 3D shelf: zoomed in (1 is the whole case) and what a search lights up
   const [zoom, setZoom] = useState(1)
+  // zoomed in: whether the shelf can move sideways and is at an end; the ‹ › buttons move it (T-0025)
+  const [pan, setPan] = useState<PanEdges | null>(null)
+  const panControl = useRef<((direction: PanDirection) => void) | null>(null)
+  const panStep = useCallback((direction: PanDirection) => panControl.current?.(direction), [])
   const [matches, setMatches] = useState<string[] | null>(null)
   const highlight = useMemo(() => (matches ? new Set(matches) : null), [matches])
   const [adding, setAdding] = useState<Tab | null>(null)
@@ -466,10 +473,13 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             topInset={headerPx}
             paused={offShelf}
             room={room}
+            onPan={setPan}
+            panControl={panControl}
           />
         </ClientOnly>
+        {!offShelf && !selected && books.length > 0 && <ShelfPanButtons pan={pan} onStep={panStep} />}
         {!offShelf && !selected && books.length > 0 && (
-          <div className="zoom-controls" role="group" aria-label="Zoom">
+          <div className="zoom-controls" role="group" aria-label="Zoom" {...{ [SHELF_CONTROLS_ATTR]: '' }}>
             <button className="btn icon" aria-label="Zoom in" title="Zoom in (Ctrl + scroll)" disabled={zoom >= ZOOM_MAX} onClick={() => setZoom(clampZoom(zoom * 1.4))}>
               +
             </button>
