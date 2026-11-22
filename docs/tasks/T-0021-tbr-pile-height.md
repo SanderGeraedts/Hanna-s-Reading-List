@@ -2,11 +2,11 @@
 id: T-0021
 title: "Show how tall her want-to-read pile would stand, with a fun comparison, in the Want-to-read pile block"
 description: "The Want-to-read pile block gets one line like “Stacked up, your pile would be 1.62 m tall: about as tall as an adult (1.75 m).”, from the shelf thickness of every want-to-read book except those she only listens to (D-0029), rounded to cm or m, with the closest of a fixed list of everyday heights."
-status: Doing
+status: Done
 depends_on: []
 decisions: [D-0008, D-0010, D-0014, D-0020, D-0022, D-0029]
 raised_on: 2026-11-22
-done_on: ""
+done_on: "2026-11-22"
 result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/230"]
 ---
 
@@ -351,7 +351,79 @@ change anything she will see.
 
 # Test
 
-To be written by the tester.
+**Verdict: passed** (tester, 2026-11-22), on branch `t-0021-pile-height` after a clean
+`pnpm install --frozen-lockfile`.
+
+## Commands and their output
+
+- `pnpm test` (before my tests): `Test Files 86 passed | 1 skipped (87)`, `Tests 719 passed | 9
+  skipped (728)`.
+- `pnpm test` (with my tests): `Test Files 86 passed | 1 skipped (87)`, `Tests 745 passed | 9
+  skipped (754)`. Includes `src/lib/insights.test.ts`, `src/lib/dashboardLayout.test.ts` and
+  `src/components/Dashboard.favourites.test.tsx`.
+- `pnpm exec tsc --noEmit`: no output, exit 0.
+- `pnpm run build`: `✓ built`, exit 0. `src/routeTree.gen.ts` unchanged.
+- `pnpm exec harness check`: `✓ tasks: 21 tasks, index in step`, `✓ decisions: 32 records,
+  index complete, 3 overrules valid`, `✓ engineers: 2 listed`, `✓ generated files: current`.
+
+## What I checked in `git diff main...HEAD -- src`
+
+- **Nothing else in the block changed:** the diff to `DashboardExtras.tsx` adds one import, one
+  `<PileHeightLine books={books} />` between the pages line and the pace line, and the two new
+  components. Nothing in `PileCard` was removed or moved. No change to `src/styles.css`,
+  `dashboardLayout.ts`, `insights.ts` (`wantPile`), `Book` or the shelf's sync.
+- **Same thickness as the shelf:** `pileHeight` adds up `bookDims(book).t` with no formula of its
+  own (D-0029). A book without pages, or with 0 or negative pages, counts as 280 pages, because
+  `thicknessPages` ignores counts of 0 or less. A 1-page book counts at the shelf's minimum of
+  1.8 cm, so a pile with books never shows 0 cm.
+- **E-books and listen-only books (D-0029):** `listenOnly` comes from `listening.ts`. E-books in
+  `formats` and in the old `format` field count. A paper + audiobook book counts with its pages,
+  not its longer minutes. A book that is only "other" counts. Storytel + "other", Audiobook +
+  Storytel, and an old Storytel import (only `storytelId`) are left out.
+- **Rounding:** each tier is chosen on the rounded value, so a value never falls between two
+  tiers: 0.9949 → "99 cm", 0.995 (99.5 cm) → "1 m", 9.994 → "9.99 m", 9.996 → "10 m",
+  99.94 → "99.9 m", 99.96 → "100 m", 999.5 → "1,000 m". **9.995 shows "9.99 m"**, because 9.995 is
+  stored as 9.99499… in floating point (1.005 → "1 m" for the same reason). A pile is a sum of
+  thicknesses, so it never lands exactly on such a value, and the result is still correctly
+  rounded. Not a defect.
+- **Comparison ties:** the closest thing is the one with the smallest `|ln(ratio)|` (choice 15).
+  Around the midpoint between two things that are both within 10%, the closer one wins on each
+  side: 0.97 → kitchen counter and 0.975 → door handle; 4.68 → bus and 4.7 → giraffe. An exact
+  tie keeps the shorter thing (strict `<`), which only happens at an irrational midpoint. A pile
+  exactly as tall as any thing on the list is "about as tall as" it. At the 10% edge: 0.0905 →
+  about a mug, 0.0895 → not yet, 0.1095 → about, 0.1105 → taller than a mug. On a value exactly
+  at 0.9× or 1.1×, floating point can tip either way (0.09 ÷ 0.1 = 0.8999…). Real piles never
+  land exactly there, so I accepted it.
+- **Very large piles:** 30,000 books of 300 pages → "1,035 m: taller than the Eiffel Tower
+  (330 m)", heard as "1,035 metres". 1,000,000 m → still the Eiffel Tower. A pile within 10% of
+  a thing but past the gap is "taller than" the last thing it beats (0.3 → cat, 12 → house,
+  150 → Big Ben, 364 → Eiffel Tower).
+- **Wording and screen-reader text:** the words are exactly as in the design table. The emoji is
+  `aria-hidden`, and the screen shows a non-breaking space after the emoji and between each number
+  and its unit. Each height is spoken in full, with the singular for exactly "1" (0.995 → "1
+  metre", 1.004 → "1 metre", 1.01 → "1.01 metres", 0.02 → "2 centimetres"). The line is a plain
+  `<p>` with no class, role or live region.
+
+## Tests added
+
+- `src/lib/pileHeight.test.ts` (+23): a pile of 1 book; the 1-page minimum; 0 and negative pages;
+  mixed formats (e-book in both fields, "other", paper + audiobook, Storytel + other, old Storytel
+  import, audiobook + Storytel); paper + audiobook counts its pages, not its minutes; 30,000
+  books; 12 rounding boundaries; singular and plural when spoken; every list thing at its own
+  height; the 10% edge around a mug; ties either side of two midpoints; gaps between things and
+  beyond the Eiffel Tower.
+- `src/components/PileCard.test.tsx` (+3): a 1-book pile, seen and heard ("4 cm", "4
+  centimetres", "1 book waiting"); a mixed pile (e-book, paper + Storytel, no pages, and one
+  Storytel-only book) counts 3, adds no audiobook note and is heard as "10 centimetres: about as
+  tall as a mug"; a pile of 30,000 books, seen as "1,035 m" with non-breaking spaces and heard as
+  "1,035 metres".
+
+## Record
+
+The status, `result` (#230) and Log were current. D-0029 exists and is listed. The UX designer's
+review after building is there, with no must-fix items. All 20 screenshots are in
+`docs/tasks/T-0021-screens/`. I didn't run the click-through again: the developer's no-backend
+run and the UX review cover it, and nothing I added changes the code.
 
 # Log
 
@@ -371,3 +443,6 @@ To be written by the tester.
 - 2026-11-22 ux-designer: reviewed: matches the design, no must-fix items. All 20 screenshots and
   the `src` diff checked against the design checks. Choice 15 (closest by log distance) and the
   `en-GB` thousands comma accepted. Handed to the tester.
+- 2026-11-22 tester: passed. `pnpm test` → 745 passed, 9 skipped (26 new tester tests); `tsc`,
+  build and `harness check` green. Edge cases under *Test*; 9.995 → "9.99 m" is floating point,
+  not a defect. Nothing left for a human; Done.

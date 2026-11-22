@@ -130,3 +130,115 @@ describe('compareHeight', () => {
     expect(pileHeightLine(0.04)).toBe('Stacked up, your pile would be 4 cm: not as tall as a mug (10 cm) yet.')
   })
 })
+
+describe('pileHeight: edge cases (tester, T-0021)', () => {
+  it('a pile of 1 book is that book’s shelf thickness', () => {
+    const one = book('1', { pages: 400, format: 'paperback' })
+    expect(pileHeight([one])).toEqual({ metres: bookDims(one).t, counted: 1, listenOnly: 0 })
+    expect(pileHeightLine(pileHeight([one]).metres)).toBe(
+      'Stacked up, your pile would be 4 cm: not as tall as a mug (10 cm) yet.',
+    )
+  })
+
+  it('a 1-page book still stands at the shelf’s minimum thickness (never 0 cm)', () => {
+    const thin = book('t', { pages: 1 })
+    expect(pileHeight([thin]).metres).toBeCloseTo(0.018, 10)
+    expect(heightText(pileHeight([thin]).metres)).toBe('2 cm')
+  })
+
+  it('a book with 0 or a negative page count counts as the shelf’s 280 pages', () => {
+    const t280 = bookDims(book('y', { pages: 280 })).t
+    expect(pileHeight([book('z', { pages: 0 })]).metres).toBeCloseTo(t280, 10)
+    expect(pileHeight([book('n', { pages: -5 })]).metres).toBeCloseTo(t280, 10)
+  })
+
+  it('mixed formats: e-book (new and old field), "other", paper + audiobook count; audio-only (also old Storytel imports) is left out', () => {
+    const shelf = [
+      book('e1', { formats: ['ebook'], pages: 300 }),
+      book('e2', { format: 'ebook', pages: 300 }),
+      book('o', { formats: ['other'], pages: 300 }),
+      book('h', { formats: ['hardcover', 'audiobook'], pages: 300, minutes: 900 }),
+      book('s', { formats: ['storytel', 'other'], minutes: 900 }),
+      book('st', { storytelId: 'x', minutes: 900 }),
+      book('a', { formats: ['audiobook', 'storytel'], minutes: 900 }),
+    ]
+    const t300 = bookDims(book('q', { pages: 300 })).t
+    const h = pileHeight(shelf)
+    expect(h).toMatchObject({ counted: 4, listenOnly: 3 })
+    expect(h.metres).toBeCloseTo(4 * t300, 10)
+  })
+
+  it('a paper + audiobook book counts with its pages, not its (longer) minutes', () => {
+    const both = book('b', { formats: ['paperback', 'audiobook'], pages: 200, minutes: 900 })
+    expect(pileHeight([both]).metres).toBeCloseTo(bookDims(book('c', { pages: 200 })).t, 10)
+  })
+
+  it('a very large pile adds up and is written in whole metres with a thousands comma', () => {
+    const shelf = Array.from({ length: 30_000 }, (_, i) => book(String(i), { pages: 300 }))
+    const h = pileHeight(shelf)
+    expect(h.counted).toBe(30_000)
+    expect(h.metres).toBeCloseTo(30_000 * bookDims(book('q', { pages: 300 })).t, 6)
+    expect(heightText(h.metres)).toBe('1,035 m')
+    expect(heightSpoken(h.metres)).toBe('1,035 metres')
+    expect(comparisonText(compareHeight(h.metres))).toBe('taller than the Eiffel Tower (330 m)')
+  })
+})
+
+describe('heightText: rounding boundaries (tester, T-0021)', () => {
+  it.each([
+    [0, '1 cm'],
+    [0.0149, '1 cm'],
+    [0.9949, '99 cm'],
+    [0.995, '1 m'],
+    [1.0051, '1.01 m'],
+    [9.994, '9.99 m'],
+    [9.996, '10 m'],
+    [10, '10 m'],
+    [99.94, '99.9 m'],
+    [99.96, '100 m'],
+    [100, '100 m'],
+    [999.5, '1,000 m'],
+  ])('%s → %s', (m, text) => {
+    expect(heightText(m)).toBe(text)
+  })
+
+  it('speaks a value that rounds to 1 in the singular, and anything else in the plural', () => {
+    expect(heightSpoken(0.995)).toBe('1 metre')
+    expect(heightSpoken(1.004)).toBe('1 metre')
+    expect(heightSpoken(1.01)).toBe('1.01 metres')
+    expect(heightSpoken(0.02)).toBe('2 centimetres')
+    expect(heightSpoken(10)).toBe('10 metres')
+  })
+})
+
+describe('compareHeight: boundaries and ties (tester, T-0021)', () => {
+  it('a pile exactly as tall as a thing is about as tall as it', () => {
+    for (const thing of HEIGHT_THINGS) {
+      expect(compareHeight(thing.metres)).toEqual({ kind: 'about', thing })
+    }
+  })
+
+  it('just inside and just outside 10% of a mug', () => {
+    expect(comparisonText(compareHeight(0.0905))).toBe('about as tall as a mug (10 cm)')
+    expect(comparisonText(compareHeight(0.0895))).toBe('not as tall as a mug (10 cm) yet')
+    expect(comparisonText(compareHeight(0.1095))).toBe('about as tall as a mug (10 cm)')
+    expect(comparisonText(compareHeight(0.1105))).toBe('taller than a mug (10 cm)')
+  })
+
+  it('between two things that are both within 10%, the closer by ratio wins either side of the midpoint', () => {
+    // kitchen counter 0.9 and door handle 1.05 meet at √(0.9 × 1.05) ≈ 0.972
+    expect(comparisonText(compareHeight(0.97))).toBe('about as tall as a kitchen counter (90 cm)')
+    expect(comparisonText(compareHeight(0.975))).toBe('about as tall as a door handle (1.05 m)')
+    // a giraffe 5 m and a bus 4.4 m meet at ≈ 4.69
+    expect(comparisonText(compareHeight(4.68))).toBe('about as tall as a double-decker bus (4.4 m)')
+    expect(comparisonText(compareHeight(4.7))).toBe('about as tall as a giraffe (5 m)')
+  })
+
+  it('in a gap between things it is taller than the tallest one it beats', () => {
+    expect(comparisonText(compareHeight(0.3))).toBe('taller than a cat (25 cm)')
+    expect(comparisonText(compareHeight(12))).toBe('taller than a house (8 m)')
+    expect(comparisonText(compareHeight(150))).toBe('taller than Big Ben (96 m)')
+    expect(comparisonText(compareHeight(364))).toBe('taller than the Eiffel Tower (330 m)')
+    expect(comparisonText(compareHeight(1e6))).toBe('taller than the Eiffel Tower (330 m)')
+  })
+})

@@ -103,3 +103,40 @@ describe('PileCard: how tall the pile would stand (T-0021)', () => {
     expect(screen.getByText(/Finished on/)).toBeTruthy()
   })
 })
+
+describe('PileCard: height line edge cases (tester, T-0021)', () => {
+  it('a pile of 1 book: seen and heard in centimetres, with the mug line', () => {
+    const { container } = render(<PileCard books={[finished, book('one', { pages: 400, format: 'paperback' })]} />)
+    const line = heightLine(container)!
+    expect(seen(line)).toBe('📚 Stacked up, your pile would be 4 cm: not as tall as a mug (10 cm) yet.')
+    expect(heard(line)).toBe('Stacked up, your pile would be 4 centimetres: not as tall as a mug (10 centimetres) yet.')
+    expect(container.textContent).toContain('1 book waiting')
+  })
+
+  it('mixed formats: only the listen-only book is left out, and no extra note is shown', () => {
+    const shelf = [
+      finished,
+      book('e', { formats: ['ebook'], pages: 300 }),
+      book('p', { formats: ['paperback', 'storytel'], pages: 300, minutes: 600 }),
+      book('n'),
+      book('l', { formats: ['storytel'], minutes: 6000 }),
+    ]
+    const { container } = render(<PileCard books={shelf} />)
+    const h = pileHeight(shelf)
+    expect(h).toMatchObject({ counted: 3, listenOnly: 1 })
+    const line = heightLine(container)!
+    // e-book + paper/Storytel book (300 pages each) + a book without pages (280): about 10.2 cm
+    expect(h.metres).toBeCloseTo(0.102, 10)
+    expect(heard(line)).toBe('Stacked up, your pile would be 10 centimetres: about as tall as a mug (10 centimetres).')
+    expect(line.textContent).not.toMatch(/audiobook/)
+    expect(container.textContent).toContain('4 books waiting')
+  })
+
+  it('a very large pile shows whole metres with a thousands comma and the Eiffel Tower', () => {
+    const shelf = Array.from({ length: 30_000 }, (_, i) => book(`b${i}`, { pages: 300 }))
+    const { container } = render(<PileCard books={shelf} />)
+    const line = heightLine(container)!
+    expect(seen(line)).toBe('📚 Stacked up, your pile would be 1,035 m: taller than the Eiffel Tower (330 m).')
+    expect(heard(line)).toBe('Stacked up, your pile would be 1,035 metres: taller than the Eiffel Tower (330 metres).')
+  })
+})
