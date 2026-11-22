@@ -293,6 +293,93 @@ that's a separate follow-up about when the `scrollIntoView` runs on mount.
 
 # Test
 
+Tester, 2026-11-23, on `eb2b934` plus the two tester tests below.
+
+**CI's run (read, not repeated):** run 45083588854 on `eb2b934`, attempt 1, `checks / checks`
+pass: typecheck, `harness check`, Vitest **931 passed, 9 skipped (940)**, 95 files, build
+`✓ built`. No retries, nothing flaky. The e2e job is skipped because the repo has no e2e set up
+(`e2e:` empty), as on every PR. The Netlify deploy preview is ready.
+
+**Run myself, from a clean install:**
+
+- `pnpm install --frozen-lockfile` → done.
+- `pnpm exec vitest run src/lib/colours.test.ts src/styles.test.ts src/components/useArrangeBarHeight.test.tsx`
+  → 3 files, **36 passed** (34 from the developer and 2 of mine). Run 5 more times: 36 passed
+  each time.
+- `pnpm exec tsc --noEmit` → exit 0.
+- `pnpm exec harness check` → `✓ tasks`, `✓ decisions`, `✓ engineers`, `✓ generated files`.
+- `src/routeTree.gen.ts` is not in the diff.
+
+**Code read:** `.topbar.on-page` is a solid `rgb(var(--header-fade))`. Its `::after` fade hangs
+below the header (the header is `position: absolute`, so `inset: 100% 0 auto 0` works) and has
+`pointer-events: none`. `index.tsx` changes only the class. `.dashboard`'s
+`scroll-padding-top` is the same sum as its `padding-top`. In `useArrangeBarHeight`, each page
+has its own `.dashboard`, so a page that unmounts clears its own `--arrange-h`. The bar is always
+rendered, so `--arrange-h` stays set (36 px) while the page isn't arranging. That does nothing,
+because the `:has(.dashboard-bar.arranging)` rule is the only one that reads it (checked below).
+
+**Tried to break it** (no-backend dev server on 3147, 150 demo books in localStorage, headless
+Chrome; script `tester35.mjs` in my scratchpad):
+
+- **Wallpaper switched while scrolled** (390, Dashboard scrolled 900 px): set
+  `<html data-wallpaper>` live, as the room panel does. The band went from `rgb(246, 248, 255)`
+  to `rgb(30, 40, 88)` and back, with the scroll (900 → 900) and the header height (143.4 px)
+  kept. Then the real way: Bookshelf tab → 🎨 → Midnight. The shelf keeps the midnight haze
+  (gradient from `rgba(30, 40, 88, 0.92)`, no `::after`). Back on the Dashboard, scrolled: a
+  solid midnight band with cream text. Looked at the screenshot: nothing shows through.
+- **Arrange on and off, chips wrapping:** at 390, 360 and 1280 I hid every block (30). The
+  "Hidden:" chips wrapped onto 16, 17 and 5 rows. `--arrange-h` matched the bar every time
+  (699 / 742 / 178 px), and the scroll padding was exactly header + 8 + bar + 8 (870 / 913 /
+  335 px). Focus check (focus() from last to first): 0 of 35 under the header or the bar. I
+  unhid the blocks until 3 were left: the bar shrank (699 → 148 px) and the variable followed.
+  0 of 274 hidden. After Done, the padding went back to the header's (155 / 141 px), and 0 of
+  193 were hidden. Arrange on/off three times fast: the variable still equals the bar. No
+  sideways scroll, no errors.
+  *Side note (T-0020, not this task):* with almost every block hidden on a phone, the bar is
+  taller than the screen (155–854 px at 390 × 844). Then the last "Hide" buttons can only be
+  reached by scrolling under it: Playwright's real click was blocked from 26 hidden blocks on.
+  Nobody hides 26 blocks, and it's the same on `main`.
+- **Resize and rotate** (Arrange on, 6 hidden), going 844×390 → 390×844 → 1280×800 → 360×800 →
+  800×360 → 390×844: `--header-h` and `--arrange-h` followed the header and the bar at every
+  step. Portrait and desktop: 0 of 174 hidden. **Phone on its side with Arrange on: some are
+  partly hidden.** At 844×390 with 6 hidden, 14 of 174. At 800×360, 14 of 285 with 0 hidden and
+  24 of 174 with 6 hidden. Each one is a bingo square (171–182 px tall). The space left under
+  header + bar is only 93–151 px, so a square can't fit. It ends up 2–37 px under the bar, with
+  the rest of it visible. That's still within WCAG 2.4.11 (not *entirely* hidden). It's much
+  better than `main`, which has no scroll padding at all. It isn't one of the sizes in *Done
+  when*. Not arranging, phone on its side: 0 of 198. **Not a send-back.** Noted for the
+  architect: nothing can fix a card taller than the space that's left.
+- **Switching pages with the tabs** (390; I left the Dashboard while it was arranging with 6
+  hidden): Challenges → Calendar → Bookshelf → Dashboard → Challenges. On every page the class
+  is `topbar on-page` with the solid band and the `::after`, and the scroll padding is the
+  header's only (155 px), so no stale bar height. Bookshelf: `topbar`, the haze, no `::after`.
+  Focus check 0 hidden on every page. Challenges with Arrange on measures its own bar (62 px, not
+  the Dashboard's 233 px): 0 of 32 hidden. No errors.
+- **Bookshelf haze unchanged** at 390 and 1280: the computed background is exactly
+  `linear-gradient(rgba(246, 248, 255, 0.92) 0%, rgba(246, 248, 255, 0.75) 60%, rgba(246, 248, 255, 0) 100%)`,
+  with no `::after`. Header 162.4 / 184.2 px, the same as on `main` in the developer's
+  `screens-main.txt`.
+- **A real keyboard pass on the Dashboard:** 260 real Tab presses down, then 260 Shift+Tab back
+  up, at 390 × 844 and at 1280 × 800 (keyboard events, not `focus()`). 501 of the steps were on
+  the Dashboard. Results: 0 under the header and 0 with the focus ring cut. At 1280, 0 below the
+  screen. At 390, 4 Tab steps (bingo squares) had their bottom edge 1 px past the screen bottom
+  (845 vs 844). That's sub-pixel rounding at the bottom edge, which this task didn't change.
+  This was headless, not by hand on a phone: Hanna's check below still covers the real phone.
+
+**Tests added for gaps:**
+
+- `useArrangeBarHeight.test.tsx`: the hook **follows the bar as it grows and shrinks** (a stub
+  ResizeObserver fires 62 → 699 → 148 px) and disconnects when the page unmounts. Until now only
+  the first measurement and the clearing were tested, not the resize the hook exists for.
+- `styles.test.ts`: `.dashboard`'s `scroll-padding-top` equals the start of its `padding`
+  (#181), and the arranging rule repeats that same sum. The expression is written twice, so if
+  someone changes one copy and not the other, this fails.
+
+**Record:** status *Doing*, `result` links #242, the UX review is there, no new decision needed
+(D-0014, D-0020, D-0022 followed).
+
+**Verdict: passed.** Hanna's phone check stays open (see the last Log line).
+
 # Log
 
 - 2026-11-23 architect: wrote the task from Hanna's #233 and T-0024's UX follow-up (night mode,
@@ -324,3 +411,10 @@ that's a separate follow-up about when the `scrollIntoView` runs on mount.
   lavender and midnight. Header text, stats and tabs readable at 360/390/1280 on all three
   pages. Bookshelf unchanged against `main`. Deviations 1–4 accepted (see *Design* review).
   Handed to the **tester**.
+- 2026-11-23 tester: passed. CI green on the first attempt (931 passed); the new tests 6× green;
+  wallpaper switch, Arrange with chips on 16 rows, resize/rotate, tab switching, shelf haze and a
+  real Tab/Shift+Tab pass all hold. Added 2 tests (the hook follows the bar's resizes; the scroll
+  padding stays in step with `padding-top`). Noted for the architect: phone on its side with
+  Arrange on, a bingo square taller than the space left is partly under the bar. Remaining:
+  Hanna checks on her own phone that, after scrolling the Dashboard, the header reads cleanly on
+  her wallpaper.

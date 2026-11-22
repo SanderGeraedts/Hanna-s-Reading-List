@@ -45,6 +45,16 @@ describe('the header over the pages (T-0035)', () => {
     expect(prop(rule('.topbar.on-page::after'), 'position')).toBe('absolute')
   })
 
+  it('the scroll padding stays in step with where the first card starts, also while arranging (tester)', () => {
+    const dash = rule('.dashboard')
+    const padding = prop(dash, 'scroll-padding-top')!
+    // .dashboard's padding-top (#181) is the same sum: a focused element stops where the first card starts
+    expect(prop(dash, 'padding')!.startsWith(padding)).toBe(true)
+    // the arranging rule repeats that sum and adds the bar; if one is changed alone, this fails
+    const arranging = prop(rule('.dashboard:has(.dashboard-bar.arranging)'), 'scroll-padding-top')!.replace(/\s+/g, ' ')
+    expect(arranging).toContain(padding)
+  })
+
   it('the shelf keeps its haze', () => {
     expect(prop(rule('.topbar'), 'background')).toMatch(/^linear-gradient\(/)
   })

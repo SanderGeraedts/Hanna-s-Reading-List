@@ -24,4 +24,34 @@ describe('useArrangeBarHeight (T-0035)', () => {
     rerender(<Page bar={false} />)
     expect(getByTestId('dashboard').style.getPropertyValue('--arrange-h')).toBe('')
   })
+
+  it('follows the bar when it grows (the "Hidden:" chips wrap onto more rows) and shrinks again (tester)', () => {
+    let fire = () => {}
+    let disconnected = 0
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(cb: () => void) {
+          fire = cb
+        }
+        observe() {}
+        disconnect() {
+          disconnected++
+        }
+      },
+    )
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ height: 62 } as DOMRect)
+    const { getByTestId, unmount } = render(<Page bar />)
+    const dash = () => getByTestId('dashboard').style.getPropertyValue('--arrange-h')
+    expect(dash()).toBe('62px')
+    rect.mockReturnValue({ height: 699.4 } as DOMRect)
+    fire()
+    expect(dash()).toBe('699px')
+    rect.mockReturnValue({ height: 148.4 } as DOMRect)
+    fire()
+    expect(dash()).toBe('148px')
+    unmount()
+    expect(disconnected).toBe(1)
+    vi.unstubAllGlobals()
+  })
 })
