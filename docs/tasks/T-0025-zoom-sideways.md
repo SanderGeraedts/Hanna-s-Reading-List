@@ -633,3 +633,13 @@ To be written by the tester.
   hover; (2) the zoom buttons 44 × 44 like ‹ › (D-0020). Accepted choices 16, 17, 18 and 20.
   Follow-up for the architect: on the phone, a book opened while zoomed in shows no book in front
   and doesn't dim the room (also on main), as its own task next. Handed back to the developer.
+- 2026-11-22 developer: fixed both must-fixes. (1) `.shelf-pan .btn[aria-disabled='true']:hover`
+  keeps the zoom buttons' fill and border: hovering the dimmed › reads `rgba(255, 255, 255, 0.78) |
+  rgba(45, 32, 56, 0.2) | 0.5`, the same as before hovering (the ready › still turns `#fff`); new
+  shot `pan-right-end-hover-1280-lavender`. (2) The four zoom buttons dropped `icon`, so
+  `.zoom-controls .btn` sizes them: all six buttons measure 44 × 44 at 1280 and 390 (zoom 1 and 3),
+  › lines up with the zoom column (x 1220) and stays clear of it (70 px at 1280, 103 px at 390);
+  re-took `pan-middle-1280-lavender`, `pan-middle-390-lavender`, `zoom-1-390-lavender`. 14 checks on
+  `vite dev --port 3136` (no backend), all passed, no console errors; vite stopped, 3136 free.
+  `pnpm test`: 90 files passed, 1 skipped, 865 tests passed, 9 skipped; `tsc --noEmit` clean;
+  `harness check` all ✓. Lesson added. Handed back to the UX designer.

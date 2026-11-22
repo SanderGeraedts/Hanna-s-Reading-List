@@ -480,16 +480,16 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
         {!offShelf && !selected && books.length > 0 && <ShelfPanButtons pan={pan} onStep={panStep} />}
         {!offShelf && !selected && books.length > 0 && (
           <div className="zoom-controls" role="group" aria-label="Zoom" {...{ [SHELF_CONTROLS_ATTR]: '' }}>
-            <button className="btn icon" aria-label="Zoom in" title="Zoom in (Ctrl + scroll)" disabled={zoom >= ZOOM_MAX} onClick={() => setZoom(clampZoom(zoom * 1.4))}>
+            <button className="btn" aria-label="Zoom in" title="Zoom in (Ctrl + scroll)" disabled={zoom >= ZOOM_MAX} onClick={() => setZoom(clampZoom(zoom * 1.4))}>
               +
             </button>
-            <button className="btn icon" aria-label="Zoom out" title="Zoom out" disabled={zoom <= 1} onClick={() => setZoom(clampZoom(zoom / 1.4))}>
+            <button className="btn" aria-label="Zoom out" title="Zoom out" disabled={zoom <= 1} onClick={() => setZoom(clampZoom(zoom / 1.4))}>
               −
             </button>
-            <button className="btn icon" aria-label="Show the whole bookcase" title="Show the whole bookcase" disabled={zoom <= 1} onClick={() => setZoom(1)}>
+            <button className="btn" aria-label="Show the whole bookcase" title="Show the whole bookcase" disabled={zoom <= 1} onClick={() => setZoom(1)}>
               ⤢
             </button>
-            <button className="btn icon" aria-label="Your room" title="Your room: wood, wallpaper, decorations" aria-expanded={roomOpen} onClick={() => setRoomOpen(!roomOpen)}>
+            <button className="btn" aria-label="Your room" title="Your room: wood, wallpaper, decorations" aria-expanded={roomOpen} onClick={() => setRoomOpen(!roomOpen)}>
               🎨
             </button>
           </div>

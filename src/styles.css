@@ -848,6 +848,11 @@ textarea.input {
 .shelf-pan .btn[aria-disabled='true']:active {
   transform: none;
 }
+/* dimmed means no hover change: keep the zoom buttons' fill and border (beats .btn:hover) */
+.shelf-pan .btn[aria-disabled='true']:hover {
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(45, 32, 56, 0.2);
+}
 .search-clear {
   white-space: nowrap;
   max-width: 14rem;
