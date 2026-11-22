@@ -6,7 +6,7 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 
 ## Open
 
-None.
+- [T-0022 Draw Russia on the world map without the pale wedge in its far east](T-0022-russia-date-line.md): Shapes that cross the date line (Russia, Fiji) are drawn as whole, closed shapes, shifted across the map edge and cut off by the map's frame, instead of lifting the pen at the jump; the path code moves to src/lib with a unit test, and every other country draws exactly as before.
 
 ## Doing
 
