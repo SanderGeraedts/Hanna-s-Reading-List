@@ -5,7 +5,10 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import type { Book, SortKey } from '#/lib/library'
 import { SHELF, computeLayout, fitShelf, rowFloorY, topGap } from '#/lib/shelfLayout'
+import type { BookDims } from '#/lib/shelfLayout'
 import { FOV, aimCamera, cameraZ, frameCase, newAim } from './cameraAim'
+import { HEADER_SHARE, inspectPlacement, portraitInspect } from './inspectPlacement'
+import type { Placement } from './inspectPlacement'
 import {
   buttonStep,
   clampPan,
@@ -62,20 +65,21 @@ export const ZOOM_MAX = 3
 export const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(1, z))
 
 const DEFAULT_INSPECT = { fill: 0.6, yShift: 0 }
-/** share of a phone screen taken by the header at the top, until its real height is known */
-const HEADER_SHARE = 0.1
 
-/**
- * On a phone the details sheet covers the bottom of the screen: fit the
- * inspected book into the space between the header and the sheet.
- */
-function portraitInspect(frame: { fill: number; yShift: number }, sheet: number, aspect: number, header = HEADER_SHARE) {
-  const s = Math.min(0.9, Math.max(0, sheet))
-  const free = Math.max(0.15, 1 - s - header)
-  // also keep the widest books (cover aspect up to 0.82) inside the screen width
-  const byWidth = (0.88 * aspect) / 0.82
-  frame.fill = Math.min(0.6, free * 0.85, byWidth)
-  frame.yShift = (s - header) / 2
+/** whether she asked her device for less motion; the camera then jumps instead of gliding (T-0026) */
+function useReducedMotion() {
+  const reduced = useRef(false)
+  useEffect(() => {
+    const m = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+    if (!m) return
+    const on = () => {
+      reduced.current = m.matches
+    }
+    on()
+    m.addEventListener('change', on)
+    return () => m.removeEventListener('change', on)
+  }, [])
+  return reduced
 }
 
 /**
@@ -204,13 +208,16 @@ function Scene({
   const caseLayout = drag ? stableLayout.current : layout
 
   const scroll = useRef<ScrollState>({ y: null, min: 0, max: 0, worldPerPx: 0, x: 0, xMax: 0, viewW: 0 })
-  const cameraBase = useCameraRig(caseLayout.caseWidth, caseLayout.caseHeight, {
+  const inspectFrame = portrait ? portraitFrame : DEFAULT_INSPECT
+  const { base: cameraBase, placement } = useCameraRig(caseLayout.caseWidth, caseLayout.caseHeight, {
     parallax: !selectedId,
     portrait,
     scroll,
     dragging: !!drag,
     zoom,
     topInset,
+    open: (selectedId && layout.dims.get(selectedId)) || null,
+    inspectFrame,
   })
   // the zoom as the input handlers see it, without re-adding them on every change
   const zoomRef = useRef(zoom)
@@ -597,7 +604,7 @@ function Scene({
             cameraBase={cameraBase}
             fov={FOV}
             // on phones the details sheet covers the bottom: show the book above it
-            inspectFrame={portrait ? portraitFrame : DEFAULT_INSPECT}
+            inspectFrame={inspectFrame}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
@@ -606,7 +613,7 @@ function Scene({
         )
       })}
 
-      <Backdrop active={!!selectedId} cameraBase={cameraBase} onClose={() => onSelect(null)} />
+      <Backdrop active={!!selectedId} cameraBase={cameraBase} placement={placement} onClose={() => onSelect(null)} />
     </>
   )
 }
@@ -635,7 +642,18 @@ const LONG_PRESS_MS = 350
 function useCameraRig(
   caseWidth: number,
   caseHeight: number,
-  opts: { parallax: boolean; portrait: boolean; scroll: RefObject<ScrollState>; dragging: boolean; zoom: number; topInset: number },
+  opts: {
+    parallax: boolean
+    portrait: boolean
+    scroll: RefObject<ScrollState>
+    dragging: boolean
+    zoom: number
+    topInset: number
+    /** the size of the book taken out, or null */
+    open: BookDims | null
+    /** how much of the view it fills and how far up it sits (follows the phone's sheet) */
+    inspectFrame: { fill: number; yShift: number }
+  },
 ) {
   const camera = useThree((s) => s.camera)
   const size = useThree((s) => s.size)
@@ -643,10 +661,16 @@ function useCameraRig(
   /** where the camera looks (the pan and the shelf height) and its tilt, eased between frames */
   const aim = useMemo(newAim, [])
   const parallax = useMemo(() => ({ x: 0, y: 0 }), [])
+  /** where the open book and the dimming stand; kept after closing, so both fade out where they were */
+  const placement = useMemo<Placement>(() => ({ cameraZ: 0, bookZ: 0, backdropZ: 0 }), [])
+  const reducedMotion = useReducedMotion()
+  const wasOpen = useRef<BookDims | null>(null)
 
   const aspect = size.width / Math.max(1, size.height)
   const { toCase, viewH, xMax, fitsH } = frameCase(caseWidth, caseHeight, aspect, opts.portrait, opts.zoom)
-  base.z = cameraZ(toCase)
+  // the camera at her zoom; while a book is out it may step back from here (T-0026)
+  const zoomZ = cameraZ(toCase)
+  base.z = zoomZ
 
   const s = opts.scroll.current
   s.worldPerPx = viewH / Math.max(1, size.height)
@@ -691,10 +715,33 @@ function useCameraRig(
     }
     if (sc.y !== null) base.y = sc.y
     base.x = sc.x
+    // a book is out: step back as far as it and the dimming need to stand in front of the case;
+    // the pan and the scroll stay, so closing it brings back exactly her zoom and pan
+    const open = opts.open
+    base.z = zoomZ
+    if (open) {
+      Object.assign(
+        placement,
+        inspectPlacement({
+          cameraZ: zoomZ,
+          caseFront: SHELF.depth / 2,
+          bookH: open.h,
+          bookW: open.w,
+          bookT: open.t,
+          fill: opts.inspectFrame.fill,
+          fov: FOV,
+        }),
+      )
+      base.z = placement.cameraZ
+    }
     // a touch of parallax following the mouse: it moves the camera, never the aim (no bobbing)
     parallax.x = opts.parallax ? state.pointer.x * 0.06 : 0
     parallax.y = opts.parallax ? state.pointer.y * 0.04 : 0
     aimCamera(c, base, aim, parallax, dt)
+    // reduced motion: no gliding back and forth; the camera is there in the frame the book comes out
+    // (and back at her zoom in the frame it goes back)
+    if (reducedMotion.current && (open || wasOpen.current !== open)) c.position.z = base.z
+    wasOpen.current = open
   })
 
   useEffect(() => {
@@ -703,7 +750,7 @@ function useCameraRig(
     // jump there on first mount; afterwards the frame loop eases toward the target
   }, [camera])
 
-  return base
+  return { base, placement }
 }
 
 /**
@@ -897,10 +944,13 @@ function Bookcase({ layout, wood: woodKind }: { layout: ShelfLayout; wood: Wood 
 function Backdrop({
   active,
   cameraBase,
+  placement,
   onClose,
 }: {
   active: boolean
   cameraBase: THREE.Vector3
+  /** where the open book stands: the dimming goes between it and the case (T-0026) */
+  placement: Placement
   onClose: () => void
 }) {
   const mat = useRef<THREE.MeshBasicMaterial>(null)
@@ -909,7 +959,7 @@ function Backdrop({
     if (!mat.current || !mesh.current) return
     mat.current.opacity = THREE.MathUtils.damp(mat.current.opacity, active ? 0.62 : 0, 5, Math.min(dt, 0.05))
     mesh.current.visible = mat.current.opacity > 0.01
-    mesh.current.position.set(cameraBase.x, cameraBase.y, cameraBase.z - 1.25)
+    mesh.current.position.set(cameraBase.x, cameraBase.y, placement.backdropZ)
   })
   return (
     <mesh

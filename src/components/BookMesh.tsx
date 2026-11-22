@@ -9,6 +9,7 @@ import { hasMedal, timesRead } from '#/lib/library'
 import type { BookDims, Slot } from '#/lib/shelfLayout'
 import { METALS, medalFaceTexture, medalLayout, medalTier, pageTextures, paintBack, paintEdges, paintFallbackCover, paintSpine, plainTexture } from './textures'
 import { cleanEdges } from '#/lib/edges'
+import { inspectDistance } from './inspectPlacement'
 import { coverSize, facesToPaint } from '#/lib/bookFaces'
 
 export interface InspectTarget {
@@ -295,11 +296,14 @@ export function BookMesh(props: BookMeshProps) {
     tmp.base.z += 0.035 * a.hover + 0.28 * out + MATCH_FORWARD * a.glow
     tmp.base.y += 0.01 * a.hover
 
-    // distance at which the book fills `fill` of the view height
-    const tan = Math.tan(THREE.MathUtils.degToRad(fov / 2))
-    const dist = dims.h / (2 * tan * inspectFrame.fill)
-    const viewHeight = 2 * dist * tan
-    tmp.target.set(cameraBase.x, cameraBase.y + viewHeight * inspectFrame.yShift, cameraBase.z - dist)
+    // while out: `dist` in front of the camera's target (which steps back so this is in front of the
+    // case, T-0026), where the book fills `fill` of the view height. Flying home it keeps the last
+    // spot, so it doesn't jump when the camera eases back to her zoom.
+    if (selected) {
+      const dist = inspectDistance(dims.h, inspectFrame.fill, fov)
+      const viewHeight = 2 * dist * Math.tan(THREE.MathUtils.degToRad(fov / 2))
+      tmp.target.set(cameraBase.x, cameraBase.y + viewHeight * inspectFrame.yShift, cameraBase.z - dist)
+    }
     g.position.lerpVectors(tmp.base, tmp.target, fly)
 
     g.rotation.set(

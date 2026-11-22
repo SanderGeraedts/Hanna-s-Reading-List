@@ -2,7 +2,7 @@
 id: T-0026
 title: "Show the taken-out book in front of a zoomed-in shelf and dim the room, and keep the search pop-up on screen"
 description: "Zoomed in, a book she opens flies to a spot inside the bookcase and the dimming sheet sits behind the case (phone at 1.5× and more; the dimming also at 3× on the computer); the camera steps back while a book is out so both land in front of the case. Also: at 1024–1400 px the search pop-up opens half off the left edge."
-status: Open
+status: Doing
 depends_on: []
 decisions: [D-0002, D-0014, D-0020, D-0022, D-0032]
 raised_on: 2026-11-22
@@ -306,6 +306,48 @@ Night mode: nothing was asked; the fix ships with these picks and each is easy t
    still flies out of the shelf as before. Should the book also just appear, without flying?"
    (Only relevant if she uses that setting; if so, it is a small follow-up task.)
 
+# Build notes
+
+- **The sums (2):** new `src/components/inspectPlacement.ts`. `inspectPlacement({ cameraZ,
+  caseFront, bookH, bookW, bookT, fill, fov })` → `{ cameraZ, bookZ, backdropZ }`, front to back:
+  dimming at least `caseFront + 0.06 + 0.02` (0.06 = `MATCH_FORWARD`, also covers a hovered book's
+  0.035; margin `INSPECT_MARGIN` = 0.02); book at least the dimming + its turning reach + 0.02;
+  camera = the larger of her zoom's z and book + `dist`. The dimming stands right behind the turning
+  book (`bookZ − reach − 0.02`). `inspectDistance(h, fill, fov)` is the old `dist` sum, now shared by
+  `BookMesh`. `portraitInspect` and `HEADER_SHARE` moved here unchanged so the test can import them.
+- **Turning reach:** half the book's 3D diagonal, `hypot(w, h, t) / 2`, not half the cover's
+  width as written in section 2. Dragging can turn the book any way round sideways and tilt it up
+  to 0.9 rad, and then a corner reaches about 0.21 m towards the case for the tallest book, more
+  than `w / 2` (0.13 m); with `w / 2` the dimming could cut a corner while she turns it. It only
+  makes the step back a few cm larger; the test's `backdropZ ≤ bookZ − bookW / 2 − margin` holds
+  with room to spare.
+- **The camera (useCameraRig):** gets the open book's dims and the live `inspectFrame`; every frame
+  its target z is `inspectPlacement(…).cameraZ` while a book is out, else her zoom's z. x and y stay
+  the pan and the scroll (`scroll.current` untouched), so closing eases back to the same zoom and
+  pan. The placement is kept after closing, so the dimming fades out where it stood. Easing is the
+  camera's usual `damp(…, 3)` in `aimCamera`.
+- **The book's flight:** kept on the camera's *target* (as before), not its eased position. I
+  simulated both against the camera's easing at zoom 3 on the phone: on the target the book is
+  never closer than 0.78 m to the camera, never behind z 0.32 once it is 30 % out, and at most
+  15 % larger than its final size mid-flight; the mid-flight screenshot shows it whole. New: a book
+  flying home keeps the last spot it had while out; without that it would jump into the case the
+  moment the camera's target goes back to her zoom.
+- **The dimming (Backdrop):** at `placement.backdropZ` instead of camera − 1.25.
+- **Reduced motion:** `useReducedMotion()` reads `matchMedia('(prefers-reduced-motion: reduce)')`
+  (live). Then, while a book is out and in the frame it is put back, the camera's z is set straight
+  to its target after `aimCamera`; zooming and panning are unchanged. The book's own flight stays.
+- **The search pop-up (3):** `.search-pop` is `left: 0; right: auto`. The phone rule (≤ 720 px)
+  still sets `left/right: 16px`, so it looks as on main.
+- **The sheet constants:** `SHEET_MIN_PX` and `SHEET_MAX` are exported from `BookPanel.tsx` for the
+  test (values unchanged).
+- **Found, not fixed (for the architect):** with the sheet dragged up to `SHEET_MAX` (0.88) there is
+  only 0.02 of the screen between the header and the sheet, but `portraitInspect` keeps a book at
+  least 0.15 × 0.85 of the view tall, so the book reaches under the header (same on main, only
+  then it was also behind the case). The test checks "between the header and the sheet" wherever
+  `fill ≤ 1 − sheet − header` and the other checks at every sheet height. Also at `SHEET_MAX` the
+  book is small, so `dist` is about 4 m and the camera steps back that far (the case is still
+  dimmed and in front of the fog, see `sheet-up` in the click-through).
+
 # Test
 
 (tester)
@@ -329,3 +371,39 @@ Night mode: nothing was asked; the fix ships with these picks and each is easy t
   button and opens rightwards. Screenshot list and two Done-when checks added (reduced motion,
   tallest cover at zoom 1). Two questions for Hanna in the morning under *Design*. Handed to the
   developer.
+- 2026-11-22 developer: built it (see *Build notes*): `inspectPlacement` with its test, the camera
+  stepping back while a book is out, the dimming between the book and the case, reduced motion,
+  the search pop-up anchored left. Night mode, nothing asked; one deviation from section 2: the
+  turning reach is half the book's 3D diagonal, not half the cover's width (reason in *Build
+  notes*). **Fails before the fix:** `inspectPlacement.test.ts` first ran against a copy of today's
+  sums (camera at `cameraZ(toCase)`, book at camera − `dist`, dimming at camera − 1.25): `Tests 11
+  failed | 5 passed (16)`, red for 390 × 844 at zoom 1 and 1.5 (sheet 0.45 and 0.88: tallest book
+  behind the dimming), zoom 2 and 3 at every sheet height (e.g. zoom 3, sheet 0.45: `camera 0.936,
+  book -0.226, dimming -0.314`) and 1280 × 800 zoom 3 (`dimming -0.187: expected … to be greater
+  than or equal to 0.23`). With the fix: `Tests 16 passed (16)`. `pnpm test`: `Tests 885 passed |
+  9 skipped (894)`; `pnpm exec tsc --noEmit`: no output; `pnpm run build`: `✓ built`; `pnpm exec
+  harness check`: tasks, decisions, engineers, generated files ✓. `src/routeTree.gen.ts`
+  unchanged. **Click-through** on `vite dev --port 3138` (no backend, 70 books seeded in
+  `hannas-reading-list:v1`, the tallest, Title 28 at 0.325 m, fifth in the top row), Chrome via
+  playwright-core: phone 390 × 844 with `hasTouch`/`isMobile` and CDP touch events, lavender and
+  midnight: zoom 1 opens Title 28 whole with a bright cover (`open-zoom1-390-*`, compare
+  `before-open-zoom1-390-lavender.jpg`), closed by a tap on the dimmed room; zoom 2 by a two-finger
+  pinch, book opens whole in front; zoom 3 with + (middle) and panned to the left end with ‹:
+  book whole between the header and the sheet, room dimmed, cover not dimmed
+  (`open-zoom3-390-*`, `open-zoom3-panned-390-*`); turning it by dragging never cuts it; dragging
+  the sheet up (top 238 px) and down (728 px) keeps it whole and in front; closing (× in the middle,
+  a tap on the room at the end) brings back zoom 3 and the same pan (‹ off › on at the left end,
+  `open-closed-zoom3-390-lavender`); 0.3 s after the tap the book is whole, outside the case
+  (`open-flight-390-lavender`). Computer 1280 × 800, mouse, both wallpapers: zoom 1 and zoom 3
+  panned to the right end, book centred and **room dimmed at 3×** (`open-zoom3-1280-*`), closed by a
+  click on the room, back at zoom 3 with › off. Reduced motion emulated, zoom 3: 0.1 s after the tap
+  the shelf is already at its stepped-back size (`open-zoom3-390-reduced-lavender`), and 0.1 s after
+  ×, back at zoom 3; with it off, 0.1 s after the tap the camera is still near the shelf (eases).
+  Search, "title" typed: pop-up left–right 24–408 at 1024 and 1280 (both wallpapers), 593–977 at
+  1440, 1073–1457 at 1920, 16–374 at 390 (as on main); results list on screen; a click on a result
+  opened that book at every width (`search-*`). No console errors, no horizontal scroll anywhere.
+  A pixel fingerprint of the view before opening and after closing isn't comparable (the fairy lights and decorations move),
+  so "same zoom and pan" was checked on the ‹ › and zoom buttons' state and the screenshots. Seen in
+  the reduced-motion run: putting the book back, the camera jumps forward first and the book flies
+  home from close by, large for a moment; that is the book's flight, kept as designed (Hanna's
+  question 2). Handed to the ux-designer for the design check.
