@@ -549,6 +549,22 @@ the same pill shape; it's outside this task, so it's a possible follow-up, not p
 
 Back to the developer with the two items above; after that, to the tester.
 
+### Re-review (2026-11-22)
+
+**Verdict: pass.** Both must-fixes are done (commit 89a7313):
+
+1. `src/styles.css`: `.pile-kinds` gained exactly `border-radius: calc(var(--tap) / 2 + 4px);`,
+   nothing else; `.segmented` is unchanged.
+2. The four new 360×800 shots (`pile-mixed-{all,audiobook}-360-{lavender,midnight}.jpg`): the
+   switch wraps to "All · 📖 Paper · 📱 E-book" and then "🎧 Audiobook", as a rounded box whose
+   corners follow the buttons. The gold "All" (top left) and the gold "Audiobook" (bottom left) sit
+   inside the border, and nothing is cut off. The height line wraps normally, "86 h 20 min" and
+   "3½ days" stay whole, and there's no horizontal scroll. Lavender and midnight look the same. The
+   390 and 1280 shots came out byte-identical when retaken, so on one row it is still the same pill
+   as the Genre flower's. The *Wrapped switch* check holds.
+
+To the tester.
+
 # Build notes
 
 - **Code:** `src/lib/pileHeight.ts` (pure). The D-0030 constants sit together at the top, named
@@ -640,3 +656,6 @@ To be written by the tester.
   pill). No console errors, no horizontal scroll. *Wrapped switch* check ticked; lesson added.
   Checks: `pnpm test` → 790 passed, 9 skipped; `pnpm exec tsc --noEmit` → no errors;
   `pnpm exec harness check` → all ✓. Back to the UX designer, then the tester.
+- 2026-11-22 ux-designer: reviewed: pass (re-review). The radius line on `.pile-kinds` and the
+  360×800 shots on both wallpapers show a tidy two-row switch; one row is unchanged. Handed to the
+  tester.
