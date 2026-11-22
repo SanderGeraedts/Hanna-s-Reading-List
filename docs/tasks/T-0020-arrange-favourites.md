@@ -302,7 +302,8 @@ as they are.
 ## Design checks (on the screenshots and in the dev server)
 
 - In Arrange each Favourites block has exactly two tools, ⠿ then ★, top right, the same size and
-  look as in the sections; no × in Favourites; no tools outside Arrange. 44 px in the 390 shots.
+  look as in the sections; no × in Favourites; no tools outside Arrange. The same height as the
+  sections' tools in the 390 shots (36 px on a touch screen; changed in the review below).
 - A drag in Favourites shows the 3 px gold line, the dragged block raised with its shadow, and the
   same block in its own section unchanged; at 1280 the line is in one column; at 390 the
   favourites are one column.
@@ -316,6 +317,81 @@ as they are.
 - With 0 favourites only the empty note shows; with 1 a move changes nothing and says nothing.
 - No visible text other than what was there before; lavender and midnight look the same apart
   from the wallpaper; no console errors.
+
+## Review after building (2026-11-22)
+
+**Verdict: changes needed: one must-fix (the Reset/Done bar), then new screenshots.** I looked at all
+38 screenshots and at `git diff main...HEAD -- src` (`Dashboard.tsx` above all). Everything else
+matches the design.
+
+**What matches**
+
+- Tools: ⠿ then ★, top right, no × in Favourites, the same buttons as the sections' tools; no tools
+  outside Arrange (`1280-*-6`). Handle name "Move <block> within the favourites: drag it, or use the
+  arrow keys", `title="Drag to move"`.
+- Drag: only the dragged copy is raised (`.moving`, translated, shadow). The same block in its own
+  section stays put and looks normal (`*-5`). The gold 3 px line runs across one column at 1280 and
+  across the single column at 390 (`*-2`).
+- Past the end (choice 10): with 4 others, a drop below the right column's last block shows the
+  line at the end of the left column, and the block lands there (`1280-*-4`, `4b`).
+- Drag over a section (choice 14): the line stays at the nearest Favourites place (`1280-*-4c`).
+  Section drags only look at `place: 'section'` markers, so they never show a line in Favourites.
+- Keys, focus and the status line (choice 11) are built as designed: Shift does nothing, nothing is
+  swallowed at an edge, focus is found again by `data-favourite`, the same words twice are cleared
+  first, and the line is emptied on Done. The run's printed messages match the wording.
+- 0, 1 and 2 favourites (`*-7`, `8`, `9`), lavender and midnight differ only in the wallpaper, and
+  there is no new visible text.
+
+**The developer's deviation: handles 36 px on touch, not 44 px. Accepted.** The design meant "the
+same size and look as in the sections" and wrongly took `.btn.small` to be 44 px under
+`pointer: coarse`. It is 36 px (`styles.css`). If only the Favourites handles were 44 px, the tools in
+one Arrange view would have two sizes. I changed the design check above to say so. Raising every
+block tool (sections and Favourites together) to the 44 px tap size of D-0020 is a **follow-up for
+the architect**, not this task. At 390 it has to be weighed against the section tools covering more
+of a block's title.
+
+**The developer's own choices. Both accepted.**
+
+1. *Anchor = the last block before it in her order that is still on the account.* That is what the
+   task asks for ("right after the last of those blocks still on the account"), and it keeps the
+   block next to the one she put it under.
+2. *More than one block moved in one `setLayout`: a move for each, in her order.* This can't happen
+   from the handle, the user sees nothing different, and it builds the same order on the account.
+
+**The finding: the sticky Reset/Done bar covers the top of Favourites. Must be fixed here, not in a
+follow-up.** It was already like this before the change, but this task makes it worse. In Arrange at
+the top of the page the bar sits about 70 px below its own place, over the "★ Favourites" heading.
+That hides:
+- the heading itself, on every Arrange shot (`*-1`, `*-9`);
+- the empty note's top (`1280-midnight-7`);
+- at 390 with 1 favourite, the block's **⠿ and ★ themselves** (`390-lavender-8`), so the new tools
+  can't be reached without scrolling;
+- the drop line before the first row. "Move to the top" is the most likely move in Favourites, and
+  at the top of the page there is no room to scroll further up to show its line. The screenshots had
+  to drag to row 2 to show a line at all.
+When scrolled, the bar also stays about 270 px down the screen (`1280-*-4c`, `*-5`, `390-*-2`), over
+the middle of the blocks, instead of just under the header.
+
+**Must fix (for the developer):**
+
+1. **The Arrange bar must not cover anything at the top of the page.** In Arrange at scroll 0, at
+   390 and 1280, the bar sits in its own place between the Today strip and "★ Favourites". The
+   heading, the empty note, the first row of blocks and their ⠿ / ★ tools are fully visible below it.
+   When scrolled, it sticks just below the header (the tabs), not further down. Likely cause, for
+   the developer to confirm: `.dashboard` is the scroll container and already starts under the
+   header through its `padding-top`, and the bar's sticky `top` (`max(5rem, header height + space)`,
+   and `max(4.75rem, …)` under 720 px) counts the header a second time. A small `top` like
+   `var(--space-2)` in both rules is probably enough. Only CSS; check that the sections and any other
+   page with `.dashboard-bar.arranging` still look right.
+2. **New screenshots** in `docs/tasks/T-0020-screens/` at 390 and 1280, lavender and midnight,
+   replacing the old ones: `1` (Arrange at the top: heading and first row clear of the bar), `7`
+   (0 favourites: heading and note clear), `8` (1 favourite: ⠿ and ★ clear). Add a new
+   `2b-drop-before-first`: a drag at the top of the page with the line before the first block in
+   Favourites (in the left column at 1280). Then one shot scrolled down in Arrange, with the bar
+   just under the header.
+3. Add one line to `docs/lessons.md` for this rework (G-0014).
+
+After that, back to me for a quick look at the new shots, then to the tester.
 
 # Build notes
 
@@ -402,3 +478,8 @@ To be written by the tester.
   --noEmit`: no errors; `pnpm run build`: "✓ built"; `pnpm exec harness check`: tasks, decisions,
   engineers and generated files ✓. Screenshots in `docs/tasks/T-0020-screens/` (38), no console
   errors. Choices and one finding under *Build notes*. Handed to the UX designer for review.
+- 2026-11-22 ux-designer: reviewed: changes needed. The build matches the design. Accepted: 36 px
+  handles like the sections (44 px for all block tools is a follow-up for the architect) and both
+  developer choices. Must fix here: the sticky Reset/Done bar covers the ★ Favourites heading, the
+  first row's ⠿ / ★ and the drop line before the first block; then new screenshots 1, 2b, 7 and 8
+  and one scrolled shot. Details under *Review after building*. Back to the developer.
