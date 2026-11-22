@@ -2,7 +2,7 @@
 id: T-0021
 title: "Show how tall her want-to-read pile would stand, with a fun comparison, in the Want-to-read pile block"
 description: "The Want-to-read pile block gets one line like “Stacked up, your pile would be 1.62 m tall: about as tall as an adult (1.75 m).”, from the shelf thickness of every want-to-read book except those she only listens to (D-0029), rounded to cm or m, with the closest of a fixed list of everyday heights."
-status: Open
+status: Doing
 depends_on: []
 decisions: [D-0008, D-0010, D-0014, D-0020, D-0022, D-0029]
 raised_on: 2026-11-22
@@ -261,6 +261,40 @@ screens, and `.visually-hidden`. Nothing new goes in `src/styles.css`.
 - The rest of the block (books waiting, the pages line, the pace line, the motivation part) is
   unchanged.
 
+# Build notes
+
+- **Code:** `src/lib/pileHeight.ts` (pure): `pileHeight(books)` → `{ metres, counted, listenOnly }`
+  (sum of `bookDims(b).t` over `status === 'want'` books that aren't `listenOnly`);
+  `heightParts` / `heightText(metres, space)` for the rounding; `heightSpoken` for "metres" /
+  "centimetres" (singular for 1); `HEIGHT_THINGS`, one constant in order of height;
+  `compareHeight`, `comparisonWords`, `comparisonText`, `pileHeightLine`; `ALL_AUDIOBOOKS_LINE`.
+- **Block:** `PileHeightLine` in `src/components/DashboardExtras.tsx`, a plain `<p>` with no class
+  between the pages line and the pace line. Emoji in `<span aria-hidden="true">` with a
+  non-breaking space; each height written as `<span aria-hidden>1.62&nbsp;m</span>` plus
+  `<span class="visually-hidden">1.62 metres</span>`. Nothing added to `src/styles.css`.
+- **Developer choice 15, "closest by ratio":** within 10%, the closest thing is the one with the
+  smallest `|ln(pile ÷ thing)|`, so 0.9× and 1/0.9× are equally far. Plain `|ratio − 1|` would pick
+  the door handle for `0.97` (0.924 vs 1.078), which the *Done when* says is the kitchen counter;
+  the log distance gives the kitchen counter. Recommended option taken without asking Hanna.
+- Numbers use `toLocaleString('en-GB')`, so a pile over 1,000 m would read "1,234 m" (decimal point,
+  thousands comma, like the pages line).
+- **Tests:** `src/lib/pileHeight.test.ts` (23) and `src/components/PileCard.test.tsx` (3): the
+  card test checks the seen text (with non-breaking spaces), the heard text (without aria-hidden
+  parts), the paragraph order pages → height → pace, the empty and all-audiobooks cases, and that
+  "books waiting", the pages line, the pace line / "Finished on" note and "Last 6 months" are still
+  there.
+- **Screenshots** (`docs/tasks/T-0021-screens/pile-<case>-<width>-<wallpaper>.jpg`, 20 files): no-backend
+  dev server on port 3132, shelf seeded in localStorage `hannas-reading-list:v1`, 12 finished books
+  for the pace line, plus:
+  - normal: 47 paperbacks of 300 pages + 3 Storytel-only → "1.62 m: about as tall as an adult (1.75 m)";
+  - big: 250 books of 500 pages → "12.4 m: taller than a house (8 m)";
+  - tiny: 1 book of 400 pages → "4 cm: not as tall as a mug (10 cm) yet";
+  - audiobooks: 4 Storytel-only → the 🎧 line; empty: no line, "0 books waiting".
+
+  Measured in the page: line colour `rgb(244, 234, 217)` 16px weight 400, the same as the pace line;
+  no horizontal scroll at 390 or 1280; heard text "Stacked up, your pile would be 1.62 metres: about
+  as tall as an adult (1.75 metres)."; console errors: none.
+
 # Test
 
 To be written by the tester.
@@ -274,3 +308,9 @@ To be written by the tester.
 - 2026-11-22 ux-designer: designed: one body-text line under the pages line, with a 📚 or 🎧 that
   screen readers skip, units spoken in full through `.visually-hidden`, non-breaking spaces, no new
   tokens; choices 10–14 added; handed to the developer.
+- 2026-11-22 developer: built `src/lib/pileHeight.ts` and the height line in `PileCard`, as
+  designed; choice 15 ("closest by ratio" as log distance) under *Build notes*. Checks:
+  `pnpm test` → 87 files (86 passed, 1 skipped), 728 tests (719 passed, 9 skipped), 26 of them
+  new; `pnpm exec tsc --noEmit` → no errors; `pnpm run build` → built; `pnpm exec harness check`
+  → tasks, decisions, engineers, generated files all ✓. 20 screenshots (5 cases × 390/1280 ×
+  lavender/midnight), no console errors. Handed to the UX designer for review.
