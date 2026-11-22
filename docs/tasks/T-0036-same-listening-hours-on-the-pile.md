@@ -130,6 +130,36 @@ Hanna wasn't asked anything (night mode). The architect took these:
 
 Nothing before the build (small). The UX designer's review after the build goes here.
 
+## Review after building (2026-11-23)
+
+**Verdict: matches *Done when*. Nothing must be fixed; on to the tester.**
+
+Looked at `git diff main...HEAD -- src` and the eight screenshots in `docs/tasks/T-0036-screens/`
+(T-0023's mixed shelf on the lavender wallpaper, 390 and 1280 px, All and 🎧 Audiobook picked,
+before and after).
+
+- **The hours agree.** At both widths the grey line went from "1,200 pages · 10 h to listen"
+  (before) to **"1,200 pages · 22 h to listen"** (after), and with 🎧 Audiobook picked the line
+  under the switch says "Your audiobooks are 22 h: about as long as a whole day and night (24 h)."
+  The block now shows one listening total.
+- **The pages didn't move:** 1,200 before and after, as decided (real page counts only).
+- **The grey line keeps showing the whole pile** under every choice: All and 🎧 Audiobook show the
+  same grey line (T-0023 unchanged).
+- **Nothing else changed:** same muted small text, the "·" between the halves, the same
+  spacing and wrapping at 390 px (the line still fits on one line; the longest new form, e.g.
+  "3,900 pages · 9 h 20 min to listen", is only a few characters longer than today's). The switch,
+  the height lines, the pace lines, the motivation part and the jars look identical before and
+  after. `PileCard` itself wasn't changed; only the number in `wantPile` was.
+- **Empty halves:** the component tests cover a pile of one Storytel book without a length
+  ("9 h 20 min to listen", no pages half) and one paperback without pages (no grey line), so no
+  dangling "0 pages" or "0 min" can show.
+- **Screen reader:** the line is plain text in the same paragraph as before, so it reads the same
+  way, now with the matching hours.
+
+Not a fix, just for the morning: the two halves are no longer parts that add up (a paper book she
+also has on Storytel is in both). That is D-0036's choice and is already question 1 to re-ask
+Hanna.
+
 # Build notes
 
 - **The change:** in `wantPile` (`src/lib/insights.ts`) the minutes now add `audioMinutes(b)` for
@@ -173,3 +203,6 @@ Nothing before the build (small). The UX designer's review after the build goes 
   (no-backend dev server on port 3148, stopped afterwards): before "1,200 pages · 10 h to listen",
   after "1,200 pages · 22 h to listen", next to "Your audiobooks are 22 h", at 390 and 1280. Draft PR
   #243 (in `result`). Handed to the **UX designer** for the review after the build, then the tester.
+- 2026-11-23 ux-designer: reviewed: matches *Done when* (grey line "1,200 pages · 22 h to listen",
+  the same 22 h as 🎧 Audiobook, at 390 and 1280; pages and everything else unchanged). No
+  must-fix. Handed to the **tester**.
