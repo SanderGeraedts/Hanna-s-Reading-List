@@ -1718,6 +1718,14 @@ textarea.input {
   color: var(--accent-ink);
   font-weight: 600;
 }
+/* The pile's All · Paper · E-book · Audiobook switch (T-0023): a grid child, so
+   keep it its own width, and let it wrap rather than push the card sideways. */
+.pile-kinds {
+  justify-self: start;
+  max-width: 100%;
+  flex-wrap: wrap;
+  row-gap: 3px;
+}
 .period-pick {
   display: flex;
   gap: 0.4rem;

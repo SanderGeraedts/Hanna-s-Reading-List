@@ -3,11 +3,28 @@ import type { Book } from './library'
 
 vi.mock('#/server/shelf', () => ({ loadShelf: async () => null, saveShelf: async () => ({ updated: 't' }) }))
 
-const { HEIGHT_THINGS, compareHeight, comparisonText, heightSpoken, heightText, pileHeight, pileHeightLine } = await import(
-  './pileHeight'
-)
-const { bookDims } = await import('./shelfLayout')
-const { listenOnly } = await import('./listening')
+const {
+  DURATION_THINGS,
+  HEIGHT_THINGS,
+  audioLine,
+  audioMinutes,
+  bookKinds,
+  bookThickness,
+  compareDuration,
+  compareHeight,
+  comparisonText,
+  daysSpoken,
+  durationComparisonText,
+  heightSpoken,
+  heightText,
+  kindHeightLine,
+  pileHeightLine,
+  pileHeights,
+  pileKinds,
+  timeSpoken,
+  timeText,
+} = await import('./pileHeight')
+const { formatDuration } = await import('./listening')
 
 const book = (id: string, extra: Partial<Book> = {}): Book => ({
   id,
@@ -19,50 +36,210 @@ const book = (id: string, extra: Partial<Book> = {}): Book => ({
   ...extra,
 })
 
-describe('pileHeight (D-0029)', () => {
-  it('is the sum of the shelf thickness of the want-to-read books she does not only listen to', () => {
-    const shelf = [
-      book('a', { pages: 320, format: 'paperback' }),
-      book('b', { pages: 120, format: 'hardcover' }),
-      book('c', { status: 'read', pages: 400 }),
-      book('d', { formats: ['storytel'], minutes: 700, pages: 700 }),
-      book('e', { formats: ['paperback', 'storytel'], pages: 250, minutes: 600 }),
-      book('f', { format: 'ebook', pages: 500 }),
-      book('g'),
-    ]
-    const expected = shelf
-      .filter((b) => b.status === 'want' && !listenOnly(b))
-      .reduce((sum, b) => sum + bookDims(b).t, 0)
-    expect(pileHeight(shelf).metres).toBeCloseTo(expected, 10)
-    expect(pileHeight(shelf)).toMatchObject({ counted: 5, listenOnly: 1 })
+/** The mixed shelf of T-0023's Done when. */
+const mixed = () => [
+  book('A', { formats: ['paperback'], pages: 300 }),
+  book('B', { formats: ['hardcover'], pages: 300 }),
+  book('C', { formats: ['ebook'], pages: 300 }),
+  book('D', { formats: ['storytel'], pages: 600, minutes: 600 }),
+  book('E', { formats: ['paperback', 'storytel'], pages: 300, minutes: 720 }),
+  book('F', { formats: ['other'] }),
+  book('G', { status: 'read', formats: ['paperback'], pages: 300 }),
+]
+
+describe('bookThickness: real printed books (D-0030)', () => {
+  it('a 300-page paperback is 22 mm, a hardcover 26 mm, a book without pages 280 pages, an e-book a paperback', () => {
+    expect(bookThickness(book('p', { formats: ['paperback'], pages: 300 }))).toBeCloseTo(0.022, 10)
+    expect(bookThickness(book('h', { formats: ['hardcover'], pages: 300 }))).toBeCloseTo(0.026, 10)
+    expect(bookThickness(book('n', { formats: ['paperback'] }))).toBeCloseTo(0.0206, 10)
+    expect(bookThickness(book('e', { formats: ['ebook'], pages: 300 }))).toBeCloseTo(0.022, 10)
   })
 
-  it('leaves out read, reading, paused and did-not-finish books', () => {
-    const shelf = (['read', 'reading', 'paused', 'dnf'] as const).map((status, i) => book(String(i), { status, pages: 300 }))
-    expect(pileHeight(shelf)).toEqual({ metres: 0, counted: 0, listenOnly: 0 })
+  it('a listen-only book counts as minutes ÷ 2 pages, never its copied pages', () => {
+    expect(bookThickness(book('a', { formats: ['audiobook'], pages: 600, minutes: 600 }))).toBeCloseTo(0.022, 10)
+    expect(bookThickness(book('b', { formats: ['storytel'], minutes: 600 }))).toBeCloseTo(0.022, 10)
+    expect(bookThickness(book('c', { formats: ['storytel'], pages: 300 }))).toBeCloseTo(0.022, 10)
+    expect(bookThickness(book('d', { formats: ['audiobook'] }))).toBeCloseTo(0.0206, 10)
   })
 
-  it('leaves out a listen-only book, but counts a paperback + Storytel book with its pages', () => {
-    const listen = book('l', { formats: ['audiobook'], minutes: 900, pages: 900 })
-    const both = book('p', { formats: ['paperback', 'storytel'], pages: 300, minutes: 800 })
-    expect(pileHeight([listen]).metres).toBe(0)
-    expect(pileHeight([both]).metres).toBeCloseTo(bookDims(book('x', { pages: 300 })).t, 10)
+  it('ignores 0 and negative pages and minutes', () => {
+    expect(bookThickness(book('a', { formats: ['audiobook'], minutes: 0, pages: 300 }))).toBeCloseTo(0.022, 10)
+    expect(bookThickness(book('b', { formats: ['audiobook'], minutes: -5, pages: -5 }))).toBeCloseTo(0.0206, 10)
+    expect(bookThickness(book('c', { formats: ['paperback'], pages: 0, minutes: 600 }))).toBeCloseTo(0.022, 10)
+    expect(bookThickness(book('d', { formats: ['paperback'], pages: -1 }))).toBeCloseTo(0.0206, 10)
   })
 
-  it('counts an e-book and a book without pages (as 280 pages)', () => {
-    const ebook = book('e', { format: 'ebook', pages: 400 })
-    const none = book('n')
-    expect(pileHeight([ebook]).metres).toBeCloseTo(bookDims(ebook).t, 10)
-    expect(pileHeight([none]).metres).toBeCloseTo(bookDims(book('y', { pages: 280 })).t, 10)
+  it('a book she does not only listen to uses its pages, then minutes ÷ 2', () => {
+    expect(bookThickness(book('p', { formats: ['paperback', 'storytel'], pages: 300, minutes: 720 }))).toBeCloseTo(0.022, 10)
+    expect(bookThickness(book('e', { formats: ['ebook', 'audiobook'], minutes: 600 }))).toBeCloseTo(0.022, 10)
   })
 
-  it('tells an empty pile from a pile of only audiobooks', () => {
-    expect(pileHeight([])).toEqual({ metres: 0, counted: 0, listenOnly: 0 })
-    expect(pileHeight([book('a', { formats: ['storytel'] }), book('b', { formats: ['audiobook'] })])).toEqual({
-      metres: 0,
-      counted: 0,
-      listenOnly: 2,
-    })
+  it('has no minimum: a 1-page paperback is about 1 mm', () => {
+    expect(bookThickness(book('t', { pages: 1 }))).toBeCloseTo(0.00107, 10)
+    expect(heightText(bookThickness(book('t', { pages: 1 })))).toBe('1 cm')
+  })
+})
+
+describe('bookKinds and the bindings', () => {
+  it('a book with Paperback and Hardcover counts as a hardcover', () => {
+    const both = book('b', { formats: ['paperback', 'hardcover'], pages: 300 })
+    expect(bookThickness(both)).toBeCloseTo(0.026, 10)
+    expect(pileHeights([both]).paper).toBeCloseTo(0.026, 10)
+  })
+
+  it('a library or borrowed book counts in Paper as a paperback', () => {
+    const lib = book('l', { formats: ['library'], pages: 300 })
+    const borrowed = book('b', { formats: ['borrowed'], pages: 300 })
+    expect(bookKinds(lib)).toEqual(['paper'])
+    expect(bookKinds(borrowed)).toEqual(['paper'])
+    expect(pileHeights([lib, borrowed]).paper).toBeCloseTo(0.044, 10)
+  })
+
+  it('an old Storytel import (only storytelId) counts in Audiobook', () => {
+    const old = book('s', { storytelId: 'x', minutes: 300 })
+    expect(bookKinds(old)).toEqual(['audio'])
+    expect(pileHeights([old])).toMatchObject({ audioMinutes: 300, counts: { all: 1, audio: 1 } })
+  })
+
+  it('Other or no format counts in no kind; a book counts in every kind it has', () => {
+    expect(bookKinds(book('o', { formats: ['other'] }))).toEqual([])
+    expect(bookKinds(book('n'))).toEqual([])
+    expect(bookKinds(book('x', { formats: ['hardcover', 'ebook', 'audiobook'] }))).toEqual(['paper', 'ebook', 'audio'])
+  })
+})
+
+describe('pileHeights: the mixed shelf (T-0023)', () => {
+  it('adds All, Paper, E-book and the audiobook minutes', () => {
+    const pile = pileHeights(mixed())
+    expect(pile.all).toBeCloseTo(0.1346, 10)
+    expect(pile.paper).toBeCloseTo(0.07, 10)
+    expect(pile.ebook).toBeCloseTo(0.022, 10)
+    expect(pile.audioMinutes).toBe(1320)
+    expect(pile.counts).toEqual({ all: 6, paper: 3, ebook: 1, audio: 2 })
+    expect(timeText(pile.audioMinutes)).toBe('22 h')
+    expect(durationComparisonText(compareDuration(pile.audioMinutes))).toBe('about as long as a whole day and night (24 h)')
+  })
+
+  it('F (only Other) counts in All only', () => {
+    const f = [book('F', { formats: ['other'] })]
+    expect(pileHeights(f)).toMatchObject({ paper: 0, ebook: 0, audioMinutes: 0, counts: { all: 1, paper: 0, ebook: 0, audio: 0 } })
+    expect(pileHeights(f).all).toBeCloseTo(0.0206, 10)
+  })
+
+  it('never counts read, reading, paused or did-not-finish books', () => {
+    const shelf = (['read', 'reading', 'paused', 'dnf'] as const).map((status, i) =>
+      book(String(i), { status, formats: ['paperback', 'ebook', 'storytel'], pages: 300, minutes: 600 }),
+    )
+    expect(pileHeights(shelf)).toEqual({ all: 0, paper: 0, ebook: 0, audioMinutes: 0, counts: { all: 0, paper: 0, ebook: 0, audio: 0 } })
+  })
+
+  it('a pile of only audiobooks has a height: 15 audiobooks of 10 hours stand 33 cm', () => {
+    const shelf = Array.from({ length: 15 }, (_, i) => book(String(i), { formats: ['audiobook'], minutes: 600, pages: 600 }))
+    expect(pileHeightLine(pileHeights(shelf).all)).toBe('Stacked up, your pile would be 33 cm: taller than a cat (25 cm).')
+  })
+})
+
+describe('pileKinds: which buttons the switch gets', () => {
+  it('the mixed shelf has Paper, E-book and Audiobook', () => {
+    expect(pileKinds(pileHeights(mixed()))).toEqual(['paper', 'ebook', 'audio'])
+  })
+
+  it('only paper books (plus an Other one) give one kind; an empty pile none', () => {
+    const paper = [book('a', { formats: ['paperback'] }), book('b', { formats: ['hardcover'] }), book('o', { formats: ['other'] })]
+    expect(pileKinds(pileHeights(paper))).toEqual(['paper'])
+    expect(pileKinds(pileHeights([]))).toEqual([])
+  })
+})
+
+describe('the kind lines', () => {
+  it('Paper and E-book, plural and singular', () => {
+    expect(kindHeightLine('paper', 0.07, 3)).toBe('Your paper books would stand 7 cm: not as tall as a mug (10 cm) yet.')
+    expect(kindHeightLine('paper', 0.026, 1)).toBe('Your paper book would stand 3 cm: not as tall as a mug (10 cm) yet.')
+    expect(kindHeightLine('ebook', 0.022, 1)).toBe('Your e-book would stand 2 cm: not as tall as a mug (10 cm) yet.')
+    expect(kindHeightLine('ebook', 0.15, 7)).toBe('Your e-books would stand 15 cm: taller than a mug (10 cm).')
+    expect(kindHeightLine('all', 0.1346, 6)).toBe('Stacked up, your pile would be 13 cm: taller than a mug (10 cm).')
+  })
+})
+
+describe('audioMinutes: one book (D-0030)', () => {
+  it('minutes, else pages × 2, else 560', () => {
+    expect(audioMinutes(book('a', { formats: ['audiobook'], minutes: 600 }))).toBe(600)
+    expect(audioMinutes(book('b', { formats: ['audiobook'], pages: 300 }))).toBe(600)
+    expect(audioMinutes(book('c', { formats: ['paperback', 'storytel'], pages: 300, minutes: 720 }))).toBe(720)
+    expect(audioMinutes(book('d', { formats: ['storytel'] }))).toBe(560)
+  })
+
+  it('a read audiobook does not count', () => {
+    expect(pileHeights([book('r', { status: 'read', formats: ['audiobook'], minutes: 600 })]).audioMinutes).toBe(0)
+  })
+})
+
+describe('compareDuration and the audiobook line', () => {
+  it.each([
+    [1179, 'about as long as all eight Harry Potter films back to back (19 h 39 min)'],
+    [480, 'about as long as a working day (8 h)'],
+    [2400, 'about as long as a work week (40 h)'],
+    [600, 'longer than a working day (8 h)'],
+    [1800, 'longer than a whole day and night (24 h)'],
+    [2880, 'about as long as listening nonstop for 2 days'],
+    [14460, 'about as long as listening nonstop for 10 days'],
+    [5180, 'about as long as listening nonstop for 3½ days'],
+    [60, 'not as long as a football match (1 h 30 min) yet'],
+  ])('%s min → %s', (minutes, text) => {
+    expect(durationComparisonText(compareDuration(minutes))).toBe(text)
+  })
+
+  it('builds the whole line, singular for one audiobook', () => {
+    expect(audioLine(5180, 12)).toBe('Your audiobooks are 86 h 20 min: about as long as listening nonstop for 3½ days.')
+    expect(audioLine(560, 1)).toBe('Your audiobook is 9 h 20 min: longer than a working day (8 h).')
+    expect(audioLine(1320, 2)).toBe('Your audiobooks are 22 h: about as long as a whole day and night (24 h).')
+  })
+
+  it('between 44 h and 48 h it is longer than a work week', () => {
+    expect(durationComparisonText(compareDuration(46 * 60))).toBe('longer than a work week (40 h)')
+  })
+
+  it('writes every list duration with formatDuration, in order', () => {
+    expect(DURATION_THINGS.map((t) => `${t.name} (${formatDuration(t.minutes)})`)).toEqual([
+      'a football match (1 h 30 min)',
+      'the film Titanic (3 h 14 min)',
+      'a working day (8 h)',
+      'the nonstop flight from Perth to London (17 h 20 min)',
+      'all eight Harry Potter films back to back (19 h 39 min)',
+      'a whole day and night (24 h)',
+      'a work week (40 h)',
+    ])
+    const lengths = DURATION_THINGS.map((t) => t.minutes)
+    expect([...lengths].sort((a, b) => a - b)).toEqual(lengths)
+  })
+
+  it('takes a non-breaking space inside the time for the screen', () => {
+    expect(timeText(5180, ' ')).toBe('86 h 20 min')
+  })
+})
+
+describe('spoken time', () => {
+  it('units in full, singular for 1', () => {
+    expect(timeSpoken(5180)).toBe('86 hours 20 minutes')
+    expect(timeSpoken(90)).toBe('1 hour 30 minutes')
+    expect(timeSpoken(2400)).toBe('40 hours')
+    expect(timeSpoken(45)).toBe('45 minutes')
+    expect(timeSpoken(1)).toBe('1 minute')
+    expect(timeSpoken(61)).toBe('1 hour 1 minute')
+    expect(daysSpoken(3.5)).toBe('3 and a half days')
+    expect(daysSpoken(2)).toBe('2 days')
+  })
+})
+
+describe('pileHeights: a very large pile (tester, T-0021, updated for T-0023)', () => {
+  it('adds up and is written in whole metres', () => {
+    const shelf = Array.from({ length: 30_000 }, (_, i) => book(String(i), { pages: 300 }))
+    const pile = pileHeights(shelf)
+    expect(pile.counts.all).toBe(30_000)
+    expect(pile.all).toBeCloseTo(660, 6)
+    expect(heightText(pile.all)).toBe('660 m')
+    expect(heightSpoken(pile.all)).toBe('660 metres')
+    expect(comparisonText(compareHeight(pile.all))).toBe('taller than the Eiffel Tower (330 m)')
   })
 })
 
@@ -128,59 +305,6 @@ describe('compareHeight', () => {
     expect(pileHeightLine(1.624)).toBe('Stacked up, your pile would be 1.62 m: about as tall as an adult (1.75 m).')
     expect(pileHeightLine(12.44)).toBe('Stacked up, your pile would be 12.4 m: taller than a house (8 m).')
     expect(pileHeightLine(0.04)).toBe('Stacked up, your pile would be 4 cm: not as tall as a mug (10 cm) yet.')
-  })
-})
-
-describe('pileHeight: edge cases (tester, T-0021)', () => {
-  it('a pile of 1 book is that book’s shelf thickness', () => {
-    const one = book('1', { pages: 400, format: 'paperback' })
-    expect(pileHeight([one])).toEqual({ metres: bookDims(one).t, counted: 1, listenOnly: 0 })
-    expect(pileHeightLine(pileHeight([one]).metres)).toBe(
-      'Stacked up, your pile would be 4 cm: not as tall as a mug (10 cm) yet.',
-    )
-  })
-
-  it('a 1-page book still stands at the shelf’s minimum thickness (never 0 cm)', () => {
-    const thin = book('t', { pages: 1 })
-    expect(pileHeight([thin]).metres).toBeCloseTo(0.018, 10)
-    expect(heightText(pileHeight([thin]).metres)).toBe('2 cm')
-  })
-
-  it('a book with 0 or a negative page count counts as the shelf’s 280 pages', () => {
-    const t280 = bookDims(book('y', { pages: 280 })).t
-    expect(pileHeight([book('z', { pages: 0 })]).metres).toBeCloseTo(t280, 10)
-    expect(pileHeight([book('n', { pages: -5 })]).metres).toBeCloseTo(t280, 10)
-  })
-
-  it('mixed formats: e-book (new and old field), "other", paper + audiobook count; audio-only (also old Storytel imports) is left out', () => {
-    const shelf = [
-      book('e1', { formats: ['ebook'], pages: 300 }),
-      book('e2', { format: 'ebook', pages: 300 }),
-      book('o', { formats: ['other'], pages: 300 }),
-      book('h', { formats: ['hardcover', 'audiobook'], pages: 300, minutes: 900 }),
-      book('s', { formats: ['storytel', 'other'], minutes: 900 }),
-      book('st', { storytelId: 'x', minutes: 900 }),
-      book('a', { formats: ['audiobook', 'storytel'], minutes: 900 }),
-    ]
-    const t300 = bookDims(book('q', { pages: 300 })).t
-    const h = pileHeight(shelf)
-    expect(h).toMatchObject({ counted: 4, listenOnly: 3 })
-    expect(h.metres).toBeCloseTo(4 * t300, 10)
-  })
-
-  it('a paper + audiobook book counts with its pages, not its (longer) minutes', () => {
-    const both = book('b', { formats: ['paperback', 'audiobook'], pages: 200, minutes: 900 })
-    expect(pileHeight([both]).metres).toBeCloseTo(bookDims(book('c', { pages: 200 })).t, 10)
-  })
-
-  it('a very large pile adds up and is written in whole metres with a thousands comma', () => {
-    const shelf = Array.from({ length: 30_000 }, (_, i) => book(String(i), { pages: 300 }))
-    const h = pileHeight(shelf)
-    expect(h.counted).toBe(30_000)
-    expect(h.metres).toBeCloseTo(30_000 * bookDims(book('q', { pages: 300 })).t, 6)
-    expect(heightText(h.metres)).toBe('1,035 m')
-    expect(heightSpoken(h.metres)).toBe('1,035 metres')
-    expect(comparisonText(compareHeight(h.metres))).toBe('taller than the Eiffel Tower (330 m)')
   })
 })
 

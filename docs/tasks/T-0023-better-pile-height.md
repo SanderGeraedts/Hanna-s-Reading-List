@@ -2,7 +2,7 @@
 id: T-0023
 title: "Measure the want-to-read pile like real books, count audiobooks and e-books, and add an All · Paper · E-book · Audiobook switch"
 description: "The pile's height in the Want-to-read pile block uses the thickness of real printed books instead of the 3D shelf's (D-0030): audiobooks she only listens to count as the printed book (minutes ÷ 2 pages), e-books as paperbacks, and a switch like the Genre flower's shows the height of paper books and e-books, and the total listening time of the audiobooks, each with its own everyday comparison."
-status: Open
+status: Doing
 depends_on: [T-0021]
 decisions: [D-0008, D-0010, D-0014, D-0020, D-0022, D-0030]
 raised_on: 2026-11-22
@@ -476,6 +476,59 @@ on `--surface` as in T-0021. No new colour pair, so `colours.test.ts` needs noth
 - [ ] **Rest of the block:** books waiting, the pages line, the pace line and the motivation part
   don't change when the switch changes. Lavender and midnight look the same.
 
+# Build notes
+
+- **Code:** `src/lib/pileHeight.ts` (pure). The D-0030 constants sit together at the top, named
+  (`PAGE_MM` 0.07, `PAPERBACK_COVER_MM` 1, `HARDCOVER_BOARDS_MM` 5, `MINUTES_PER_PAGE` 2,
+  `DEFAULT_PAGES` 280). `pilePages(book)` (listen-only: minutes ÷ 2 → pages → 280; otherwise
+  pages → minutes ÷ 2 → 280; only values above 0), `bindingOf`, `bookThickness(book, binding)` in
+  metres, `bookKinds(book)` (paper / ebook / audio through `formatsOf`, `PHYSICAL_FORMATS`,
+  `AUDIO_FORMATS`), `audioMinutes(book)` (minutes → pages × 2 → 560), `pileHeights(books)` →
+  `{ all, paper, ebook, audioMinutes, counts }`, `pileKinds(pile)`. Lines: `heightLead`,
+  `kindHeightLine`, `pileHeightLine` (kept), and for listening time `timeText` (`formatDuration`
+  with a chosen space), `timeSpoken`, `DURATION_THINGS`, `compareDuration` (within 10% by log
+  ratio → nonstop days from 48 h, rounded to the half day → longer than → not as long as a football
+  match yet), `daysText` / `daysSpoken`, `durationWords`, `durationComparisonText`, `audioLine`.
+  `pileHeight` and `ALL_AUDIOBOOKS_LINE` are gone; `heightText`, `heightSpoken`, `compareHeight`
+  and `HEIGHT_THINGS` are unchanged. `bookDims`, `thicknessPages` and `lengthPatch` are not touched.
+- **Block:** `PileHeightLine` in `src/components/DashboardExtras.tsx` now renders the switch
+  (`<div class="segmented pile-kinds" role="group" aria-label="Which part of the pile">`, only when
+  two or more kinds have books, buttons only for those kinds, emoji in `aria-hidden` spans) right
+  before the height `<p>`, both direct children of the card's grid. Plain `useState('all')`, not
+  saved; when the chosen kind runs out it is set back to All. The `<p>` gets `aria-live="polite"` and
+  `aria-atomic="true"` only while the switch shows. Times are `<span aria-hidden>86&nbsp;h&nbsp;20&nbsp;min</span>`
+  plus `.visually-hidden` "86 hours 20 minutes"; "3½&nbsp;days" likewise, heard "3 and a half days".
+- **CSS:** one rule, `.pile-kinds { justify-self: start; max-width: 100%; flex-wrap: wrap; row-gap: 3px }`.
+  `.segmented` is unchanged.
+- **The switch at 390 fits on one row:** measured in the dev server, the pill is 328–329 px wide
+  (depending on which button is pressed and bold) in a 332 px text area, so 3–4 px to spare; all four
+  buttons are 44 px tall on the touch viewport. At 1280 it is 328 px of 484 px, one row, buttons
+  25 px tall (mouse).
+- **Developer choices (recommended option, Hanna not asked):**
+  28. `timeSpoken` mirrors `formatDuration`'s own rounding (whole hours, minutes rounded), so the
+      heard time always matches the seen one.
+  29. When the chosen kind runs out the state itself is set back to All (not only shown as All), so
+      the old choice doesn't come back if that kind returns later.
+- **Tests:** `src/lib/pileHeight.test.ts` 68 (the T-0021 `heightText` / `compareHeight` /
+  boundary tests kept unchanged; the `bookDims` and listen-only-left-out tests replaced by the
+  Done-when ones) and `src/components/PileCard.test.tsx` 14 (switch, each kind's line seen and
+  heard, buttons per kind, all-audiobooks pile, empty pile, starts on All after remount, falls back
+  to All, group name / button names / order / live region, non-breaking spaces, rest of the block
+  unchanged, the T-0021 edge cases at the new thickness).
+- **Screenshots** (`docs/tasks/T-0023-screens/pile-<case>-<width>-<wallpaper>.jpg`, 28 files):
+  no-backend dev server (`pnpm exec vite dev --port 3134 --strictPort`, no `POCKETBASE_URL`), shelf
+  seeded in localStorage `hannas-reading-list:v1`, 12 finished books for the pace line, at 390×844
+  (touch) and 1280×800 on lavender and midnight:
+  - mixed (`-all`, `-paper`, `-ebook`, `-audiobook`): 14 paperbacks of 320 pages, 3 hardcovers of
+    450, 2 library books of 300, 6 e-books of 380, 8 Storytel-only of 620 min and 1 paperback +
+    Storytel (300 pages, 220 min) → All "85 cm: about as tall as a kitchen counter (90 cm)", Paper
+    "50 cm: taller than a cat (25 cm)", E-book "17 cm: taller than a mug (10 cm)", Audiobook
+    "86 h 20 min: about as long as listening nonstop for 3½ days";
+  - paperonly (one kind only): 5 paperbacks + 1 Other → no switch, "13 cm: taller than a mug (10 cm)";
+  - audiobooks: 15 audiobooks of 10 h → no switch, "33 cm: taller than a cat (25 cm)";
+  - empty: no switch, no line, "0 books waiting".
+  No console errors, no horizontal scroll in any of them; the server was stopped afterwards.
+
 # Test
 
 To be written by the tester.
@@ -493,3 +546,11 @@ To be written by the tester.
   (`.segmented` plus one small rule), the line for each choice, screen reader (group "Which part of
   the pile", `aria-pressed`, the line a polite live region while the switch shows), the cases
   without a switch, 390 and 1280 on both wallpapers; choices 23–27; handed to the developer.
+- 2026-11-22 developer: built the real-book pile height (D-0030), the All · Paper · E-book ·
+  Audiobook switch and the listening-time line, as designed; choices 28–29 under *Build notes*.
+  Checks: `pnpm test` → 88 files (87 passed, 1 skipped), 799 tests (790 passed, 9 skipped);
+  `pnpm exec tsc --noEmit` → no errors; `pnpm run build` → built; `pnpm exec harness check` →
+  tasks, decisions, engineers, generated files all ✓. 28 screenshots (mixed on each of 4 choices,
+  one kind only, only audiobooks, empty × 390/1280 × lavender/midnight), no console errors, no
+  horizontal scroll; the switch fits on one row at 390 (328 of 332 px). `src/routeTree.gen.ts`
+  unchanged. Handed to the UX designer for review.
