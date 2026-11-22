@@ -215,7 +215,10 @@ still opens one, a pinch still zooms, and that lifting a finger after a swipe op
     the buttons are hidden.
   - screenshots: zoomed in at the left end, the middle and the right end, at both sizes; no console
     errors, no horizontal page scroll.
-- **Design checks** (UX designer) added under *Design* and checked on the screenshots.
+- **Design checks** (UX designer) under *Design* ticked on the screenshots, including: ‹ › hidden
+  at zoom 1 and with a book open; at each end the button on that side is `aria-disabled`, keeps
+  keyboard focus and covers no book; names "Show books to the left" / "Show books to the right";
+  `canvas.style.cursor` is `grab` over the empty wall when zoomed in and `grabbing` during a wall pan.
 - `pnpm test`, `pnpm run build` and `pnpm exec harness check` pass; `src/routeTree.gen.ts`
   unchanged.
 - **Hanna** tries it on her phone and her computer on the live site and says it works. Until she
@@ -264,9 +267,201 @@ the architect took these without asking her:
 9. **A new decision, D-0032**, since taking away or changing these controls would need a talk with
    Hanna.
 
+The UX designer took these, also without asking her:
+
+10. **The buttons are centred between the header and the bottom of the screen**, 16 px in from
+    each edge, and › never comes down onto the zoom column on a short window.
+11. **They look exactly like the zoom buttons** (light, plum ‹ ›, no shadow), on both wallpapers
+    and every wood.
+12. **"Disabled" is `aria-disabled`, not the `disabled` attribute**, so pressing › with the
+    keyboard until the end keeps focus on the button instead of dropping it.
+13. **The names are "Show books to the left" / "Show books to the right"**, with the ← / → key in
+    the tooltip, in a group called "Move along the shelf"; a press announces nothing extra.
+14. **The empty wall shows a `grab` cursor while the shelf can pan**, `grabbing` during a wall pan;
+    books keep theirs (their hover lift tells them apart from the wall).
+15. **At an end the button covers no book**: if it would, the pan's end margin grows; the button
+    doesn't shrink or move.
+
 # Design
 
-To be written by the UX designer.
+(UX designer)
+
+Two new buttons and one new cursor; nothing else on the screen changes. Everything is made of what
+the shelf already has: the zoom buttons' look, the tokens (D-0020, D-0022), no hint text (D-0014).
+
+## The ‹ › buttons
+
+### Place
+
+- **‹ on the left edge, › on the right edge** of the screen, `var(--space-4)` (16 px) in from the
+  edge, the same gutter the zoom buttons keep on the right.
+- **Vertically centred on the shelf area**: halfway between the bottom of the header (the scene's
+  `topInset`, `headerPx`) and the bottom of the screen, not halfway down the whole window (the
+  header would push them too high on the phone). Both buttons at the same height.
+- Worked out: on the phone (390 × 844) the buttons land roughly halfway down; the zoom column
+  (+ − ⤢ 🎨, four 44 px buttons with 8 px gaps, 16 px from the bottom) starts about 628 px from the
+  top, so › is well clear of it. On the computer (1280 × 800) the zoom column starts about 584 px
+  from the top, and › sits well above it. The 📖 quick-update button sits bottom left, well below ‹.
+- **Never over the zoom buttons**: on a short window, › stays at least `var(--space-2)` above the
+  top of the zoom column (e.g. `top: min(<centre>, <zoom column top> − tap − space-2)`); ‹ follows
+  the same height so the two stay level. The developer picks the CSS.
+- In the DOM they come **after the canvas and before the zoom group**, ‹ first, so Tab goes
+  ‹ → › → + − ⤢ 🎨. They sit at `z-index: 1` like the zoom group; the 🎨 room sheet (z-index 8) and
+  the toasts lie on top of them, which is fine (the arrows are off while a panel is open anyway).
+- A press on a button is the button's only: it never reaches the shelf under it (no book opens,
+  no wall pan starts). Being HTML on top of the canvas already does this; don't forward the event.
+
+### Over the books
+
+When zoomed in, books fill the whole width of the screen, so a button in the middle of the pan
+lies over a few spine edges, as the zoom column already does. That's acceptable, because those are
+the books the button moves past. What must hold:
+
+- **At an end, the button on that side covers no book.** Panned to `xMax` at zoom 3 on the phone,
+  the view ends about 0.05 m past the case's right end (section 1), which is about 85 px of wall;
+  the › button takes the outer 60 px (16 + 44), so it lies on the wall and the last book of every
+  shelf is fully visible to the left of it. The same on the left with ‹, and the same check at
+  1280 × 800. The tester checks it on the end screenshots; if a book is cut by the button, the
+  developer widens the margin at the end of the pan (a little more `xMax`), not the button.
+- The buttons are small and round (44 px), with no bar or strip behind them, so they hide as
+  little of the shelf as possible.
+
+### Look
+
+Exactly the zoom buttons: the same rule (`.zoom-controls .btn`) or a shared class, so a later
+change to one changes both.
+
+| | Value |
+|---|---|
+| Size | `var(--tap)` × `var(--tap)` (44 × 44 px), `padding: 0`, glyph centred (`display: grid; place-items: center`) |
+| Shape | round (`--radius-pill` from `.btn`) |
+| Background | `rgba(255, 255, 255, 0.78)`, `#fff` on hover, as the zoom buttons |
+| Border | `1px solid rgba(45, 32, 56, 0.2)`, as the zoom buttons |
+| Glyph | ‹ and › (U+2039, U+203A), `var(--fs-large)`, colour `var(--pill-ink)` |
+| Press | `.btn:active` (1 px down), as every button |
+| Focus | `.btn:focus-visible`: 2 px `var(--accent)` outline, 2 px offset |
+
+The same values on **lavender and midnight**: the light button with plum text doesn't depend on
+the wallpaper, and the zoom buttons already read well on both. Over the **woods**: white-washed is
+the light one, and the plum border keeps the button's edge visible there; ebony, walnut and cherry
+are dark and the light button stands out. No new colour, no shadow.
+
+### States
+
+| State | What she sees | What it does |
+|---|---|---|
+| **Hidden**: not zoomed in far enough to move (`xMax` ≤ 0.03 m), a book open, off the shelf (dashboard, calendar, challenges), or no books | No buttons at all (not rendered, not in the tab order, not in the accessibility tree) | – |
+| **Ready** | Both buttons at full strength | Click / tap / Enter / Space moves the view by three quarters of the screen (section 3), gliding |
+| **At the left end** | ‹ dimmed (`opacity: 0.5`, as `.btn:disabled`), cursor `default`, no hover change; › ready | ‹ does nothing |
+| **At the right end** | › dimmed likewise; ‹ ready | › does nothing |
+| **Zoomed out until nothing can move** | Both disappear at once | – |
+| **Zoomed in again** | Both appear, each ready or dimmed for where the pan is | – |
+
+- **Disabled means `aria-disabled="true"`, not the `disabled` attribute.** A `disabled` button
+  loses keyboard focus: pressing › with Enter until the end would throw focus back to the page, and
+  a screen reader would jump. With `aria-disabled` the focus stays on ›, it is announced as
+  unavailable, and its click handler does nothing. Style `[aria-disabled='true']` the same as
+  `.btn:disabled` (opacity 0.5, `cursor: default`, no hover background). The component test checks
+  `aria-disabled`.
+- A dimmed button keeps its place, so the other never jumps.
+- They don't fade or slide in; they appear and disappear at once, like the zoom buttons' own
+  states (so nothing to switch off for reduced motion).
+
+### Names (words exactly)
+
+| Button | `aria-label` | `title` (tooltip) |
+|---|---|---|
+| ‹ | Show books to the left | Show books to the left (← key) |
+| › | Show books to the right | Show books to the right (→ key) |
+
+- The two buttons sit in a wrapper with `role="group"` and `aria-label="Move along the shelf"`,
+  as the zoom buttons sit in `role="group"`, `aria-label="Zoom"`. If the wrapper spans the screen,
+  it doesn't catch clicks (`pointer-events: none` on it, `auto` on the buttons).
+- The `title` names the key, as "Zoom in (Ctrl + scroll)" does; that is the only place the
+  shortcuts are mentioned (D-0014: no hint text). The glyphs ‹ › are not read; the label is.
+
+## The cursor (computer)
+
+| Where the mouse is | Cursor |
+|---|---|
+| Over the empty wall (wall, wood, floor, decorations, nooks, dividers), shelf can pan, no book open | `grab` |
+| During a wall pan (button held, past 6 px), wherever the mouse is, also over a book or outside the window (pointer captured) | `grabbing` |
+| Over the empty wall, shelf can't pan (zoom 1) | `auto`, as today |
+| Over a book | as today: `grab` on hover (the book also lifts forward), `grabbing` while dragging it |
+| A book open (the turn-the-book drag) | as today: `grab` / `grabbing` |
+| Over ‹ › | `pointer` (from `.btn`); `default` when dimmed |
+
+- `grab` on the wall is what a map does, and it is what the gesture is. A book shows the same
+  `grab`, but it also lifts forward when hovered, so the book itself tells her it is a book.
+- When a wall pan ends (button released), the cursor goes back to what is under the mouse at once:
+  `grab` over the wall or a book.
+- One place decides the cursor (the existing effect, extended with "can pan" and "wall pan on"),
+  so the wall's `grab` never overwrites a book's hover, a book drag, or the open book's cursor.
+- Touch has no cursor; nothing changes on the phone.
+
+## Phone (390 × 844) and computer (1280 × 800)
+
+- **Same buttons, same place rule** on both. On the phone they are the way to reach the ends
+  without knowing the swipe; on the computer, the drag and ← → are extras.
+- **Phone**: ‹ sits 16 px from the left edge. A swipe that *starts* on a button is a tap on the
+  button, not a swipe. A swipe that starts in the first few pixels of the screen may be the
+  iPhone's own back swipe (D-0032), which the page can't stop; the 16 px gutter keeps the button
+  itself out of that strip.
+- **Landscape phones and short windows**: the "stay above the zoom column" rule keeps › clear; no
+  other change.
+- **Woods**: the buttons are the same on every wood (see *Look*); check them on walnut (the
+  default) on both wallpapers, and on white-washed and ebony, the lightest and the darkest.
+
+## What a screen reader hears
+
+- Tabbing from the header past the shelf: "Move along the shelf, group. Show books to the left,
+  button." → "Show books to the right, button." → "Zoom, group. Zoom in, button." and so on.
+- At an end: "Show books to the right, button, dimmed" (VoiceOver) or "unavailable" (NVDA).
+  Pressing it does nothing; focus stays.
+- Pressing a ready button moves the shelf; **nothing extra is announced**: the 3D shelf has no
+  text for a screen reader to read, and "moved" on every press would only be noise. When a press
+  reaches the end, the dimmed state is read the next time the button is read; it isn't announced
+  on its own.
+- Hidden buttons are not in the tree, so zoom 1 sounds exactly like today.
+- The ← → keys also work while focus is on ‹ or › (section 4).
+
+## Screenshots needed
+
+In `docs/tasks/T-0025-screens/`, named `<what>-<width>-<wallpaper>.png` (or `.jpg`), zoomed in to
+3×, at 1280 × 800 (mouse) and 390 × 844 (touch emulated), walnut unless named:
+
+| What | 1280 lavender | 1280 midnight | 390 lavender | 390 midnight |
+|---|---|---|---|---|
+| `pan-left-end`: ‹ dimmed, the first book of each shelf fully visible beside ‹ | ✓ | ✓ | ✓ | ✓ |
+| `pan-middle`: both ready | ✓ | ✓ | ✓ | ✓ |
+| `pan-right-end`: › dimmed, the last book of each shelf fully visible beside › | ✓ | ✓ | ✓ | ✓ |
+| `zoom-1`: no ‹ ›, zoom buttons as today | ✓ | | ✓ | |
+| `pan-middle-white-washed`, `pan-middle-ebony`: the button's edge on the lightest and darkest wood | ✓ | ✓ | | |
+| `pan-focus`: › focused by keyboard, the gold ring | ✓ | | | |
+| `pan-right-end-focus`: › dimmed and still focused after Enter to the end | ✓ | | | |
+| `book-open`: a book open while zoomed in, no ‹ › | | | ✓ | |
+
+A cursor doesn't show in a screenshot; the tester reads `canvas.style.cursor` for each row of the
+cursor table and writes the values in *Test*.
+
+## Design checks (for the review and the tester)
+
+- [ ] ‹ and › are 44 × 44 px, round, 16 px from the screen's left and right edges, level with each
+      other, centred between the header and the bottom; › doesn't touch the zoom column at either
+      size.
+- [ ] They look exactly like the zoom buttons (background, border, plum glyph, hover, focus ring)
+      on lavender and midnight, and their edge is visible on white-washed and ebony.
+- [ ] Hidden at zoom 1, with a book open, off the shelf and with no books; shown again when zoomed
+      in, in the right state for where the pan is.
+- [ ] At each end the button on that side is dimmed (`aria-disabled="true"`, opacity 0.5), keeps
+      its place, keeps focus when it got there by keyboard, and covers no book.
+- [ ] Names and titles exactly as in *Names*; the group is "Move along the shelf"; Tab order
+      ‹ → › → zoom buttons.
+- [ ] A tap or click on ‹ › never opens, lifts or moves the book under it.
+- [ ] Cursor: `grab` over the empty wall when the shelf can pan, `grabbing` during a wall pan,
+      `auto` on the wall at zoom 1, books' cursors unchanged.
+- [ ] No hint text anywhere; no new colour, size or spacing beyond the tokens and the zoom
+      buttons' existing values.
 
 # Test
 
@@ -278,3 +473,5 @@ To be written by the tester.
   always aims at x = 0, so the pan turns the view round the middle instead of moving along it, on
   both devices; touch-action, pointercancel, overflow and xMax ruled out); recorded D-0032. Handed
   to the ux-designer for the ‹ › buttons and the wall-drag cursor.
+- 2026-11-22 ux-designer: designed (the ‹ › buttons' place, look, states and names, the wall
+  cursor, what a screen reader hears, the screenshots and design checks). Handed to the developer.
