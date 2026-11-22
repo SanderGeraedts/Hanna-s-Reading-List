@@ -7,7 +7,7 @@ depends_on: []
 decisions: [D-0002, D-0014, D-0020, D-0022, D-0032]
 raised_on: 2026-11-22
 done_on: ""
-result: []
+result: [https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/236]
 ---
 
 # Goal
@@ -565,4 +565,4 @@ To be written by the tester.
   `.btn.icon` overrides `.zoom-controls .btn` (D-0020); (b) on the phone, opening a book while
   zoomed in shows no book in front and doesn't dim the room. It is the same on main's code (checked
   by stashing this work), so it comes from the zoom and not from this change. Handed to the UX
-  designer for review.
+  designer for review. Draft PR #236.
