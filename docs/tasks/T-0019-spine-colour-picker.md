@@ -406,6 +406,86 @@ Spine colour                              <- .field label: --fs-small, --muted
 
 The spelling is British "colour", as in the task.
 
+## Review after building (2026-11-22)
+
+**Verdict: changes needed, one must-fix (the colour names). Everything you can see matches the
+design.** Back to the developer for the fix below. No new screenshots are needed for it, because
+nothing on screen changes: the names are only read aloud and shown on hover.
+
+Looked at: `git diff main...HEAD -- src` (`SpineColourField.tsx`, `colourName.ts`, `cover.ts`,
+`textures.ts`, the CSS block) and all 36 screenshots, with the two focus-ring crops blown up 4×.
+
+**What matches the design (all design checks in *Done when*):**
+
+- **Where it sits and what it says.** The row is between "Change cover…" and "Page edges" in every
+  screenshot. The only words are "Spine colour", "★ Dominant" (only when there are cover swatches)
+  and "Back to automatic". There's no hint text, spinner or error text.
+- **Size and fit.** Swatches are 44 px at 390 and 36 px at 1280, on one line on both wallpapers. The
+  7-swatch Storytel book (6 + the outside colour, after its `--space-2` gap) fits at 390 too. They're
+  rounded squares with the `--border-strong` edge, so the near-black swatches still show on walnut.
+- **Current swatch.** The ✓ is readable on every swatch shown (white on dark, and the right ink on
+  the tan and pale ones), with the gold ring. "★ Dominant" sits under the first swatch, with the ★ in
+  gold and the word muted.
+- **Live update.** Tapping "Dark blue" turns the book to its spine and repaints the spine (2) and the
+  back (3) without a reload. The shelf keeps the colour with the panel closed (4). "Back to
+  automatic" gives the dominant colour back and then hides (5). The component test checks that focus
+  lands on the swatch that's now pressed.
+- **States.** No cover: one ✓ swatch plus "Back to automatic" (8). A cover that can't be loaded: one
+  ✓ swatch, no button, no caption, no error (9). Loading looks the same, as the component test shows.
+- **Accessibility.** Buttons with `aria-pressed` in a `role="group"` labelled "Spine colour", names
+  with no hex code, ", dominant" on the first, " 2" for repeats, the same text in `title`, and the
+  caption `aria-hidden`.
+- **Tokens only.** The CSS block uses `--tap`, `--radius-small`, `--border-strong`, `--text`,
+  `--accent`, `--muted`, `--fs-small`/`--fs-large` and `--space-1`/`--space-2`, with no new values.
+
+**The developer's changes from the design, judged:**
+
+1. **10 colour groups instead of 6: accepted.** The number of groups is a detail inside the
+   calculation, not something she sees. What the design promised still holds: at most 6 swatches,
+   the automatic colour first, and no two that look the same. The real covers now give 5–6 clearly
+   different swatches instead of 3 (Harry Potter: dusty brown, tan, navy, maroon, charcoal, slate;
+   Gül & Derksen: grey, near-black, brown, mauve-grey, sand, light grey), which is what Hanna asked
+   for.
+2. **The thin gap between the focus ring and the current ring at 1×: accepted.** In the blown-up
+   crops (`*-6-focus-ring`) the focused current swatch clearly shows two gold rings with a dark gap
+   between them. A swatch that is only current shows a single ring, so focus can be told apart from
+   "current". At 2× and on her phone the gap is wider. Not a fix: at 36 px with a 4 px gap, the
+   outer ring just touches the next swatch's edge. It reads as focus on the first swatch, and making
+   the gap between swatches bigger would cost the 7-on-a-line fit.
+3. **The dusty brown-red named "Red": must fix.** The design's list put "brown" in for dark orange
+   and yellow, but the point of the names is that a person would call the colour the same thing.
+   Covers are darkened to 0.82, so muted warm colours are the most common swatches, and the current
+   rule names them by hue alone. In the Harry Potter row that gives "Red, dominant" for a
+   mauve-brown, "Orange" for tan, and "Red 2" for maroon-brown. The test table already has
+   `#8a5a2b` (a saddle brown) as "Orange". A screen-reader user would get colours that aren't on the
+   cover.
+4. **Tapping the current swatch does nothing: accepted, it's what the design says.** "It stays
+   pressed and nothing is saved." Not turning the book either is right: nothing changed, so there's
+   nothing to show.
+
+**Must fix (developer):**
+
+- **M1: muted warm colours are named brown.** In `colourName` (`src/lib/colourName.ts`), a warm
+  colour (hue below 68° or from 340° up) that has low colour (HSL saturation below about 0.35) and
+  isn't very dark or very light (lightness about 0.15–0.6) is "Brown", or "Dark brown" below the
+  existing dark threshold. A mid-dark orange (hue 15–45°, lightness below about 0.45, instead of
+  0.35 now) is "Brown" too. Cream, grey, black and white keep coming first, as now. The developer
+  picks the exact limits, but these cases must hold in `colourName.test.ts`:
+  - `#72564d` (dusty brown-red) → `Brown`
+  - `#8a5a2b` (saddle brown, now "Orange") → `Brown`
+  - `#a8875f` (tan) → a name with "brown" in it (`Brown` or `Light brown`), not `Orange`
+  - these stay as they are: `#7a2e2e` → `Red`, `#4a0d0d` → `Dark red`, `#e07b1f` → `Orange`,
+    `#d1d100` → `Yellow`, `#5a3a1b` → `Brown`, `#f2e6c8` → `Cream`, `#3d3d3d` → `Grey`,
+    `#c4467e` → `Pink`
+  - the component test's expected names follow the new rule. Keep "no two names the same" and the
+    ", dominant" on the first.
+
+  Add a line for this rework to `docs/lessons.md` in the same PR (G-0014).
+
+**Not a fix, for the tester:** check in the dev server that the Harry Potter swatches' hover names
+are now something like "Brown, dominant", "Brown 2" or "Light brown", "Blue", and so on, and that no
+warm muted swatch is called "Red" or "Orange".
+
 ## Reuse
 
 - **Components and classes:** `.field` (the label style), the `role="group"` + `aria-labelledby`
@@ -446,3 +526,7 @@ To be written by the tester.
   `pnpm exec tsc --noEmit`: no errors. `pnpm run build`: built. `pnpm exec harness check`: tasks,
   decisions, engineers, generated files all ✓. 36 screenshots at 390 and 1280 on lavender and
   midnight, no console errors; draft PR #228; handed to the UX designer for review.
+- 2026-11-22 ux-designer: reviewed: changes needed. Everything on screen matches the design on all
+  36 screenshots. Accepted 10 colour groups, the thin focus-ring gap at 1× and doing nothing on a
+  tap of the current swatch. Must fix M1: muted warm colours are named "Brown", not "Red" or
+  "Orange". Handed back to the developer.
