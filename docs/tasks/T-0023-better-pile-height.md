@@ -457,24 +457,97 @@ on `--surface` as in T-0021. No new colour pair, so `colours.test.ts` needs noth
 
 ## Design checks (on the screenshots and in the dev server)
 
-- [ ] **Place:** on a mixed pile the switch sits on its own row directly above the height line,
+- [x] **Place:** on a mixed pile the switch sits on its own row directly above the height line,
   under the grey pages line, left-aligned, not in the card head. The title row is only "Want-to-read
   pile".
-- [ ] **Look:** the same pill as the Genre flower's switch: All pressed in gold at first, the others
+- [x] **Look:** the same pill as the Genre flower's switch: All pressed in gold at first, the others
   muted. Labels "All", "📖 Paper", "📱 E-book", "🎧 Audiobook", in that order, only the kinds with
   books.
-- [ ] **390:** the switch is on one row (or, if it wraps, nothing is cut off and the build notes say
+- [x] **390:** the switch is on one row (or, if it wraps, nothing is cut off and the build notes say
   so); the line wraps without cutting off, no height or time is split ("86 h 20 min", "(24 h)",
   "3½ days" stay whole); no horizontal scroll. **1280:** switch on one row, line on one or two lines.
-- [ ] **Touch:** on a phone each button is at least 44 px tall.
-- [ ] **Wording:** each choice's line matches the table, including the singular for one book.
-- [ ] **Only listen-only books:** the 📚 All line with a height, no switch, no "all audiobooks"
+- [x] **Touch:** on a phone each button is at least 44 px tall.
+- [x] **Wording:** each choice's line matches the table, including the singular for one book.
+- [x] **Only listen-only books:** the 📚 All line with a height, no switch, no "all audiobooks"
   text. **Empty pile:** no switch, no line, "0 books waiting".
-- [ ] **Screen reader:** the group is called "Which part of the pile"; buttons are "All", "Paper",
+- [x] **Screen reader:** the group is called "Which part of the pile"; buttons are "All", "Paper",
   "E-book", "Audiobook" with `aria-pressed`; the line is a polite live region only when the switch
   shows; units heard in full ("centimetres", "hours", "3 and a half days"); emoji not read.
-- [ ] **Rest of the block:** books waiting, the pages line, the pace line and the motivation part
+- [x] **Rest of the block:** books waiting, the pages line, the pace line and the motivation part
   don't change when the switch changes. Lavender and midnight look the same.
+- [ ] **Wrapped switch** (added in the review): at 360×800 (touch) on both wallpapers the switch
+  wraps onto a second row as a rounded box whose corners follow the buttons' own curve; no gold
+  button sticks out past the border; on one row it is still the same full pill as the Genre
+  flower's.
+
+## Review after building (2026-11-22)
+
+**Verdict: changes needed, one small must-fix.** Everything a user sees on the 28 screenshots
+matches the design; the one problem is how the switch looks when it wraps, which my own design
+allowed but didn't shape (choice 24).
+
+**What matches** (screenshots, `git diff main...HEAD -- src`, and the component tests):
+
+- **Place and look:** on the mixed pile the switch is its own row between the grey pages line and
+  the height line, left-aligned, not in the card head; the same sunken pill as the Genre flower's,
+  All in gold at first, labels "All", "📖 Paper", "📱 E-book", "🎧 Audiobook" in that order. At 1280
+  it takes about two thirds of the column on one row; at 390 one row, 44 px buttons.
+- **Wording:** All "📚 Stacked up, your pile would be 85 cm: about as tall as a kitchen counter
+  (90 cm).", Paper "📖 Your paper books would stand 50 cm: taller than a cat (25 cm).", E-book "📱 Your
+  e-books would stand 17 cm: taller than a mug (10 cm).", Audiobook "🎧 Your audiobooks are
+  86 h 20 min: about as long as listening nonstop for 3½ days.": the table's forms, sentence case,
+  colon, brackets, full stop. Singulars come from `heightLead` / `audioLead` and are tested.
+- **Non-breaking spaces:** times, "3½ days" and the emoji use U+00A0 (`NBSP`, `timeText(…, NBSP)`);
+  at 390 "86 h 20 min" and "3½ days" stay whole.
+- **Cases:** only audiobooks → 📚 line with 33 cm, no switch, no "all audiobooks" text; only paper
+  plus Other → no switch, 📚 line; empty → "0 books waiting", no switch, no line. The rest of the
+  block (books waiting, pages · listening, pace, motivation) is the same on all four choices.
+- **Screen reader:** group "Which part of the pile", `aria-pressed` buttons whose names leave out
+  the `aria-hidden` emoji, live region (`aria-live="polite"`, `aria-atomic`) only while the switch
+  shows, units in full through `.visually-hidden`.
+- **Both wallpapers:** lavender and midnight look the same; no new colour, only tokens.
+- **CSS:** exactly the one designed rule on `.pile-kinds`; `.segmented` unchanged.
+
+**The developer's choices:**
+
+- **28** (`timeSpoken` rounds like `formatDuration`): accepted. Seen and heard must say the same
+  time; matching the shared formatter is the right way round.
+- **29** (the state itself goes back to All when the chosen kind runs out): accepted. It is what
+  the design means by "falls back to All" and "starts on All": an old choice coming back by itself
+  later would surprise her.
+
+**The 3–4 px at 390 is not robust, and that is fine, but the wrapped state isn't:** 328 of 332 px
+is about 1%. Any larger text setting (a phone's text size at 110% or more, or the browser's zoom)
+or a narrower phone (360 or 375 px wide, which many are) makes the switch wrap: "All · Paper ·
+E-book" on the first row and "Audiobook" alone on the second. Wrapping is allowed. But I rendered
+the switch with the branch's exact CSS in Chrome at 390 px with 110% text and at 360 px with 125%
+text: the box keeps `--radius-pill` (999px), so a two-row box becomes a blob with half-circle
+ends about 50 px wide. The gold pressed button in a corner ("All", or "Audiobook" on row two)
+sticks out past the curved border, and the buttons sit oddly inside the curve. That will look broken
+on her phone the moment it wraps.
+
+**Must fix before the task can pass:**
+
+1. **Give the switch a radius that works on one row and on two.** Add one declaration to the
+   existing `.pile-kinds` rule in `src/styles.css`, nothing else:
+   `border-radius: calc(var(--tap) / 2 + 4px);` (26 px: half the 44 px button plus the 3 px
+   padding and the 1 px border). On one row it is still a full pill (a touch row is 52 px tall, so
+   26 px is exactly half; a mouse row is about 33 px, where the browser caps it at half the height),
+   so it still looks exactly like the Genre flower's switch. On two rows it becomes a rounded box whose
+   corners run parallel to the buttons' curves, and no button sticks out. I checked both in Chrome
+   (one row at 16 px and two rows at 110% / 125% text, touch and mouse sizes). `.segmented` itself
+   stays unchanged, so the other switches don't change.
+2. **Show it:** add screenshots of the mixed pile on All and on Audiobook at **360×800 (touch)** on
+   lavender and midnight (`pile-mixed-all-360-<wallpaper>.jpg`, `pile-mixed-audiobook-360-<wallpaper>.jpg`),
+   where the switch wraps, and confirm the *Wrapped switch* design check above. Retake one 390 and one
+   1280 screenshot to show the one-row pill is unchanged.
+
+Not a must-fix, for the record: when the switch is right at the edge, pressing a button makes it
+bold and about 1 px wider, so on some widths pressing "Audiobook" can move it between one and two
+rows. That is rare and harmless; leave it. The Wish row's switch (`.wish-row .segmented`) wraps with
+the same pill shape; it's outside this task, so it's a possible follow-up, not part of this one.
+
+Back to the developer with the two items above; after that, to the tester.
 
 # Build notes
 
@@ -554,3 +627,8 @@ To be written by the tester.
   one kind only, only audiobooks, empty × 390/1280 × lavender/midnight), no console errors, no
   horizontal scroll; the switch fits on one row at 390 (328 of 332 px). `src/routeTree.gen.ts`
   unchanged. Draft PR #232. Handed to the UX designer for review.
+- 2026-11-22 ux-designer: reviewed: changes needed. Screens, words, cases, screen reader and both
+  wallpapers match the design; choices 28–29 accepted. Must fix: the switch keeps its pill radius
+  when it wraps (at 360 px or with larger text, since 390 has only 3–4 px to spare), so it becomes a
+  blob and gold buttons stick out past its border. Fix: `border-radius: calc(var(--tap) / 2 + 4px)`
+  on `.pile-kinds`, plus 360×800 screenshots on both wallpapers; back to the developer.
