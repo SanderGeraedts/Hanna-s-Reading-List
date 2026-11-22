@@ -480,6 +480,96 @@ Taken with the recommended option tonight; each is easy to change in `numbers.ts
 5. **The tab's icon** 🐾 after Calendar, and the dashboard block right after Monthly challenge in
    Today. *Recommended: as is.* Elsewhere?
 
+## Review after building (2026-11-23)
+
+UX designer, at night, nothing asked. I looked at the 35 screenshots in `T-0029-screens/`,
+`git diff origin/t-0027-book-creatures...HEAD -- src`, and sampled pixels from the den in
+`tab-1280-lav` and `tab-390-lav`.
+
+**Verdict: does not pass yet. Three must-fix items, all small.** Everything else matches the
+Design or is a change I accept. Back to the developer; after the fixes, new `tab-egg-*`, `tab-*`
+and `block-*` screenshots, then the re-review.
+
+### Must fix
+
+1. **The den is too dark: its corner reads as a black hole, not a cosy room** (§5 "a warm back
+   wall `#3a2c24`"). The material colour is right, but the light doesn't reach the walls. On screen
+   the back wall comes out `#241208` and the left wall `#0f0503`, almost black. On midnight, a dark
+   card around a dark den makes the creature float in the dark. The key light at x −2.5 sits
+   behind the left wall's plane (x −2.2), so that wall only gets ambient light, and ACES tone
+   mapping darkens what's left. **Wanted:** on screen the back wall about `#3a2c24` (each channel
+   within ±12) and the left wall a little darker but clearly warm brown (no channel below `#2a`,
+   red > green > blue). The floor, rug, cushion and creature stay as they are now (they look
+   right). How (light positions, a warm fill from the front right, no tone mapping on the walls) is
+   up to the developer. Check it the same way: sample both walls in a new `tab-1280-lav` and
+   `tab-390-mid`.
+2. **The egg's gold spots stick out like slits, and look like closed eyes and antennae**
+   (§3a "6 small gold spots (flattened spheres)"). See `tab-egg-390-lav`, `tab-egg-1280-mid` and
+   the block egg in `waiting-egg-1280-mid`. The spots should lie flat on the shell as round gold
+   dots, and none should stick out past its outline. Likely cause: `m.lookAt(x*2, y*2, z*2)` in
+   `EggHalf` takes a world point, but these are local coordinates inside the scaled `[1, 1.28, 1]`
+   group on the cushion, so each flattened disc ends up turned sideways. The egg must read as an
+   egg at 96 px in the block as well as in the den.
+3. **`CREATURES_START` must be the day it goes live, not 2026-11-23** (developer choice 6). With an
+   earlier start, Hanna's first visit already shows cookies earned before she could see the egg
+   (`🍪 135` in the screenshots). That breaks "a welcome egg and **no** cookies" (D-0033 §3, her own
+   answer) and makes the first *This week* list show days from before the feature existed. When
+   rebasing on `main` to open the PR, set it to the planned merge day. If the merge slips, the
+   tester moves it before marking the PR ready. A test already pins "balance 0 on the start day".
+
+### Worth doing in the same round (not blocking)
+
+- *This week* at 390 (`tab-390-lav-card`): a part breaks inside itself, "🌙 30 ⏎ min", "📗 ⏎ The
+  Hobbit". Keep each part ("45 min", "🌙 30 min", "📗 + title") as one unit that wraps as a whole
+  (a `nowrap` span per part; only a long book title may wrap inside).
+
+### The developer's choices
+
+1. **A sleep read's finish treat halved too (5 🍪): accepted.** D-0033 §2 says sleep reads earn
+   half, without an exception. It shows honestly in *This week*.
+2. **A reading day = a log entry or a finish: accepted.** Finishing a book on a day without a log
+   entry is still reading.
+3. **The h1 and cookie pill on the `challenges-head` card: accepted, and the Design is amended.**
+   Calendar and Challenges really do put their heading on that card, so "same page frame as
+   Calendar and Challenges" and "the h1 on the wallpaper" contradicted each other in my §5. The
+   card is the right one of the two: it matches the other tabs, and the cream pill text needs a dark
+   surface on lavender. It fits on one line at 390 and wraps (`flex-wrap`) when the balance grows.
+   §5 now reads: the h1 **Creatures** with the cookie pill and "+9 today" on the page's header card,
+   as on Calendar and Challenges.
+4. **On a device with no seen level, level 1 counts as seen: accepted.** It is what §11 asks (only
+   the newest shows).
+5. **The den stops for the book panel, the add dialog and the wish card: accepted** (§12 "any
+   sheet").
+6. **`CREATURES_START` = 2026-11-23: not accepted as it stands.** See must-fix 3.
+7. **Escape in the choose step = Not yet: accepted.** It saves nothing, and focus goes back to
+   Hatch as §10 says.
+
+### Other deviations
+
+- **The layout test change (`recommend.test.ts`): accepted.** The test's point ("New for you
+  stands right after What next?") still holds in all three cases. Only the default list gained
+  `creatures` after `challenge`, and in the "moved by her" case `creatures` lands right after
+  `challenge` (last in her column), which is exactly the "where it is by default" rule. The new
+  `dashboardLayout.test.ts` case covers a layout saved before the block, with favourites kept.
+- The dashboard screenshots scrolled at 390 show the header fading over the blocks. That is how
+  the header already worked before this task, so not this task's to fix.
+- The choose canvas shows the grown-ups more front-facing at 1280 than ¾. Fine: the picked one
+  still visibly turns to face her (capybara in `choose-1280-mid`).
+
+### Design checks (Done when 6–12, from the screenshots and the code)
+
+| # | Check | Result |
+|---|---|---|
+| 6 | Welcome egg line + Hatch; choose step with five named tiles, radio group, none picked, `Hatch the …`, Not yet; name step with suggested name selected, 🎲, empty-name error | ✓ (`waiting-egg-*`, `choose-*`, `hello-*`, `hello-empty-390-lav`; native radios in a `radiogroup`); egg look ✗ must-fix 2 |
+| 7 | Tab and block agree (name, level, stage, bar, 🍪), Feed 5 🍪, disabled at ≤ 0, "🍪 −4" | ✓ (`tab-390-lav` vs `block-390-lav`: Biscuit, Level 3 · Baby, 95; `negative-390-lav`: −4, Feed dimmed, empty bowl) |
+| 8 | *This week*: a line per day, 🌙 apart, 📗 per finish, lines add up | ✓ (6 + 9 + 28 + 40 + 38 + 14 = 135); wrapping at 390, see "worth doing" |
+| 9 | Stage words, ⭐ from 11, proportions change at 4 and 10, level-up Waiting line with Nice! / Visit | ✓ (`stages-*`, `waiting-levelup-390-lav`) |
+| 10 | Moods: misses you, sleepy, back; never in Waiting | ✓ (`missing-*`, `sleepy-390-mid`, `back-1280-lav`) |
+| 11 | Canvases `aria-hidden` with a hidden description; live region; labels ("23 cookies", "Feed Biscuit 5 cookies", progressbar valuetext, `aria-disabled`) | ✓ (in the code; the tester checks it with keys) |
+| 12 | Phone idle on demand, block still, stops when hidden | ✓ (`scenes.test.tsx` and the draw-call counts in *Test*) |
+| — | The den looks warm and cosy (§5) | ✗ must-fix 1 |
+| — | Starts with no cookies on the live start day (D-0033 §3) | ✗ must-fix 3 |
+
 # Test
 
 Developer's own checks (2026-11-23, night); the tester's independent run goes here too.
@@ -565,3 +655,10 @@ Developer's own checks (2026-11-23, night); the tester's independent run goes he
   needed: until Sander merges it every device keeps its own log and nothing differs. Remaining:
   draft PR after #241; UX review; tester; Hanna's five morning questions; Done when 5 (Hanna on the
   live site).
+- 2026-11-23 ux-designer: reviewed: not yet. Must fix: (1) the den's walls render almost black
+  (back `#241208`, left `#0f0503`); they should look like `#3a2c24`; (2) the egg's gold spots
+  stick out as slits and should lie flat on the shell; (3) `CREATURES_START` must be the go-live
+  day so she starts with 0 🍪. Accepted: developer choices 1–5 and 7 (Design §5 amended: the h1 and
+  pill sit on the header card), the layout test change. Worth doing: keep *This week* parts from
+  breaking inside at 390. Back to the developer; re-review after new den, egg and block
+  screenshots.
