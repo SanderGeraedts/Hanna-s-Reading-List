@@ -172,7 +172,12 @@ measuring for this.
     results list is on screen and a click on a result opens that book. At 390 it looks as on main.
   - No console errors, no horizontal page scroll.
   - Screenshots: `open-zoom3-390-*`, `open-zoom3-panned-390-*`, `open-zoom1-390-*`,
-    `open-zoom3-1280-*`, `open-flight-390-lavender`, `search-1280-*`, `search-1024-lavender`.
+    `open-zoom3-1280-*`, `open-flight-390-lavender`, `search-1280-*`, `search-1024-lavender`
+    (the full list is under *Design*, section 4).
+  - **Reduced motion** (`reducedMotion: 'reduce'` emulated, 390 × 844, zoom 3): opening and
+    closing a book moves the camera in one frame, with no easing; with the setting off it eases.
+  - **The tallest book's cover** opened at zoom 1 on the phone is not dimmed (compare with
+    `before-open-zoom1-390-lavender.jpg`).
 - **Design check** (UX designer, light pass on the screenshots): the open book looks the same size
   and place as at zoom 1, the room is as dark as at zoom 1 on both wallpapers, nothing in the step
   back looks like a jump, and the search pop-up sits under the search button.
@@ -221,7 +226,85 @@ Hanna wasn't asked anything (night mode). The architect took these:
 
 # Design
 
-(UX designer)
+(UX designer, light pass: two bug fixes, no new screens, no new words, no new colours.)
+
+## 1. The open book on a zoomed-in shelf
+
+**Looks right when** a book opened at zoom 2 or 3, panned anywhere, can't be told apart from the
+same book opened at zoom 1:
+
+- **The book**: whole, the same size and in the same place on screen as at zoom 1 (on the phone:
+  centred between the header and the top of the sheet, as in `before-open-zoom1-390-lavender.jpg`;
+  on the computer: centred). Its cover is in full light, never dimmed, never cut by a shelf, a
+  neighbouring book or the edge of the dimming, also while she turns it by dragging.
+- **The room**: as dark as at zoom 1 on both wallpapers (the same colour and strength, D-0020),
+  covering the whole case behind the book. The books on the shelf behind it may look a little
+  smaller than they did at that zoom: that is the step back, and fine.
+- **Fixed by the same rule at zoom 1 on the phone**: today the tallest books open with a darkened
+  cover (`before-open-zoom1-390-lavender.jpg`, "Title 5" looks dull). After the fix the cover is
+  as bright as a short book's.
+- **Closing** (× or a tap on the dimmed room): the book flies back into its slot and the shelf
+  comes back to exactly the zoom and pan she had; the ‹ › buttons show as before.
+- Nothing else changes: the book panel, its drag to turn the book, the search glow, the zoom
+  buttons.
+
+## 2. Motion
+
+- **The step back is smooth, not a jump.** The camera eases back with its usual easing (the same
+  soft ease-out the zoom and pan use, about the length of the book's own flight), starting at the
+  tap, together with the book's flight and the dimming's fade-in. Because the room is fading to
+  dark at the same moment, it reads as "the room recedes while the book comes forward". No
+  bounce, no overshoot, no pause before the book moves.
+- **Closing is the same in reverse**: the dimming fades out, the book flies home and the camera
+  eases forward to her zoom, all together.
+- **Dragging the sheet on the phone**: the book's placement follows the sheet as it does today;
+  any small camera correction this causes follows the finger smoothly, never in steps.
+- **Never in any frame**: the book disappearing into or behind the case, the book cut off, the
+  dimming in front of the book, or the room flashing bright between closing and opening another
+  book.
+- **`prefers-reduced-motion: reduce`**: no camera movement at all. The camera **goes straight to**
+  its stepped-back distance in the frame the book is opened (and straight back to her zoom in the
+  frame it is put back), so only the dimming's fade is seen moving the room. The book's own flight
+  stays as it is today (it isn't part of this task; see the question for the morning). The scene
+  doesn't read this setting yet; checking `matchMedia('(prefers-reduced-motion: reduce)')`, as
+  `DashboardMore.tsx` does, is enough.
+
+## 3. The search pop-up
+
+**Looks right when** the pop-up hangs directly under the search button, its left edge in line
+with the button's left edge, and opens to the right over the toolbar, at every width above the
+phone layout (721 px and up), whether the toolbar sits on the title's row or on a row of its own.
+Nothing of it is cut off by the window; the results list under the field is fully on screen; it
+keeps its width, shadow and look. On the phone (≤ 720 px) it looks exactly as on main.
+
+## 4. Screenshots for the developer
+
+In `docs/tasks/T-0026-screens/`, on a local dev server with no backend, 60+ books; lavender and
+midnight where `*` stands:
+
+1. `open-zoom1-390-*`: phone, zoom 1, a tall book open (compare the cover with the before-shot).
+2. `open-zoom3-390-*`: phone, zoom 3, middle of the shelf, book open.
+3. `open-zoom3-panned-390-*`: phone, zoom 3, panned to an end, book open.
+4. `open-flight-390-lavender`: phone, zoom 3, about 0.3 s after the tap (mid step-back).
+5. `open-closed-zoom3-390-lavender`: phone, after closing that book: same zoom and pan as before
+   opening, ‹ › visible.
+6. `open-zoom3-1280-*`: computer, zoom 3, panned to an end, book open, room dimmed.
+7. `open-zoom3-390-reduced-lavender`: phone, zoom 3, with reduced motion emulated
+   (`reducedMotion: 'reduce'`), taken about 0.1 s after the tap: the camera is already stepped
+   back (the shelf behind already at its final size).
+8. `search-1024-lavender`, `search-1280-*`, `search-1440-lavender`, `search-1920-lavender`,
+   `search-390-lavender`: the pop-up open with "title" typed and results showing.
+
+## Questions for Hanna in the morning
+
+Night mode: nothing was asked; the fix ships with these picks and each is easy to change.
+
+1. (The architect's question, kept.) "When you open a book while zoomed in, the shelf behind it
+   now moves back a little, and when you close the book you're back where you were. Is that how
+   you'd like it?"
+2. "If your phone is set to reduce motion, the shelf now jumps back instead of gliding. The book
+   still flies out of the shelf as before. Should the book also just appear, without flying?"
+   (Only relevant if she uses that setting; if so, it is a small follow-up task.)
 
 # Test
 
@@ -240,3 +323,9 @@ Hanna wasn't asked anything (night mode). The architect took these:
   to about 1400 px the toolbar wraps to the left, so the pop-up starts at x −322; anchor it left.
   Reproduced both on main with before-screens. Handed to the ux-designer for a light pass
   (screenshots only).
+- 2026-11-22 ux-designer: designed. Open book at any zoom looks as at zoom 1 (size, place, full
+  light, room as dark); the step back eases together with the book's flight and the dimming,
+  and with reduced motion the camera goes there in one frame; the search pop-up hangs under the
+  button and opens rightwards. Screenshot list and two Done-when checks added (reduced motion,
+  tallest cover at zoom 1). Two questions for Hanna in the morning under *Design*. Handed to the
+  developer.
