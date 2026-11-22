@@ -60,6 +60,7 @@ import {
 import type { ArrowKey, BlockId, SectionId } from '#/lib/dashboardLayout'
 import { TodayStrip } from './TodayStrip'
 import { useDashboardLayout } from './useDashboardLayout'
+import { useArrangeBarHeight } from './useArrangeBarHeight'
 import { BadgesCard, CoverWallCard, RhythmCard } from './NewBlocks'
 import { badges, newBadges } from '#/lib/badges'
 
@@ -156,6 +157,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
   const period = toPeriod(pick)
   const [layout, setLayout] = useDashboardLayout(accountId)
   const [arranging, setArranging] = useState(false)
+  const arrangeBar = useArrangeBarHeight()
   // the monthly challenge's editor is open (#144)
   const [challengeEditing, setChallengeEditing] = useState(false)
   const [drag, setDrag] = useState<Drag | null>(null)
@@ -495,7 +497,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
         <WrapUpCard books={books} year={wrapOpen.year} month={wrapOpen.month} onShowBook={onShowBook} onClose={() => setWrapOpen(null)} />
       )}
       <TodayStrip books={books} accountId={accountId} onShowBook={onShowBook} />
-      <div className={`dashboard-bar${arranging ? ' arranging' : ''}`}>
+      <div className={`dashboard-bar${arranging ? ' arranging' : ''}`} ref={arrangeBar}>
         {arranging ? (
           <>
             <div className="dashboard-bar-actions">

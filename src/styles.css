@@ -164,6 +164,21 @@ h2 {
   color: var(--header-ink);
   pointer-events: none;
 }
+/* on the pages (Dashboard, Challenges, Calendar) the cards scroll under the header, so there it is a
+   solid band in the header's own colour: nothing shows through the title, the stats or the tabs.
+   A short soft fade under it (in the gap .dashboard leaves above the first card) instead of a hard
+   line. The shelf keeps the haze above (T-0035). */
+.topbar.on-page {
+  background: rgb(var(--header-fade));
+}
+.topbar.on-page::after {
+  content: '';
+  position: absolute;
+  inset: 100% 0 auto 0;
+  height: var(--space-3);
+  background: linear-gradient(to bottom, rgb(var(--header-fade)), rgba(var(--header-fade), 0));
+  pointer-events: none;
+}
 .topbar .muted {
   color: var(--header-muted);
 }
@@ -1577,6 +1592,9 @@ textarea.input {
   overflow-y: auto;
   /* starts under the header's real height (set on .app as --header-h), so the tabs cover nothing (#181) */
   padding: max(6.5rem, calc(var(--header-h, 0px) + var(--space-3))) 1.5rem 2rem;
+  /* and whatever is scrolled to or focused (Tab, scrollIntoView, a search result) lands below the
+     header too, never under it (T-0035, WCAG 2.4.11) */
+  scroll-padding-top: max(6.5rem, calc(var(--header-h, 0px) + var(--space-3)));
   /* the same lavender wallpaper as behind the shelf */
   background: var(--wallpaper);
   color: var(--header-ink);
@@ -1653,6 +1671,13 @@ textarea.input {
      and the bar covers what is under it (T-0020) */
   top: var(--space-2);
   z-index: 3;
+}
+/* while arranging the sticky bar sits under the header too: keep what is focused below the bar as
+   well (its height is measured into --arrange-h by useArrangeBarHeight, T-0035) */
+.dashboard:has(.dashboard-bar.arranging) {
+  scroll-padding-top: calc(
+    max(6.5rem, calc(var(--header-h, 0px) + var(--space-3))) + var(--space-2) + var(--arrange-h, 0px) + var(--space-2)
+  );
 }
 .dashboard-bar p {
   margin: 0;

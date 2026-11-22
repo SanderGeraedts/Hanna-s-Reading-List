@@ -2,7 +2,7 @@
 id: T-0035
 title: "Give the header a band she can read on the Dashboard, Challenges and Calendar, and keep a focused card or button out from under it"
 description: "On the page views (Dashboard, Challenges, Calendar) the header gets a solid band in its own --header-fade colour, so cards scrolled under it no longer show through the title, the stats line and the page tabs, on both wallpapers (checked by colours.test.ts); .dashboard gets a scroll-padding-top of the header's height (plus the Arrange bar while arranging), so a card or button scrolled to or focused never lands under the header; the shelf keeps its haze."
-status: Open
+status: Doing
 size: small
 depends_on: []
 decisions: [D-0014, D-0020, D-0022, G-0031]
@@ -164,6 +164,66 @@ Hanna wasn't asked anything (night mode). The architect took these:
 
 Nothing before the build (small). The UX designer's review after the build goes here.
 
+# Build notes
+
+- **How the pages are told apart:** `src/routes/index.tsx` gives the header the class
+  `topbar on-page` while `offShelf` (Dashboard, Challenges, Calendar); on the shelf it stays
+  `topbar`.
+- **The band (1):** `.topbar.on-page { background: rgb(var(--header-fade)) }`, solid over the
+  whole header, on both wallpapers (the midnight block already sets `--header-fade`). No new
+  token: the band is solid, so there's no opacity to keep in one. The soft fade is a
+  `.topbar.on-page::after`, `position: absolute; inset: 100% 0 auto 0; height: var(--space-3)`,
+  from `rgb(var(--header-fade))` to `rgba(var(--header-fade), 0)`. It hangs below the header,
+  outside the layout, and falls in the `var(--space-3)` gap that `.dashboard`'s padding already
+  leaves above the first card. It has `pointer-events: none`, so it never catches a tap. The
+  header's padding, grid and size are unchanged: the measured height is 143.4 px at 390 and
+  129.2 px at 1280 on both `main` and the branch.
+- **The shelf (2):** untouched. `.topbar` keeps its haze gradient, and its computed background
+  on the shelf is the gradient on the branch as on `main`.
+- **Scrolling and focus (3):** `.dashboard` gets
+  `scroll-padding-top: max(6.5rem, calc(var(--header-h, 0px) + var(--space-3)))`, the same
+  sum as its `padding-top` (#181). That way a focused or scrolled-to element stops exactly where
+  the first card starts.
+- **While arranging (deviation, noted):** the sticky Arrange bar wraps onto more rows when
+  blocks are hidden (the "Hidden:" chips), so its height isn't a fixed number in the CSS. I
+  measure it: a new hook, `src/components/useArrangeBarHeight.ts` (a ResizeObserver, like
+  `useHeaderHeight`), is the bar's `ref` in `Dashboard.tsx` and `ChallengesPage.tsx`. It sets
+  `--arrange-h` on the page's `.dashboard` and removes it when the bar goes.
+  `.dashboard:has(.dashboard-bar.arranging)` then adds `var(--space-2)` (the bar's sticky
+  `top`) + `var(--arrange-h)` + `var(--space-2)` (a gap) to the scroll padding. This is a little
+  outside the *Notes*' "only `styles.css`, at most a class in `index.tsx`". It's still group 1:
+  no code-owned path, nothing about the books or saving. The task asks for "the bar's height";
+  a fixed guess in the CSS fails as soon as the chips wrap (the `+6-hidden` run below).
+- **Tests:** `src/lib/colours.test.ts` reads `--header-fade` from `:root` and from the midnight
+  block, and reads the band's opacity from the `.topbar.on-page` rule itself (`rgb(...)` = 1,
+  `rgba(..., a)` = a, or a token). The band is checked over black and over white for
+  `--header-ink`, `--header-muted`, and `--pill-ink` on the white buttons
+  (`rgba(255,255,255,0.72)` over the band), on lavender and midnight (6 cases). The midnight-haze
+  case now takes `--header-fade` from the midnight block and the haze's opacity from the
+  `.topbar` rule's top stop (0.92), instead of `[30, 40, 88, 0.92]`. New `src/styles.test.ts`
+  checks five things: `.dashboard` has a `scroll-padding-top` with `var(--header-h`; the
+  arranging rule adds `var(--arrange-h`; `.topbar.on-page`'s background uses `--header-fade` and
+  is not a gradient, and its fade too; the band sets no padding, height, margin, border, gap or
+  font-size; the shelf's `.topbar` is still a gradient. New
+  `src/components/useArrangeBarHeight.test.tsx` checks the hook sets `--arrange-h` on
+  `.dashboard` and clears it.
+- **The focus script:** `docs/tasks/T-0035-screens/focus-check.mjs` (headless Chrome, 150 demo
+  books in localStorage). Its outputs are `focus-before-main.txt` and `focus-after-branch.txt`.
+  On top of the three pages it also runs the Dashboard and Challenges with Arrange on, and the
+  Dashboard with Arrange on and 6 blocks hidden. **One reading of *Done when* changed:** "`>=`
+  the Arrange bar's bottom" is applied only to elements that **overlap** the bar. The Today
+  strip comes before the bar on the page. At the top of the page the bar hasn't stuck yet, so
+  the strip sits fully visible *above* it. The literal check counted those 3 buttons as hidden
+  although nothing covers them.
+- **The screenshots:** `docs/tasks/T-0035-screens/screens.mjs` makes them; `main-*.jpg` are the
+  same shots on `main`. The per-shot header height, sideways scroll and console errors are in
+  `screens-branch.txt` and `screens-main.txt`.
+- **Found, not fixed (for the architect):** the dev server logs one 404 for `/favicon.ico` on
+  first load, on `main` as well. With `?view=challenges&focus=bingo` the bingo card lands at
+  265 px with the header ending at 143 px. That's fully below the header, but lower than the
+  scroll padding alone would put it (about 155 px): probably the page grows after the
+  `scrollIntoView` on mount. On `main` it landed at 161 px.
+
 # Test
 
 # Log
@@ -173,3 +233,23 @@ Nothing before the build (small). The UX designer's review after the build goes 
   all affected, at every width) and the bookshelf (keeps its haze) and the sheets (not
   affected). No new decision: follows D-0020 and D-0022. Size: **small**. Handed to the
   **developer**; the UX designer reviews after the build.
+- 2026-11-23 developer: built it (see *Build notes*): `.topbar.on-page` solid band in
+  `rgb(var(--header-fade))` with a `var(--space-3)` soft fade below; the shelf keeps its haze;
+  `.dashboard` `scroll-padding-top` from `--header-h`, plus the measured Arrange bar
+  (`useArrangeBarHeight`, `--arrange-h`) while arranging. Checks:
+  `vitest run colours.test.ts styles.test.ts useArrangeBarHeight.test.tsx` → 3 files, 34 passed;
+  `pnpm test` → 931 passed, 9 skipped; `tsc --noEmit` → exit 0; `pnpm run build` → built,
+  `src/routeTree.gen.ts` unchanged; `harness check` → all ✓. Focus script (`focus-check.mjs`,
+  390 × 844 and 1280 × 800; Dashboard, Challenges, Calendar, and with Arrange on, also with 6
+  blocks hidden): **before, on `main`: 576 elements under the header or the Arrange bar** (e.g.
+  390 Dashboard 62 of 198, Challenges 11 of 25, Calendar 2 of 36); **after, on the branch:
+  0**, at both sizes and on every page. Real Shift+Tab presses up the Dashboard (scripted,
+  headless, standing in for the by-hand check): 199 steps each at 390 and 1280, 0 under the
+  header, 0 with the focus ring cut. Screenshots in `T-0035-screens/` (the branch shots, plus
+  `main-*` for the side-by-side): the header is 143.4 px at 390 and 129.2 px at 1280 on both;
+  no sideways scroll; console errors: only the dev server's `/favicon.ico` 404 on first load,
+  the same on `main`; `focus=bingo` lands at 265 px with the header ending at 143 px; August on
+  the Calendar puts `.calendar-nav` at 233 px. Deviations: the bar is measured by a new hook in
+  `Dashboard.tsx` / `ChallengesPage.tsx` (outside "only styles.css + a class"); the
+  Arrange-bar check counts only elements that overlap the bar. Handed to the **UX designer**
+  for the screenshot review, then the tester.
