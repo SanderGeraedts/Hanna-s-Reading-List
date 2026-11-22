@@ -19,6 +19,7 @@ import {
 import { goalPace, goalPaceText } from '#/lib/insightsMore'
 import { localDay } from '#/lib/library'
 import { pileJars, pileMonths, pileSentence, signed } from '#/lib/pile'
+import { ALL_AUDIOBOOKS_LINE, compareHeight, comparisonWords, heightSpoken, heightText, pileHeight } from '#/lib/pileHeight'
 import { belowZero, buyingJarLabel, coinText } from '#/lib/price'
 import type { PileMonth } from '#/lib/pile'
 import { goalForecast } from '#/lib/finishEstimate'
@@ -565,6 +566,7 @@ export function PileCard({ books }: { books: Book[] }) {
             .join(' · ')}
         </p>
       )}
+      <PileHeightLine books={books} />
       {time ? (
         <p>
           At your pace of {pile.perMonth.toFixed(1).replace(/\.0$/, '')} a month, that's {time} of reading.
@@ -578,6 +580,40 @@ export function PileCard({ books }: { books: Book[] }) {
       )}
       <PileMotivation books={books} />
     </section>
+  )
+}
+
+/** A height shown with a non-breaking space, and spoken with its unit in full (T-0021). */
+function Height({ metres }: { metres: number }) {
+  return (
+    <>
+      <span aria-hidden="true">{heightText(metres, ' ')}</span>
+      <span className="visually-hidden">{heightSpoken(metres)}</span>
+    </>
+  )
+}
+
+/** How tall the want-to-read pile would stand, stacked up (T-0021, D-0029). */
+function PileHeightLine({ books }: { books: Book[] }) {
+  const height = useMemo(() => pileHeight(books), [books])
+  if (height.counted === 0) {
+    if (height.listenOnly === 0) return null
+    return (
+      <p>
+        <span aria-hidden="true">{'🎧 '}</span>
+        {ALL_AUDIOBOOKS_LINE}
+      </p>
+    )
+  }
+  const comparison = compareHeight(height.metres)
+  const { before, after } = comparisonWords(comparison)
+  return (
+    <p>
+      <span aria-hidden="true">{'📚 '}</span>
+      Stacked up, your pile would be <Height metres={height.metres} />: {before}
+      <Height metres={comparison.thing.metres} />
+      {after}.
+    </p>
   )
 }
 
