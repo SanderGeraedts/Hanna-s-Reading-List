@@ -104,6 +104,59 @@ atlas and calls it. Its test goes next to it.
 
 # Design
 
+A bug fix with no new look: what she sees afterwards is the map she has now, minus the mistake.
+
+**What "looks right" means**
+
+- **Russia** is one solid shape from the Baltic to the Bering Strait. Unlit, it is the same plain
+  country fill all the way to the right edge of the map, with no paler sliver from Vladivostok up
+  to the Bering Strait. Lit, its covers fill all of it, the Pacific coast and Kamchatka included,
+  and the gold outline follows the coast only: no straight gold line running diagonally across
+  the far east (it is there now, along the wedge's edges).
+- **Chukotka's tip** (the bit of Russia east of the date line) still shows at the far left edge of
+  the map, just west of Alaska, as a small filled shape: plain when Russia is unlit, covers and
+  gold outline when lit. It is cut off cleanly by the map's frame, never drawn outside the map's
+  rounded panel.
+- **Wrangel Island** (north of Chukotka, at the right edge) shows as a whole small island where the
+  map's frame doesn't cut it, not as half an island or a stray line.
+- **Fiji** looks as it does now: its islands at the right edge near 18° S, lit with covers and gold
+  outline when lit; Vanua Levu's coast without a straight shortcut across it. Any part of it west of
+  the date line shows at the left edge, cut by the frame.
+- **Nothing else changes:** every other country (the USA and Alaska's Aleutians included) is drawn
+  exactly as before, at both widths and on both wallpapers; same colours, strokes, outline, cover
+  tiles and where they start (Russia's and Fiji's first tile in the same place as now), same
+  heading, list, hover text and screen-reader label. No text is added (D-0014), no token is touched
+  (D-0020, D-0022). The map must not spill outside its panel at 390 px.
+
+**Screenshots** (in `docs/tasks/T-0022-screens/`, `before-*` taken now, `after-*` by the developer
+with the same script so they pair one to one):
+
+- `{before,after}-plain-{1280,390}-{lavender,midnight}.jpg`: the whole block, a shelf whose only
+  finished book is set nowhere, so no country is lit;
+- `{before,after}-lit-{1280,390}-{lavender,midnight}.jpg`: the whole block with Russia (four
+  books), the USA (two) and Fiji (one) lit;
+- `{before,after}-zoom-east-{plain,lit}-1280-{lavender,midnight}.jpg`: the map's right edge at 4×
+  (map x 290 to 360, y 0 to 110: Kamchatka, Chukotka, Wrangel Island, down to Fiji);
+- `{before,after}-zoom-west-{plain,lit}-1280-{lavender,midnight}.jpg`: the map's left edge at 4×
+  (x 0 to 60, y 0 to 40: Chukotka's tip and Alaska).
+
+The script is
+`C:\Users\User\AppData\Local\Temp\claude\ec29f026d20d029c\db547ba9-8294-4fef-972e-408349069fd4\scratchpad\shot\t22.mjs`
+(playwright-core from that folder, Chrome). With the no-backend dev server up
+(`pnpm exec vite dev --port 3133 --strictPort`), run it from that folder as
+`node t22.mjs <repo>/docs/tasks/T-0022-screens after`. It seeds `hannas-reading-list:v1` and the
+wallpaper in localStorage, opens `?view=dashboard`, hides the fixed top bar while snapping, and
+prints each map's screen-reader label. Stop the server afterwards.
+
+**Before, as seen:** the pale wedge shows on the plain map and, in the lit shots, as a white
+triangle with gold edges cutting through Russia's covers from about Vladivostok to the Bering
+Strait (clearest in `before-zoom-east-lit-1280-*`). The USA and Fiji look right.
+
+**Done when (added):** in the `after-*` shots, compared pair by pair with `before-*`: no wedge or
+diagonal gold line on Russia, its covers reach Kamchatka and the Bering Strait, Chukotka's tip is a
+filled shape at the left edge, Wrangel Island is whole, and the USA, Fiji and every other country
+look the same as before; nothing draws outside the map's panel.
+
 # Test
 
 # Log
@@ -113,3 +166,8 @@ atlas and calls it. Its test goes next to it.
   each to its own start, leaving the triangle between the two closing lines unfilled (the wedge);
   fix specified as unwrap, copy across the edge per polygon, let the frame clip; other countries
   byte-for-byte unchanged. Handed to the ux-designer for a light pass (before/after screenshots).
+- 2026-11-22 ux-designer: designed (no new look: Russia one solid shape with covers to the Bering
+  Strait, Chukotka's tip filled at the left edge, Wrangel Island whole, Fiji, the USA and every
+  other country unchanged). 16 `before-*` screenshots in `T-0022-screens/` (plain and lit, 1280
+  and 390, both wallpapers, zooms on both map edges); the script for the `after-*` set is named
+  under *Design*. Handed to the developer.
