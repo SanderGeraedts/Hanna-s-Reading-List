@@ -95,7 +95,19 @@ spine (edges set "From the cover" stay as stored).
   and the back on the shelf in the new colour, without a reload), and after "Back to automatic". No
   canvas or CORS error in the console.
 - After a reload the chosen colour is still there (it is saved with the book like any edit).
-- Design checks (UX designer) on the screenshots and in the dev server.
+- Design checks (UX designer) on the screenshots and in the dev server, against *Design*:
+  - the row sits between "Change cover…" and "Page edges", with no text other than "Spine colour",
+    "★ Dominant" (only with cover swatches) and "Back to automatic";
+  - swatches are 44 × 44 px in the 390 screenshots and 36 × 36 px in the 1280 ones, and up to 7 fit
+    on one line at both widths, on lavender and midnight;
+  - the current swatch shows a ✓ readable on its colour and a gold ring; the keyboard focus ring is
+    visible around it as well;
+  - tapping a swatch or "Back to automatic" turns the book to its spine; after "Back to automatic",
+    focus is on the swatch that is now pressed;
+  - each swatch's accessible name is a plain colour name (no hex code), with ", dominant" on the
+    first and no two names the same; a unit test covers `colourName`;
+  - a cover that is loading or can't be loaded shows the single ✓ swatch, with no spinner,
+    placeholder or error text.
 - `pnpm test`, `pnpm run build` and `pnpm exec harness check` pass.
 
 # Notes
@@ -163,9 +175,209 @@ These were taken by the architect; the UX designer may refine the visual ones un
 9. **Page edges are left alone** when the spine colour changes.
 10. **A decision record (D-0027)** so no later feature quietly recolours her books.
 
+Added by the UX designer (2026-11-22), taking the recommended option each time:
+
+11. **The row sits between "Change cover…" and "Page edges"**, so the three "how the book looks"
+    controls are together.
+12. **Swatches are rounded squares**, 44 px on a phone or touch screen and 36 px with a mouse (the
+    app's existing tap-size rule), so up to 7 fit on one line in the 340 px computer panel.
+13. **"★ Dominant" is a caption under the first swatch**, not a mark inside it; the ✓ (plus a gold
+    ring) is the only mark inside a swatch.
+14. **Tapping a swatch or "Back to automatic" turns the book to its spine**, as focusing "Back cover"
+    turns it to the back, so she sees the change at once.
+15. **Buttons with `aria-pressed`, not a radio group**: they match the panel's other pickers, and the
+    arrow keys stay free for turning the book.
+16. **Swatches are named with plain colour names** ("Dark red, dominant"), not hex codes, from a
+    small helper with its own test.
+17. **Loading and failed covers look the same**: one ✓ swatch, with no spinner and no error text.
+
 # Design
 
-To be written by the UX designer.
+A new row, **Spine colour**, built like `EdgesField` (its own component, e.g.
+`SpineColourField.tsx`). It uses tokens only (D-0020) and has no hint text (D-0014): the only words
+are the label, the "★ Dominant" caption and the "Back to automatic" button. It adds no new colour,
+text size or spacing value. The panel is the same walnut `--surface` on both wallpapers, so lavender
+and midnight look the same here and the colour test needs no new pair.
+
+## Where it sits
+
+In the book panel, straight after **Change cover…** and before **Page edges**:
+
+1. Front / Spine / Back
+2. Change cover…
+3. **Spine colour** (new)
+4. Page edges
+5. Status, and the rest as now.
+
+The cover, the spine colour and the page edges are the three "how the book looks" controls, so they
+stay together. The panel's own `gap: 1rem` spaces the row from its neighbours; there are no extra
+margins.
+
+## The row, from top to bottom
+
+```
+Spine colour                              <- .field label: --fs-small, --muted
+[■✓] [■] [■] [■] [■] [■]   [■]             <- swatches; the last one only for an outside colour
+★ Dominant                                <- caption under the first swatch
+( Back to automatic )                     <- btn small, only when it would change something
+```
+
+- **Container:** `div.field.spine-colour-field`, `role="group"`,
+  `aria-labelledby="spine-colour-label"`, with the label
+  `<span id="spine-colour-label">Spine colour</span>`, just like `EdgesField`.
+- **Swatch line:** a flex row, `gap: var(--space-1)`, with `flex-wrap: wrap` as a fallback only (with
+  the sizes below, 7 swatches fit on one line at both widths). The extra swatch for an outside colour
+  (see below) gets `margin-left: var(--space-2)`, so it reads as separate from the cover's colours.
+- **"★ Dominant" caption:** a line of its own straight under the swatch line, starting under the
+  first swatch's left edge, `--fs-small`. The ★ is in `--accent` and the word "Dominant" in
+  `--muted`. It's one line, `white-space: nowrap`, and may run on under the second swatch; it sits on
+  its own line, so it never pushes the swatches apart. `aria-hidden="true"`: the first swatch's name
+  already says "dominant". It's only shown when there are cover swatches.
+- **"Back to automatic":** `button.btn.small`, `justify-self: start`, on its own line under the
+  caption. It's the same kind of button as "From the cover" and "Remove" in Page edges.
+
+## The swatches
+
+- **Element:** each swatch is a `<button type="button">` with `aria-pressed` (`true` only for the
+  current colour). There is no visible text inside except the ✓.
+- **Size and touch target:**
+  - **Phone** (the bottom sheet, `max-width: 720px`) **and any coarse pointer**: **44 × 44 px**
+    (`var(--tap)`). Seven swatches with gaps are 7 × 44 + 6 × 4 + 8 = 340 px, which fits in the
+    sheet's 358 px of content at 390 wide.
+  - **Computer panel with a mouse**: **36 × 36 px** (2.25rem). Seven swatches are
+    7 × 36 + 6 × 4 + 8 = 284 px, which fits in the panel's 300 px of content. This follows the app's
+    existing rule that controls grow to the tap size only on touch (`@media (pointer: coarse)`, as
+    `.btn.small` and `.icon-btn` do), plus the phone width, so the 390 screenshots show 44 px.
+- **Shape:** a rounded square, `border-radius: var(--radius-small)`, filled with the colour
+  (`background: <hex>`). That matches the Page edges swatches next to it.
+- **Border:** `1px solid var(--border-strong)` on every swatch, so a very dark swatch (close to the
+  walnut) still shows its edge. **Hover** (mouse): `border-color: var(--text)`.
+- **Current (✓):** `aria-pressed="true"`, with a centred **✓** in `--fs-large`, weight 600, in the
+  swatch's ink colour: `inkFor(hex)` with the same 3:1 fallback the spine lettering gets (one shared
+  function, so the ✓ is always readable on its swatch). It also gets a gold ring that touches the
+  swatch: `box-shadow: 0 0 0 2px var(--accent)`. The ring is what carries "current" against the
+  walnut, and the ✓ carries it inside the colour, so it never relies on colour alone.
+- **Keyboard focus:** `:focus-visible` gives `outline: 2px solid var(--accent); outline-offset: 4px`,
+  the same gold as every other focus in the app. On the current swatch the focus ring sits outside
+  the current ring, with a gap between them, so both show.
+- **Dominant:** the first swatch in the row. The only visual mark is the caption under it (there's
+  no ★ inside the swatch, so the ✓ stays the only glyph in a swatch). When the dominant colour is
+  also the current one, the first swatch has the ✓ and the gold ring, with the caption under it.
+- **The extra swatch for the current colour:** when `book.color` matches none of the palette swatches
+  (compared case-insensitively), one more swatch with that colour goes at the end, after the
+  `--space-2` gap, with ✓ and the ring. Once she taps a palette swatch it goes away (the current
+  colour is now in the palette). That's expected: an outside colour can't be got back except by
+  "Back to automatic" or a swatch, which is the whole point.
+- **Tapping the current swatch** does nothing: it stays pressed and nothing is saved.
+- **Order:** the ★ Dominant (automatic) colour first, then the cover's other colours with the most
+  weight first (architect's choice 1). At most 6 palette swatches, plus at most 1 extra.
+
+## What a tap does: the live update
+
+- **A swatch:** `onUpdate({ color: hex })`, and the book in the panel turns to show its **spine**
+  (`onFace('spine')`, the same way focusing "Back cover" already turns it to the back). The spine and
+  the back repaint at once through `looks` in `BookMesh.tsx`, with no reload and no extra animation
+  beyond the existing turn. The ✓ and the ring move to the tapped swatch in the same render, and
+  "Back to automatic" appears when the new colour isn't the automatic one.
+- **"Back to automatic":** `onUpdate({ color: automatic })` and `onFace('spine')`. The button then
+  disappears, because the colour now is automatic. **Focus moves to the swatch that is now pressed**
+  (the ★ Dominant one, or the single swatch for a book without a cover), so a keyboard or screen
+  reader user isn't left on a removed button.
+- On the shelf (panel closed) the book keeps its new colour. After a reload it's still there (saved
+  like any edit).
+
+## States
+
+| State | Swatches | ★ Dominant caption | Back to automatic |
+|---|---|---|---|
+| **Cover, analysed** | the palette (1–6), ✓ on the match, or an extra ✓ swatch at the end | yes | when `book.color` ≠ `analysis.color` |
+| **Cover still loading** (analysis running) | only the current colour, ✓ | no | no (the automatic colour isn't known yet) |
+| **Cover that can't be loaded** (analysis `null`) | only the current colour, ✓ | no | no (choice 4) |
+| **No cover** (no `coverUrl`) | only the current colour, ✓ | no | when `book.color` ≠ `colorFromString(title)` |
+
+- **Loading:** no spinner, no "loading" text and no placeholder squares. The row shows its one ✓
+  swatch, which keeps the swatch line's height. When the analysis is done, the palette replaces it in
+  place, with no fade (the cover is usually cached from the shelf already, so this takes a moment at
+  most). Only the caption and maybe the button add height below, so nothing above the row moves.
+- **Cover that can't be loaded:** quiet. There's no error message (D-0014; the failure costs her
+  nothing), and it looks the same as loading, without ever growing. Being offline with an uncached
+  cover ends up here as well.
+- **Switching books** while an analysis runs: the old result is dropped (cancelled, as in
+  `CoverPicker`), and the row starts again in the loading state for the new book.
+- **A new cover picked under "Change cover…":** the book gets the new cover's colour (choice 7), and
+  the row goes into loading and then shows the new cover's swatches, with ✓ on ★ Dominant.
+
+## Phone (390) and computer (1280), on both wallpapers
+
+- **390 × 844 (bottom sheet):** the row sits in the sheet's scroll, under Change cover…. Swatches
+  are 44 px, and 7 fit on one line. It's the same on lavender and midnight: the sheet is walnut on
+  both.
+- **1280 × 800 (side panel, 340 px wide):** swatches are 36 px, and 7 fit on one line. It's the same
+  on both wallpapers: the panel is `--surface` walnut with a light blur, and the swatches, the gold
+  ring and the caption sit on the walnut, not on the wallpaper.
+- The book in the panel is visible above the sheet on a phone, and to the left of the panel on a
+  computer, so she sees the spine change while tapping.
+
+## Keyboard and screen reader
+
+- **Not a radio group:** plain buttons with `aria-pressed`, inside `role="group"`. Reasons:
+  - it matches the panel's other pickers (Front/Spine/Back, the format chips, Page edges) and the
+    task's component test ("every swatch is a button");
+  - the Left/Right arrows already turn the book while the panel is open (`index.tsx`), and a radio
+    group would take them over;
+  - seven tab stops at most is fine.
+
+  **Tab** moves through the swatches in order, then "Back to automatic". **Enter or Space** picks a
+  swatch. The arrows keep turning the book, as everywhere else in the panel.
+- **Names:** each swatch is named after its colour in plain words, from a small pure helper (e.g.
+  `colourName(hex)` in `src/lib/`, with a unit test). It takes the hue as one of red, orange,
+  yellow, green, teal, blue, purple, pink, or brown (dark orange or yellow), or grey, black, white
+  or cream for low saturation, then puts "dark " or "light " in front by lightness. It gives no hex
+  code, because a code means nothing spoken aloud.
+  - Format: `<Colour name>` for most swatches, and `<Colour name>, dominant` for the first one.
+  - When two swatches would get the same name, the later one gets " 2", " 3" and so on
+    ("Dark red", "Dark red 2").
+  - The same text goes in `title`, so a mouse hover shows the name too. That's a label, not a hint.
+  - "Current" isn't in the name: `aria-pressed` already says it.
+- **What a screen reader says** (VoiceOver/NVDA, roughly):
+  - entering the row: "Spine colour, group";
+  - on the first swatch: "Dark red, dominant, toggle button, pressed";
+  - on the next: "Dark yellow, toggle button, not pressed";
+  - after picking it: "pressed" on the same button;
+  - on the button: "Back to automatic, button";
+  - after activating it, focus lands on "Dark red, dominant, toggle button, pressed".
+
+  There is no live region: what changes is the state of the button she is on.
+
+## Exact wording
+
+| Where | Text |
+|---|---|
+| Row label | `Spine colour` |
+| Caption under the first swatch | `★ Dominant` |
+| Button | `Back to automatic` |
+| Swatch name and `title` | `<colour name>`, or `<colour name>, dominant` for the first; e.g. `Dark red, dominant`, `Light blue`, `Grey 2` |
+
+The spelling is British "colour", as in the task.
+
+## Reuse
+
+- **Components and classes:** `.field` (the label style), the `role="group"` + `aria-labelledby`
+  pattern from `EdgesField`, `.btn.small` for "Back to automatic", the `@media (pointer: coarse)`
+  tap-size rule, and the gold `:focus-visible` outline used by `.btn`.
+- **Tokens:**
+  - `--tap` for 44 px;
+  - `--radius-small` for the corners;
+  - `--border-strong` for the border, `--text` on hover;
+  - `--accent` for the current ring, the focus ring and the ★;
+  - `--muted` for the label and "Dominant";
+  - `--fs-small` for the label and caption, `--fs-large` for the ✓;
+  - `--space-1` and `--space-2` for the gaps.
+- **Functions:** `inkFor` (with the new 3:1 fallback) for the ✓, `colorFromString` for the automatic
+  colour without a cover, and `analyzeCover` for the palette.
+- **New CSS:** one block `/* ---- spine colour (T-0019) ---- */` next to `/* ---- page edges */`,
+  holding `.spine-colour-swatches`, `.spine-swatch`, `.spine-swatch[aria-pressed='true']`,
+  `.spine-swatch.outside` and `.spine-colour-dominant`.
 
 # Test
 
@@ -177,3 +389,8 @@ To be written by the tester.
   recolours a book automatically (only adding a book and picking a new cover write `color`), so no
   new stored field; D-0027 records that a spine colour is only changed by her; spine-lettering
   contrast rule and choices under *Choices made by the team*; group 1; handed to the UX designer.
+- 2026-11-22 ux-designer: designed: the Spine colour row between Change cover… and Page edges
+  (swatches 44 px on a phone and 36 px with a mouse, ✓ and a gold ring, a ★ Dominant caption, Back
+  to automatic), the loading, failed and no-cover states, the turn to the spine on a tap, buttons
+  with aria-pressed and plain colour names, and the exact wording; choices 11–17 added, and design
+  checks added to *Done when*; handed to the developer.
