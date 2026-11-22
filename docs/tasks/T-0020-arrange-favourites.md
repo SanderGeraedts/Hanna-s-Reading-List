@@ -317,6 +317,63 @@ as they are.
 - No visible text other than what was there before; lavender and midnight look the same apart
   from the wallpaper; no console errors.
 
+# Build notes
+
+Added by the developer (2026-11-22).
+
+- **Moving functions** (`src/lib/dashboardLayout.ts`): `moveFavouriteTo(layout, id, index)` (list
+  place among the others, the end when past it), `moveFavourite(layout, id, column, row, columns)`
+  (`2 × row + column`, or `row` with one column), `favouritePlace(layout, id, columns)` and
+  `stepFavourite(layout, id, key, columns)` for the arrow keys (the same layout object back at an
+  edge). They only ever touch `favourites`.
+- **The queue** (`src/lib/favourites.ts`): an unsent entry is now a star/unstar or a
+  `{ move, before }`; `cleanUnsent` reads both (junk becomes an empty change, as an older app reads a
+  move). `orderMoves(before, after)` finds the one block moved; `moveToChanges(account, id, before)`
+  places it right after the last of its anchors still on the account (first when none is) and
+  returns `[{ remove: tail }, { add: tail }]` for the shortest tail, or `[]`.
+- **Sync** (`src/components/useDashboardLayout.ts`): `setLayout` queues a move when the set is the
+  same and the order changed (a set change still sends stars and unstars only). `flush` meets a
+  move by reading the account, then puts its two changes at the front of the queue in its place and
+  sends them one at a time like any star, so a move survives being offline or a closed app. Pulls
+  are unchanged: the account's order is taken over only when nothing is unsent, which is what stops
+  a reorder from being undone.
+- **Dashboard** (`src/components/Dashboard.tsx`): the Favourites grid gets `dash-favourites-grid`
+  and its blocks `data-favourite`; a drag knows its `place` (`section` or `favourites`), so only the
+  dragged copy gets `.moving` and only its own grid shows a line. `favDropAt` looks only at the
+  Favourites grid (nearest column, then the first block whose middle is below the pointer, counted
+  without the dragged one) and shows a past-the-end line at the end of the column where the last
+  place is. Keys go through `stepFavourite`; focus is found again by `data-favourite` after the
+  re-render. One hidden `role="status"` line in the section while arranging, cleared on Done. No
+  new CSS: `.block-handle`, `.moving`, `.drop-before` and `.drop-end` as they are.
+- **Choices taken by the developer** (recommended option each time, Hanna not asked):
+  1. *Which anchor counts* when the anchors are in another order on the account: the last one in
+     her order that is still on the account (the block she put it right after).
+  2. *More than one block moved in one `setLayout`* (doesn't happen from the handle): a move for
+     each block in her order, which builds the same order on the account.
+  3. *Handle size on a touch screen*: the handles are the sections' handles exactly (`.btn.small`,
+     which the existing CSS makes 36 px tall under `pointer: coarse`, not 44 px as *Design* says).
+     Kept the same as the sections rather than changing every small button; for the UX designer.
+- **Found, not fixed here** (for the architect): in Arrange the sticky bar with Reset/Done
+  (`top: max(5rem, header height + space)`) sits over the top of the ★ Favourites section when the
+  page is at the top, so the heading, the empty note and a drop line before the first row are
+  partly behind it (seen at 390 and 1280, before this change too). The screenshots drag to row 2 so
+  the line is visible.
+
+## Screenshots (`docs/tasks/T-0020-screens/`)
+
+`<width>-<wallpaper>-<n>-…jpg` for 390 and 1280 on lavender and midnight, local dev server with no
+backend, layout seeded in `hannas-reading-list:dashboard:local`:
+`1` Arrange with Favourites (⠿ then ★, no ×), `2` a drag with the drop line, `3` after the drop,
+`4` / `4b` (1280) a drop below the right column's last block with 4 others: the line at the end of
+the left column, and the block landing there, `4c` (1280) a drag over the Today section with the
+line kept in Favourites, `5` the same blocks in their own section unchanged, `6` after Done and a
+reload, `7`–`9` 0, 1 and 2 favourites in Arrange. What the run printed: the drags left `sections`
+deep-equal; the status line read "Reading goal: right column, row 2 of the favourites." (1280) and
+"Reading goal: place 2 of 5 in the favourites." (390); focus stayed on the handle after a key; with 1
+favourite a drag and a key changed nothing and said nothing; with 2, Right (1280) / Down (390)
+swapped them; no handles outside Arrange; the order was the same after Done and a reload; no
+console errors.
+
 # Test
 
 To be written by the tester.
@@ -335,3 +392,13 @@ To be written by the tester.
   in, one column under 860 px, and a hidden status line naming where the block went. Nothing shown
   for a move that hasn't synced. New choices 10–14; design checks under *Design*. Handed to the
   developer.
+- 2026-11-22 developer: built the handle, drag and arrow keys within Favourites, the status line,
+  and the order's sync as a queued move sent as an unstar and re-star of the shortest tail worked out
+  against the account (D-0028); no CODEOWNERS path, `src/server/` or `deploy/nas/` touched. Tests:
+  6 in `dashboardLayout.test.ts`, 7 in `favourites.test.ts`, 10 two-device tests in
+  `favouritesSync.test.ts` (8 of them fail on the old `useDashboardLayout.ts`, among them "is not
+  undone by the device's own next pull") and 6 in `Dashboard.favourites.test.tsx`. `pnpm test`:
+  "Test Files 84 passed | 1 skipped (85), Tests 685 passed | 9 skipped (694)"; `pnpm exec tsc
+  --noEmit`: no errors; `pnpm run build`: "✓ built"; `pnpm exec harness check`: tasks, decisions,
+  engineers and generated files ✓. Screenshots in `docs/tasks/T-0020-screens/` (38), no console
+  errors. Choices and one finding under *Build notes*. Handed to the UX designer for review.
