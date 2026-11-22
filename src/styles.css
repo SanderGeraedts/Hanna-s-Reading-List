@@ -977,7 +977,10 @@ textarea.input {
 .search-pop {
   position: absolute;
   z-index: 5;
-  right: 0;
+  /* hangs under the search button and opens to the right: the search is the toolbar's first item,
+     also when the toolbar wraps to a row of its own on the left (T-0026) */
+  left: 0;
+  right: auto;
   top: calc(100% + 0.5rem);
   width: min(24rem, calc(100vw - 2rem));
   display: grid;

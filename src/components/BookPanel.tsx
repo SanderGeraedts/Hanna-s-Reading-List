@@ -69,8 +69,8 @@ interface Props {
 const SHEET_QUERY = '(max-width: 720px)'
 const SHEET_KEY = 'hannas-reading-list:sheet'
 const SHEET_DEFAULT = 0.45
-const SHEET_MIN_PX = 96 // enough for the handle and the title
-const SHEET_MAX = 0.88
+export const SHEET_MIN_PX = 96 // enough for the handle and the title
+export const SHEET_MAX = 0.88
 
 function savedSheetShare() {
   try {
