@@ -6,7 +6,7 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 
 ## Open
 
-None.
+- [T-0036 Make the Want-to-read pile's grey line show the same listening hours as the 🎧 Audiobook line](T-0036-same-listening-hours-on-the-pile.md) (small): The grey “… pages · … to listen” line in the Want-to-read pile block counts every audiobook on the pile with the 🎧 line's rule (minutes, else pages × 2, else 560), so both show the same hours (D-0036); its pages stay the real page counts of the books she doesn't only listen to.
 
 ## Doing
 
