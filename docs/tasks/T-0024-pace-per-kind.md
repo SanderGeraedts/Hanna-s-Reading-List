@@ -2,7 +2,7 @@
 id: T-0024
 title: "Let the want-to-read pile's pace line follow the All · Paper · E-book · Audiobook switch"
 description: "With Paper, E-book or Audiobook picked in the Want-to-read pile block, the pace line counts only the waiting books of that kind at the pace she finishes books of that kind (D-0031); Audiobook works in hours (waiting listening time ÷ hours of audiobooks finished a month); a kind she hasn't finished in the last year gets a short no-pace line; All stays as it is."
-status: Open
+status: Doing
 depends_on: [T-0023]
 decisions: [D-0008, D-0010, D-0014, D-0020, D-0022, D-0030, D-0031]
 raised_on: 2026-11-22
@@ -320,6 +320,43 @@ finished**, so E-book is the no-pace kind. Names `pile-pace-<case>-<width>-<wall
   scroll; at 360 the switch is the two-row rounded box.
 - [ ] **Lavender and midnight** look the same.
 
+# Build notes
+
+- **Code:** `src/lib/insights.ts`. `finishesLastYear(books, now)` is the one window for every pace
+  (finishes with a day after the same date a year ago and not after today); `wantPile` now uses it,
+  its result unchanged. `kindPace(books, kind, now)` → `{ kind, waiting, perMonth, months? }`:
+  waiting is `pileHeights(books).counts[kind]` for Paper / E-book and
+  `pileHeights(books).audioMinutes` for Audiobook; the finishes are those whose book has the kind in
+  `bookKinds(book)`, each adding 1 (or `audioMinutes(book)` for Audiobook); ÷ 12; `months` only when
+  the pace is above 0 (no `Infinity` / `NaN`). Words: `paceTime(months)` ("N month(s)" / "about N
+  year(s)"), `paceNumber` (`toFixed(1)`, ".0" dropped), `paceHours` (minutes ÷ 60, at least "0.1"),
+  `kindPaceWords`, `kindPaceText(pace, space)`, `kindPaceSpoken`, `hoursSpoken`, `noPaceLine(kind)`.
+  No rule of `pileHeight.ts` is copied.
+- **Block:** the switch's state moved up from `PileHeightLine` into `PileCard`, which now renders
+  the switch, then `<div class="pile-said">` with the height `<p>` (`PileHeightLine`, now
+  presentational) and the pace `<p>` (`PilePaceLine`). The wrapper has `aria-live="polite"` and
+  `aria-atomic="true"` only while the switch shows; the height `<p>` has none of its own. All's pace
+  line and its "Once some books have a “Finished on” date…" line are word for word as before (now
+  through `paceNumber` / `paceTime`). Audiobook's hours are `<span aria-hidden>5.1&nbsp;h</span>` plus
+  `.visually-hidden` "5.1 hours". A kind without a pace shows `noPaceLine` as `muted small-text`.
+- **CSS:** one rule, `.pile-said { display: grid; gap: var(--space-3) }`, the card's own gap
+  (measured in the dev server: 12 px for both, on every shot).
+- **Developer choices (recommended option, Hanna not asked):**
+  13. The wrapper is kept without a switch too (with no live attributes), so the block's structure
+      is the same either way; with an empty pile there is no wrapper (no height or pace line).
+  14. A kind's pace is worked out from the whole shelf each render (`kindPace` calls
+      `pileHeights`), not memoised: the shelf is small and this keeps the rule in one place.
+- **Screenshots:** 20 in `docs/tasks/T-0024-screens/`, from `vite dev --port 3135` with no backend
+  and a shelf seeded in localStorage: a mixed pile (10 paper, 3 e-books, 4 audiobooks waiting) with
+  9 paper finishes and 4 audiobook finishes (one a sleep read) in the last year and no e-book
+  finished. Lines seen: All "At your pace of 1.1 a month, that's about 1 year of reading."; Paper
+  "At your pace of 0.8 paper books a month, that's about 1 year of reading."; Audiobook "At your
+  pace of 3.9 h a month, that's 11 months of listening." (heard "3.9 hours", the "3.9 h" span on one
+  line box); E-book "You haven't finished an e-book in the last year, so there's no pace yet."
+  (muted, small). One live region in the block on every shot; no horizontal scroll; the switch on
+  one row at 390 and 1280, two rows at 360; no console errors. As in T-0023's shots, the phone's
+  floating header overlaps the top of the card title at 390 and 360; the whole card is captured.
+
 # Test
 
 (Tester)
@@ -336,3 +373,13 @@ finished**, so E-book is the no-pace kind. Names `pile-pace-<case>-<width>-<wall
   both are heard after a press; a wrapper with the card's own gap so nothing moves; 20 screenshots
   (390, 1280, and 360 for Audiobook and the no-pace kind, both wallpapers); choices 8–12; one
   component test added to *Done when*. Handed to the developer.
+- 2026-11-22 developer: built the per-kind pace line (D-0031): `finishesLastYear`, `kindPace` and
+  the line helpers in `insights.ts`; the switch's state moved into `PileCard`, one polite atomic
+  live region (`.pile-said`) around the height and pace lines; choices 13–14 under *Build notes*.
+  Unit tests (7 new in `insights.test.ts`, the old `wantPile` test unchanged) and component tests
+  (5 new, 4 T-0023 tests updated for the wrapper and the pace line) on the pace shelf. Check:
+  `pnpm test` → 87 files passed, 1 skipped; 823 tests passed, 9 skipped. `pnpm exec tsc --noEmit`
+  → no errors. `pnpm run build` → built. `pnpm exec harness check` → tasks 24, index in step;
+  decisions 34, index complete, 3 overrules valid; engineers 2; generated files current.
+  `src/routeTree.gen.ts` unchanged. 20 screenshots, no console errors, no horizontal scroll. To the
+  UX designer for review.

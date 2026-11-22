@@ -1728,6 +1728,13 @@ textarea.input {
   /* half a touch button plus padding and border: a pill on one row, a rounded box on two */
   border-radius: calc(var(--tap) / 2 + 4px);
 }
+/* The pile's height and pace lines, one live region while the switch shows
+   (T-0024): repeat the card's gap so nothing moves. Not display: contents,
+   which some browsers drop live regions on. */
+.pile-said {
+  display: grid;
+  gap: var(--space-3);
+}
 .period-pick {
   display: flex;
   gap: 0.4rem;
