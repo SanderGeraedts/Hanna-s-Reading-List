@@ -339,6 +339,82 @@ No questions for Hanna come from the design beyond the ones above. Its picks (th
 *Wallpaper*, a checkbox, the words "Show simple books") are small and easy to change if she
 says so.
 
+## Review after building (2026-11-23)
+
+(UX designer, night mode, Hanna not asked. Looked at `git diff main...HEAD -- src` and all 32
+shots in `T-0034-screens/`; compared rows 1/2 at 390, row 3 and row 12 zoomed in, and diffed
+row 12 pixel by pixel.)
+
+**Verdict: matches the design. Nothing must be fixed before the tester.**
+
+**Row 12, the computer against `main`.** The two 1280 shots can't be told apart by eye. A pixel
+diff finds only JPEG noise, the floor's grain and faint lines a pixel wide where two books
+meet (the edge of a board catching the light a little differently). Lettering, bands, ridges,
+medals, gaps and nooks are the same, book for book. (`1280-lavender-1-shelf-on` and
+`1280-lavender-12-shelf` are the same file, which is fine: it is the same view.)
+
+**The phone hardcovers against the computer's** (rows 1, 2, 3, 4):
+- At 390 and 360 with *Detailed books* on, the books read as hardcovers: coloured boards stand
+  past the paper at the top, the paper shows cream between them, and gold ridges sit raised on
+  the spine (4 on unread books, none at the foot of a read book with its medal). Off, the same
+  books become the blocks with cream sides, in the same places with the same gaps and nooks.
+- The spine colour, bands, lettering and medal match the computer. Lettering is as sharp as on
+  the blocks. I see no dark seams, black faces or board edges in a different colour.
+- At 360 the thinnest spines still read as one coloured strip.
+- Taken out (row 4), it is the full hardcover with its cover, and turned with its painted back.
+  The ridges show as gold beads along the spine edge, as on the computer.
+- The differences allowed on the phone (no shadows, sharper edges, medal without rim) are the
+  only ones I see.
+
+**The design checks** (from *Done when*):
+- [x] A **Books** row between *Wallpaper* and *Decorations*, one checkbox **Detailed books**, no
+  other text; shows without scrolling at 360 × 800 (rows 5, 6).
+- [x] Tab from the *Wallpaper* chips reaches it next; gold focus ring (row 7, 390 and 1280). The
+  markup gives "Books, group" and "Detailed books, checkbox"; the label fills the 44 px row.
+  Space and screen reader: by the code and the unit tests, for the tester to confirm by hand.
+- [x] Tooltip "Your room: wood, wallpaper, books, decorations" (code).
+- [x] The note: **Try again** in gold and **Show simple books** outlined, side by side in one
+  centred row at 360 and 390, on lavender and midnight (rows 8, 9). Off: only *Try again*
+  (row 10). Words unchanged. After *Show simple books*: blocks, and the box unticked (row 11).
+- [x] Switching moves no book (rows 1 and 2 match place for place; the layout no longer depends
+  on anything but the decorations). No visible jump when a book leaves or reaches the shelf: the
+  shelf piece is built with the same sizes as the parts. A still can't show the flight, so the
+  tester watches one take-out and put-back at 390.
+- [x] The screenshots are reviewed (this section).
+
+**The developer's deviations:**
+1. **The board faces** take the colour of one texel in the middle of the spine picture (u 0.5,
+   7.5 % from the top) instead of `main`'s plain-colour texture. Accepted. That point is the
+   book's own colour (the stop at 0.5 of the spine's gradient), clear of the bands (5 to 6.7 %),
+   the language tag and the title (from 10 %). I checked the sleep moon too: that point falls in
+   the crescent's cut-out at every spine width. Because the UV is constant across the face, the
+   GPU samples the sharpest level, so distance can't blend gold or ink into it. On the shelf
+   these faces are only seen in gaps and at the end of a row, and there they look the same as on
+   `main` (row 3, row 12).
+2. **"Taken out" now means "out right now"** (or still flying back), so a book returns to the
+   light shelf piece when it lands. Accepted, and better: it is what the task asked for ("only
+   the book that is taken out uses the separate parts"). On `main` a book stayed heavy for the
+   rest of the visit once it had been looked at. The cover picture stays loaded, so taking the
+   same book out again shows it at once. The swap at landing happens with the front board facing
+   the neighbour, where the cover and the plain colour can't be told apart.
+3. **The zoom shot at about 2.7** (1.4³, three presses of *Zoom in*) instead of 3. Accepted: 3
+   can't be reached with the buttons, and 2.7 shows the boards, ridges and medal close up as
+   intended.
+4. **The note shots made by forcing a lost drawing** (`WEBGL_lose_context`). Accepted: that is
+   one of the two ways *Done when* names, and the note looks the same whatever the cause. The
+   other way (WebGL turned off entirely) stays with the tester, as the developer wrote.
+
+**Seen, not to be fixed here (follow-up):** a book that was read before but now is *did not
+finish* has a medal yet gets four ridges, so the bottom pair crosses its medal (e.g. "The
+Island of Salt 9" in row 1). The same happens on `main` on the computer, because the ridges
+check `status === 'read'` and the medal and painted bands check `hasMedal`. It isn't new and row
+12 must match `main`, so it doesn't hold this task. A small follow-up can make the ridges follow
+`hasMedal` too.
+
+**For the tester:** watch a take-out and put-back at 390 for a jump, swipe with *Detailed books*
+on for flickering ridges, toggle the switch ten times and compare memory counts, and check
+Space and the screen reader on the checkbox.
+
 # Test
 
 # Log
@@ -409,3 +485,10 @@ says so.
   Checks: `pnpm test` 913 passed, 9 skipped (93 files); `tsc --noEmit` clean; `pnpm run build`
   passes. Not done here (tester): toggling ten times and comparing memory counts, WebGL turned
   off entirely (the unit tests cover the note), reload / other-profile checks in a browser.
+- 2026-11-23 ux-designer: reviewed: matches the design, nothing must be fixed. Row 12 (1280,
+  branch vs `main`) is the same book for book (a pixel diff shows only JPEG noise and the floor's
+  grain). At 390 and 360 the books are hardcovers like the computer's. Every design check is
+  ticked. All four deviations are accepted: board faces sampling the spine's plain colour, "taken
+  out" meaning out right now, the zoom at about 2.7, and the note shots by a lost context. A
+  follow-up for later, not new and also on `main`: a read-before *did not finish* book gets its
+  bottom ridges across its medal. Handed to the **tester**.
