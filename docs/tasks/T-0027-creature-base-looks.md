@@ -2,7 +2,7 @@
 id: T-0027
 title: "Design the base 3D look of the 20 book creatures, each once by a Fable agent"
 description: "First step of the book creatures (D-0033): the species list with rarity, IUCN Red List category and source in the code, and one cute low-poly 3D base model per creature, designed once per animal by an agent on the Fable model; shown on the unlinked /style page; nothing in the app links to them yet."
-status: Open
+status: Doing
 size: full
 depends_on: []
 decisions: [D-0002, D-0017, D-0020, D-0022, D-0033]
@@ -497,6 +497,103 @@ cannot be met for its animal, the agent says so in its reply instead of breaking
 
 (after the build: the four screenshots, family check and the 120 px check, Done when 4)
 
+## Modelling brief for Fable agents
+
+Developer, 2026-11-22. Each Fable agent gets this brief, *Design* §1–§10 above, and its one
+creature's row from the table, §7 and §8. The shared code and one finished example exist:
+
+- `src/components/creatures/model.ts`: the shared interface (read it; don't change it).
+- `src/components/creatures/models/cat.ts`: **the example to copy**: same structure, same
+  helpers, same comment at the top.
+
+**Your file.** Exactly one new file: `src/components/creatures/models/<id>.ts`, with `<id>` from
+the table (e.g. `red-fox.ts`). It exports two things, named from the id
+(`red-fox` → `RedFox` / `redFox`, `starlight-unicorn` → `StarlightUnicorn` / `starlightUnicorn`):
+
+```ts
+import * as THREE from 'three'
+import { anchor, capsule, cone, creatureMaterials, group, mesh, orientBetween, sphere, torus } from '../model'
+import type { CreatureModel, CreatureParams } from '../model'
+
+export function buildRedFox(p: CreatureParams): THREE.Group { /* ... */ }
+export const redFox: CreatureModel = { id: 'red-fox', build: buildRedFox }
+```
+
+The registry finds the file by its name: don't edit `models/index.ts` or anything else.
+
+**The interface** (all from `../model`):
+
+- `p.quality` (`'low' | 'high'`) goes into every geometry; `p.stage` is never read (always build the
+  grown-up); `p.palette` is only used through `creatureMaterials(p)`.
+- `const m = creatureMaterials(p)`: paint every mesh with one of `m.body`, `m.belly`, `m.accent`,
+  `m.accent2`, `m.eye`, `m.nose`, `m.glint`, `m.blush`. Nothing else.
+- Geometry only through the helpers, which take their segments from `SEG`:
+  `sphere(r, 'L' | 'M' | 'S' | 'XS', q)`, `capsule(r, length, q)` (along y; the caps add `r` at each
+  end), `cone(r, h, q, sides?)` (`sides` 4 for small ears, 3 for a triangle nose),
+  `cylinder(rTop, rBottom, h, q)`, `torus(r, tube, q, arc?)` (round the z axis). For a flat shape
+  (star, ribbon end, wing) `new THREE.ShapeGeometry` / `ExtrudeGeometry` with at most 12 points.
+- `mesh(geometry, material, position?, rotation?, scale?)` and `group(name, position?, rotation?)`;
+  `orientBetween(obj, a, b)` puts `obj` between two points with its +y along them and returns the
+  distance (see the cat's tail).
+- Parts are groups named `part:body`, `part:head`, `part:eyes` (inside `part:head`), `part:armL`,
+  `part:armR`, and if it has them `part:tail`, `part:wings`, at the pivots of §5. Helper groups
+  inside a part (an ear with its inner ear) are fine. On the root only parts and `seat`.
+- Anchors: `anchor('seat' | 'neck' | 'back' | 'head' | 'hat' | 'face' | 'paw', size)`, size above 0,
+  in the part §5 names, then `.position.set(...)` (and a rotation for `back`).
+- Tags on meshes: `userData.detail = true` (dropped on low), `userData.stageRole = 'extra'` (horns,
+  wings, ribbons, gills, tufts, mane), `userData.stageRole = 'foot'` (feet; added by the developer
+  so stages can shrink feet with the arms), `userData.satin = true` (at most two parts, on
+  `accent`/`accent2`).
+- Mirror by position (`s * x` for `s` in −1, 1), never by a negative scale.
+
+**The budget** (checked by the test): at most 40 meshes; after the shared merge at most **3,000
+triangles on high**, **1,500 on low**, **12 draw calls**; bounding box 0.95–1.15 tall, at most 1.1
+wide and 0.8 deep; bottom on y = 0. The cat, with the full shared body, is **2,638 / 1,154
+triangles and 8 draw calls**: the shared body costs most of the budget, so keep species features on
+`M`/`S`/`XS` segments, prefer one stretched sphere over several, and tag small markings `detail`.
+Each extra material kind in a part (gloss nose, blush, satin) is one more draw call.
+
+**Don't touch:** `model.ts`, `models/index.ts`, `cat.ts` or any other creature's file, the species
+list (`src/lib/creatures/species.ts`), the tests, `/style`, `package.json` or anything outside your
+one file. No colour literal (`#…`, `0x…`, `rgb(`), no `THREE.Color`, no `new THREE.…Material`, no
+merging, no animation, no `p.stage`, no import except `three` and `../model`: the test fails on
+each. If the style sheet can't be met for your animal, say so in your reply instead.
+
+**Test your own file** (from `C:\Users\User\hrl-creatures`, Git Bash):
+
+```bash
+export PATH="/c/Program Files/nodejs:$PATH:$APPDATA/npm"
+pnpm exec vitest run src/components/creatures/models.test.ts -t <id> --silent=false
+pnpm exec tsc --noEmit
+```
+
+The test prints a line `model <id>: <high> / <low> tris, <calls> calls, <w> wide × <h> tall × <d> deep`. Both commands must pass. The registry loads every file in `models/`, so while other agents are writing theirs a run can fail on *their* half-written file: check the error names your file, otherwise wait a minute and run again. Reply with the
+file path, that line, and your token count.
+
+## Developer notes (step B, part 1)
+
+Taken at night with the recommended option, without asking Hanna (all reversible):
+
+1. **Palettes live only in the species list** (`src/lib/creatures/species.ts`, `palette` and
+   `shinyPalette` for all 20), not in each model file as Design §6 sketched (`CreatureModel` has
+   `id` and `build`). Reason: Done when 6 forbids any colour literal in the model files, and one
+   place for the colours means the shiny of T-0030 is just `shinyPalette`.
+2. **`makeCreature` lives in `models/index.ts`** (re-exported from `src/components/creatures`),
+   not in `model.ts`: the model files import `model.ts`, so `model.ts` importing the models would
+   be an import cycle. The registry finds model files by name (`import.meta.glob`), so the Fable
+   agents never edit a shared file.
+3. **Geometry helpers in `model.ts`** (`sphere`, `capsule`, `cone`, `cylinder`, `torus`, `mesh`,
+   `group`, `orientBetween`) so segment counts can only come from `SEG`.
+4. **Stages:** `STAGE_SCALE` holds Design §2's table and `applyStage` a first version (body round
+   its centre, the other parts follow the body and scale round their pivots; eyes, feet and extras
+   get their own factor). T-0029 refines it. Feet are tagged `stageRole: 'foot'` for it.
+5. **Merged meshes** are named `mesh:<part>:<kind>` (e.g. `mesh:body:matte`) so they are not taken
+   for parts.
+6. **The model test** waits for all 20 with `EXPECT_ALL_MODELS = false`; set it to `true` after
+   step A.
+7. **/style:** one canvas behind a grid of tiles, Lavender/Midnight buttons that change the
+   wallpaper for this page only (the saved room stays), and a Shiny switch for Done when 7.
+
 # Test
 
 # Log
@@ -517,3 +614,4 @@ cannot be met for its animal, the agent says so in its reply instead of breaking
   confirm step (and the shiny warning with hold), and all 20 creatures get a shiny (ten more
   palettes added to Design §7, gold / purple / night-sky). D-0033, the brief and T-0028 to T-0030
   updated. Saving her choices without a server change looked at again: see T-0028.
+- 2026-11-22 developer: step B part 1 on branch t-0027-book-creatures: the species list with palettes and shiny palettes for all 20 and its test (`src/lib/creatures/species.ts`); the shared `src/components/creatures/model.ts` (types, `SEG`, `radial`, geometry helpers, `creatureMaterials`, `anchor`, `ANCHORS`/`PARTS`, `STAGE_SCALE` and `applyStage`, vertex-colour bake and merge per part and kind in `finishCreature`); `makeCreature` and a file-name registry in `models/index.ts`; the model test (Done when 2 and 6) in `src/components/creatures/models.test.ts`; the Creatures section on /style; the house cat as the example model. Check: `pnpm test` 93 files passed, 883 tests passed (10 skipped, among them the all-20 check until step A); `model cat: 2638 / 1154 tris, 8 / 8 calls, 0.75 wide × 1.00 tall × 0.61 deep`; `tsc --noEmit` clean; `harness check` passed. /style seen in headless Chrome: the cat turns in its tile on lavender. Choices taken without asking: *Developer notes* above. Modelling brief for the Fable agents written. Remaining: step A (19 Fable models, tokens in *Log*), the four screenshots, the UX review, the Red List re-check on iucnredlist.org in a browser before merging, and the PR.
