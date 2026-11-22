@@ -446,22 +446,85 @@ cursor table and writes the values in *Test*.
 
 ## Design checks (for the review and the tester)
 
-- [ ] ‹ and › are 44 × 44 px, round, 16 px from the screen's left and right edges, level with each
+- [x] ‹ and › are 44 × 44 px, round, 16 px from the screen's left and right edges, level with each
       other, centred between the header and the bottom; › doesn't touch the zoom column at either
       size.
 - [ ] They look exactly like the zoom buttons (background, border, plum glyph, hover, focus ring)
       on lavender and midnight, and their edge is visible on white-washed and ebony.
-- [ ] Hidden at zoom 1, with a book open, off the shelf and with no books; shown again when zoomed
+      *(Colours, border, glyph, focus ring and the woods match; the size and the dimmed hover
+      don't: must-fix 1 and 2 in the review below.)*
+- [x] Hidden at zoom 1, with a book open, off the shelf and with no books; shown again when zoomed
       in, in the right state for where the pan is.
-- [ ] At each end the button on that side is dimmed (`aria-disabled="true"`, opacity 0.5), keeps
-      its place, keeps focus when it got there by keyboard, and covers no book.
-- [ ] Names and titles exactly as in *Names*; the group is "Move along the shelf"; Tab order
+- [x] At each end the button on that side is dimmed (`aria-disabled="true"`, opacity 0.5), keeps
+      its place, keeps focus when it got there by keyboard, and covers no book. *(On the phone the
+      right end of each row is a decoration, so › lies beside the case's side; see the review.)*
+- [x] Names and titles exactly as in *Names*; the group is "Move along the shelf"; Tab order
       ‹ → › → zoom buttons.
-- [ ] A tap or click on ‹ › never opens, lifts or moves the book under it.
-- [ ] Cursor: `grab` over the empty wall when the shelf can pan, `grabbing` during a wall pan,
-      `auto` on the wall at zoom 1, books' cursors unchanged.
-- [ ] No hint text anywhere; no new colour, size or spacing beyond the tokens and the zoom
+- [x] A tap or click on ‹ › never opens, lifts or moves the book under it.
+- [x] Cursor: `grab` over the empty wall when the shelf can pan, `grabbing` during a wall pan,
+      `auto` on the wall at zoom 1, books' cursors unchanged. *(From the code and the developer's
+      checks; the tester reads `canvas.style.cursor` again.)*
+- [x] No hint text anywhere; no new colour, size or spacing beyond the tokens and the zoom
       buttons' existing values.
+
+## Review after building (2026-11-22)
+
+**Verdict: changes needed (two small CSS fixes), then on to the tester.** I compared
+`git diff main...HEAD -- src` and the 21 screenshots in `docs/tasks/T-0025-screens/` with the design,
+state by state. The shelf now really slides: at 1280 the left end shows Book 32 whole beside ‹, the
+right end Book 60 whole beside ›, and on the phone Book 8 whole beside ‹. The buttons sit where the
+design put them (16 px in, level, centred under the header, › 103 px above the zoom column on the
+phone), hide at zoom 1 and with a book open, dim at the ends and keep focus there
+(`pan-right-end-focus`), and the names, titles, group and tab order are word for word. On
+white-washed and ebony the plum border and the light fill keep the button's edge clear.
+
+### Must fix
+
+1. **A dimmed ‹ › changes on hover.** The base `.btn:hover:not(:disabled)` in `styles.css` still
+   matches an `aria-disabled` button, and it is more specific than `.shelf-pan .btn`, so hovering a
+   dimmed button turns its fill into `--surface-hover` (almost transparent) with the gold
+   `--accent-line` border: a ghost ring that looks as if it reacts. The design says a dimmed button
+   has *no hover change*. Keep the zoom buttons' fill and border on
+   `.shelf-pan .btn[aria-disabled='true']:hover` (`rgba(255, 255, 255, 0.78)`,
+   `rgba(45, 32, 56, 0.2)`). New screenshot: `pan-right-end-hover-1280-lavender`, with the mouse
+   over the dimmed ›.
+2. **Make the zoom buttons 44 × 44 too, so the two groups match (choice 19).** At 1280 › sits
+   straight above + − ⤢ 🎨 and is visibly bigger (44 against 38 px); on the phone the zoom buttons
+   are 38 × 44, so not round. The design asks for one look shared by both groups and D-0020 asks
+   for 44 px; the zoom buttons are the ones that are off, because `.btn.icon` (later in
+   `styles.css`) overrides `.zoom-controls .btn`. Fix it on the zoom side (e.g. drop `icon` from the
+   four zoom buttons, or a `.zoom-controls .btn.icon` rule), not by shrinking ‹ ›. The ‹ › `top`
+   sum already counts the zoom column as four 44 px buttons, so › stays clear of it. Re-take
+   `pan-middle-1280-lavender`, `pan-middle-390-lavender` and `zoom-1-390-lavender`.
+
+### The developer's choices
+
+- **16, the sideways wheel's direction: accepted.** Scrolling right now shows the books to the
+  right, as every page and map does; the old sign only went unnoticed because nothing moved.
+- **17, any open dialog counts as a panel: accepted.** It covers panels added later without wiring.
+  For the tester: open and close the 🎨 room panel, Make a wish and quick update, then check that
+  ← → work again, so a closed panel left in the page with `role="dialog"` can't switch the arrows
+  off for good.
+- **18, no hover lift during a wall pan: accepted.** Books lifting under a passing drag would look
+  like grabbing them; this keeps the wall pan reading as moving along the room.
+- **19, ‹ › 44 px while the zoom buttons are 38 px: not accepted as is;** see must-fix 2.
+- **20, the end margin stays 0.05 m, and the phone right-end shots: accepted.** At every end the
+  button lies on the wall or the case's side and cuts no book. On the phone each row ends in a
+  decoration (the cat, the koala), so the end shot shows the cat beside the dimmed ›, not a spine.
+  That *is* the end of the shelf, and the last book went past one step earlier. On the phone the
+  check "the last book of each shelf fully visible beside ›" reads "the last thing on the row". No
+  wider margin needed.
+- **The dimmed › on midnight** is faint over the dark wall (`pan-right-end-1280-midnight`), as the
+  dimmed + is; that is what dimmed means and it matches the zoom buttons, so it stays.
+
+### Follow-up, not in this task
+
+- **Opening a book while zoomed in on the phone** shows no book in front and doesn't dim the room
+  (`book-open-390-lavender`: the sheet comes up over the zoomed shelf, no book lifted out). It is on
+  main as well, so it comes from the zoom, not from this change, and fixing it means changing how
+  the open book is placed in front of a zoomed camera: a different part of the scene, with its own
+  check. Putting it here would hold up the fix Hanna asked for. Because she will now zoom and open
+  books more, the architect raises it as its own task straight after this one.
 
 # Build notes
 
@@ -566,3 +629,7 @@ To be written by the tester.
   zoomed in shows no book in front and doesn't dim the room. It is the same on main's code (checked
   by stashing this work), so it comes from the zoom and not from this change. Handed to the UX
   designer for review. Draft PR #236.
+- 2026-11-22 ux-designer: reviewed: changes needed. Must fix: (1) a dimmed ‹ › must not change on
+  hover; (2) the zoom buttons 44 × 44 like ‹ › (D-0020). Accepted choices 16, 17, 18 and 20.
+  Follow-up for the architect: on the phone, a book opened while zoomed in shows no book in front
+  and doesn't dim the room (also on main), as its own task next. Handed back to the developer.
