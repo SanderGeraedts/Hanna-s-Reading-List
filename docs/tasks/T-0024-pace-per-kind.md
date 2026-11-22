@@ -145,6 +145,9 @@ X 720, Z 1,200) → 306.7 min a month → "5.1 h", 1,920 min waiting (600 + 600 
     updated: "books waiting", the pages · listening line and the motivation part still don't change;
     the pace line now does;
   - the block's order stays: pages line, switch, height line, pace line;
+  - while the switch shows, the height line and the pace line are inside one element with
+    `aria-live="polite"` and `aria-atomic="true"`, and the height line has no `aria-live` of its
+    own; with one kind only there is no `aria-live` in the block;
   - after unmount and mount it starts on All, with the All pace line;
   - the other T-0023 tests still pass.
 - Clicked through on a local dev server with no backend (`pnpm run dev`, never a production
@@ -195,9 +198,127 @@ the recommended option without asking her:
 7. **A new decision, D-0031,** since the per-kind pace and the hours would need a talk with Hanna
    to change.
 
+The UX designer took the recommended option for the rest, without asking Hanna:
+
+8. **The architect's words are kept** for every kind and for the no-pace lines; no new wording.
+9. **One live region for both lines:** while the switch shows, the height line and the pace line
+   sit in one wrapper that is the polite, atomic live region, instead of two regions of their own.
+   After a press she hears both sentences, in reading order, once. Two separate regions would be
+   two announcements that screen readers may queue, cut off or read in either order.
+10. **The wrapper repeats the card's gap** (`display: grid; gap: var(--space-3)`, one small CSS
+    rule), so the block looks exactly as it does now, to the pixel.
+11. **The pace line keeps its look per state:** a line with a pace is plain body text like All's;
+    a no-pace line is `muted small-text` like All's no-pace line. No new colour or size.
+12. **Hours with a non-breaking space** ("5.1 h") and heard in full ("5.1 hours", "1 hour"), like
+    T-0023's times; "about 2 years" and "7 months" stay as All writes them.
+
 # Design
 
 (UX designer)
+
+T-0023's design stays the base: the switch, its place, its look, the height line and its live
+region. This task changes **only the pace line's text** and **where the live region sits**. No new
+colour, text size, spacing or corner (D-0020), no hint text (D-0014).
+
+## The line for each choice
+
+Words exactly as the architect wrote them (section 3); the examples are the pace shelf of *Done
+when*. "h" has a non-breaking space (U+00A0) before it.
+
+| Choice | What she sees | Style |
+|---|---|---|
+| All | At your pace of 1.3 a month, that's about 1 year of reading. | as now |
+| All, no finish day at all | Once some books have a “Finished on” date, this shows how long the pile would take. | as now (muted, small) |
+| Paper | At your pace of 0.6 paper books a month, that's about 2 years of reading. | body text, like All |
+| Paper, pace exactly 1 | At your pace of 1 paper book a month, that's … of reading. | body text |
+| E-book | At your pace of 0.3 e-books a month, that's 4 months of reading. | body text |
+| E-book, pace exactly 1 | At your pace of 1 e-book a month, that's … of reading. | body text |
+| Audiobook | At your pace of 5.1 h a month, that's 7 months of listening. | body text |
+| Paper, no pace | You haven't finished a paper book in the last year, so there's no pace yet. | muted, small, like All's no-pace line |
+| E-book, no pace | You haven't finished an e-book in the last year, so there's no pace yet. | muted, small |
+| Audiobook, no pace | You haven't finished an audiobook in the last year, so there's no pace yet. | muted, small |
+
+- The pace line stays in **the same place** for every choice: right under the height line, above
+  the motivation part. A kind's no-pace line takes the pace line's place; it is never shown next to
+  a pace line.
+- "of reading" for All, Paper and E-book; "of listening" only for Audiobook.
+- **Without a switch** (one kind or none) the pace line is the All line, exactly as now.
+- **Empty pile:** no pace line, as now.
+
+## What a screen reader hears
+
+- The hours are written twice, like T-0023's times: `aria-hidden` "5.1 h" plus `.visually-hidden`
+  "5.1 hours" ("1 hour" for exactly 1, "0.1 hours" for the smallest). She never hears "h".
+- **One live region for both lines.** While the switch shows, the height line and the pace line
+  are wrapped together in one element with `aria-live="polite"` and `aria-atomic="true"`; the
+  height `<p>` loses its own `aria-live` / `aria-atomic` (no live region inside a live region).
+  After pressing a button she hears the height sentence and then the pace sentence, once, e.g. on
+  Audiobook:
+
+  "Your audiobooks are 32 hours: … . At your pace of 5.1 hours a month, that's 7 months of
+  listening."
+
+  On a kind without a pace: "Your e-books would stand … . You haven't finished an e-book in the
+  last year, so there's no pace yet." Back on All: the All height sentence and the All pace line.
+- Nothing is announced when the page loads. Without a switch there is no live region, as in T-0021.
+- The switch, its group name, button names, `aria-pressed` and focus behaviour don't change.
+  Pressing a button still doesn't move focus.
+- The wrapper is a plain `<div>` with no role or label of its own; reading the card line by line,
+  she meets the height line and then the pace line, as now.
+
+## Nothing else moves
+
+- **The wrapper** is a direct child of the card's grid holding the height `<p>` and the pace `<p>`,
+  and gets one small CSS rule on a new class (e.g. `pile-said`): `display: grid; gap: var(--space-3)`,
+  the card's own gap. So the space between the switch, the height line, the pace line and the
+  motivation part is exactly what it is now. (Not `display: contents`: some browsers drop a live
+  region on such an element.) The developer may keep the wrapper when there is no switch too, as
+  long as it then has no live attributes.
+- "N books waiting", the pages · listening line, the switch, and the motivation part (in vs. out
+  this month, the 6-month line, the coin jars) **don't change** with the switch.
+- The card's height can change by a line when the pace sentence is longer or shorter on a narrow
+  phone, like the height line already does. That's expected, not a jump to fix.
+- `.segmented` and `.pile-kinds` don't change.
+
+## Phone 390 / 360 and computer 1280, both wallpapers
+
+- **390 (touch):** the pace line wraps like normal text over two lines; the no-pace line over two or
+  three. No ellipsis, no `nowrap`. "5.1 h" never splits (non-breaking space). No horizontal scroll.
+- **360 (touch):** the switch wraps to two rows (T-0023's rounded box); the height line and pace line
+  wrap normally underneath, "5.1 h" still whole, nothing cut off, no horizontal scroll.
+- **1280:** one dashboard column; the pace line on one or two lines.
+- **Lavender and midnight:** the card is walnut on both; the pace line is `--text` on `--surface`
+  and the no-pace line `--muted`, pairs that already pass `colours.test.ts`. Nothing new to test.
+
+## Screenshots needed
+
+In `docs/tasks/T-0024-screens/`, from the no-backend dev server with a seeded shelf: a mixed pile
+of all three kinds with finishes in the last year of paper books and audiobooks, but **no e-book
+finished**, so E-book is the no-pace kind. Names `pile-pace-<case>-<width>-<wallpaper>.jpg`:
+
+| Case | 390×844 | 1280×800 | 360×800 |
+|---|---|---|---|
+| `all` | lavender, midnight | lavender, midnight | |
+| `paper` | lavender, midnight | lavender, midnight | |
+| `audiobook` | lavender, midnight | lavender, midnight | lavender, midnight |
+| `ebook-nopace` | lavender, midnight | lavender, midnight | lavender, midnight |
+
+20 screenshots. Each shows the whole Want-to-read pile card. No console errors, no horizontal scroll.
+
+## Design checks (on the screenshots and in the dev server)
+
+- [ ] **Wording:** each choice's pace line matches the table: "paper books" / "e-books" / "h",
+  "of reading" / "of listening", singular for exactly 1; All unchanged.
+- [ ] **No pace:** the E-book shot shows "You haven't finished an e-book in the last year, so
+  there's no pace yet." muted and small, in the pace line's place, with no pace line next to it.
+- [ ] **Nothing else moves:** books waiting, the pages line, the switch and the motivation part are
+  the same on all four choices; the gaps between the lines look the same as in T-0023's shots.
+- [ ] **Screen reader:** while the switch shows, one live region holds both lines (the height `<p>`
+  has no `aria-live` of its own); after a press both sentences are heard, height first; "hours",
+  never "h"; no live region without a switch.
+- [ ] **390 / 360 / 1280:** lines wrap without cutting off, "5.1 h" stays whole, no horizontal
+  scroll; at 360 the switch is the two-row rounded box.
+- [ ] **Lavender and midnight** look the same.
 
 # Test
 
@@ -210,3 +331,8 @@ the recommended option without asking her:
   unchanged, a no-pace line for a kind without finishes in the last year. Found the All pace: every
   finish with a day in the last year (re-reads and sleep reads included) ÷ 12; the kinds use the
   same rule. D-0031 recorded; choices 1–7; group 1, no new stored fields. Handed to the UX designer.
+- 2026-11-22 ux-designer: designed: the architect's words kept for each kind and the no-pace lines;
+  hours seen "5.1 h", heard "5.1 hours"; one polite live region around the height and pace lines so
+  both are heard after a press; a wrapper with the card's own gap so nothing moves; 20 screenshots
+  (390, 1280, and 360 for Audiobook and the no-pace kind, both wallpapers); choices 8–12; one
+  component test added to *Done when*. Handed to the developer.
