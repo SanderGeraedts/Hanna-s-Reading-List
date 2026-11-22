@@ -123,6 +123,20 @@ then (see *Choices*, 5).
 - WebGL off and a lost context (`WEBGL_lose_context`): the note shows as in T-0003, with the
   simple-books action while *Detailed books* is on; using it brings the shelf back as blocks.
 - The UX designer has reviewed the screenshots.
+- **From the design** (added by the UX designer; details under *Design*):
+  - In the 🎨 panel, a **Books** row sits between *Wallpaper* and *Decorations*, with one
+    checkbox labelled **Detailed books**. On a 360 × 800 phone it shows when the sheet opens,
+    without scrolling. No other text in the row (D-0014).
+  - Keyboard: Tab from the *Wallpaper* choices reaches the checkbox next. It shows the gold
+    focus ring, and Space toggles it. A screen reader reads "Books, group" and "Detailed books,
+    checkbox, checked". A tap anywhere on the 44 px row toggles it.
+  - The 🎨 button's tooltip reads "Your room: wood, wallpaper, books, decorations".
+  - The can't-be-drawn note with *Detailed books* on shows **Try again** (gold) and **Show
+    simple books** (outlined) side by side, wrapping onto two centred lines at 360 if needed;
+    with it off, only *Try again*. The note's words are unchanged.
+  - With *Detailed books* on, a book looks the same while it is taken out and put back: no jump
+    in size, colour, lettering or ridges when it leaves or reaches the shelf. Switching it on or
+    off moves no book on the shelf (same places, same gaps, same nooks).
 
 **Hanna** (stays *Doing* with a `Remaining:` line until she confirms): on her own phone the
 shelf shows hardcovers and scrolls and turns books smoothly; the switch works.
@@ -187,11 +201,143 @@ Hanna wasn't asked anything (night mode). The architect took these:
 
 # Design
 
-UX designer, before the build: where the *Detailed books* control sits in the 🎨 panel and how it
-looks (on/off, focus, its accessible name; no hint text, D-0014), on both wallpapers; the words
-and place of the simple-books action in the SafeBookshelf note; what the phone shelf looks like
-with hardcovers (same as the computer's, at phone size). After the build: review against
-screenshots at 390, 360 and 1280, both settings, both wallpapers.
+(UX designer, before the build, night mode: the recommended option is taken at each choice; Hanna
+can still change it in the morning. No new colours, sizes or words beyond those below (D-0014,
+D-0020).)
+
+## 1. The *Detailed books* switch in the 🎨 panel
+
+**Where.** It gets its own `room-row` **between *Wallpaper* and *Decorations***, so the panel now
+reads Wood · Wallpaper · **Books** · Decorations · Reset/Done. Why there and not at the bottom: on
+the phone the sheet is at most 60 % of the screen and the eight decorations already make it
+scroll. Below the decorations, the switch would be hidden at 360 × 800, and it is the one
+setting a struggling phone needs. It also groups the room's look first (wood, wallpaper),
+then the books, then what stands between them.
+
+**What it looks like.** The same pattern the decorations already use, so it needs no new
+styles beyond a focus ring:
+
+```
+Books                                  ← muted small heading, like "Wood" / "Wallpaper"
+[✓] Detailed books                     ← .room-toggle: native checkbox + label, 44 px row
+```
+
+- Markup: `<div className="room-row" role="group" aria-label="Books">`, then the
+  `muted small-text` heading "Books", then `<label className="room-toggle"><input
+  type="checkbox" checked={room.detailedBooks} …/><span>Detailed books</span></label>`.
+- A **checkbox, not a slider-switch or a two-button segmented control**. The decorations in the
+  same panel are checkboxes, the gold tick comes from `accent-color: var(--accent)` as elsewhere,
+  and it needs no new component. (It is the "on/off control" of *Choices* 2.)
+- **On:** gold tick. **Off:** empty box. The label stays cream (`--text`) in both states. Unlike
+  an off decoration, it is not greyed, because grey would read as "can't be used".
+- **Focus:** `.room-toggle input:focus-visible { outline: 2px solid var(--accent); outline-offset:
+  2px }`, the same ring as `.btn:focus-visible`. If the decorations' checkboxes have no ring yet,
+  the same rule gives them one.
+- **Both wallpapers:** the panel is `--surface-solid` on lavender and on midnight, so the row
+  looks the same on both. The screenshots check this.
+- **No hint text** under it (D-0014): nothing like "simpler books are lighter for your phone".
+- The 🎨 button's tooltip (`title`) becomes "Your room: wood, wallpaper, books, decorations". Its
+  `aria-label` stays "Your room".
+
+**Words.** Heading **Books**. Label and accessible name **Detailed books** (her words). The screen
+reader hears "Books, group", then "Detailed books, checkbox, checked" (or "not checked").
+
+**What it does.**
+- A tap anywhere on the row, or Space when it has focus, toggles it. The shelf behind the panel
+  changes **at once**, like the wood: hardcovers ↔ simple blocks, every book in the same place
+  with the same gaps and nooks, the same spine colour and lettering. Nothing fades or animates.
+  The panel stays open and focus stays on the checkbox.
+- With a book taken out, the taken-out book changes too (full hardcover ↔ full block) and stays
+  out.
+- *Reset* ticks it again, with the rest of the room's defaults.
+- Keyboard order: Close × → Wood chips → Wallpaper chips → **Detailed books** → decorations (each
+  checkbox, ↑, ↓) → Reset → Done. Esc closes the panel, as now.
+
+## 2. The "Show simple books" action in the can't-be-drawn note
+
+Today's note (T-0003) keeps its words, its order and its *Details*. Only the buttons change:
+
+```
+The bookshelf can't be drawn on this phone right now.
+Your books are safe. The Dashboard, Challenges and Calendar still work.
+      [ Try again ]  [ Show simple books ]          ← gold primary, then outlined .btn
+                    ▸ Details
+```
+
+- **Only while *Detailed books* is on.** With it off, the note shows only *Try again*, as today.
+- **Try again** stays first and gold: she most often only needs a fresh start (the real causes
+  were a blocked WebGL and drawing behind pages). **Show simple books** is the secondary,
+  outlined `.btn` next to it, the same height. The two sit in one centred row with `--space-2`
+  between them and wrap onto two centred lines when the width is too small (360 fits both on one
+  line at `--fs-body`; a large font setting may wrap them).
+- **Words:** "Show simple books". It says what she gets, in the panel's own words ("simple books"
+  as in the task, "show" as in the other actions), with no technical terms. Its accessible name is
+  its text.
+- **What it does:** switches *Detailed books* off (saved on this device, exactly as unticking it
+  in 🎨 would), hides the note and draws the shelf from scratch as blocks, the same fresh start
+  *Try again* gives. If that also fails, the note comes back with only *Try again*. The app never
+  presses it by itself (D-0035).
+- **Getting the hardcovers back** is the 🎨 panel's *Detailed books*, ticked again. The note
+  doesn't explain this (D-0014). The panel is where she set up the rest of her room.
+- Focus after either button: as *Try again* does today (no forced move); not part of this task.
+
+## 3. The hardcovers on the phone (390 and 360) compared with the computer
+
+**The rule: with *Detailed books* on, a book on the phone is the same hardcover as on the
+computer, only smaller on screen.** Compared at the same zoom with the same books
+(`1280` vs `390`/`360`):
+
+- **The same in every way that tells it's a hardcover:** the boards stand out a little past the
+  pages at the top, bottom and fore-edge. The page block shows as paper between the boards. The
+  spine is softly rounded. The spine's painted colour, its gold bands and its lettering match the
+  computer. The **gold ridges** are there: 4 on an unread book, 2 on a read one (none at the bottom,
+  where the medal is). Read books keep their medal at the spine's foot.
+- **Allowed to differ on the phone** (what T-0003 made lighter, and it stays): no shadows under or
+  between the books, so the shelf looks a little flatter; only the main light; slightly sharper,
+  un-smoothed edges (no antialiasing); medals without their rim. The medal's rim follows the
+  phone setting, not *Detailed books*: phone means no rim, also with hardcovers on.
+- **Must not happen** (each one sends the build back):
+  - ridges that flicker, shimmer or sit apart from the spine while scrolling, or that stay behind
+    when a book lifts on hover, drag or tap;
+  - dark seams, gaps or black faces between boards, pages and spine; a board edge that looks a
+    different colour from the spine;
+  - spine lettering blurrier or harder to read than with the simple blocks at the same width;
+  - a visible swap when a book is taken out or put back (the shelf piece and the taken-out parts
+    must match in size, colour, lettering and ridges, so the flight starts and ends without a
+    jump);
+  - books moving or the gaps changing when *Detailed books* is switched (the hardcover and the
+    block have the same outer size).
+- **At 360** the thinnest books are a few pixels wide. Their ridges may shrink to thin gold lines,
+  which is fine, but the spine must still read as one coloured strip, not as noise.
+- **Behaviour is unchanged:** swiping scrolls, ‹ › and zoom work, a tap takes a book out (cover,
+  the back when turned), Esc or a tap on the room puts it back, and the taken-out book is the full
+  hardcover with its cover picture, as on the computer.
+- **The computer (1280)** looks the same as `main`, book for book. The merged shelf piece must not
+  be visible as a change.
+
+## 4. Screenshots (tester, into `docs/tasks/T-0034-screens/`)
+
+Local dev server or preview build, no backend (G-0019), the same 150 seeded books in every shot.
+Names: `<width>-<wallpaper>-<n>-<what>.jpg`.
+
+| # | Width | Wallpaper | What |
+|---|---|---|---|
+| 1 | 390, 360, 1280 | lavender, midnight | Shelf at rest, *Detailed books* on (fresh device) |
+| 2 | 390, 360, 1280 | lavender | Shelf at rest, *Detailed books* off (blocks), same view as 1, for the side by side |
+| 3 | 390 | lavender | Shelf zoomed in (zoom 3) on a run of unread and read books, on: boards, ridges, medal close up |
+| 4 | 390, 360 | lavender | A book taken out, on (cover), and turned (back) |
+| 5 | 390, 360, 1280 | lavender, midnight | 🎨 panel open, *Detailed books* on, shelf behind |
+| 6 | 390 | lavender | 🎨 panel, *Detailed books* off, the blocks behind it |
+| 7 | 390, 1280 | lavender | Keyboard focus on *Detailed books* (gold ring) |
+| 8 | 390, 360, 1280 | lavender | The note with *Detailed books* on: Try again + Show simple books |
+| 9 | 390 | midnight | The same note on midnight |
+| 10 | 390 | lavender | The note with *Detailed books* off: only Try again |
+| 11 | 390 | lavender | After *Show simple books*: the shelf as blocks, then 🎨 showing the box unticked |
+| 12 | 1280 | lavender | `main` and this branch side by side, same books and view (`main-1280-…` / `1280-…`) |
+
+No questions for Hanna come from the design beyond the ones above. Its picks (the place under
+*Wallpaper*, a checkbox, the words "Show simple books") are small and easy to change if she
+says so.
 
 # Test
 
@@ -204,3 +350,10 @@ screenshots at 390, 360 and 1280, both settings, both wallpapers.
   Size: **full**. Handed to the **UX designer** for the switch, the note's simple-books action
   and the phone look; the developer may start on the lighter hardcover and the measuring script
   in parallel, since they change nothing she sees on the computer.
+- 2026-11-22 ux-designer: designed (night mode, recommended options taken). *Detailed books*
+  is a checkbox in its own **Books** row between *Wallpaper* and *Decorations*, so it shows at
+  360 without scrolling, with a gold focus ring and no hint text. The note gets a secondary
+  **Show simple books** next to *Try again*, only while it is on. The phone hardcover matches
+  the computer's except for T-0003's lighter settings, and the medal rim follows the phone, not
+  the switch. Added design checks to *Done when* and a 12-row screenshot list. No new questions
+  for Hanna. Handed to the **developer**.
