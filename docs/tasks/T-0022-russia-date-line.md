@@ -2,7 +2,7 @@
 id: T-0022
 title: "Draw Russia on the world map without the pale wedge in its far east"
 description: "Shapes that cross the date line (Russia, Fiji) are drawn as whole, closed shapes, shifted across the map edge and cut off by the map's frame, instead of lifting the pen at the jump; the path code moves to src/lib with a unit test, and every other country draws exactly as before."
-status: Open
+status: Doing
 depends_on: []
 decisions: [D-0014, D-0020, D-0022]
 raised_on: 2026-11-22
@@ -157,6 +157,38 @@ diagonal gold line on Russia, its covers reach Kamchatka and the Bering Strait, 
 filled shape at the left edge, Wrangel Island is whole, and the USA, Fiji and every other country
 look the same as before; nothing draws outside the map's panel.
 
+# Build notes
+
+- **`src/lib/worldPath.ts`** (new): `polygonsToPath(polys)` and `LAT_TOP`. Each ring is unwrapped
+  (a jump of more than 180° adds or subtracts 360°, cumulatively); a polygon with a point east of
+  180° is drawn again shifted −360°, one with a point west of −180° again shifted +360°, outer ring
+  and holes together. Every ring is one `M…L…Z`; the pen is never lifted inside a ring. A ring with
+  no jump is built with the same expression as before (`(lon + 180).toFixed(1)`), so its string is
+  byte for byte the old one.
+- **`src/components/PictureBlocks.tsx`**: `loadWorld` calls `polygonsToPath` instead of its own
+  `ring` function; `LAT_TOP` now comes from `worldPath.ts`. The top-left corner for the cover tiles
+  is still computed from the atlas's own points, unchanged.
+- **No clip path needed:** the map's `<svg>` already cuts off what falls outside its viewBox
+  (`.world-map` sets no `overflow`). The after shots confirm nothing draws outside the panel, at
+  390 px either.
+- **`src/lib/worldPath.test.ts`** (10 tests): a plain square gives the old string; a square from
+  170° to −170° gives two closed subpaths, one reaching past x = 360 and one starting before x = 0,
+  one `M` each; the mirror case (copy to the right); holes shift with their outer ring; on the real
+  atlas through `topojson-client` (with a copy of the old ring function as reference) the set of
+  countries whose `d` changed is exactly `['Fiji', 'Russia']`, the USA is checked by name, Russia
+  and Fiji have every subpath closed with one `M` and no neighbouring points more than 180 map
+  units apart, and Russia's mainland is one 468-point ring reaching x ≈ 370.1, with a copy whose
+  Chukotka tip reaches x ≈ 10.1 at the left. The "only Russia and Fiji changed" test fails on the
+  old code (nothing changes), the date-line ones fail on it too (lifted pen, open pieces).
+- **After shots compared pair by pair with before:** the wedge and its diagonal gold lines are
+  gone on the plain and lit maps (clearest in `after-zoom-east-*`); Russia's covers now fill
+  Kamchatka and the Pacific coast up to the Bering Strait, the gold outline follows the coast only.
+  The left-edge zooms are identical to before: Chukotka's tip is the same small filled shape
+  (covers and outline when lit) at the left edge, Alaska and the Aleutians unchanged. The USA, Fiji
+  and every other country look the same; the 390 px shots show the map inside its panel. Wrangel
+  Island sits at x ≈ 358 to 361, so the frame cuts most of it; what shows is a closed shape, no
+  stray line.
+
 # Test
 
 # Log
@@ -171,3 +203,11 @@ look the same as before; nothing draws outside the map's panel.
   other country unchanged). 16 `before-*` screenshots in `T-0022-screens/` (plain and lit, 1280
   and 390, both wallpapers, zooms on both map edges); the script for the `after-*` set is named
   under *Design*. Handed to the developer.
+- 2026-11-22 developer: built `src/lib/worldPath.ts` (unwrap each ring, copy the polygon across
+  the edge, one closed ring each) and `loadWorld` now uses it; 10 tests in `worldPath.test.ts`,
+  including the real atlas: only Russia and Fiji change, the USA by name unchanged. `pnpm test`:
+  87 files passed, 1 skipped; 755 tests passed, 9 skipped. `pnpm exec tsc --noEmit`: no errors.
+  `pnpm run build`: built. `pnpm exec harness check`: all ✓. 16 `after-*` shots taken with the
+  designer's script (errors: none); compared with `before-*`: no wedge or diagonal gold line, covers
+  reach Kamchatka and the Bering Strait, left edge and every other country unchanged, nothing
+  outside the panel. Handed to the ux-designer for review.
