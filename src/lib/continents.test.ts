@@ -24,6 +24,24 @@ describe('the continent of each map country (D-0037)', () => {
     expect(continentsOf('Fiji')).toEqual(['Oceania'])
     expect(continentsOf('Russia')).toEqual(['Europe', 'Asia'])
     expect(continentsOf('Egypt')).toEqual(['Asia', 'Africa'])
+    expect(continentsOf('Turkey')).toEqual(['Europe', 'Asia'])
+    expect(continentsOf('Kazakhstan')).toEqual(['Europe', 'Asia'])
+  })
+
+  it('puts the easy-to-get-wrong names from the task where D-0037 says (tester)', () => {
+    const where: Record<string, string> = {
+      Cyprus: 'Asia', 'N. Cyprus': 'Asia', Georgia: 'Asia', Armenia: 'Asia', Azerbaijan: 'Asia', Israel: 'Asia',
+      Palestine: 'Asia', Indonesia: 'Asia', 'Timor-Leste': 'Asia', Taiwan: 'Asia',
+      Iceland: 'Europe', Kosovo: 'Europe', Macedonia: 'Europe', 'Bosnia and Herz.': 'Europe',
+      Madagascar: 'Africa', 'W. Sahara': 'Africa', Somaliland: 'Africa', eSwatini: 'Africa',
+      Greenland: 'North America', Panama: 'North America', Cuba: 'North America', Haiti: 'North America',
+      'Dominican Rep.': 'North America', Jamaica: 'North America', Bahamas: 'North America',
+      'Puerto Rico': 'North America', 'Trinidad and Tobago': 'North America',
+      'Falkland Is.': 'South America', Guyana: 'South America', Suriname: 'South America',
+      Australia: 'Oceania', 'New Zealand': 'Oceania', 'Papua New Guinea': 'Oceania', 'New Caledonia': 'Oceania',
+      Fiji: 'Oceania', Vanuatu: 'Oceania', 'Solomon Is.': 'Oceania',
+    }
+    for (const [country, continent] of Object.entries(where)) expect(continentsOf(country), country).toEqual([continent])
   })
 
   it('knows only the map names', () => {

@@ -2,12 +2,12 @@
 id: T-0040
 title: "Add travel badges: countries 5/10/25/50, a postcard per continent and a World tour, imaginary lands 3/10, and a secret Home sweet home for a book set in the Netherlands"
 description: "src/lib/badges.ts gets travel badges counted from the places of her finished books exactly as the world map counts them (D-0037): Passport stamped, Frequent flyer, World traveller and Around the world for 5/10/25/50 countries, a Postcard from each of six continents plus World tour for all six, Dreamwalker and Realm hopper for 3/10 imaginary lands, and the secret Home sweet home with a riddle; each dated by the first finish of the book that earned it."
-status: Doing
+status: Done
 size: small
 depends_on: [T-0015, T-0018]
 decisions: [D-0014, D-0023, D-0026, D-0037]
 raised_on: 2026-11-23
-done_on: ""
+done_on: 2026-11-23
 result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/246"]
 ---
 
@@ -220,7 +220,54 @@ table. **Verdict: passes, nothing must be fixed.**
 
 # Test
 
-To be written by the tester.
+**Verdict: passed.** No bugs found; 10 tests added for the gaps below.
+
+**CI** (run 45094066090 on 8baefae, attempt 1, no retries): `checks / checks` green
+(`harness check` all ✓; typecheck; `Test Files 97 passed | 1 skipped (98)`,
+`Tests 1032 passed | 9 skipped (1041)`; `vite build` built). The e2e shards are skipped by the
+workflow for this change; the Netlify deploy preview succeeded.
+
+**Locally** (`pnpm install --frozen-lockfile`, then):
+
+- `pnpm exec vitest run src/lib/badges.test.ts src/lib/continents.test.ts src/lib/places.test.ts src/lib/mapCountries.test.ts`,
+  five times in a row: `Tests 42 passed (42)` each time (with the tester's new tests).
+- `pnpm exec tsc --noEmit`: no errors.
+- `pnpm exec harness check`: `✓ tasks: 32 tasks, index in step`, `✓ decisions: 38 records,
+  index complete, 3 overrules valid`, `✓ engineers: 2 listed`, `✓ generated files: current`.
+- The continent lists checked against `MAP_COUNTRIES` with a throwaway script: 179 entries
+  (176 map names, minus Fr. S. Antarctic Lands, plus the four listed twice), no name that isn't
+  on the map, no duplicates.
+
+**What I tried, and the tests added** (`badges.test.ts`, "trying to break them";
+`continents.test.ts`):
+
+- **Every map country on a continent except the Antarctic lands:** already covered; added
+  Turkey and Kazakhstan to the spot checks, and every easy-to-get-wrong name the task lists
+  (Cyprus … Solomon Is.) with its continent.
+- **Transcontinental:** Cairo (Egypt) gives Africa + Asia postcards, Istanbul (Turkey) and
+  Kazakhstan Europe + Asia; Russia counts as one country but two continents toward World tour.
+  Fr. S. Antarctic Lands counts as a country on no continent.
+- **Imaginary lands:** Middle-earth and Middle Earth are one land; Westeros (Fictitious place)
+  and Atlantis count; none of them counts as a country or gives a postcard.
+- **Unfinished books:** reading, paused, did-not-finish and want-to-read books with six
+  countries give no travel badge. A book being re-read now counts from its first finish.
+- **Re-reads:** a book first read in 2025 and re-read in October, stored newest first, keeps
+  its 2025 day and doesn't move Passport stamped. A finished book with no day counts, and its
+  badge has no day (D-0037).
+- **Her places vs Open Library's:** an empty list counts nothing; taking Netherlands off a book
+  takes Home sweet home away again and leaves the rest.
+- **The secret:** Netherlands, netherlands, Holland, Amsterdam, Amsterdam (Netherlands),
+  Netherlands -- Amsterdam and Holland -- Amsterdam all unlock it on the book's day, as one
+  country; Holland + Amsterdam + Netherlands on one book is still one country. Brussels
+  (Belgium) and a want-to-read Amsterdam book don't.
+
+**Notes for later, not failures** (D-0037 says count exactly like the map, and the map
+behaves the same):
+
+- "The Netherlands" and "Nederland" don't resolve to Netherlands in `placesOf`, so a place
+  typed that way lights neither the map nor Home sweet home. Worth an alias in a follow-up.
+- A postcard (`once`) earned by both an undated and a dated book shows the dated day, while a
+  step badge completed by an undated book shows no day. Same as the existing one-off badges.
 
 # Log
 
@@ -248,3 +295,8 @@ To be written by the tester.
 - 2026-11-23 ux-designer: reviewed: passes. Names, icons, riddle and order match the table in
   all four screenshots (lavender, midnight, 390 and 1280); one note for later (🗼 is Tokyo
   Tower), nothing must be fixed. Handed to the **tester**.
+- 2026-11-23 tester: passed. CI green on the first attempt; the new and affected tests five
+  times in a row, tsc and `harness check` clean. Added 10 tests (transcontinental countries, the
+  Antarctic lands, imaginary lands, unfinished books, re-reads, her own places, the secret for
+  Netherlands / Holland / Amsterdam); no bugs found. Follow-up idea: aliases for "The
+  Netherlands" and "Nederland". Marked #246 ready.
