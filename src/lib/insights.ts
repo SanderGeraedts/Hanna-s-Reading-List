@@ -84,8 +84,10 @@ export function wantPile(books: Book[], now = new Date()): Pile {
   let pages = 0
   let minutes = 0
   for (const b of want) {
-    if (listenOnly(b)) minutes += b.minutes ?? 0
-    else pages += b.pages ?? 0
+    // the hours are the 🎧 line's: every audiobook, by the same rule (D-0036)
+    if (bookKinds(b).includes('audio')) minutes += audioMinutes(b)
+    // the pages: real page counts of the books she doesn't only listen to (D-0008)
+    if (!listenOnly(b)) pages += b.pages ?? 0
   }
   const perMonth = finishesLastYear(books, now).length / 12
   return {
