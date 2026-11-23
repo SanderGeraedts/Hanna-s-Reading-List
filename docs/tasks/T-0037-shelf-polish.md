@@ -373,6 +373,66 @@ books with and without a past read.
 
 # Test
 
+(Tester, 2026-11-23, night mode, Hanna not asked. G-0031: CI's run read, not repeated; the new
+and affected tests run again, then tried to break each of F1–F5 on the dev server.)
+
+**CI** (`gh pr checks 245`, run 45091108204, head `e745cde`): `checks / checks` pass in 1 min,
+**attempt 1** (no re-run), *Test Files 95 passed | 1 skipped (96)*, *Tests 1011 passed | 9 skipped
+(1020)*, `harness check` and both builds (`✓ built`) in the job, no retried or flaky test in the
+log. `checks / shards` and `checks / e2e` are **skipped** by the harness workflow, because this
+project has no e2e shards configured. That is the same as every PR here (T-0034, T-0036), not a
+check that failed to run. Netlify deploy preview ready.
+
+**Local, from clean:** `pnpm install --frozen-lockfile` (done), `pnpm exec tsc --noEmit`
+(clean), `pnpm exec harness check` (✓ tasks, ✓ decisions, ✓ engineers, ✓ generated files). New
+and affected tests run three times in a row (`vitest run inspectPlacement.test.ts BookMesh.test.ts
+cameraAim.test.ts shelfPanFraming.test.ts SafeBookshelf.test.tsx contextLoss.test.ts`): **6 files,
+121 passed (121)** each time.
+
+**Tried to break it** on `vite dev --port 3153` (no `POCKETBASE_URL`, no backend), 70 books seeded
+(Titles 1, 2 and 28 being read; Title 3 did-not-finish read once; Title 4 did-not-finish never
+read), playwright-core with Chrome, touch emulated through CDP at 390 × 844. Scratch scripts, not
+committed. No console errors in any run, and no horizontal scroll.
+
+| # | Check | Result |
+|---|---|---|
+| F1 | Drag the sheet up hard (to y = 20) **while the book is still flying out** (150 ms after the tap) | Stops at top 373 px, height 471 (= 0.558 × 844, the cap for header 162 px); saved `0.558`; Title 28 whole with its clip below the tab buttons ✓ |
+| F1 | 5 fast drags down to the bottom and back up past the top (4 steps each) | Ends at 373 / 471, saved `0.558` ✓ |
+| F1 | Top sampled every 40 px of a slow drag up past the screen | `687,647,607,567,527,487,447,407,373,373,…`: follows the finger 1:1, then holds at the cap with no overshoot or jump ✓ |
+| F1 | Turn 390 × 844 → 844 × 390 → back, 4 times with 0.9 s between | Every time: sideways the panel at the side (left 484, header 193), the book whole left of it; upright again top 373 / 471; saved stays `0.558` ✓ |
+| F1 | 10 turns 60 ms apart, then settle (sideways, then upright) | The same 56 / 484 sideways and 373 / 471 upright, saved `0.558`: no in-between size kept ✓ |
+| F2 | Reduced motion, zoom 3: open, put back after 100 ms | Camera stays back at 50, 300, 800, 1300 ms (view 60–63 % different from before); at 1700 and 2500 ms back to the view before opening (8 pixels differ). At 50 ms the book is on its way home, smaller than open ✓ |
+| F2 | Open Title 6, put back, open Title 3 200 ms later (Title 6 still flying), put back | The camera never came forward between the two; Title 3 came out with the view still stepped back; after both were home the view is the one before (9 pixels) ✓ |
+| F2 | 5 open/put-back in a row, 120 ms apart | Nothing left open; the view is the one before (9 pixels) ✓ |
+| F2 | Zoom out while a put-back book flies home, then zoom in | Zoom works meanwhile; back at zoom 3 the view differs 0.5 % (the pan clamped at the lower zoom), nothing stuck ✓ |
+| F4 | Swipe up and back, ending where it started | 2.5 s later the same view as before (12 pixels) ✓ |
+| F4 | Finger lifted **over the header**, **over the zoom buttons**, **outside the window** | 2.5 s and 3.5 s later still; compared with the view after a short swipe at the centre: 0–1 pixels differ, so the parallax went back to the centre each time ✓ |
+| F4 | A pinch with the fingers lifted one at a time; a cancelled touch (`touchCancel`) | Compared with the view after a normal swipe elsewhere: 79 and 13 pixels (decorations): no finger left "down" ✓ |
+| F4 | Computer, mouse to a corner and back | The corner moves the view (1,369 pixels), back at the centre the same view (133 pixels): the mouse parallax works as before ✓ |
+| F5 | Title 3 (DNF, read once) and Title 4 (DNF, never read) at 390 | Title 3: medal, no ridges or bands across it; Title 4: no medal, bottom ridges ✓ |
+| F5 | Live: Title 3 *Times read* − (to 0); Title 4 status *Read* then *Did not finish* again | Title 3 loses the medal and gets its bottom ridges back; Title 4 gets the medal (saved `readCount: 1`) and loses its bottom ridges. The ridges follow the change without a reload ✓ |
+
+**Found, not caused by this change:** after turning the phone with a book open, the shelf behind
+it shows the lower rows (Titles 48–70) instead of the top row, because the vertical scroll from
+the sideways layout is kept. The same on `main` (checked with the same script), so it doesn't
+hold this task; a possible follow-up for the architect. Also as the UX review says: opening a book
+on a small sideways phone with the sheet (667 × 375) saves its low cap (0.318) as the remembered
+height. That follows the task's rule.
+
+**Tests added for a gap:** the fix for the remembered sheet height (saved once when the panel
+opens, never while the phone turns) had no test; it lives in `BookPanel`'s sheet hook, and only
+the pure clamp was tested. New `src/components/BookPanel.sheet.test.tsx` (the real panel, happy-dom):
+a saved 0.88 opens at the cap and saves it once; a height under the cap is left alone; turning to
+667 × 375 and back three times (with an in-between size) keeps her preference and comes back at
+the same height; a taller header lowers the cap without changing what is saved; a drag past the
+top saves the cap and the next book opens there. `5 passed (5)`, three runs in a row. **Fails
+without the fix:** with the "only when the panel opens" condition removed, `2 failed | 3 passed`
+(the turning and the taller-header tests). `pnpm exec tsc --noEmit` clean.
+
+**Verdict: passed.** F1–F5 hold under every attempt above, the record is current (UX review
+present, no new decision needed). Remaining for Hanna: the two morning questions, and a look on
+her own phone.
+
 # Log
 
 - 2026-11-23 architect: wrote the task from T-0026's follow-ups F1 (sheet at 0.88, ~4 m step
@@ -419,3 +479,8 @@ books with and without a past read.
 - 2026-11-23 ux-designer: reviewed: matches *Done when*, nothing must be fixed (all 7 shot sets
   checked; deviations 1–6 accepted, see *Review after building*; follow-up for the architect:
   the clip on the computer still touches the toolbar, as on `main`). Handed to the **tester**.
+- 2026-11-23 tester: passed (CI attempt 1 green, e2e shards skipped by the workflow as on every
+  PR; F1–F5 tried to break on the dev server at 390 × 844 and 844 × 390, see *Test*; added
+  `BookPanel.sheet.test.tsx` for the remembered-height fix). Marked #245 ready.
+  Remaining: Hanna answers the two morning questions (sheet height, the book's place sideways) and
+  looks at the open book on her own phone.
