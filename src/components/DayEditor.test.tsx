@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Book } from '#/lib/library'
 
@@ -174,6 +174,3 @@ describe('Day editor (T-0045)', () => {
     expect(screen.queryByRole('button', { name: /Alpha/ })).toBeNull()
   })
 })
-
-// avoid "unused import" in the setup imports above
-const _ = within

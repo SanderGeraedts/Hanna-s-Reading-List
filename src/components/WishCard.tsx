@@ -84,6 +84,19 @@ export function WishCard({
                 </select>
               </label>
             )}
+            {options.tropes.length > 0 && (
+              <label className="wish-row">
+                <span className="muted small-text">Trope</span>
+                <select className="input" value={wish.trope ?? ''} onChange={(e) => set({ trope: e.target.value || undefined })}>
+                  <option value="">Any trope</option>
+                  {options.tropes.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             {options.languages.length > 1 && (
               <div className="wish-row" role="group" aria-label="Language">
                 <span className="muted small-text">Language</span>

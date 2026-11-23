@@ -3,6 +3,7 @@ import { localDay, timesRead } from './library'
 import { languageName } from './languages'
 import { listenOnly } from './listening'
 import { detectSeries } from './series'
+import { hasTrope, tropeCounts } from './tropes'
 
 /**
  * Make a wish, version 2: Hanna wishes for a length, a genre and/or a
@@ -18,6 +19,8 @@ export interface Wish {
   length?: Length
   genre?: string
   language?: string
+  /** a trope she is in the mood for (D-0042) */
+  trope?: string
 }
 
 /** Short: under 300 pages or 8 hours of listening. Long: 450 pages or 12 hours and more. */
@@ -44,6 +47,10 @@ export function wishScore(book: Book, wish: Wish): { met: number; of: number } {
     of++
     if (book.language === wish.language) met++
   }
+  if (wish.trope) {
+    of++
+    if (hasTrope(book, wish.trope)) met++
+  }
   return { met, of }
 }
 
@@ -57,6 +64,8 @@ export function wishOptions(choices: Book[]) {
   return {
     genres: count(choices.flatMap((b) => b.genres ?? [])),
     languages: count(choices.flatMap((b) => (b.language ? [b.language] : []))).map((code) => ({ code, name: languageName(code) })),
+    // the tropes of the books she could read next, most common first (D-0042)
+    tropes: tropeCounts(choices).map((t) => t.name),
   }
 }
 

@@ -35,6 +35,7 @@ export const BLOCKS = {
   recent: 'Newly added',
   alphabet: 'A–Z challenge',
   badges: 'Badges',
+  tropes: 'Tropes & characters',
   covers: 'Cover wall',
   rhythm: 'When I read most',
   flower: 'Genre flower',
@@ -82,7 +83,7 @@ export const DEFAULT_LAYOUT: DashboardLayout = {
       ['calendar', 'months', 'records', 'rhythm', 'series', 'pile'],
     ],
     fun: [
-      ['badges', 'fact', 'wrapped'],
+      ['badges', 'tropes', 'fact', 'wrapped'],
       ['covers', 'world', 'top', 'onthisday'],
     ],
   },

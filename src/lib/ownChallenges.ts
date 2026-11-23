@@ -4,6 +4,7 @@ import { languageName } from './languages'
 import { seriesGroups } from './series'
 import { sleepReadIds } from './sleepSeries'
 import { allFinishes } from './stats'
+import { hasTrope, shelfTropes } from './tropes'
 
 /**
  * Her own challenges: a name, a number of books and a rule, for one year,
@@ -11,7 +12,7 @@ import { allFinishes } from './stats'
  * the shelf so every device shows them. Sleep reads never count.
  */
 
-export type RuleKind = 'any' | 'pile' | 'genre' | 'language' | 'format' | 'series'
+export type RuleKind = 'any' | 'pile' | 'genre' | 'trope' | 'language' | 'format' | 'series'
 
 export interface OwnChallenge {
   id: string
@@ -28,6 +29,7 @@ export const RULE_LABELS: Record<RuleKind, string> = {
   any: 'Any book',
   pile: 'From my pile',
   genre: 'A genre',
+  trope: 'A trope',
   language: 'A language',
   format: 'A format',
   series: 'A series',
@@ -85,6 +87,8 @@ function fits(c: OwnChallenge, book: Book, series: ReturnType<typeof seriesGroup
       return book.addedAt < new Date(c.year, 0, 1).getTime()
     case 'genre':
       return !!book.genres?.includes(c.value!)
+    case 'trope':
+      return hasTrope(book, c.value!)
     case 'language':
       return book.language === c.value
     case 'format':
@@ -118,6 +122,10 @@ export function ruleOptions(rule: RuleKind, books: Book[]): Array<{ value: strin
       return count(books.flatMap((b) => b.genres ?? []))
         .sort((a, b) => a.localeCompare(b))
         .map((g) => ({ value: g, label: g }))
+    case 'trope':
+      return shelfTropes(books)
+        .sort((a, b) => a.localeCompare(b))
+        .map((t) => ({ value: t, label: t }))
     case 'language':
       return count(books.flatMap((b) => (b.language ? [b.language] : [])))
         .map((l) => ({ value: l, label: languageName(l) }))
@@ -139,7 +147,7 @@ export function ruleText(c: OwnChallenge, books: Book[]): string {
   if (c.rule === 'any') return 'Any book you finish'
   if (c.rule === 'pile') return `Books on your shelf before ${c.year}`
   const label = ruleOptions(c.rule, books).find((o) => o.value === c.value)?.label ?? c.value
-  if (c.rule === 'genre') return `${label} books`
+  if (c.rule === 'genre' || c.rule === 'trope') return `${label} books`
   if (c.rule === 'language') return `Books in ${label}`
   if (c.rule === 'format') return `${label} books`
   return `Books from ${label}`
