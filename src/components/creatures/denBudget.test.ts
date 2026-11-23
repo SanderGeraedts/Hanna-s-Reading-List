@@ -7,7 +7,9 @@ import { creatureFor } from './pose'
 import type { CreatureQuality } from './model'
 import { SPARKLE_SPOTS } from './eggModel'
 import {
+  BED_SEAT_Y,
   BOWL_SPOT,
+  DEFAULT_SEAT_Y,
   DEN_SPOTS,
   HABITAT_IDS,
   buildBowl,
@@ -17,6 +19,7 @@ import {
   drawCost,
   dressCreature,
   outfitModel,
+  seatYOf,
 } from './shopModels'
 
 /**
@@ -197,5 +200,53 @@ describe('outfits on the anchors (Design §7)', () => {
     let dressed = false
     b.traverse((o) => (dressed ||= o.name.startsWith('outfit:')))
     expect(dressed).toBe(false)
+  })
+})
+
+/**
+ * The three UX re-review must-fixes (2026-11-23): the creature sits per bed, the rain scatter
+ * stays inside the arched pane, and the seat covers every bed id the shop offers.
+ */
+describe('the seat height per bed (review 2026-11-23, closes F14)', () => {
+  it('uses each bed\'s own top; no bed and an unknown id fall back to the default (gold cushion)', () => {
+    expect(seatYOf(undefined)).toBe(DEFAULT_SEAT_Y)
+    expect(seatYOf(null)).toBe(DEFAULT_SEAT_Y)
+    expect(seatYOf('')).toBe(DEFAULT_SEAT_Y)
+    expect(seatYOf('nope')).toBe(DEFAULT_SEAT_Y)
+    expect(seatYOf('cloud-cushion')).toBe(0.22)
+    expect(seatYOf('basket-bed')).toBe(0.14)
+    // the default is the gold cushion's own height (0.18)
+    expect(DEFAULT_SEAT_Y).toBe(0.18)
+  })
+
+  it('every shop bed has a seat (so the cloud-cushion case that opened this review can\'t come back for a new bed)', () => {
+    for (const id of SHOP_ITEMS.filter((i) => i.slot === 'bed').map((i) => i.id)) {
+      expect(BED_SEAT_Y[id], id).toBeTypeOf('number')
+      // a seat under the gold cushion (0.18) would sink the pet again
+      expect(BED_SEAT_Y[id], id).toBeGreaterThan(0)
+    }
+  })
+})
+
+describe('rain stays inside the arched pane (review 2026-11-23)', () => {
+  it('every rain streak sits inside the arched window pane, not on the frame or the wall', () => {
+    const win = buildDenItem('weather-window', 'high', { sky: 'day', weather: 'rain' })
+    const weather = win.children.find((o) => o.name === 'weather')! as THREE.Mesh
+    expect(weather).toBeDefined()
+    const { archTop, archR } = weather.userData as { archTop: number; archR: number }
+    // the window: the pane half-width is W * 0.48 (from buildWindow); W = 0.9
+    const halfW = 0.9 * 0.48
+    const bbox = new THREE.Box3().setFromObject(weather)
+    // every streak within the rectangular body (|x| ≤ halfW, y ≤ archTop) or the arch above
+    expect(bbox.min.x).toBeGreaterThanOrEqual(-halfW - 0.04)
+    expect(bbox.max.x).toBeLessThanOrEqual(halfW + 0.04)
+    expect(bbox.max.y).toBeLessThanOrEqual(archTop + archR + 0.04)
+  })
+
+  it('rain is one merged mesh (one draw call), so the budget is unchanged', () => {
+    const win = buildDenItem('weather-window', 'high', { sky: 'day', weather: 'rain' })
+    const weather = win.children.find((o) => o.name === 'weather')!
+    expect((weather as THREE.Mesh).isMesh).toBe(true)
+    expect(drawCost(weather, false).calls).toBe(1)
   })
 })

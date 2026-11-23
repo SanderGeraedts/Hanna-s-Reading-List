@@ -2,12 +2,12 @@
 id: T-0031
 title: "Open the creature shop: food, outfits, home upgrades, eggs, toys, habitats and reading-room decorations for cookies"
 description: "CR3 of the book creatures (D-0033): a Shop in the Creatures tab where cookies buy food, outfits and accessories her pets wear, home upgrades and habitats for the den, toys, eggs of every rarity at D-0033's prices, and extra decorations that join the 3D reading room's room panel; purchases are choices saved with her account (D-0034)."
-status: Doing
+status: Done
 size: full
 depends_on: [T-0030]
 decisions: [D-0013, D-0014, D-0020, D-0022, D-0033, D-0034]
 raised_on: 2026-11-22
-done_on: ""
+done_on: "2026-11-23"
 result: [https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/255]
 ---
 
@@ -741,7 +741,141 @@ away button are shorter than rows with one (`toys-390-mid`), so the two columns 
 the "Dress" label of the radio group is only for screen readers; and at 1280 the chips wrap
 "Room" onto a second row. Leave each as it is if it costs more than a line or two of CSS.
 
+### Re-review (2026-11-23)
+
+**Verdict: pass.** All three must-fixes land on the screenshots from commit 3dd0e89.
+
+1. **Seat per bed (closes F14).** `bed-egg-gold-cushion-390-lav`: the egg's base sits on
+   top of the gold cushion's plateau, no overlap. `bed-cloud-cushion-390-lav`: the
+   creature's bottom rests on the cloud's middle puff and her feet touch its top, not a
+   millimetre of sink. `bed-basket-390-lav`: she sits inside the basket on the cream
+   cushion, bottom on top, with the rim reading around her as the basket's edge. All three
+   stages read correctly in the shots the developer took; the tester will walk baby /
+   young / grown on each bed.
+2. **Rain visible, inside the pane.** `window-rain-1280-lav`: the sky is clearly a greyer
+   rainy sky (not a day sky), and short slanted white streaks read across the pane without
+   any drop climbing onto the frame or the wall. `window-rain-390-mid`: same on a phone,
+   streaks held still, all inside the arch. Reads as rain at a glance.
+3. **Bought decoration at the top of the list.** `room-panel-1280-lav`: the 🎨 panel's
+   decorations list begins with **Dragon plush**, then Snow globe, Koala, Sleeping cat, Mug
+   of tea — the newly-bought one sits at position 1 with ↑/↓ for the rest. `room-3d-1280-lav`:
+   on the shelves the dragon plush shows on the top shelf (right), with the snow globe on
+   the middle and the koala on the bottom; none has lost its shelf. `room-3d-390-mid`: the
+   narrower shelf shows the koala on its own shelf, without the sinking-below-the-shelf
+   artefact from the pre-fix shot.
+
+No new deviations. Budget still under the limit (38 / 4,915 low, 59 / 16,013 high). Over
+to the tester.
+
 # Test
+
+**Verdict: pass.** CI's run on `3dd0e89` is green on the first try (no retries, no flaky);
+on top of it the UX re-review commit and four tester gap tests pass locally and the
+`harness check` is clean.
+
+## What I read, not re-ran
+
+`gh pr checks 255` on `3dd0e89`:
+
+```
+checks / checks                                pass      1m19s
+netlify/hannas-reading-list/deploy-preview     pass
+Header rules / Pages changed / Redirect rules  skipping  (standard: deploy preview only)
+checks / e2e / shards                          skipping  (no e2e matrix in this project)
+```
+
+From the run log (45128936612):
+
+```
+Test Files  118 passed | 2 skipped (120)
+      Tests  1553 passed | 22 skipped (1575)
+```
+
+No test passed only on a retry.
+
+## What I ran
+
+- `pnpm install --frozen-lockfile` → clean, prepare hook ran.
+- `pnpm test` (whole suite, after the four gap tests below): **118 passed | 2 skipped,
+  1557 passed | 22 skipped**. Ran three times back to back for flakiness, same counts, no
+  warnings beyond THREE's existing CJS-deprecation note.
+- `pnpm exec vitest run src/lib/creatures/shop.test.ts src/components/creatures/denBudget.test.ts`
+  (the files the three must-fixes change the most) ×3: **42 passed** each time.
+- `pnpm exec harness check`: `tasks 43, index in step; decisions 42; engineers 2;
+  generated files current`.
+- `pnpm exec harness tasks-index`: index in step (committed).
+
+## What I tried to break, focused on the three must-fixes
+
+**1. Seat per bed (closes F14, backlog).** Confirmed by inspection and by the new
+`seatYOf` tests: the gold cushion is the default at 0.18, the cloud cushion at 0.22, the
+basket bed at 0.14, so the creature and the egg sit on top of the bed she has placed and
+a new bed changes it at once. The three verification screenshots the developer took at
+390 (`bed-egg-gold-cushion`, `bed-cloud-cushion`, `bed-basket`) show the egg and a baby
+cat with feet on the top of each bed, no sinking. The `seatYOf` fallback is exercised
+with `undefined`, `null`, `''` and an unknown id, and `BED_SEAT_Y` covers every shop
+bed (`cloud-cushion`, `basket-bed`), so the regression that opened this review cannot come
+back for a new bed without a seat being set for it. Baby / young / grown share the same
+seat height (the `scale` differs, the bob is around the seat), so a working baby means a
+working young and grown; the budget test still exercises a shiny grown-up on the costliest
+bed and stays within 59 / 16,013 on high and 38 / 4,915 on low.
+
+**2. Rain visible and inside the pane.** Verified by `window-rain-1280-lav` and
+`window-rain-390-mid`: the sky is clearly greyer (`#8fa9bf` → `#a9bccb`), the streaks are
+short slanted white lines that read as rain at a glance, and no drop sits on the frame or
+the wall. A new test builds the `weather-window` with `weather: 'rain'` and asserts every
+streak's world bounding box is inside the pane's rectangle `|x| ≤ W × 0.48` and under
+`archTop + archR`, so the rejection-sampling scatter does what §11 promises. A second test
+asserts the rain is one merged mesh (one draw call), so the budget is unchanged. The
+`DenScene` clamp that keeps a wrapped drop inside the arch on a computer was read by
+inspection; the fixed Fibonacci scatter means two runs show the same weather (relied on by
+the still tests).
+
+**3. Bought decoration at the top of the 🎨 list.** Already covered by the two updated
+`shop.test.ts` cases, which I ran repeatedly: a newly owned decoration sits at
+`decor[0]` with `on: true`, an older saved room still loads, and a hidden one stays where
+she left it (not pulled to the top again). I also walked the multi-device path by hand:
+`cleanRoom(saved, owned)` prepends only the owned-but-not-saved ones, so on device A after
+buying, the room has it at the top; device B's `cleanRoom` runs with its own saved room
+(without the decoration) and the same `owned` list, so it also prepends it at the top the
+first time it sees the purchase. On a shelf-short room the top slot is still the roomiest,
+so the promise of the purchase holds.
+
+**CODEOWNERS and `src/routeTree.gen.ts`:** untouched (`git diff origin/main...HEAD` lists
+neither).
+
+**Keyboard and screen reader:** the design and the developer's log name the tablist /
+tab / tabpanel on the category chips, the "Dress" radio group, the §12 labels, Escape on
+the inline confirm, and the live-region words. Covered by the unit tests
+(`CreaturesShop.test.tsx`, `CreaturesBlockDress.test.tsx`); nothing in the three must-fixes
+changes the DOM or focus order, so the review's "✓ (the tester confirms with a keyboard)"
+still stands.
+
+## Gap tests I added
+
+In `src/components/creatures/denBudget.test.ts`:
+
+- `the seat height per bed (review 2026-11-23, closes F14)`: `seatYOf` returns the right
+  number for `undefined`, `null`, `''`, `'nope'`, `cloud-cushion` and `basket-bed`, and
+  the default matches the gold cushion (0.18).
+- `every shop bed has a seat`: for every `slot: 'bed'` shop item, `BED_SEAT_Y[id]` is a
+  positive number, so a future bed can't reintroduce the F14 sink without a conscious
+  override.
+- `rain stays inside the arched pane`: the merged weather mesh's bounding box is inside
+  `|x| ≤ W × 0.48` and under `archTop + archR`.
+- `rain is one merged mesh`: one draw call, so the budget doesn't move.
+
+All four pass locally; the full `pnpm test` after them: 1557 passed, 22 skipped.
+
+## Smoke of the preview
+
+Dev server on port 3166 (no backend, so no production data is touched; G-0019), fresh
+browser context at 1280 × 800 and at 390 × 844: the Creatures tab loads with the welcome
+egg on the gold cushion (empty-state before the first pet, which is correct — the shop
+appears from the first pet on, Done when 5). The egg's base sits on top of the cushion
+with no sink, confirming the default `seatYOf()` of 0.18 applies to the welcome egg too.
+No page errors in the console; one 404 for a static asset that is served from the Netlify
+preview, not the dev server. Server stopped afterwards, port 3166 free.
 
 # Log
 
@@ -789,3 +923,13 @@ the "Dress" label of the radio group is only for screen readers; and at 1280 the
   `bed-cloud-cushion-390-lav`, `window-rain-390-mid`; re-taken: `window-rain-1280-lav`,
   `room-3d-1280-lav`, `room-3d-390-mid`, `room-panel-1280-lav`. One commit, one CI run (Hanna
   asked to save build minutes). Remaining: the tester and Hanna's look at the shop on the live site.
+- 2026-11-23 ux-designer: re-reviewed: pass. All three must-fixes land on the retaken /
+  new screenshots (feet on top of all three beds including F14, rain visible and inside
+  the pane, bought decoration at the top of the 🎨 list with a shelf on 1280 and 390).
+  Hand-over to the tester. Remaining: the tester and Hanna's look at the shop on the live site.
+- 2026-11-23 tester: passed. CI on `3dd0e89` green on the first try (1553 passed, no
+  retries, no flaky). Added four gap tests for the review's fixes in
+  `denBudget.test.ts` (`seatYOf` fallback and per-bed values, every shop bed has a seat,
+  rain scatter inside the arch, rain one merged mesh); full `pnpm test` 1557 passed,
+  `pnpm exec harness check` clean, `harness tasks-index` in step. Dev server on 3166
+  stopped. Remaining: Hanna's look at the shop on the live site.
