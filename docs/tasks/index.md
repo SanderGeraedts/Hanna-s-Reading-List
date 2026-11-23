@@ -6,7 +6,7 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 
 ## Open
 
-None.
+- [T-0042 Show the badges as a grid of round medals with bronze, silver and gold rims, and a card under the grid when one is tapped](T-0042-badges-as-a-medal-grid.md): The Badges block (BadgesCard) becomes a compact grid of round medals with the emoji in the middle, earned then locked then hidden, with a bronze/silver/gold rim worked out per family in badges.ts (D-0038), grey locked and dark hidden medals, one inline card under the grid with the tapped medal's name, how, day or progress (a hidden one's riddle), the head row kept, and the Europe postcard's icon 🗼 replaced by 🏰.
 
 ## Doing
 
