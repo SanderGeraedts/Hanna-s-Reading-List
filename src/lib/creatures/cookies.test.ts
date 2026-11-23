@@ -133,3 +133,30 @@ describe('This week', () => {
     expect(minutesText(130)).toBe('2 h 10 min')
   })
 })
+
+describe('cookies edge cases (tester)', () => {
+  it('takes a finish treat back when the finish is moved to before the start', () => {
+    const b = book({ id: 'moved', status: 'read', pages: 100, finished: [day(1)], readingLog: { [day(1)]: 0.1 } })
+    // 15 minutes = 3, + 10
+    expect(earned([b])).toBe(13)
+    expect(earned([{ ...b, finished: [day(-1)] }])).toBe(3)
+  })
+
+  it('halves each sleep-read finish without losing half cookies over several', () => {
+    const sleepy = (id: string, d: string) => book({ id, status: 'read', sleepRead: true, finished: [d] })
+    expect(earned([sleepy('s1', day(0)), sleepy('s2', day(1)), sleepy('s3', day(2))])).toBe(15)
+  })
+
+  it('ignores log entries that are 0, negative or not a number', () => {
+    const b = book({ pages: 200, readingLog: { [day(0)]: 0, [day(1)]: -0.5, [day(2)]: Number.NaN, [day(3)]: 0.1 } })
+    // only day 3: 20 pages × 1.5 = 30 minutes = 6
+    expect(earned([b])).toBe(6)
+    expect([...readingDays([b]).keys()]).toEqual([day(3)])
+  })
+
+  it('counts a day only once it has come (a log entry dated after today waits)', () => {
+    const b = book({ pages: 200, readingLog: { [day(0)]: 0.1, [day(5)]: 0.1 } })
+    expect(earned([b], day(4))).toBe(6)
+    expect(earned([b], day(5))).toBe(12)
+  })
+})

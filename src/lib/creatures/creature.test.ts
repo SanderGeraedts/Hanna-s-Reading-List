@@ -16,7 +16,7 @@ import {
 } from './creature'
 import { addDays } from './days'
 import { CREATURES_START, SUGGESTED_NAMES, WELCOME_CHOICES, WELCOME_EGG, levelCost } from './numbers'
-import { displayName, feedSay, levelUpLine, levelUpSay, moodLine, nextLine } from './words'
+import { cookieNumber, displayName, feedSay, levelUpLine, levelUpSay, moodLine, nextLine } from './words'
 
 /** Her first creature (T-0029): the welcome egg, the hatch, growing, stages and moods. */
 
@@ -245,5 +245,27 @@ describe('moods', () => {
     expect(moodLine('Biscuit', 'sleepy')).toBe('🌙 Biscuit is sleepy')
     expect(moodLine('Biscuit', 'back')).toBe("💛 Biscuit is so happy you're back!")
     expect(moodLine('Biscuit', null)).toBeNull()
+  })
+})
+
+describe('balance and moods edge cases (tester)', () => {
+  it('shows a negative balance when two devices fed the same cookies offline, and Feed then waits', () => {
+    const books = [book({ pages: 100, readingLog: { [day(0)]: 0.2 } })] // 30 minutes = 6 cookies
+    const base = [hatch('cat', at(day(0), '08:00'))]
+    const phone = mergeLogs(base, [feed(5, at(day(0), '20:00'), 'feed-phone')])
+    const laptop = mergeLogs(base, [feed(5, at(day(0), '20:05'), 'feed-laptop')])
+    expect(deriveCreatures(books, phone, at(day(0), '21:00')).balance).toBe(1)
+    expect(deriveCreatures(books, laptop, at(day(0), '21:00')).balance).toBe(1)
+    const both = deriveCreatures(books, mergeLogs(phone, laptop), at(day(0), '21:00'))
+    expect(both.balance).toBe(-4)
+    expect(feedAmount(both.balance)).toBe(0)
+    expect(cookieNumber(both.balance)).toBe('−4')
+    // both feeds still grew it: nothing she did is taken back
+    expect(both.pet?.fed).toBe(10)
+  })
+
+  it('is sleepy, not "back", when she reads again late at night', () => {
+    expect(moodOf([day(1), day(6)], day(0), at(day(6), '23:00'))).toBe('sleepy')
+    expect(moodOf([day(1), day(6)], day(0), at(day(6), '21:00'))).toBe('back')
   })
 })

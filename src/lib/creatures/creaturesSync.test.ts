@@ -16,6 +16,10 @@ const server = vi.hoisted(() => ({
   record: null as null | { id: string; creatures: unknown },
   /** the server has had T-0028's migration and route */
   hasField: true,
+  /** T-0028's route is there (the field may be live before the route) */
+  hasRoute: true,
+  /** the route answers 500 (a server error, not a 404) */
+  failing: false,
   online: true,
   requests: [] as Array<{ method: string; path: string; body?: unknown }>,
   busy: 0,
@@ -41,7 +45,8 @@ vi.mock('#/server/pocketbase', async () => {
       return { items: r ? [server.hasField ? { id: r.id, creatures: structuredClone(r.creatures ?? null) } : { id: r.id }] : [] }
     }
     if (method === 'POST' && path === '/api/collections/libraries/creatures') {
-      if (!server.record || !server.hasField) throw new PocketBaseError(404, 'Not found.')
+      if (!server.record || !server.hasField || !server.hasRoute) throw new PocketBaseError(404, 'Not found.')
+      if (server.failing) throw new PocketBaseError(500, 'Something went wrong.')
       // like the route: add the ids it hasn't got, newest setting per key, answer with the whole log
       server.record.creatures = mergeLogs(cleanLog(server.record.creatures), cleanLog(body?.events))
       return { creatures: structuredClone(server.record.creatures) }
@@ -143,6 +148,8 @@ const posts = () => server.requests.filter((r) => r.method === 'POST')
 beforeEach(() => {
   server.record = { id: 'r1', creatures: null }
   server.hasField = true
+  server.hasRoute = true
+  server.failing = false
   server.online = true
   server.requests = []
   server.busy = 0
@@ -279,5 +286,38 @@ describe('without the server keeping creatures', () => {
     await settle()
     expect(server.requests).toHaveLength(0)
     expect(local.creature()?.species).toBe('cat')
+  })
+})
+
+describe('half-live or failing server (tester)', () => {
+  it('keeps the device’s log when the field is there but the route answers 404', async () => {
+    server.hasRoute = false
+    server.record = { id: 'r1', creatures: [] }
+    const phone = new Device().open()
+    await settle()
+    act(() => phone.api.hatch('capybara'))
+    act(() => phone.api.rename('welcome', 'Bean'))
+    await settle()
+    // the POST was tried and answered 404: the empty account log never replaces hers
+    expect(posts().length).toBeGreaterThan(0)
+    expect(phone.saved().map((e) => e.kind)).toEqual(['hatch', 'name'])
+    expect(phone.creature()).toMatchObject({ species: 'capybara', name: 'Bean' })
+    // the route arrives: everything goes up once
+    server.hasRoute = true
+    await phone.comeBack()
+    expect((server.record!.creatures as ChoiceEvent[]).map((e) => e.kind)).toEqual(['hatch', 'name'])
+  })
+
+  it('keeps working when the route answers 500, and sends it on the next try', async () => {
+    server.failing = true
+    const phone = new Device().open()
+    await settle()
+    act(() => phone.api.hatch('red-fox'))
+    await settle()
+    expect(phone.creature()?.species).toBe('red-fox')
+    expect(server.record!.creatures).toBeNull()
+    server.failing = false
+    await phone.comeBack()
+    expect((server.record!.creatures as ChoiceEvent[]).map((e) => e.kind)).toEqual(['hatch'])
   })
 })

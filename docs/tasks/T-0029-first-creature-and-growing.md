@@ -632,6 +632,97 @@ Developer's own checks (2026-11-23, night); the tester's independent run goes he
 - `pnpm exec tsc --noEmit`: no output. `pnpm run build`: `✓ built`. `pnpm exec harness check`: see
   Log.
 
+## Tester (2026-11-23, night)
+
+**Verdict: sent back. One failure (Done when 11): after the hatch, focus lands on the Name field,
+not on the "Say hello to your …!" heading.** Everything else I checked passes. The PR stays a draft.
+
+**What failed, and how to see it.** Design §10 says: "After Hatch: focus moves to the heading
+'Say hello to your house cat!' once the crack is done (immediately with reduce motion)". In real
+Chrome on the dev server it lands on `INPUT#hello-name` every time: normal crack, reduce motion, and
+with WebGL turned off, both 50 ms and 1 s after the heading appears. Cause: `CreaturesPage`'s
+`useLayoutEffect` focuses the heading, then `NameField`'s mount effect calls `input.select()`, and in
+a browser `select()` also moves focus to the input. `CreaturesPage.test.tsx` doesn't catch it
+because jsdom's `select()` doesn't move focus. To see it: `?view=creatures&step=choose`, pick a
+creature, Hatch, then check `document.activeElement`. The fix and its test are the developer's
+(for example, select the text without focusing it, or skip `select()` on mount in the hello step and
+select it when the field gets focus; a jsdom test that stubs `select()` to focus, like a browser
+does, would catch it). The rename field (focus in the field with the name selected) is fine as
+it is.
+
+**CI's run** (`gh pr checks 250`, run 45100565452 on `eeaa604`, attempt 1): `checks / checks`
+pass; Netlify deploy preview ready; e2e and shards skipping (not set up for this repo). From the
+log: `harness check` ✓ tasks 41 / decisions 41 / engineers 2 / generated files current;
+`Test Files 107 passed | 1 skipped (108)`, `Tests 1339 passed | 9 skipped (1348)`; `✓ built`. No
+retries anywhere (`grep -ci retry` → 0; vitest has no `retry` set).
+
+**Run myself** (worktree `hrl-cr1`, `pnpm install --frozen-lockfile`):
+
+- The new and affected tests 5 times, shuffled (`vitest run src/lib/creatures
+  src/components/CreaturesPage.test.tsx src/components/creatures/scenes.test.tsx
+  src/lib/dashboardLayout.test.ts src/lib/recommend.test.ts --sequence.shuffle`): `Test Files 9
+  passed (9)`, `Tests 114 passed (114)` all 5 times. With my added tests,
+  `src/lib/creatures` 5 times shuffled: `Test Files 5 passed (5)`, `Tests 75 passed (75)` each time.
+- `pnpm exec tsc --noEmit`: no output (exit 0). `pnpm exec harness check`: ✓ tasks 41, ✓ decisions
+  41 (3 overrules valid), ✓ engineers 2, ✓ generated files current.
+
+**In the browser** (no-backend dev server on 3160, playwright-core, Chrome with SwiftShader, phone
+390 × 844 with touch and 1280 × 800, page clock fixed; server stopped afterwards). Script results:
+
+- *Earnings.* Go-live day (2026-11-23) with reading only before it (log on 11-20 and 11-22, a
+  finish on 11-22): 🍪 0, no "+N today", *This week · nothing yet*, the egg, no Feed. Go-live day
+  with 45 min read + 30 min of a sleep read finished that day: 🍪 17 (45 + 30 × ½ = 60 min = 12, + 5
+  for the sleep finish), and the line reads "Today 45 min · 🌙 30 min · 📗 Moon +17 🍪". Removing
+  The Hobbit's two later log days and its finish (a fix to past days) after spending: 🍪 67 →
+  🍪 −8, read as "−8 cookies", Feed `aria-disabled`.
+- *Feeding.* Feed by keyboard: 127 → 122 and announced. Then 60 fast taps: stops at 🍪 0, never
+  below; the feeds add up to exactly 127, in one combined `feed` event. After a reload, the tab and
+  the block show the same name, "Level 5 · Young", growth "35 of 40 to level 6" and 🍪 0.
+- *Welcome flow* (phone, keyboard only from Waiting for you): egg line "A welcome egg is waiting
+  for you!" with Hatch and no Later; the block shows "A welcome egg". Enter on Hatch →
+  `?view=creatures`, focus on "Choose your first creature"; five radios, none picked, Hatch
+  disabled; Tab → the radio group, Space/→ pick (red fox), the picked tile has a 2 px focus ring;
+  Tab → "Hatch the red fox"; Escape → back to the egg, focus on Hatch, nothing saved. Picked the
+  capybara, Enter: the `hatch` event is saved on the tap, "Your capybara hatched!" in the live
+  region; ✗ focus (above). Suggested "Bean" (capybara list), 🎲 → "Potato"; a name of spaces →
+  "Give your creature a name.", `aria-invalid` + `aria-describedby`, nothing saved; the field stops
+  at 20 characters; "Sir Waffle 🧇" + Enter → saved, focus on the name heading. A reload with
+  `&step=choose` shows the home (no second hatch), and the name stays. Rename: empty → the error;
+  Escape cancels with focus back on Rename. The egg line is gone from Waiting for you.
+- *Moods* (phone, last reading day 11-29): 12-01 no line; 12-02 "💤 Biscuit misses you" in the tab
+  and the block, with "It misses you." in the den's hidden description, and nothing in Waiting for
+  you; 22:29 no line, 22:30 and 05:59 "🌙 Biscuit is sleepy", 06:00 no line; reading again on 12-03
+  → "💛 Biscuit is so happy you're back!"; 12-03 23:00 without reading → misses you wins.
+- *Waiting for you.* Seen level 3 at level 4 → one line "Biscuit is young now!"; Nice! removes it,
+  and it stays gone after a reload. Seen 4 at level 5 → "Biscuit reached level 5!"; Visit goes to
+  the tab and removes it too. The block: hidden description "Biscuit the house cat, level …", canvas
+  `aria-hidden`, Open › → the tab.
+- *Choices sync.* Signed out on the no-backend server: no request to a creatures server function
+  at all. The 404 fallback is covered by `creaturesSync.test.ts` (no field; no shelf), and I added
+  two cases (below).
+- *Phone performance* (draw calls by the den in 3 s): 390 visible 1320, page hidden 0, visible
+  again 1320, add dialog over it 0; 1280 visible 6358 / hidden 0 / back 6358 / dialog 0; 390 with
+  reduce motion 0 throughout (it doesn't move). The Calendar tab has no den canvas (unmounted).
+  Every canvas is out of the tab order and inside `aria-hidden`. No page errors in any run.
+- `CREATURES_START` stays `2026-11-23`: it is still 2026-11-23, so nothing to move (if the merge
+  slips past today, move it then).
+
+**Screenshots retaken**, as the UX re-review asked (Done when 2), with the warm den walls and the
+2026-11-23 start: `stages-*`, `missing-*`, `sleepy-*`, `back-1280-lav`, `fed-*`, `negative-390-lav`,
+`choose-*`, `hello-*` (incl. `hello-empty-390-lav`), `shiny-hello-1280-mid`, `rename-390-lav`,
+`waiting-levelup-390-lav`, with the developer's own script pointed at port 3160. Stage words: Level
+2 · Baby, Level 6 · Young, Level 11 · Grown-up. The folder now matches what ships, except for the
+focus fix, which changes nothing that shows.
+
+**Tests added for gaps** (all pass): `cookies.test.ts` *cookies edge cases (tester)*: a finish
+moved to before the start takes its 10 🍪 back; three sleep-read finishes give 15; log shares of 0,
+negative or NaN are ignored; a log day after today waits. `creature.test.ts` *balance and moods
+edge cases (tester)*: two devices feeding the same cookies offline merge to "−4" with Feed waiting
+and both feeds still growing it; reading again late at night shows sleepy, not "back".
+`creaturesSync.test.ts` *half-live or failing server (tester)*: the field is there but the route
+answers 404 (her log is kept, never replaced by the empty account log, and goes up once the route
+arrives); the route answers 500 (works on, sends on the next try).
+
 # Log
 
 - 2026-11-22 architect: wrote CR1 from Hanna's brief; earned things are derived from the reading
@@ -725,3 +816,10 @@ Developer's own checks (2026-11-23, night); the tester's independent run goes he
   decision index merged cleanly with every entry. Set `CREATURES_START` to **2026-11-23**, the
   expected merge day; if the merge slips, the tester moves it to the actual day before marking the
   PR ready. Opened draft PR #250.
+- 2026-11-23 tester: sent back: after the hatch, focus lands on the Name field instead of the "Say
+  hello to your …!" heading (Done when 11, Design §10). `NameField`'s mount `select()` moves focus
+  in a real browser, and jsdom doesn't show it. Everything else passes (earnings, welcome flow,
+  moods, Waiting for you, the block, choices fallback, frame loop, keyboard and screen reader).
+  Retook the older screenshots and added 8 tests for gaps. PR #250 stays a draft. Back to the
+  developer; afterwards the tester re-checks the focus fix, its test and CI. Remaining: the focus
+  fix; Hanna's five morning questions; Done when 5 (Hanna on the live site).
