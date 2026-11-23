@@ -6,7 +6,7 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 
 ## Open
 
-None.
+- [T-0037 Polish the open book on the shelf: room under the header, calm reduced motion, sideways phones, parallax after a touch, ridges that respect the medal](T-0037-shelf-polish.md) (small): Five follow-ups from T-0026 and T-0034: on the phone the details sheet stops where an open book still has room (no more ~4 m step back) and a book's paper clip stays below the header; with reduced motion the camera jumps back only once a put-back book is home; on a phone held sideways the open book stands in the free space left of the panel and under the toolbar; on touch screens the parallax eases back to centre after a touch; a read-before did-not-finish book loses its bottom ridges like every book with a medal.
 
 ## Doing
 
