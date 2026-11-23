@@ -246,6 +246,18 @@ describe('Your pets (Done when 9)', () => {
     tab()
     expect(screen.queryByRole('radiogroup', { name: 'Current pet' })).toBeNull()
   })
+
+  // tester, sent back: un-skip with the fix. A pick announced as current must not be lost when
+  // she leaves the tab (the page unmounts) before the 1 s save.
+  it.skip('keeps a pick when she leaves the tab within the second', () => {
+    seed([...welcome(), ...hatched(15, { 10: { pick: 'cookies' } })])
+    const { unmount } = tab()
+    const radios = within(screen.getByRole('radiogroup', { name: 'Current pet' })).getAllByRole('radio')
+    fireEvent.click(radios[2])
+    expect(status()).toMatch(/ is your current pet\.$/)
+    unmount()
+    expect(saved().filter((e) => e.kind === 'current')).toEqual([expect.objectContaining({ key: 'pet', pet: 'm:books-15' })])
+  })
 })
 
 describe('release (Done when 10)', () => {

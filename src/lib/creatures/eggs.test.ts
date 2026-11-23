@@ -225,3 +225,37 @@ describe('the next egg (Design §2)', () => {
     expect(eggReason({ id: 'm:streak-7', tier: 'uncommon', kind: 'streak', day: S, n: 7 })).toBe('For a 7-day streak')
   })
 })
+
+describe('milestones at their boundaries (tester)', () => {
+  it('gives no book egg for the 4th book, and the 5th on its own day', () => {
+    expect(eggs(finishedBooks(4), day(30)).filter((e) => e.kind === 'books')).toEqual([])
+    expect(eggs(finishedBooks(5), day(30)).filter((e) => e.kind === 'books').map((e) => [e.id, e.day])).toEqual([['m:books-5', day(4)]])
+    // the day before the 5th finish: nothing yet
+    expect(eggs(finishedBooks(5), day(3)).filter((e) => e.kind === 'books')).toEqual([])
+  })
+
+  it('gives the 10-hour egg at 600 minutes, not at 599', () => {
+    const audio = (m: number) => book({ status: 'reading', formats: ['storytel'], minutes: m, pages: m, readingLog: { [day(1)]: 1 } })
+    expect(eggs([audio(599)], day(2)).filter((e) => e.kind === 'hours')).toEqual([])
+    expect(eggs([audio(600)], day(2)).filter((e) => e.kind === 'hours').map((e) => e.id)).toEqual(['m:hours-10'])
+  })
+
+  it('gives no streak egg for 6 days in a row, nor for 7 days with a gap', () => {
+    const log = (days: number[]) => book({ status: 'reading', pages: 300, readingLog: Object.fromEntries(days.map((i) => [day(i), 0.001])) })
+    expect(eggs([log([0, 1, 2, 3, 4, 5])], day(10)).filter((e) => e.kind === 'streak')).toEqual([])
+    expect(eggs([log([0, 1, 2, 4, 5, 6, 7])], day(10)).filter((e) => e.kind === 'streak')).toEqual([])
+  })
+
+  it('gives a very rare egg for a full bingo card on the day it was filled, and none for a card filled before the start', () => {
+    const year = Number(S.slice(0, 4))
+    const card = (d: string) => ({ year, card: 1, endsAt: `${d}|x|1`, squares: [], ticks: {} })
+    const filled = book({ pages: 10, finished: [day(2)], bingoCards: [card(day(2))] })
+    const list = eggs([filled], day(5)).filter((e) => e.kind === 'bingo')
+    expect(list).toEqual([{ id: `m:bingo-${year}-1`, tier: 'very rare', kind: 'bingo', day: day(2), n: 1 }])
+    expect(eggReason(list[0])).toBe('For a full bingo card')
+    // not before the day it was filled
+    expect(eggs([filled], day(1)).filter((e) => e.kind === 'bingo')).toEqual([])
+    const old = book({ pages: 10, finished: [day(-2)], bingoCards: [card(day(-2))] })
+    expect(eggs([old], day(5)).filter((e) => e.kind === 'bingo')).toEqual([])
+  })
+})

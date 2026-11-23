@@ -239,3 +239,70 @@ describe('release (D-0033 §9)', () => {
   })
 })
 
+
+describe('power-ups and releases together (tester)', () => {
+  // the welcome cat and a later book egg that is a cat duplicate, not shiny
+  const dup = bookEgg({ dupOf: 'cat', shiny: false })
+  const books = finished(dup.n)
+  const base = () => [hatchWelcome('cat'), ...Array.from({ length: dup.n / 5 }, (_, i) => hatchEgg(`m:books-${(i + 1) * 5}`, at(day(dup.n + 1)) + i))]
+  const powerOf = (c: Creatures, target: string) => {
+    const r = chooseEvent(c, dup.egg, 'power', { target })
+    if (!r.ok) throw new Error(r.why)
+    return r.event
+  }
+
+  it('a power-up for a pet another device released first is ignored, and the duplicate keeps waiting', () => {
+    const c0 = derive(books, base())
+    const power = powerOf(c0, WELCOME_EGG)
+    const t = at(day(dup.n + 3))
+    const c = derive(books, [...base(), ev({ kind: 'release', pet: WELCOME_EGG, confirm: 1 }, t), ev(power, t + 1000)])
+    expect(c.pets.some((p) => p.id === WELCOME_EGG)).toBe(false)
+    expect(c.waiting.some((w) => w.egg === dup.egg)).toBe(true)
+    expect(c.duplicates.find((d) => d.egg === dup.egg)!.pick).toBeNull()
+  })
+
+  it('a powered-up pet that is released takes its levels with it; the choice is not asked again and the species stays found', () => {
+    const c0 = derive(books, base())
+    const t = at(day(dup.n + 3))
+    const powered = derive(books, [...base(), ev(powerOf(c0, WELCOME_EGG), t)])
+    expect(powered.pets.find((p) => p.id === WELCOME_EGG)!.level).toBe(c0.pets.find((p) => p.id === WELCOME_EGG)!.level + 3)
+    const c = derive(books, [...base(), ev(powerOf(c0, WELCOME_EGG), t), ev({ kind: 'release', pet: WELCOME_EGG, confirm: 1 }, t + 1000)])
+    expect(c.pets.some((p) => p.id === WELCOME_EGG)).toBe(false)
+    expect(c.waiting.some((w) => w.egg === dup.egg)).toBe(false)
+    expect(c.duplicates.find((d) => d.egg === dup.egg)!.pick).toBe('power')
+    expect(c.found.has('cat')).toBe(true)
+    expect(c.balance).toBe(powered.balance)
+  })
+})
+
+describe('a fixed past day after hatching (tester, sent back: un-skip with the fix)', () => {
+  // A book egg and the 10-hour egg hatch the same species: the book egg comes first (a pet she
+  // named), the hour egg is its duplicate (turned into cookies). Then she un-finishes one book, so
+  // the book egg is no longer earned. D-0033 §10: the only way a pet goes is her own release.
+  const hs = eggSpecies('m:hours-10', 'common')
+  let n = 5
+  while (n % 25 === 0 || eggSpecies(`m:books-${n}`, 'common') !== hs) n += 5
+  const welcome = WELCOME_CHOICES.find((w) => w !== hs)!
+  const shorts = Array.from({ length: n }, (_, i) => book({ pages: 1, finished: [day(i)] }))
+  const audio = book({ status: 'reading', formats: ['storytel'], minutes: 600, pages: 600, readingLog: { [day(n + 5)]: 1 } })
+  const log = () => {
+    const out = [hatchWelcome(welcome)]
+    let t = at(day(n + 6))
+    for (let k = 5; k <= n; k += 5) out.push(hatchEgg(`m:books-${k}`, t++))
+    out.push(hatchEgg('m:hours-10', t++))
+    out.push(ev({ kind: 'name', key: `m:books-${n}`, name: 'Precious' }, t++))
+    out.push(ev({ kind: 'choose', egg: 'm:hours-10', pick: 'cookies' }, t++))
+    return out
+  }
+
+  it.skip('keeps her pets, names, duplicates and cookies as they were', () => {
+    const before = derive([...shorts, audio], log())
+    expect(before.pets.find((p) => p.id === `m:books-${n}`)?.name).toBe('Precious')
+    expect(before.bonus).toBe(30)
+    const fixed = [{ ...shorts[0], status: 'want', finished: [] } as Book, ...shorts.slice(1), audio]
+    const after = derive(fixed, log())
+    expect(after.pets.map((p) => [p.id, p.name, p.shiny])).toEqual(before.pets.map((p) => [p.id, p.name, p.shiny]))
+    expect(after.waiting.map((w) => w.egg)).toEqual(before.waiting.map((w) => w.egg))
+    expect(after.bonus).toBe(before.bonus)
+  })
+})

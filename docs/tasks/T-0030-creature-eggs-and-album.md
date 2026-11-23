@@ -768,6 +768,112 @@ questions):
 
 # Test
 
+Tester, 2026-11-23 (at night, Hanna not asked). **Verdict: sent back** for two faults (below).
+Everything else I tried holds, shiny safety included. The pull request stays a draft.
+
+**What fails**
+
+1. **A fixed past day can take a pet away, bring back a duplicate she turned in, and take
+   cookies back** (D-0033 §10: "the only way a pet goes is her own release"; Build notes 3:
+   "nothing she has is lost"). `deriveCreatures` puts a hatched egg that is no longer earned
+   *after* all earned eggs, and then works out "duplicate" again from that new order. So the
+   duplicate flags of the eggs she has already hatched can flip. How to see it: the welcome pet
+   is a cat. `m:books-105` and `m:hours-10` both hatch a capybara. She hatches every egg, names
+   the books-105 capybara "Precious", and turns the hours-10 capybara (its duplicate) into 30 🍪.
+   Then she un-finishes one book (books-105 is no longer earned):
+   - before: pets `… | m:books-105:capybara:Precious`, bonus 30;
+   - after: `m:books-105` is gone from her pets and is waiting as an undecided duplicate. The
+     hours-10 capybara she turned into cookies is a pet again ("Coco"), and the bonus is 0 (the
+     balance drops by 30).
+
+   The shiny result follows the duplicate flag (1 in 20 vs 1 in 5), so a flip can also make a
+   kept pet shiny, or take its shiny away. The regression test is in `pets.test.ts`, *a fixed
+   past day after hatching*, as `it.skip`. Un-skipped it fails on this branch (`1 failed`).
+   Un-skip it with the fix.
+2. **A pet picked in Your pets is lost if she leaves the tab within the second.** `pick()`
+   announces "Blizzard is your current pet." at once and saves after 1 s. But the page's unmount
+   cleanup only clears the timer (`CreaturesPage.tsx`, `useEffect(() => () => clearTimeout…)`),
+   so the pick is never saved. In real Chrome at 390 (touch) and at 1280: tap Blizzard, then tap
+   Dashboard 0.25 s later. The block shows "Biscuit … Level 4 · Young" and no `current` event is
+   saved. The same happens on a reload within the second. The skipped component test is in
+   `CreaturesEggs.test.tsx`, *keeps a pick when she leaves the tab within the second*.
+   Un-skipped it fails (`1 failed`). A fix could save the pending pick on unmount and on
+   `pagehide`.
+
+**CI** (`gh pr checks 252`, run 45109324283 on `c2d7573`): `checks / checks` pass (58 s), deploy
+preview ready, e2e and shards skipping as on earlier PRs. Log: `Test Files 113 passed | 1 skipped
+(114)`, `Tests 1449 passed | 9 skipped (1458)`. No retries in the log (`grep -iE "retry|flaky"`:
+nothing).
+
+**Commands (clean `pnpm install --frozen-lockfile`)**
+
+- `pnpm test` (Done when 1): `Test Files 113 passed | 1 skipped (114)`, `Tests 1455 passed | 11
+  skipped (1466)` (with my 6 new tests and the 2 skipped regressions).
+- The new and affected tests, 5 times shuffled (`vitest run src/lib/creatures
+  src/components/CreaturesEggs.test.tsx src/components/CreaturesPage.test.tsx
+  src/components/creatures/stills.test.ts --sequence.shuffle`): `Test Files 10 passed (10)`,
+  `Tests 154 passed | 2 skipped (156)`, all 5 times.
+- `pnpm exec tsc --noEmit`: no output. `pnpm run build`: `✓ built` (client and server).
+  `pnpm exec harness check`: ✓ tasks 42, ✓ decisions 42 (3 overrules valid), ✓ engineers 2, ✓
+  generated files current.
+
+**Library checks (vitest)**
+
+- Milestones at the boundary: the 4th book gives nothing; the 5th gives an egg on its own day and
+  not the day before; 599 min gives no hour egg and 600 min gives `m:hours-10`; 6 days in a row,
+  or 7 with a gap, give no streak egg. The 25th / 50th book, 100 h, streaks 7 / 30 / 100, series,
+  own and monthly challenges were already covered. **Bingo had no test**: I added one (very rare,
+  on the day the card was filled, nothing for a card filled before the start).
+- Duplicates with releases: a power-up for a pet that another device released first is ignored,
+  and the duplicate keeps waiting (nothing lost). A powered-up pet that is then released takes
+  its levels with it, the choice isn't asked again, the species stays found and the balance is
+  unchanged. Both are new tests and both pass.
+- Determinism, two devices (fresh storage, the same log in either order) and two devices
+  releasing everything at once: covered by the developer's tests, which I read and re-ran.
+
+**Real Chrome** (no-backend dev server on 3164, playwright-core, Chrome with SwiftShader, 390 ×
+844 with touch emulation and 1280 × 800, page date fixed; server stopped afterwards, port free).
+
+- *Shiny safety* (the 20th book's shiny red fox duplicate, "Turn into 30 🍪"): the warning opens
+  with focus on Keep it. **Nothing was saved** after any of these: a mouse click; a 1.5 s press;
+  pressing, sliding off the button and holding on past 2 s; the right button held 2.3 s; Space
+  held 1.5 s with 15 key repeats; Enter held 1.5 s; 12 fast Space taps; Tab away while Space is
+  down; a touch tap; 10 fast taps; a 1.5 s touch; a finger sliding off downwards, sideways and
+  upwards, then held 2.2 s. Escape leaves the warning. A long hold acts exactly once (Enter, and
+  touch: `{pick: "cookies", hold: 1}`, "30 cookies added."). One note: on SwiftShader a 2.4 s
+  hold sometimes didn't act, because the busy main thread delayed the 2 s timer and the key came
+  up first. That fails safe (it never acts early), and a 3.5 s hold acted every time.
+- *Release:* with one pet, Release… is `aria-disabled` with the title "You always keep one pet.",
+  and a forced tap opens nothing. Release… → focus on the H3 "Release Biscuit?", Tab → Keep
+  first, Escape → focus back on Release… with nothing saved. Release → "Biscuit was released.
+  Nutmeg is your current pet now.", focus on the H2 "Nutmeg", balance unchanged (🍪 288), album
+  still "4 of 20 found". The shiny Maple shows the warning and "Hold to release". 8 taps and a
+  1.2 s touch release nothing; a long touch releases her with `hold: 1`.
+- *Which red squirrel?* (keys only): Enter on "Hatch the common egg" puts focus on the H2
+  "Another red squirrel!". "Power up a red squirrel" → a radio group "Which red squirrel?" with
+  focus on it, and Power up stays disabled until a pet is picked. Picking Pip → Power up: Pip goes
+  from Level 3 to Level 6, "Pip reached level 6 and is young now!", and focus moves to the Eggs
+  heading.
+- *Album* (1280 lavender, 390 midnight): "4 of 20 found ✨ 1 shiny", six h3 groups with counts,
+  20 cards, 16 silhouettes (`brightness(0) drop-shadow(…0.5…)`), each with a hidden "Not found
+  yet" and no name or label. Every picture has `alt=""`. Two ×2 pills ("2 pets"), and one ✨
+  toggle ("Show the shiny red fox"), only on the species whose shiny was found. Space toggles it
+  (`aria-pressed=true`, `red-fox-grown-shiny.webp`). Labels: house cat "Domestic animal / Not on
+  the IUCN Red List", polar bear "Vulnerable / IUCN Red List, 2015", red fox "Least Concern / IUCN
+  Red List". 2 columns at 390, and only the ✨ toggle is focusable in the album.
+- *Pictures and canvases:* all **126** files in `public/creatures/` load and decode at 192 × 192.
+  After scrolling the whole tab, every shown `img` is loaded and there is no "?" fallback.
+  **Exactly one canvas inside the Creatures page** (the den, inside `aria-hidden`), and none in
+  the album. The document has 2, because the shelf's own canvas is mounted behind it as before.
+- *Your pets:* 4 × ArrowDown 250 ms apart saved nothing while arrowing. The card follows at once
+  and the live region says "Maple is your current pet.". Exactly one `current` event 1.5 s later,
+  and it is kept after a reload. Fault 2 above is the exception.
+- No page errors in any run.
+
+**Tests added** (all pass): `eggs.test.ts` *milestones at their boundaries (tester)*, 4 tests;
+`pets.test.ts` *power-ups and releases together (tester)*, 2 tests. Plus the two skipped
+regressions for the faults above.
+
 # Log
 
 - 2026-11-22 architect: wrote CR2 from Hanna's brief and D-0033 (milestones, tiers, shiny safety).
@@ -803,3 +909,9 @@ questions):
   contact sheets of all 126 pictures at the sizes shown, both wallpapers; accepted the den switching
   straight to the egg, Hatch wrapping under Feed at 390, and the picture quality; five small
   nice-to-haves listed). Handed to the tester.
+- 2026-11-23 tester: sent back: (1) a fixed past day that takes away a hatched egg reorders the
+  duplicates, so a named pet can vanish into "waiting", a duplicate turned into cookies comes back
+  and the cookies are taken back (D-0033 §10); (2) a pet picked in Your pets is lost when she
+  leaves the tab or reloads within the 1 s save. Skipped regression tests for both are in the
+  branch; everything else passed (shiny safety in real Chrome, release, album, 126 pictures, one
+  canvas). Back to the developer; the pull request stays a draft.
