@@ -103,7 +103,8 @@ describe('the Garden tab', () => {
 
   it('says the season and describes the garden for a screen reader', () => {
     const { container } = tab([finished('2026-03-02', { title: 'A book' })])
-    expect(screen.getByText('🍂 Autumn')).toBeTruthy()
+    // the chip in the head, and the one in "Have a look" that switches to it
+    expect(screen.getAllByText(/🍂 Autumn/)).not.toHaveLength(0)
     expect(container.textContent).toContain('Your 2026 garden in autumn:')
   })
 
@@ -119,11 +120,11 @@ describe('the Garden tab', () => {
     expect(container.querySelector('canvas')).toBeNull()
   })
 
-  it('groups the spots by bed, with an empty spot she can reach', () => {
+  it('gives a button to every plant and to nothing else', () => {
     tab([finished('2026-03-02', { title: 'Only one' })])
     const bed = screen.getByRole('group', { name: 'Bed 1 of 1' })
-    expect(within(bed).getAllByRole('button')).toHaveLength(SPOTS_PER_BED)
-    expect(screen.getByRole('button', { name: 'Empty spot, bed 1, spot 2' })).toBeTruthy()
+    expect(within(bed).getAllByRole('button')).toHaveLength(1)
+    expect(screen.queryByRole('button', { name: /Empty spot/ })).toBeNull()
   })
 
   it('opens a chip per reading year and switches between the gardens', () => {
@@ -135,41 +136,35 @@ describe('the Garden tab', () => {
   })
 })
 
-describe('tending', () => {
-  it('picks a plant up and puts it in an empty spot, and saves where it stands', () => {
-    tab([finished('2026-03-02', { title: 'Mover' })])
-    fireEvent.click(plantButton('Mover'))
-    expect(screen.getByText('Put back')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: /Put the .* of Mover in bed 1, spot 5/ }))
-    const saved = savedLog()
-    expect(saved).toHaveLength(1)
-    expect(saved[0]).toMatchObject({ kind: 'place', bed: 0, spot: 4 })
-    expect(screen.getByRole('button', { name: /Mover/ }).getAttribute('data-spot')).toBe('0:4')
+describe('the cover behind a plant (D-0071 §3)', () => {
+  it('shows the cover and the book when she presses a plant, and closes again', () => {
+    tab([finished('2026-03-02', { title: 'Peek at me' })])
+    fireEvent.click(plantButton('Peek at me'))
+    const peek = screen.getByRole('group', { name: 'Peek at me' })
+    expect(within(peek).getByText('Peek at me')).toBeTruthy()
+    fireEvent.click(within(peek).getByRole('button', { name: 'Close' }))
+    expect(screen.queryByRole('group', { name: 'Peek at me' })).toBeNull()
   })
 
-  it('swaps with the plant already standing there', () => {
-    tab([finished('2026-03-02', { title: 'First' }), finished('2026-03-03', { title: 'Second' })])
-    fireEvent.click(plantButton('First'))
-    fireEvent.click(screen.getByRole('button', { name: /in bed 1, spot 2$/ }))
-    expect(savedLog()).toHaveLength(2)
-    expect(screen.getByRole('button', { name: /First/ }).getAttribute('data-spot')).toBe('0:1')
-    expect(screen.getByRole('button', { name: /Second/ }).getAttribute('data-spot')).toBe('0:0')
+  it('opens and closes with the keyboard, and Escape closes it', () => {
+    tab([finished('2026-03-02', { title: 'Keys' })])
+    fireEvent.keyDown(plantButton('Keys'), { key: 'Enter' })
+    expect(screen.getByRole('group', { name: 'Keys' })).toBeTruthy()
+    fireEvent.keyDown(plantButton('Keys'), { key: 'Escape' })
+    expect(screen.queryByRole('group', { name: 'Keys' })).toBeNull()
   })
 
-  it('puts a picked-up plant back with Escape and with Put back', () => {
-    tab([finished('2026-03-02', { title: 'Stayer' })])
-    const plant = plantButton('Stayer')
-    fireEvent.click(plant)
-    fireEvent.keyDown(screen.getByRole('button', { name: /in bed 1, spot 1$/ }), { key: 'Escape' })
-    expect(screen.queryByText('Put back')).toBeNull()
+  it('never saves anything: a plant cannot be moved', () => {
+    tab([finished('2026-03-02', { title: 'Fixed' }), finished('2026-03-03', { title: 'Also fixed' })])
+    fireEvent.click(plantButton('Fixed'))
+    fireEvent.click(plantButton('Also fixed'))
     expect(savedLog()).toHaveLength(0)
   })
 
-  it('picks a plant up with the keyboard and drops it with Enter', () => {
-    tab([finished('2026-03-02', { title: 'Keys' })])
-    fireEvent.keyDown(plantButton('Keys'), { key: 'Enter' })
-    fireEvent.keyDown(screen.getByRole('button', { name: /in bed 1, spot 3$/ }), { key: 'Enter' })
-    expect(savedLog()[0]).toMatchObject({ spot: 2 })
+  it('stands the plants in the order she finished the books', () => {
+    tab([finished('2026-03-03', { title: 'Second' }), finished('2026-03-02', { title: 'First' })])
+    expect(plantButton('First').getAttribute('data-spot')).toBe('0:0')
+    expect(plantButton('Second').getAttribute('data-spot')).toBe('0:1')
   })
 })
 
@@ -277,7 +272,7 @@ describe('the flat garden stays light (D-0051 §6)', () => {
     console.log(`the flat garden with 114 plants: ${shapes} SVG shapes, ${buttons} spot buttons, 0 canvases`)
     expect(container.querySelector('canvas')).toBeNull()
     expect(shapes).toBeLessThan(1200)
-    expect(buttons).toBe(10 * SPOTS_PER_BED)
+    expect(buttons).toBe(114)
   })
 })
 
@@ -312,7 +307,7 @@ describe('reduce motion and the seasons in the tab', () => {
     ] as const) {
       vi.setSystemTime(new Date(`${day}T12:00:00`))
       const view = tab([finished('2026-01-02', { title: 'A book' })])
-      expect(screen.getByText(chip), day).toBeTruthy()
+      expect(screen.getAllByText(new RegExp(chip)).length, day).toBeGreaterThan(0)
       view.unmount()
     }
     vi.setSystemTime(new Date(`${TODAY}T12:00:00`))

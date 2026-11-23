@@ -28,7 +28,7 @@ import { blooming, kindOf } from './plants'
 import type { PlantKind } from './plants'
 import { seasonOf } from './seasons'
 import type { Season } from './seasons'
-import { arrange, savedItems, savedPlants } from './spots'
+import { arrange, savedItems } from './spots'
 import type { Spot } from './spots'
 
 /**
@@ -60,11 +60,9 @@ export interface Plant {
   night: boolean
   /** showing flowers in this season */
   blooming: boolean
-  /** where it stands */
+  /** where it stands: its own place in the order she finished the books */
   bed: number
   spot: number
-  /** she put it there herself */
-  placed: boolean
 }
 
 export interface Visitors {
@@ -115,6 +113,12 @@ export interface GardenOptions {
   today?: string
   /** a phone sees fewer visitors (D-0051) */
   phone?: boolean
+  /**
+   * Look at the garden in another season than the real one (D-0071). It
+   * changes what is in bloom and nothing else: it is never saved, and the
+   * dashboard's block never passes it.
+   */
+  season?: Season
 }
 
 /** Every day she read something, oldest first (a day with a share of more than nothing). */
@@ -170,10 +174,9 @@ export function visitorsFor(plants: number, inBloom: number, items: ReadonlyMap<
 /** The whole garden. `log` is her choice log (D-0052); without it the garden is the tidy default. */
 export function deriveGarden(books: readonly Book[], log: readonly ChoiceEvent[] = [], opts: GardenOptions = {}): Garden {
   const today = opts.today ?? localDay()
-  const season = seasonOf(today) ?? 'winter'
+  const season = opts.season ?? seasonOf(today) ?? 'winter'
   const sleep = sleepReadIds(books as Book[])
   const readingDays = readingDayList(books)
-  const saved = savedPlants(log)
   const items = savedItems(log)
 
   // one plant per finished book: its first finish decides the year, every finish counts as a read
@@ -199,7 +202,8 @@ export function deriveGarden(books: readonly Book[], log: readonly ChoiceEvent[]
   for (const [year, list] of byYear) {
     // the order the plants were finished in: that order is what gives each one its own spot
     list.sort((a, b) => (a.since ?? '').localeCompare(b.since ?? '') || a.book.addedAt - b.book.addedAt || a.book.id.localeCompare(b.book.id))
-    const { spots, beds } = arrange(list.map((p) => ({ id: p.book.id, saved: saved.get(p.book.id) })))
+    // in the order she finished the books, and only that (D-0071 §1)
+    const { spots, beds } = arrange(list.map((p) => ({ id: p.book.id })))
     const mine = items.get(year) ?? new Map<GardenItemId, number>()
     const plants = list.map((p): Plant => {
       const kind = kindOf(p.book)
@@ -220,7 +224,6 @@ export function deriveGarden(books: readonly Book[], log: readonly ChoiceEvent[]
         blooming: blooming(kind, season, { night, reads: p.reads }),
         bed: at.bed,
         spot: at.spot,
-        placed: saved.has(p.book.id),
       }
     })
     const inBloom = plants.filter((p) => p.blooming).length

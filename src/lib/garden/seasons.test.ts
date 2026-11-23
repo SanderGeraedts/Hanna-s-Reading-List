@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SEASONS, SEASON_ICON, SEASON_LABEL, realDay, seasonOf } from './seasons'
+import { SEASONS, SEASON_ICON, SEASON_LABEL, realDay, seasonOf, isNight } from './seasons'
 
 /** Real seasons (T-0064): the months, the edges of each season and leap years. */
 
@@ -48,5 +48,20 @@ describe('the season of a day', () => {
       expect(SEASON_LABEL[s]).toBeTruthy()
       expect(SEASON_ICON[s]).toBeTruthy()
     }
+  })
+})
+
+describe('night in the garden (D-0071)', () => {
+  it('is dark from eight in the evening until six in the morning', () => {
+    expect(isNight(20)).toBe(true)
+    expect(isNight(23)).toBe(true)
+    expect(isNight(0)).toBe(true)
+    expect(isNight(5)).toBe(true)
+  })
+
+  it('is day for the rest', () => {
+    expect(isNight(6)).toBe(false)
+    expect(isNight(12)).toBe(false)
+    expect(isNight(19)).toBe(false)
   })
 })

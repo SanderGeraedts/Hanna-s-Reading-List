@@ -5,7 +5,7 @@ description: "Tidy with Undo, finding a book across every year, a quiet mark on 
 status: Doing
 size: full
 depends_on: [T-0060, T-0061, T-0062, T-0063, T-0064, T-0065]
-decisions: [D-0068, D-0069, D-0070, D-0050, D-0051, D-0052, D-0013, D-0014, D-0025]
+decisions: [D-0068, D-0069, D-0070, D-0071, D-0050, D-0051, D-0052, D-0013, D-0014, D-0025]
 raised_on: 2026-11-23
 done_on: ""
 result: []
@@ -23,13 +23,15 @@ against advice.
 
 `pnpm test` and `pnpm run build` pass, and on the preview:
 
-- the Garden tab has **Tidy by reading order**; pressing it sorts the year and offers
-  **Undo**, which puts every plant back exactly where it was;
+- plants stand in the order she finished the books, and pressing one shows its cover with
+  **Open book**; nothing can be moved and nothing is saved for a plant;
+- a garden with more than one bed offers **Whole year** and a chip per bed;
+- **Have a look** switches the garden to any season or to night, says so while it is not now,
+  and **Now** puts it back; it is gone when she leaves the tab;
+- **Share** makes a picture of the garden as it stands;
 - **Find a book…** finds a book finished in an older year and jumps to that year, ringing
   its plant;
 - plants new or grown since the last visit are ringed, and the dashboard block says so;
-- books finished in the last month have a little cover sign, and the book being read has one
-  on an empty spot;
 - the garden items strip shows the new items, a seasonal one only in its season;
 - a 3D tree's crown sits on its trunk, with no gap;
 - the world, the seasonal and her own challenge cards show up to three books from her shelf
@@ -94,8 +96,12 @@ like is Hanna's to confirm on the live site.
 - 2026-11-23 developer: the garden now speaks in "Waiting for you" as D-0050 §11 said it
   should, with new plants, growth and unlocks in one line and Visit garden; the device's note
   of what it last saw gained the unlocked items, and an older note counts every unlock as
-  already seen so no old pond is announced. `pnpm test` 2442 passed, 22 skipped;
-  `pnpm run build` built in 910 ms.
+  already seen so no old pond is announced.
+- 2026-11-23 developer: Hanna asked for no dragging in the garden at all and for a cover on a
+  press instead, which retires moving, Tidy, Undo and the signs (D-0071); the garden also
+  gained a bed at a time, a look at any season or after dark, night from the device's clock,
+  and a picture to share. `pnpm test` 2425 passed, 22 skipped; `pnpm run build` built in
+  936 ms.
   Remaining: Hanna confirms on the live site that Tidy and Undo do what she expects, that the
   cover signs and the re-matched plants look right, and that the suggestions under A–Z, the
   world, the seasonal and her own challenges are useful.

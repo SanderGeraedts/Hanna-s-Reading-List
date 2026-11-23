@@ -45,6 +45,16 @@ export function realDay(day: string): boolean {
  * isn't a day at all. The caller decides what to do with null; the garden falls
  * back to the device's own today.
  */
+/**
+ * Night in the garden: from eight in the evening until six in the morning, by
+ * the device's own clock. Night is a **look**, never saved: the garden is the
+ * real time of day when she opens it (D-0071).
+ */
+export const NIGHT_FROM = 20
+export const NIGHT_UNTIL = 6
+
+export const isNight = (hour: number) => hour >= NIGHT_FROM || hour < NIGHT_UNTIL
+
 export function seasonOf(day: string): Season | null {
   if (!realDay(day)) return null
   const month = Number(day.slice(5, 7))

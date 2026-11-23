@@ -23,9 +23,19 @@ const GROUND: Record<Season, { grass: string; grass2: string; earth: string; rim
   winter: { grass: '#c9cfdc', grass2: '#c0c7d6', earth: '#5a4434', rim: '#4c3a2a' },
 }
 
+/** The same ground after dark: cooler, darker, and the snow still pale (D-0071). */
+const NIGHT: Record<Season, { grass: string; grass2: string; earth: string; rim: string }> = {
+  spring: { grass: '#38485a', grass2: '#334252', earth: '#33281f', rim: '#2a211a' },
+  summer: { grass: '#334655', grass2: '#2f404e', earth: '#33281f', rim: '#2a211a' },
+  autumn: { grass: '#3c4450', grass2: '#363e49', earth: '#2f251c', rim: '#271f18' },
+  winter: { grass: '#4a5468', grass2: '#444e61', earth: '#2c231c', rim: '#241d17' },
+}
+
 export interface GardenFlatProps {
   year: YearGarden
   season: Season
+  /** after dark: a cool, dark garden where only the night-bloomers glow (D-0071) */
+  night?: boolean
   /** beds across; the phone's garden is one bed wide */
   columns?: number
   /** the dashboard block's smaller drawing: one bed, no visitors */
@@ -38,10 +48,10 @@ export interface GardenFlatProps {
   found?: string | null
 }
 
-export function GardenFlat({ year, season, columns = 1, compact, reduce, picked, found }: GardenFlatProps) {
+export function GardenFlat({ year, season, night, columns = 1, compact, reduce, picked, found }: GardenFlatProps) {
   const beds = compact ? Math.min(2, year.beds) : year.beds
   const layout = gardenLayout(beds, compact ? 2 : columns, !compact)
-  const ground = GROUND[season]
+  const ground = night ? NIGHT[season] : GROUND[season]
   const plants = [...year.plants]
     .filter((p) => p.bed < beds)
     // the beds at the back are drawn first, so a tall plant leans over the bed behind it
@@ -93,7 +103,9 @@ export function GardenFlat({ year, season, columns = 1, compact, reduce, picked,
           </g>
         )
       })}
-      {!compact && <VisitorMarks visitors={year.visitors} layout={{ width: layout.width, depth: layout.depth }} reduce={reduce} />}
+      {!compact && !night && <VisitorMarks visitors={year.visitors} layout={{ width: layout.width, depth: layout.depth }} reduce={reduce} />}
+      {/* after dark the whole garden cools down; the night-bloomers keep their own glow */}
+      {night && <rect x={0} y={0} width={layout.width} height={layout.depth} fill="#141d2e" opacity={0.3} rx={0.5} />}
     </svg>
   )
 }

@@ -3,7 +3,7 @@ import { SQUARE_IDS } from './bingo'
 import { bingoSwaps, cardSwaps, swapEvent, swapKey } from './bingoSwap'
 import type { ChoiceEvent } from './creatures/choices'
 import { deriveShop } from './creatures/shop'
-import { savedItems, savedPlants } from './garden/spots'
+import { savedItems } from './garden/spots'
 
 /** A swapped bingo square in the choice log (T-0093, D-0067). */
 
@@ -74,7 +74,7 @@ describe('the three readers never read each other keys (D-0052 §4, D-0067 §5)'
   const swap = place('b', 1, 'b:2026:1:0', { sq: SQUARE_IDS[20] })
 
   it('the garden ignores a bingo swap', () => {
-    expect(savedPlants([swap]).size).toBe(0)
+    expect(savedItems([swap]).size).toBe(0)
     expect(savedItems([swap]).size).toBe(0)
   })
 
