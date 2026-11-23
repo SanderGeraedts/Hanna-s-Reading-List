@@ -726,6 +726,44 @@ and both feeds still growing it; reading again late at night shows sleepy, not "
 answers 404 (her log is kept, never replaced by the empty account log, and goes up once the route
 arrives); the route answers 500 (works on, sends on the next try).
 
+### Tester re-check after the send-back (2026-11-23)
+
+**Verdict: passed.** I re-checked only the focus fix (commit `1006e93`) and what it touches: the
+hello step, 🎲 and Rename.
+
+- **CI** (`gh pr checks 250`, run 45102969815 on `1006e93`, attempt 1): `checks / checks` pass,
+  deploy preview ready, e2e/shards skipping as before. Log: `harness check` ✓ tasks 41 /
+  decisions 41 / generated files current; `Test Files 107 passed | 1 skipped (108)`, `Tests 1349
+  passed | 9 skipped (1358)`; `✓ built`. No retries (`grep -ci retry` → 0).
+- **The new and affected tests, 5 times shuffled** (`vitest run src/components/CreaturesPage.test.tsx
+  src/lib/creatures --sequence.shuffle`): `Test Files 6 passed (6)`, `Tests 93 passed (93)` each
+  time. The new test stubs `select()` to move focus as a browser does, so it fails on the old code
+  (the developer showed `1 failed | 17 passed` without the fix).
+- **Real Chrome** (no-backend dev server on 3160, playwright-core, touch emulation at 390; vite
+  stopped afterwards): at **390 × 844 and 1280 × 800**, each with the **normal crack** (WebGL
+  canvas present), **reduce motion** and **WebGL off** (no canvas). I picked the house cat, pressed
+  Enter on "Hatch the house cat", and on all 6 paths:
+  - focus is on the H2 "Say hello to your house cat!" both 80 ms and 1.3 s after it appears;
+  - Tab → `#hello-name` with the whole name selected (`0-7/7`, "Pudding");
+  - Tab → 🎲, Enter → the name changes (Pudding → Marmalade) and focus stays on "Another name";
+    Space → Tofu, focus still on 🎲. Shift+Tab back into the field selects the name again
+    (`0-4/4`);
+  - "That's the one!" by Enter → focus on the name heading `#creature-name`;
+  - **Rename** by Enter → focus in `#rename-name` with the name selected (`0-7/7`); typing
+    "Mochi" replaces it, Enter saves, "Renamed to Mochi." in the live region, focus back on
+    "Rename Mochi"; opening it again and pressing Escape cancels, with focus back on Rename.
+  - A tap into the hello field on the phone selects the whole name too (`0-10/10`).
+  
+  No page errors. Two things in my first run were my script's, not the app's. (1) With the page
+  clock frozen, the hello name and the rename got the same `at`, so the newest name was a coin
+  toss on the id. With the clock moved on for the rename it passes on every path. A real device's
+  clock moves, so it can't happen there. (2) With WebGL off, the shelf's own "can't be drawn"
+  status is the first `role="status"`; the rename line is in the page's region.
+- `CREATURES_START` stays `2026-11-23`: it is still 2026-11-23.
+
+Done when 1–4 and 6–12 have passed. Only Done when 5 is left (Hanna on the live site), so the
+task stays *Doing*.
+
 # Log
 
 - 2026-11-22 architect: wrote CR1 from Hanna's brief; earned things are derived from the reading
@@ -840,3 +878,9 @@ arrives); the route answers 500 (works on, sends on the next try).
   WebGL off (`--disable-3d-apis`, no canvas): 6/6 PASS. Hanna answered the five morning questions
   at 03:30 and kept every pick (recorded under the questions). `tsc --noEmit`: no output. Touched
   tests (CreaturesPage, creatures components, lib/creatures): 9 files, 264 passed. Lesson added. #250 stays a draft. Remaining: tester re-check; Done when 5.
+- 2026-11-23 tester: passed. Re-checked the focus fix (`1006e93`): CI is green on the first attempt.
+  In real Chrome at 390 and 1280, with the normal crack, reduce motion and WebGL off, focus lands on
+  "Say hello to your …!", Tab selects the whole name, 🎲 keeps focus, and Rename focuses and
+  selects (Enter saves, Escape cancels, focus back on Rename). PR #250 marked ready. Remaining:
+  Done when 5 (Hanna confirms on the live site that her first creature hatched and grows when she
+  reads).
