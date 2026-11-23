@@ -5,7 +5,7 @@ description: "Tidy with Undo, finding a book across every year, a quiet mark on 
 status: Doing
 size: full
 depends_on: [T-0060, T-0061, T-0062, T-0063, T-0064, T-0065]
-decisions: [D-0068, D-0069, D-0050, D-0051, D-0052, D-0013, D-0014, D-0025]
+decisions: [D-0068, D-0069, D-0070, D-0050, D-0051, D-0052, D-0013, D-0014, D-0025]
 raised_on: 2026-11-23
 done_on: ""
 result: []
@@ -83,3 +83,10 @@ like is Hanna's to confirm on the live site.
   skipped; `pnpm run build` built in 964 ms. Also fixed the floating 3D tree crowns, the
   bare winter branches and the floating fern fronds Hanna reported, and the same smaller gap
   in the flat drawing.
+- 2026-11-23 tester: the checks above run and recorded; passed. #268 merged.
+- 2026-11-23 developer: the A–Z card's "From your pile" list is now the same clickable cover
+  suggestions as the other challenges, at Hanna's request (D-0070). `pnpm test` 2423
+  passed, 22 skipped; `pnpm run build` built in 914 ms.
+  Remaining: Hanna confirms on the live site that Tidy and Undo do what she expects, that the
+  cover signs and the re-matched plants look right, and that the suggestions under A–Z, the
+  world, the seasonal and her own challenges are useful.

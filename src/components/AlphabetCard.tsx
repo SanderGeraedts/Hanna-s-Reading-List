@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import { ChallengeFits } from './ChallengeFits'
+import { FIT_MAX } from '#/lib/challengeFits'
 import type { Book } from '#/lib/library'
 import { LETTERS, alphabetYear, pickLetter, type AlphabetKind } from '#/lib/alphabet'
 import type { ShareSpec } from '#/lib/shareImage'
@@ -18,6 +20,9 @@ interface Props {
   compact?: boolean
   onOpen?: () => void
 }
+
+/** The same line the other challenges say when her shelf has nothing for them (D-0069 §6). */
+const ALPHABET_NONE = 'Nothing on your shelf fits a missing letter yet.'
 
 const TITLES: Record<AlphabetKind, string> = { title: 'A–Z challenge', author: 'A–Z authors' }
 const KINDS: Array<[AlphabetKind, string]> = [
@@ -154,21 +159,12 @@ export function AlphabetCard({ books, onShowBook, onUpdate, kind: firstKind = 't
           </button>
         </div>
       )}
-      {!compact && a.tips.length > 0 && (
-        <div className="alphabet-tips">
-          <p className="muted small-text">From your pile:</p>
-          <ul className="book-list">
-            {a.tips.slice(0, 5).map(({ letter, book }) => (
-              <li key={letter}>
-                <strong className="alphabet-tip-letter">{letter}</strong>{' '}
-                <button className="link-btn" onClick={() => onShowBook(book.id)}>
-                  {book.title}
-                </button>
-                {kind === 'author' && <span className="muted small-text"> · {book.authors.join(', ')}</span>}
-              </li>
-            ))}
-          </ul>
-        </div>
+      {!compact && a.done.size < LETTERS.length && (
+        <ChallengeFits
+          fits={a.tips.slice(0, FIT_MAX).map(({ letter, book }) => ({ book, why: `Letter ${letter}` }))}
+          none={ALPHABET_NONE}
+          onShowBook={onShowBook}
+        />
       )}
       {!compact && (
         <div className="challenge-actions">

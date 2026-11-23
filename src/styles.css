@@ -3237,14 +3237,6 @@ textarea.input {
 .alphabet-behind {
   color: var(--warning);
 }
-.alphabet-tips {
-  margin-top: 0.6rem;
-}
-.alphabet-tip-letter {
-  display: inline-block;
-  width: 1.2rem;
-  font-family: var(--serif);
-}
 /* a done letter shows its book's cover (#150); tap it to pick another (#152) */
 .alphabet-letter {
   position: relative;
