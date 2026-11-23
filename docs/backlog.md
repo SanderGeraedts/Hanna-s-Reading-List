@@ -3,7 +3,9 @@
 This is the queue of work Hanna agreed in feature chats, most of it on 22 November 2026,
 that has **not been started yet**. On 23 November 2026 she asked the team to stop once the
 book creatures are finished (T-0031 shop, T-0032 creatures come alive, T-0033 creature on
-the shelf). **The queue is paused until Hanna says to continue.**
+the shelf). On 23 November 2026 she asked for the next two items as well, the book panel
+tabs and tropes & characters, which became T-0047 and T-0048; the rest of the queue stays
+**paused until Hanna says to continue.**
 
 How to use it:
 
@@ -15,58 +17,23 @@ How to use it:
   a brief says "the architect decides", that choice was left to the team.
 - Already done or in progress, so not listed: the book creatures, the world map, the
   badges, the hardcovers on phones, the header, the listening hours, the Arrange bar, the
-  shelf polish and the country spellings.
+  shelf polish, the country spellings, the book panel tabs (T-0047) and tropes &
+  characters (T-0048).
 
 ## The queue
 
-### 1. Book panel tabs
-
-*Agreed 22 November 2026.*
-
-Tabs under the title in the book panel (`src/components/BookPanel.tsx`). The panel opens on
-**Reading** every time (the last tab is not remembered).
-
-- **Reading:** status, progress, rating, spice, times read, started and finished dates.
-- **Notes:** journal, tropes, characters, lent to a friend.
-- **Details:** how I have it (formats), price, e-book link, series, pages or length,
-  published, language, genres, Set in, back cover.
-- **Looks:** cover (change cover), spine colour, page edges.
-- The merge section: the architect decides where it goes (probably Details).
-
-Tropes and characters appear in the Notes tab once item 3 adds them.
-
-### 2. Tropes & characters
-
-*Agreed 22 November 2026.*
-
-- New **optional** fields on a book (D-0002), for example `tropes?: string[]` and
-  `characters?: Array<{ name, fav? }>`, synced like genres. Check the merge and sync; the
-  work must stay out of the paths only Sander may approve (CODEOWNERS).
-- **Tropes:** chips from a ready list (enemies to lovers, found family, slow burn, chosen
-  one, fake dating, grumpy/sunshine, morally grey, forced proximity, ...) plus her own
-  words; her own ones join the list.
-- **Characters:** names per book; favourites marked with ♥.
-- Used in:
-  - the shelf search (find by trope or character);
-  - a new dashboard block **Tropes & characters** (most-read tropes, favourite characters
-    with covers);
-  - **Make a wish** by trope (pick a trope);
-  - trope badges (for example 5 enemies-to-lovers books);
-  - an own-challenge rule **A trope**.
-- Bingo squares stay as they are.
-
-### 3. Bookcases & filters (S2)
+### 1. Bookcases & filters (S2)
 
 *Agreed 22 November 2026.*
 
 - A switch above the shelf: **All · Read · To read · Digital** (Digital = e-books and
   audiobooks).
 - Filters next to the genre filter: rating and spice (a minimum), year read, language, and
-  tropes (once item 3 exists). They can be combined, with a **Clear** button.
+  tropes (D-0042). They can be combined, with a **Clear** button.
 - Sorting and the room stay as they are.
 - Not doing: her own named bookcases; rooms side by side.
 
-### 4. Book poses: standing, face-out, lying flat (S3)
+### 2. Book poses: standing, face-out, lying flat (S3)
 
 *Agreed 22 November 2026.*
 
@@ -75,7 +42,7 @@ Tropes and characters appear in the Notes tab once item 3 adds them.
 - Neighbouring books lying flat form a small stack.
 - A face-out book shows its cover and takes more width on the shelf.
 
-### 5. Cosy room extras (S4)
+### 3. Cosy room extras (S4)
 
 *Agreed 22 November 2026.*
 
@@ -88,7 +55,7 @@ performance in mind.
 - Seasonal decorations: pumpkins in October, a tree with lights in December, flowers in
   spring.
 
-### 6. Stats tab with year compare (ST1)
+### 4. Stats tab with year compare (ST1)
 
 *Agreed 22 November 2026.*
 
@@ -105,7 +72,7 @@ performance in mind.
 - Check the dashboard layout migration (`dashboardLayout`): saved layouts and favourites
   that refer to removed blocks must keep working.
 
-### 7. Year wrap-up story (ST2)
+### 5. Year wrap-up story (ST2)
 
 *Agreed 22 November 2026.*
 
@@ -118,7 +85,7 @@ performance in mind.
 - It opens only when she taps it (fits D-0013, no pop-ups).
 - The monthly wrap-up stays as it is.
 
-### 8. Better adding: covers & series (AD1)
+### 6. Better adding: covers & series (AD1)
 
 *Agreed 22 November 2026.* (Files: `AddBookDialog.tsx`, `AddFollowUp.tsx`,
 `CoverPicker.tsx`.)
@@ -130,7 +97,7 @@ performance in mind.
   confirm, or she types it.
 - Not doing (for all of better adding): importing from Goodreads or StoryGraph.
 
-### 9. Batch scan (AD2)
+### 7. Batch scan (AD2)
 
 *Agreed 22 November 2026.* (Files: `BarcodeScanner.tsx`, `AddBookDialog.tsx`.)
 
@@ -140,7 +107,7 @@ performance in mind.
   and **Add all**.
 - The same book scanned twice is added once; a book already on the shelf is marked.
 
-### 10. Wishlist (AD3)
+### 8. Wishlist (AD3)
 
 *Agreed 22 November 2026.*
 
@@ -152,7 +119,7 @@ performance in mind.
 - Stored with her books and synced (an optional field or flag, D-0002), unless that needs a
   server change: then flag it for Sander, or pick another way.
 
-### 11. Better challenges (CH1–CH4)
+### 9. Better challenges (CH1–CH4)
 
 *Agreed 22 November 2026.* Several tasks. (Files: `ChallengesPage.tsx`, `ownChallenges.ts`,
 `bingo.ts`.)
@@ -165,7 +132,7 @@ performance in mind.
   - *Around the world:* books set in 12 different countries this year (uses the places and
     the map);
   - *Seasonal:* by calendar season, for example 3 cosy or spooky books in autumn, 5 beach
-    reads in summer (by genre, and by tropes once they exist);
+    reads in summer (by genre, and by tropes (D-0042));
   - *Minutes a day:* at least 20 minutes a day read or listened, as a month grid (paper
     pages count as about 1.5 minutes a page, listen-only books their real minutes);
   - *Read the series:* pick series to finish this year, with progress per series.

@@ -2,6 +2,8 @@ import type { Book } from './library'
 import { FORMAT_LABELS, STATUS_LABELS, formatsOf } from './library'
 import { languageName, nativeLanguageName } from './languages'
 import type { SeriesInfo } from './series'
+import { tropesOf } from './tropes'
+import { charactersOf } from './characters'
 
 export interface SearchHit {
   book: Book
@@ -35,6 +37,21 @@ export function searchShelf(books: Book[], query: string, detected?: Map<string,
       { text: book.authors.join(' '), weight: 3 },
       { text: series ?? '', weight: 2, hint: `Series: ${series}` },
       { text: (book.genres ?? []).join(' '), weight: 2, hint: book.genres?.join(', ') },
+      {
+        text: tropesOf(book).join(' · '),
+        weight: 2,
+        hintFor: (term) => tropesOf(book).find((t) => fold(t).includes(term)) ?? tropesOf(book).join(', '),
+      },
+      {
+        text: charactersOf(book)
+          .map((c) => c.name)
+          .join(' · '),
+        weight: 1.5,
+        hintFor: (term) => {
+          const found = charactersOf(book).find((c) => fold(c.name).includes(term))
+          return found ? `Character: ${found.name}` : ''
+        },
+      },
       {
         text: book.language ? `${languageName(book.language)} ${nativeLanguageName(book.language)}` : '',
         weight: 1,

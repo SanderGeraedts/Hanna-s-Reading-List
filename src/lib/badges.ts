@@ -12,6 +12,7 @@ import { MAP_COUNTRY_SET } from './mapCountries'
 import { CONTINENTS, continentsOf } from './continents'
 import type { Continent } from './continents'
 import { bookKinds } from './pileHeight'
+import { foldTrope, tropesOf } from './tropes'
 
 /**
  * Milestones & badges on the dashboard: worked out from the books, so nothing
@@ -379,6 +380,41 @@ export function badges(books: Book[], today = localDay(), options: BadgeOptions 
     return once(days)
   }
   add('reread-5', '💞', 'Old favourite', 'Read one book 5 times', rereadOn(5))
+
+  // tropes (D-0042): different finished books that share one and the same trope.
+  // One family, not one badge per trope: her own words must not change the grid.
+  const byTrope = new Map<string, { name: string; days: Array<string | undefined> }>()
+  for (const { book: b, day } of finishedBooks) {
+    const seen = new Set<string>()
+    for (const t of tropesOf(b)) {
+      const key = foldTrope(t)
+      if (!key || seen.has(key)) continue
+      seen.add(key)
+      const found = byTrope.get(key)
+      if (found) found.days.push(day)
+      else byTrope.set(key, { name: t, days: [day] })
+    }
+  }
+  const bestTrope = Math.max(0, ...[...byTrope.values()].map((t) => t.days.length))
+  for (const [n, icon, name] of [
+    [5, '💘', 'Trope lover'],
+    [10, '🫶', 'Trope devotee'],
+    [25, '💝', 'Trope queen'],
+  ] as const) {
+    // the earliest book that brought a trope to n, and which trope it was
+    const hit = [...byTrope.values()]
+      .map((t) => ({ name: t.name, ...reachedOn(t.days.map((day) => ({ day, n: 1 })), n) }))
+      .filter((r) => r.earned)
+      .sort((a, b) => (a.on ?? '￿').localeCompare(b.on ?? '￿'))[0]
+    add(
+      `trope-${n}`,
+      icon,
+      name,
+      hit ? `Finish ${n} books with the same trope · ${hit.name}` : `Finish ${n} books with the same trope`,
+      hit ?? { earned: false, total: bestTrope },
+      n,
+    )
+  }
 
   // ---- secret badges: hidden until earned ------------------------------
   const secret = (id: string, icon: string, name: string, how: string, r: Reached) => {

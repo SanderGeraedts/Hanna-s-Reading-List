@@ -63,6 +63,7 @@ import { TodayStrip } from './TodayStrip'
 import { useDashboardLayout } from './useDashboardLayout'
 import { useArrangeBarHeight } from './useArrangeBarHeight'
 import { BadgesCard, CoverWallCard, RhythmCard, useBirthday } from './NewBlocks'
+import { TropesCard, tropesBlock } from './TropesCard'
 import { badges, newBadges } from '#/lib/badges'
 import { CreaturesCard } from './CreaturesCard'
 import { useCreatures } from './creatures/CreaturesContext'
@@ -287,6 +288,9 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
     !creatureDuplicate &&
     !creatureLevelUp
 
+  // nothing noted anywhere yet: the Tropes & characters block keeps out of the way
+  const noTropes = tropesBlock(books).empty
+
   const blocks: Record<BlockId, React.ReactNode> = {
     waiting: (
       <WaitingCard
@@ -314,6 +318,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
       />
     ),
     badges: <BadgesCard books={books} />,
+    tropes: <TropesCard books={books} onShowBook={onShowBook} />,
     covers: <CoverWallCard books={books} onShowBook={onShowBook} />,
     rhythm: <RhythmCard books={books} />,
     flower: <GenreFlowerCard books={books} />,
@@ -362,7 +367,12 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
 
   /** a block that has nothing to say right now stays out of the way (still shown while arranging) */
   const showing = (id: BlockId) =>
-    arranging || !((id === 'waiting' && nothingWaiting) || (id === 'creatures' && !creatures.c.pet && !creatures.c.egg))
+    arranging ||
+    !(
+      (id === 'waiting' && nothingWaiting) ||
+      (id === 'creatures' && !creatures.c.pet && !creatures.c.egg) ||
+      (id === 'tropes' && noTropes)
+    )
   const columnsOf = (section: SectionId): BlockId[][] =>
     narrow ? [singleColumn(layout.sections[section])] : layout.sections[section]
   const scroller = () => root.current

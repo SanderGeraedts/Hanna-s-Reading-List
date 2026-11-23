@@ -58,7 +58,7 @@ describe('the medal grid, trying to break it (T-0042 tester)', () => {
     layOut(6)
     render(<BadgesCard books={shelf} />)
     const m = medals()
-    expect(m).toHaveLength(72)
+    expect(m).toHaveLength(75)
     m[2].focus()
     fireEvent.keyDown(m[2], { key: 'ArrowDown' })
     expect(document.activeElement).toBe(m[8])
@@ -66,17 +66,17 @@ describe('the medal grid, trying to break it (T-0042 tester)', () => {
     expect(document.activeElement).toBe(m[2])
     fireEvent.keyDown(m[2], { key: 'ArrowUp' })
     expect(document.activeElement).toBe(m[2])
-    // 72 = 12 full rows of 6 (T-0043): ↓ in the last row stays
-    m[69].focus()
-    fireEvent.keyDown(m[69], { key: 'ArrowDown' })
-    expect(document.activeElement).toBe(m[69])
-    fireEvent.keyDown(m[69], { key: 'ArrowUp' })
-    expect(document.activeElement).toBe(m[63])
+    // 75 = 12 full rows of 6 + 3 (T-0048 adds the trope family): ↓ in the last row stays
+    m[72].focus()
+    fireEvent.keyDown(m[72], { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(m[72])
+    fireEvent.keyDown(m[72], { key: 'ArrowUp' })
+    expect(document.activeElement).toBe(m[66])
   })
 
   it('steps ↑ ↓ by 8 a row (1280 px), and ↓ above a shorter last row goes to the last medal', () => {
-    // 72 badges fill 9 rows of 8 exactly (T-0043): 4 more make a shorter last row
-    extra = [1, 2, 3, 4].map((n): Badge => ({ id: `row-${n}`, icon: '🧪', name: `Row ${n}`, how: 'Test', earned: false, tier: 'gold' }))
+    // 75 badges are 9 rows of 8 + 3 (T-0048): one more makes a last row of 4
+    extra = [1].map((n): Badge => ({ id: `row-${n}`, icon: '🧪', name: `Row ${n}`, how: 'Test', earned: false, tier: 'gold' }))
     layOut(8)
     render(<BadgesCard books={shelf} />)
     const m = medals()
@@ -94,9 +94,9 @@ describe('the medal grid, trying to break it (T-0042 tester)', () => {
   })
 
   it('takes a grid of 87 badges: all counted, in order, End and ↓ reach the last, hidden ones stay hidden', () => {
-    // 15 more than the 72 of T-0043: steps of a new family and new secrets
+    // 12 more than the 75 of T-0048: steps of a new family and new secrets
     extra = [
-      ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((n): Badge => ({
+      ...[1, 2, 3, 4, 5, 6, 7, 8].map((n): Badge => ({
         id: `extra-${n}`,
         icon: '🧪',
         name: `Extra ${n}`,
@@ -104,7 +104,7 @@ describe('the medal grid, trying to break it (T-0042 tester)', () => {
         earned: n === 1,
         on: n === 1 ? '2026-06-02' : undefined,
         progress: n === 1 ? undefined : { done: 1, goal: n },
-        tier: n === 1 ? 'bronze' : n === 11 ? 'gold' : 'silver',
+        tier: n === 1 ? 'bronze' : n === 8 ? 'gold' : 'silver',
       })),
       ...[1, 2, 3, 4].map((n): Badge => ({
         id: `extra-secret-${n}`,

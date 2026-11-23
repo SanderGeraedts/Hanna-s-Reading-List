@@ -1,4 +1,5 @@
 import type { PageEdges } from './edges'
+import type { BookCharacter } from './characters'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { loadShelf, saveShelf, type RemoteShelf } from '#/server/shelf'
 import { seriesGroups } from './series'
@@ -108,6 +109,10 @@ export interface Book {
   genres?: string[]
   /** where the story is set, from Open Library (looked up once for finished books; an empty list means none known) */
   places?: string[]
+  /** story tropes, hers and from the ready list; one spelling per trope (D-0042); see tropes.ts */
+  tropes?: string[]
+  /** the characters of this book; `fav` marks a favourite ♥ (D-0042); see characters.ts */
+  characters?: BookCharacter[]
   /** lent to a friend: to whom, and since when (yyyy-mm-dd) */
   lent?: { to: string; since?: string }
   /** book bingo cards this book filled (#119), kept so a full card stays full; see bingo.ts */

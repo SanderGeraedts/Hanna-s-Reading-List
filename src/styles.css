@@ -6464,3 +6464,122 @@ button.today-item:hover {
     grid-area: button;
   }
 }
+
+/* ---- the book panel's tabs (T-0047, D-0041) ------------------------------ */
+/* the row sits under the title and above the scroll, so it is always one tap away */
+.panel-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  /* solid, so a tab panel scrolling under the row never shows through it */
+  background: var(--surface-solid);
+  margin-bottom: var(--space-2);
+}
+.panel-tabs .tab {
+  flex: 1 1 0;
+  padding: 0.5rem 0.4rem;
+  text-align: center;
+  min-width: 0;
+}
+@media (pointer: coarse) {
+  .panel-tabs .tab {
+    min-height: var(--tap);
+  }
+}
+.panel-tab {
+  gap: var(--space-3);
+}
+.panel-tab[hidden] {
+  display: none;
+}
+
+/* ---- tropes and characters (T-0048, D-0042) ------------------------------ */
+/* a trope she typed herself can be long: it wraps inside its chip */
+.chip {
+  overflow-wrap: anywhere;
+}
+.character-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+.character-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.character-name {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.icon-btn.fav {
+  color: var(--muted);
+  font-size: var(--fs-body);
+  line-height: 1;
+}
+.icon-btn.fav.on {
+  color: var(--accent);
+}
+@media (pointer: coarse) {
+  .character-list .icon-btn,
+  .character-list .btn.icon {
+    min-width: var(--tap);
+    min-height: var(--tap);
+  }
+}
+
+/* the dashboard block */
+.dash-sub {
+  margin: var(--space-2) 0 var(--space-1);
+}
+.trope-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+.trope-bars li {
+  display: grid;
+  grid-template-columns: minmax(6rem, 10rem) 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-small);
+}
+.trope-name {
+  overflow-wrap: anywhere;
+}
+.trope-bar {
+  height: 0.5rem;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  overflow: hidden;
+}
+.trope-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.favourite-characters {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+}
+.favourite-character {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-1);
+  width: 4.5rem;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
