@@ -432,3 +432,9 @@ in **By hand** has no key and searching for it again offers **Add to wishlist** 
   Remaining: Hanna reads *Choices made while Hanna was at work* above and confirms **D-0053**
   (a wish is a book with a flag, kept out of every count by one filter) and that buying a wish
   dates the book today.
+- 2026-11-23 tester: main moved twice while this was built — the Reading Garden (#263) and then
+  the bookcases, poses and room extras (#264). Re-checked after merging both in: the filter is
+  still the one place, the new shelf filter (`applyView`) is given `books`, so wishes are left
+  out of the bookcases and filters with no code of its own, and the whole suite is green
+  (164 files, 2 124 tests). The decision moved from D-0044 to **D-0053** because #264 took
+  D-0044 … D-0046.

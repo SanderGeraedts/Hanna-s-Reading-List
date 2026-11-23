@@ -322,22 +322,25 @@ $ pnpm exec tsc --noEmit
 (no output, exit 0)
 
 $ pnpm test
- Test Files  155 passed | 2 skipped (157)
-      Tests  2007 passed | 22 skipped (2029)
+ Test Files  164 passed | 2 skipped (166)
+      Tests  2124 passed | 22 skipped (2146)
 
 $ pnpm run build
-✓ built in 879ms     (client)
-✓ built in 899ms     (server)
+✓ built in 1.04s     (client)
+✓ built in 882ms     (server)
 
 $ pnpm exec harness check
-✓ tasks: 58 tasks, index in step
-✓ decisions: 50 records, index complete, 3 overrules valid
+✓ tasks: 61 tasks, index in step
+✓ decisions: 53 records, index complete, 3 overrules valid
 ✓ engineers: 2 listed
 ✓ generated files: current
 ```
 
-These numbers are from the branch **after** it was rebased onto `main` with the Reading
-Garden on it (which is why the three tasks are T-0070 … T-0072 and not T-0060 … T-0062).
+These numbers are from the branch **after** main moved twice under it — first the Reading
+Garden (#263, which is why the three tasks are T-0070 … T-0072 and not T-0060 … T-0062) and
+then the bookcases, poses and room extras (#264, which is why the decision is D-0053 and not
+D-0044). The new shelf filter of #264 is given `books`, so wishes are left out of it too,
+with no code of its own — which is the whole point of D-0053's one filter.
 
 The new and affected tests, run three times over (17 files, 187 tests: `wishlist`,
 `wishlist.break`, `wishlist.exclusion`, `seriesGuess`, `batchScan`, `batchScan.break`,
