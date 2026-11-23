@@ -42,6 +42,8 @@ import { sleepReadIds } from '#/lib/sleepSeries'
 import type { InspectTarget } from './BookMesh'
 import { FLOOR_TILE_METRES, WALLPAPER_REPEAT_M, floorTexture, wallTexture, woodTexture } from './textures'
 import { DEFAULT_ROOM, shownDecor } from '#/lib/room'
+import { isNight, plantStage, roomLight, seasonOf } from '#/lib/roomExtras'
+import { RoomExtras } from './RoomExtras'
 import type { Room as RoomChoice, Wallpaper, Wood } from '#/lib/room'
 
 export interface BookshelfSceneProps {
@@ -109,6 +111,21 @@ function useLite() {
     return () => m.removeEventListener('change', on)
   }, [])
   return lite
+}
+
+/**
+ * The clock the cosy room extras follow (D-0045): read in one place and
+ * re-read every minute, so evening arrives by itself and midnight stays night.
+ */
+function useRoomClock(on: boolean) {
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    if (!on) return
+    setNow(new Date())
+    const t = setInterval(() => setNow(new Date()), 60_000)
+    return () => clearInterval(t)
+  }, [on])
+  return now
 }
 
 /** what kind of pointer moved last, and whether a finger is on the screen (T-0037) */
@@ -270,6 +287,12 @@ function Scene({
   const layout = useMemo(() => computeLayout(ordered, fit, separators, decorKinds), [ordered, fit, separators, decorKinds])
   // Detailed books (D-0035): hardcovers, or the simple blocks, on any device
   const detailed = room.detailedBooks
+  // the cosy room extras (D-0045): the clock only ticks while Day & night or the season is on
+  const clock = useRoomClock(room.dayNight || room.seasonal || room.plant)
+  const night = room.dayNight && isNight(clock)
+  const anyExtra = room.readingCorner || room.plant || room.seasonal
+  const stage = useMemo(() => plantStage(ordered, clock), [ordered, clock])
+  const season = useMemo(() => seasonOf(clock), [clock])
   // every book on the shelf has a place for its ridges in one instanced mesh
   const ridges = useRef<THREE.InstancedMesh>(null)
   const ridgeSlots = useMemo(() => {
@@ -648,8 +671,9 @@ function Scene({
 
   return (
     <>
-      <Lights caseHeight={caseLayout.caseHeight} caseWidth={caseLayout.caseWidth} cameraBase={cameraBase} lite={lite} />
+      <Lights caseHeight={caseLayout.caseHeight} caseWidth={caseLayout.caseWidth} cameraBase={cameraBase} lite={lite} night={night} />
       <Room wallpaper={room.wallpaper} />
+      {anyExtra && <RoomExtras room={room} caseWidth={caseLayout.caseWidth} night={night} stage={stage} season={season} lite={lite} />}
       <Bookcase layout={caseLayout} wood={room.wood} />
       <StillDecorations.Provider value={lite}>
         <ShelfPetContext.Provider value={shelfPet}>
@@ -870,12 +894,18 @@ function Lights({
   caseWidth,
   cameraBase,
   lite,
+  night,
 }: {
   caseHeight: number
   caseWidth: number
   cameraBase: THREE.Vector3
   lite: boolean
+  /** Day & night (D-0045 §3): in the evening the room comes down to a warm dim, and the
+      fairy lights and the lamp shade stand out. The spines must still read, so the key
+      light keeps most of its strength and only the fill comes right down. */
+  night: boolean
 }) {
+  const { dim, key } = roomLight(night)
   const keyLight = useRef<THREE.DirectionalLight>(null)
   // the shadow frustum follows the bookcase height; three.js needs telling when it changes
   useEffect(() => {
@@ -883,13 +913,13 @@ function Lights({
   }, [caseHeight])
   return (
     <>
-      <hemisphereLight args={['#ffe8cc', '#4a2f1e', 1.3]} />
-      <ambientLight intensity={0.28} color="#ffdcb4" />
+      <hemisphereLight args={['#ffe8cc', '#4a2f1e', 1.3 * dim]} />
+      <ambientLight intensity={0.28 * dim} color={night ? '#ffc98f' : '#ffdcb4'} />
       <directionalLight
         ref={keyLight}
         position={[0.9, caseHeight + 0.9, 4.2]}
-        intensity={2.4}
-        color="#ffdcae"
+        intensity={2.4 * key}
+        color={night ? '#ffc287' : '#ffdcae'}
         castShadow
         shadow-mapSize={lite ? [1024, 1024] : [2048, 2048]}
         // Bias is a fraction of the shadow camera's depth range, so keep that range
@@ -911,7 +941,7 @@ function Lights({
           {/* the reading lamp: warm, from the top left, without shadows of its own */}
           <pointLight
             position={[-caseWidth / 2 - 0.25, caseHeight + 0.35, 1.1]}
-            intensity={2.2}
+            intensity={2.2 * key}
             distance={5}
             decay={1.6}
             color="#ffc27a"
@@ -919,7 +949,7 @@ function Lights({
           {/* soft light near the viewer so an inspected book is well lit */}
           <pointLight
             position={[cameraBase.x - 0.4, cameraBase.y + 0.5, cameraBase.z - 0.2]}
-            intensity={1.6}
+            intensity={1.6 * dim}
             distance={4}
             color="#fff4e6"
           />

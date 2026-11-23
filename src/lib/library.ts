@@ -113,6 +113,8 @@ export interface Book {
   tropes?: string[]
   /** the characters of this book; `fav` marks a favourite ♥ (D-0042); see characters.ts */
   characters?: BookCharacter[]
+  /** how this book stands on the shelf; left out = standing (D-0044); see pose.ts */
+  pose?: 'faceout' | 'flat'
   /** lent to a friend: to whom, and since when (yyyy-mm-dd) */
   lent?: { to: string; since?: string }
   /** book bingo cards this book filled (#119), kept so a full card stays full; see bingo.ts */

@@ -7,6 +7,9 @@
 //
 // Options: --url=http://localhost:3140  --books=150,400  --views=phone,desktop
 //          --detailed=on,off  --label=branch  --json=out.json  --seconds=3
+//          --poses=none,flat,faceout   every 10th book gets that pose (T-0052, D-0044)
+//          --extras=on,off             the cosy room extras (T-0053, D-0045)
+//          --clock=13                  pins the browser's clock to that hour, for day vs night
 //
 // For every run it seeds the browser's localStorage with demo books (never a real
 // shelf), opens the shelf, waits for it to settle, and counts for --seconds:
@@ -28,6 +31,9 @@ const URL = args.url ?? 'http://localhost:3140'
 const BOOKS = (args.books ?? '150,400').split(',').map(Number)
 const VIEWS = (args.views ?? 'phone,desktop').split(',')
 const DETAILED = (args.detailed ?? 'on,off').split(',')
+const POSES = (args.poses ?? 'none').split(',')
+const EXTRAS = (args.extras ?? 'on').split(',')
+const CLOCK = args.clock === undefined ? null : Number(args.clock)
 const SECONDS = Number(args.seconds ?? 3)
 const LABEL = args.label ?? 'branch'
 
@@ -120,16 +126,45 @@ async function window3s(page) {
   return { draws, frames, perFrame: frames ? draws / frames : 0 }
 }
 
-async function run(browser, { view, books, detailed }) {
+/** Every 10th book posed, so a run shows what a handful of poses costs (T-0052). */
+function withPoses(list, pose) {
+  if (pose === 'none') return list
+  return list.map((b, i) => (i % 10 === 0 ? { ...b, pose } : b))
+}
+
+/** Pins the browser's clock to an hour of 23 November 2026, so day and night can be measured. */
+function pinClock(hour) {
+  const fixed = new Date(2026, 10, 23, hour, 0, 0).getTime()
+  const offset = fixed - Date.now()
+  const Real = Date
+  // eslint-disable-next-line no-global-assign
+  Date = class extends Real {
+    constructor(...a) {
+      super(...(a.length ? a : [Real.now() + offset]))
+    }
+    static now() {
+      return Real.now() + offset
+    }
+  }
+}
+
+async function run(browser, { view, books, detailed, pose, extras }) {
   const context = await browser.newContext(VIEWPORTS[view])
-  const room = detailed === 'off' ? { detailedBooks: false } : detailed === 'on' ? { detailedBooks: true } : null
+  const off = { readingCorner: false, dayNight: false, plant: false, seasonal: false }
+  const room =
+    detailed === 'off' || extras === 'off'
+      ? { detailedBooks: detailed !== 'off' ? true : false, ...(extras === 'off' ? off : {}) }
+      : detailed === 'on'
+        ? { detailedBooks: true }
+        : null
+  if (CLOCK !== null) await context.addInitScript(pinClock, CLOCK)
   await context.addInitScript(
     ({ list, room }) => {
       localStorage.setItem('hannas-reading-list:v1', JSON.stringify(list))
       if (room) localStorage.setItem('hannas-reading-list:room', JSON.stringify(room))
       else localStorage.removeItem('hannas-reading-list:room')
     },
-    { list: demoBooks(books), room },
+    { list: withPoses(demoBooks(books), pose), room },
   )
   await context.addInitScript(counters)
   const page = await context.newPage()
@@ -149,6 +184,9 @@ async function run(browser, { view, books, detailed }) {
     view,
     books,
     detailed,
+    pose,
+    extras,
+    ...(CLOCK !== null && { clock: CLOCK }),
     drawsPerFrame: Math.round(shelf.perFrame * 10) / 10,
     drawsPer3s: Math.round((shelf.draws * 3) / SECONDS),
     frames: shelf.frames,
@@ -176,11 +214,13 @@ async function main() {
   try {
     for (const view of VIEWS)
       for (const books of BOOKS)
-        for (const detailed of DETAILED) {
-          const r = await run(browser, { view, books, detailed })
-          results.push(r)
-          console.log(JSON.stringify(r))
-        }
+        for (const detailed of DETAILED)
+          for (const pose of POSES)
+            for (const extras of EXTRAS) {
+              const r = await run(browser, { view, books, detailed, pose, extras })
+              results.push(r)
+              console.log(JSON.stringify(r))
+            }
   } finally {
     await browser.close()
   }
