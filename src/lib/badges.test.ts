@@ -86,7 +86,7 @@ describe('riddles for the hidden badges', () => {
   it('every secret badge has a riddle, and the riddle never gives its name away', () => {
     const all = badges([read('a', '2026-01-02')], '2026-11-20')
     const secrets = all.filter((b) => b.secret)
-    expect(secrets.length).toBe(12)
+    expect(secrets.length).toBe(13)
     for (const b of secrets) {
       expect(b.riddle, b.id).toBeTruthy()
       expect(b.riddle!.toLowerCase()).not.toContain(b.name.toLowerCase())
@@ -127,10 +127,10 @@ describe('travel badges (T-0040, D-0037)', () => {
     ]
     for (const [id, icon, name] of table) expect(find(all, id), id).toMatchObject({ id, icon, name, earned: false })
     const ids = all.map((b) => b.id)
-    // after the variety badges, before the ratings; Home sweet home with the secrets, at the end
-    expect(ids.indexOf('countries-5')).toBe(ids.indexOf('languages-3') + 1)
+    // after the variety and author badges (T-0043), before the ratings; Home sweet home with the secrets, before Birthday book
+    expect(ids.indexOf('countries-5')).toBe(ids.indexOf('authors-50') + 1)
     expect(ids.indexOf('rated-10')).toBe(ids.indexOf('lands-10') + 1)
-    expect(ids.at(-1)).toBe('home-sweet-home')
+    expect(ids.at(-2)).toBe('home-sweet-home')
   })
 
   it('earns Passport stamped on the first finish of the book that brought the fifth country', () => {
@@ -334,9 +334,340 @@ describe('medal tiers by family (T-0042, D-0038)', () => {
     expect([tier('genres-5'), tier('genres-10')]).toEqual(['bronze', 'gold'])
     expect([tier('listen-10'), tier('listen-100'), tier('listen-1000')]).toEqual(['bronze', 'silver', 'gold'])
     expect([tier('series-1'), tier('series-10')]).toEqual(['bronze', 'gold'])
-    expect([tier('streak-3'), tier('streak-100')]).toEqual(['bronze', 'gold'])
+    expect([tier('streak-3'), tier('streak-100'), tier('streak-365')]).toEqual(['bronze', 'silver', 'gold'])
     expect(find(all, 'reread-3').secret).toBe(true)
     expect([tier('reread-3'), tier('reread-5')]).toEqual(['bronze', 'gold'])
-    for (const id of ['continent-europe', 'continents-6', 'bingo', 'author-5', 'home-sweet-home']) expect(tier(id), id).toBe('gold')
+    for (const id of ['continent-europe', 'continents-6', 'bingo', 'home-sweet-home']) expect(tier(id), id).toBe('gold')
+  })
+})
+
+describe('the twelve new badges (T-0043)', () => {
+  const days = (from: string, n: number) =>
+    Array.from({ length: n }, (_, i) => {
+      const d = new Date(`${from}T12:00:00Z`)
+      d.setUTCDate(d.getUTCDate() + i)
+      return d.toISOString().slice(0, 10)
+    })
+  const logged = (list: string[]) => book('log', { status: 'reading', pages: 300, readingLog: Object.fromEntries(list.map((d) => [d, 0.01])) })
+
+  it('are all there with their ids, icons and names; 72 in all, 13 secret', () => {
+    const all = badges([read('a', '2026-01-02')], '2026-11-20')
+    const table: Array<[string, string, string]> = [
+      ['streak-365', '🌞', '365-day streak'],
+      ['spooky-season', '🎃', 'Spooky season'],
+      ['summer-10', '🏖️', 'Summer reader'],
+      ['winter-warmer', '🧣', 'Winter warmer'],
+      ['author-10', '🤩', 'Superfan'],
+      ['authors-25', '👥', 'Wide reader'],
+      ['authors-50', '🦉', 'Well-read'],
+      ['kinds-3', '🔀', 'Mix it up'],
+      ['library-10', '🪪', 'Library lover'],
+      ['ebooks-10', '📱', 'E-reader'],
+      ['audiobooks-10', '👂', 'All ears'],
+      ['birthday', '🎂', 'Birthday book'],
+    ]
+    for (const [id, icon, name] of table) expect(find(all, id), id).toMatchObject({ id, icon, name, earned: false })
+    expect(all).toHaveLength(72)
+    expect(all.filter((b) => b.secret)).toHaveLength(13)
+    const bday = find(all, 'birthday')
+    expect(bday).toMatchObject({ secret: true, riddle: 'Turn the last page on the one day a year the candles are all for you.' })
+    expect(bday.riddle!.toLowerCase()).not.toContain('birthday book')
+    // where they go
+    const ids = all.map((b) => b.id)
+    const after = (id: string, prev: string) => expect(ids.indexOf(id), id).toBe(ids.indexOf(prev) + 1)
+    after('streak-365', 'streak-100')
+    after('author-10', 'languages-3')
+    after('authors-25', 'author-10')
+    after('authors-50', 'authors-25')
+    after('kinds-3', 'listen-1000')
+    after('library-10', 'kinds-3')
+    after('ebooks-10', 'library-10')
+    after('audiobooks-10', 'ebooks-10')
+    after('spooky-season', 'monthly')
+    after('summer-10', 'spooky-season')
+    after('winter-warmer', 'summer-10')
+    after('birthday', 'home-sweet-home')
+    expect(ids.at(-1)).toBe('birthday')
+  })
+
+  it('365-day streak: earned on the 365th day in a row; 364 shows 364 / 365; a gap resets the run', () => {
+    const year = days('2025-01-01', 365)
+    expect(find(badges([logged(year)], '2026-11-20'), 'streak-365')).toMatchObject({ earned: true, on: year[364] })
+    expect(find(badges([logged(year.slice(0, 364))], '2026-11-20'), 'streak-365')).toMatchObject({
+      earned: false,
+      progress: { done: 364, goal: 365 },
+    })
+    const gap = [...year.slice(0, 200), ...year.slice(201)]
+    expect(find(badges([logged(gap)], '2026-11-20'), 'streak-365')).toMatchObject({ earned: false, progress: { done: 200, goal: 365 } })
+  })
+
+  it('Spooky season: a horror, thriller or paranormal book finished in October', () => {
+    const spooky = (day: string, genres: string[]) => find(badges([read('s', day, { genres })], '2026-11-20'), 'spooky-season')
+    expect(spooky('2025-10-31', ['Horror'])).toMatchObject({ earned: true, on: '2025-10-31', tier: 'gold' })
+    expect(spooky('2025-11-01', ['Horror']).earned).toBe(false)
+    expect(spooky('2025-10-15', ['Romance']).earned).toBe(false)
+    expect(spooky('2025-10-15', ['Paranormal romance'])).toMatchObject({ earned: true, on: '2025-10-15' })
+    expect(spooky('2025-10-15', ['thriller'])).toMatchObject({ earned: true, on: '2025-10-15' })
+  })
+
+  it('Summer reader: 10 finishes from 1 June to 31 August of one year, re-reads included', () => {
+    const summer = days('2026-06-01', 92).filter((_, i) => i % 9 === 0).slice(0, 10)
+    expect(summer.at(-1)! <= '2026-08-31').toBe(true)
+    const shelf = summer.map((d, i) => read(`s${i}`, d))
+    expect(find(badges(shelf, '2026-11-20'), 'summer-10')).toMatchObject({ earned: true, on: summer[9] })
+    // 31 May and 1 September don't count
+    const edges = [...shelf.slice(0, 9), read('may', '2026-05-31'), read('sep', '2026-09-01')]
+    expect(find(badges(edges, '2026-11-20'), 'summer-10')).toMatchObject({ earned: false, progress: { done: 9, goal: 10 } })
+    // 9 in summer 2025 and 1 in summer 2026: the best summer is 9
+    const split = [...summer.slice(0, 9).map((d, i) => read(`o${i}`, d.replace('2026', '2025'))), read('n', '2026-07-01')]
+    expect(find(badges(split, '2026-11-20'), 'summer-10')).toMatchObject({ earned: false, progress: { done: 9, goal: 10 } })
+    // a re-read in summer counts
+    const again = [...shelf.slice(0, 9), book('re', { readCount: 2, finished: ['2024-03-01', '2026-08-31'] })]
+    expect(find(badges(again, '2026-11-20'), 'summer-10')).toMatchObject({ earned: true, on: '2026-08-31' })
+  })
+
+  it('Winter warmer: a finish on 24, 25 or 26 December, the earliest', () => {
+    const winter = (...ds: string[]) => find(badges(ds.map((d, i) => read(`w${i}`, d)), '2026-11-20'), 'winter-warmer')
+    for (const d of ['2025-12-24', '2025-12-25', '2025-12-26']) expect(winter(d), d).toMatchObject({ earned: true, on: d })
+    expect(winter('2025-12-23').earned).toBe(false)
+    expect(winter('2025-12-27').earned).toBe(false)
+    expect(winter('2025-12-25', '2024-12-26')).toMatchObject({ earned: true, on: '2024-12-26' })
+  })
+
+  it('Superfan: 10 different books by one author, compared trimmed and in lower case', () => {
+    const maas = (n: number) =>
+      Array.from({ length: n }, (_, i) =>
+        read(`m${i}`, `2026-${String(i + 1).padStart(2, '0')}-05`, { authors: [i % 2 ? ' sarah j. maas' : 'Sarah J. Maas'] }),
+      )
+    expect(find(badges(maas(10), '2026-12-01'), 'author-10')).toMatchObject({ earned: true, on: '2026-10-05', tier: 'gold' })
+    expect(find(badges(maas(9), '2026-12-01'), 'author-10')).toMatchObject({ earned: false, progress: { done: 9, goal: 10 } })
+    // a tenth book read twice counts on its first finish
+    const twice = [...maas(9), book('m-again', { authors: ['Sarah J. Maas'], readCount: 2, finished: ['2026-11-20', '2026-11-01'] })]
+    expect(find(badges(twice, '2026-12-01'), 'author-10')).toMatchObject({ earned: true, on: '2026-11-01' })
+    // one book read twice counts once
+    const same = maas(9).map((b) => (b.id === 'm0' ? { ...b, readCount: 2, finished: ['2026-01-05', '2026-11-20'] } : b))
+    expect(find(badges(same, '2026-12-01'), 'author-10')).toMatchObject({ earned: false, progress: { done: 9, goal: 10 } })
+  })
+
+  it('Wide reader and Well-read: 25 and 50 different first authors', () => {
+    const authors = (n: number) => {
+      const ds = days('2026-01-01', n)
+      return Array.from({ length: n }, (_, i) => read(`a${i}`, ds[i], { authors: [`Writer ${i}`] }))
+    }
+    expect(find(badges(authors(25), '2026-12-01'), 'authors-25')).toMatchObject({ earned: true, on: '2026-01-25' })
+    expect(find(badges(authors(24), '2026-12-01'), 'authors-25')).toMatchObject({ earned: false, progress: { done: 24, goal: 25 } })
+    // the same author twice counts once
+    const dup = [...authors(24), read('dup', '2026-06-01', { authors: ['writer 3 '] })]
+    expect(find(badges(dup, '2026-12-01'), 'authors-25').progress).toEqual({ done: 24, goal: 25 })
+    expect(find(badges(authors(50), '2026-12-01'), 'authors-50')).toMatchObject({ earned: true, on: '2026-02-19' })
+    expect(find(badges(authors(25), '2026-12-01'), 'authors-50').progress).toEqual({ done: 25, goal: 50 })
+  })
+
+  it('Mix it up: a paper book, an e-book and an audiobook', () => {
+    const mix = badges(
+      [
+        read('p', '2026-01-01', { formats: ['paperback'] }),
+        read('e', '2026-02-01', { formats: ['ebook'] }),
+        read('s', '2026-03-01', { formats: ['storytel'] }),
+      ],
+      '2026-12-01',
+    )
+    expect(find(mix, 'kinds-3')).toMatchObject({ earned: true, on: '2026-03-01' })
+    const both = badges([read('pa', '2026-01-01', { formats: ['paperback', 'audiobook'] }), read('e', '2026-04-01', { formats: ['ebook'] })], '2026-12-01')
+    expect(find(both, 'kinds-3')).toMatchObject({ earned: true, on: '2026-04-01' })
+    const other = badges(
+      [
+        read('o', '2026-01-01', { formats: ['other'] }),
+        read('e', '2026-02-01', { formats: ['ebook'] }),
+        read('h', '2026-03-01', { formats: ['hardcover'] }),
+      ],
+      '2026-12-01',
+    )
+    expect(find(other, 'kinds-3')).toMatchObject({ earned: false, progress: { done: 2, goal: 3 } })
+  })
+
+  it('Library lover, E-reader and All ears: 10 different books of that format or kind', () => {
+    const ten = (formats: NonNullable<Book['formats']>, n = 10) =>
+      Array.from({ length: n }, (_, i) => read(`f${i}`, `2026-${String(i + 1).padStart(2, '0')}-02`, { formats }))
+    const cases: Array<[string, NonNullable<Book['formats']>]> = [
+      ['library-10', ['library']],
+      ['ebooks-10', ['ebook']],
+      ['audiobooks-10', ['audiobook']],
+      ['audiobooks-10', ['storytel']],
+    ]
+    for (const [id, formats] of cases) {
+      expect(find(badges(ten(formats), '2026-12-01'), id), `${id} ${formats}`).toMatchObject({ earned: true, on: '2026-10-02' })
+      expect(find(badges(ten(formats, 9), '2026-12-01'), id), `${id} 9`).toMatchObject({ earned: false, progress: { done: 9, goal: 10 } })
+      // a re-read counts once; a want-to-read one doesn't count
+      const nine = [
+        ...ten(formats, 8),
+        book('again', { formats, readCount: 3, finished: ['2026-09-09', '2026-10-10', '2026-11-11'] }),
+        book('want', { formats, status: 'want' }),
+      ]
+      expect(find(badges(nine, '2026-12-01'), id).progress, `${id} re-read`).toEqual({ done: 9, goal: 10 })
+    }
+    // Storytel imports without a format count as audiobooks
+    const storytel = Array.from({ length: 10 }, (_, i) => read(`st${i}`, `2026-0${(i % 9) + 1}-03`, { storytelId: `x${i}` }))
+    expect(find(badges(storytel, '2026-12-01'), 'audiobooks-10').earned).toBe(true)
+  })
+
+  it('Birthday book: a finish on this device’s birthday, any year; secret; none without a birthday', () => {
+    const shelf = [read('b', '2024-05-14'), read('c', '2025-05-14')]
+    expect(find(badges(shelf, '2026-11-20', { birthday: '05-14' }), 'birthday')).toMatchObject({
+      earned: true,
+      on: '2024-05-14',
+      secret: true,
+      tier: 'gold',
+    })
+    expect(find(badges([read('d', '2024-05-15')], '2026-11-20', { birthday: '05-14' }), 'birthday').earned).toBe(false)
+    const none = find(badges(shelf, '2026-11-20'), 'birthday')
+    expect(none).toMatchObject({ earned: false, secret: true, riddle: 'Turn the last page on the one day a year the candles are all for you.' })
+    expect(none.progress).toBeUndefined()
+    // 29 February only counts on 29 February
+    expect(find(badges([read('l', '2024-02-29')], '2026-11-20', { birthday: '02-29' }), 'birthday').earned).toBe(true)
+    expect(find(badges([read('l', '2025-03-01')], '2026-11-20', { birthday: '02-29' }), 'birthday').earned).toBe(false)
+  })
+
+  it('a birthday book finished in the last week waits under "Waiting for you"', () => {
+    const all = badges([read('b', '2026-11-18')], '2026-11-20', { birthday: '11-18' })
+    expect(newBadges(all, '2026-11-20').map((b) => b.id)).toContain('birthday')
+  })
+
+  it('rims: streak-365 gold, streak-100 silver; author-5 bronze, author-10 gold; authors-25 bronze, authors-50 gold', () => {
+    const all = badges([], '2026-11-20')
+    const tier = (id: string) => find(all, id).tier
+    expect([tier('streak-100'), tier('streak-365')]).toEqual(['silver', 'gold'])
+    expect([tier('author-5'), tier('author-10')]).toEqual(['bronze', 'gold'])
+    expect([tier('authors-25'), tier('authors-50')]).toEqual(['bronze', 'gold'])
+    for (const id of ['summer-10', 'kinds-3', 'library-10', 'ebooks-10', 'audiobooks-10', 'spooky-season', 'winter-warmer', 'birthday'])
+      expect(tier(id), id).toBe('gold')
+  })
+})
+
+describe('the twelve new badges, trying to break them (T-0043 tester)', () => {
+  const days = (from: string, n: number) =>
+    Array.from({ length: n }, (_, i) => {
+      const d = new Date(`${from}T12:00:00Z`)
+      d.setUTCDate(d.getUTCDate() + i)
+      return d.toISOString().slice(0, 10)
+    })
+  const logged = (id: string, list: string[], amount = 0.01) =>
+    book(id, { status: 'reading', pages: 300, readingLog: Object.fromEntries(list.map((d) => [d, amount])) })
+  const T = '2026-11-23'
+
+  it('Spooky season: 30 Sept and 1 Nov never count, 1 Oct does; the earliest October of any year; a re-read in October counts', () => {
+    const horror = { genres: ['Horror'] }
+    expect(find(badges([read('a', '2025-09-30', horror), read('b', '2025-11-01', horror)], T), 'spooky-season').earned).toBe(false)
+    expect(find(badges([read('a', '2025-10-01', horror)], T), 'spooky-season')).toMatchObject({ earned: true, on: '2025-10-01' })
+    const years = [read('a', '2026-10-01', horror), read('b', '2024-10-31', { genres: ['Psychological Thrillers'] })]
+    expect(find(badges(years, T), 'spooky-season')).toMatchObject({ earned: true, on: '2024-10-31' })
+    const reread = book('r', { genres: ['Paranormal'], readCount: 2, finished: ['2025-03-01', '2026-10-13'] })
+    expect(find(badges([reread], T), 'spooky-season')).toMatchObject({ earned: true, on: '2026-10-13' })
+    // no genres at all, or a horror finish with no day: nothing, and nothing throws
+    expect(find(badges([read('a', '2025-10-10'), book('n', { genres: ['Horror'], readCount: 1 })], T), 'spooky-season').earned).toBe(false)
+  })
+
+  it('Winter warmer: 23 and 27 Dec, 24–26 Jan and New Year never count; 24–26 Dec across years gives the earliest', () => {
+    const misses = ['2025-12-23', '2025-12-27', '2025-12-31', '2026-01-01', '2026-01-24', '2026-01-25', '2026-11-26']
+    expect(find(badges(misses.map((d, i) => read(`m${i}`, d)), T), 'winter-warmer').earned).toBe(false)
+    const hits = [read('a', '2026-12-24'), read('b', '2025-12-26'), read('c', '2024-12-25')]
+    expect(find(badges(hits, T), 'winter-warmer')).toMatchObject({ earned: true, on: '2024-12-25' })
+  })
+
+  it('Summer reader counts each year on its own: late August and early June of the next year never add up', () => {
+    const late = days('2025-08-27', 5) // 27–31 Aug 2025
+    const early = days('2026-06-01', 5) // 1–5 June 2026
+    const all = badges([...late, ...early].map((d, i) => read(`s${i}`, d)), T)
+    expect(find(all, 'summer-10')).toMatchObject({ earned: false, progress: { done: 5, goal: 10 } })
+    // two summers that both reach 10: the first one's 10th finish; a later, bigger summer doesn't move it
+    const first = days('2024-07-01', 10)
+    const second = days('2026-06-01', 14)
+    expect(find(badges([...second, ...first].map((d, i) => read(`t${i}`, d)), T), 'summer-10')).toMatchObject({ earned: true, on: first[9] })
+    // finishes with no day never count for a summer
+    expect(find(badges([book('u', { readCount: 12 })], T), 'summer-10')).toMatchObject({ earned: false, progress: { done: 0, goal: 10 } })
+  })
+
+  it('Superfan, Wide reader and Well-read count the first author only: a co-author adds nothing', () => {
+    // 9 by Pratchett alone, and Good Omens with Gaiman first: Pratchett stays at 9
+    const pratchett = Array.from({ length: 9 }, (_, i) => read(`p${i}`, `2026-01-0${i + 1}`, { authors: ['Terry Pratchett'] }))
+    const omens = read('go', '2026-02-01', { authors: ['Neil Gaiman', 'Terry Pratchett'] })
+    expect(find(badges([...pratchett, omens], T), 'author-10')).toMatchObject({ earned: false, progress: { done: 9, goal: 10 } })
+    // with Pratchett first on Good Omens it is his 10th, earned that day
+    const omens2 = read('go', '2026-02-01', { authors: ['Terry Pratchett', 'Neil Gaiman'] })
+    expect(find(badges([...pratchett, omens2], T), 'author-10')).toMatchObject({ earned: true, on: '2026-02-01' })
+    // 24 solo authors plus one book by two new co-authors: 25 first authors, not 26
+    const solo = Array.from({ length: 24 }, (_, i) => read(`w${i}`, `2025-01-${String(i + 1).padStart(2, '0')}`, { authors: [`Writer ${i}`] }))
+    const duo = read('duo', '2025-02-01', { authors: ['Ann', 'Bob'] })
+    expect(find(badges([...solo, duo], T), 'authors-25')).toMatchObject({ earned: true, on: '2025-02-01' })
+    expect(find(badges([...solo, duo], T), 'authors-50')).toMatchObject({ earned: false, progress: { done: 25, goal: 50 } })
+    // no author, or a blank first author: counted for nobody, and nothing throws
+    const none = [read('x', '2025-03-01', { authors: [] }), read('y', '2025-03-02', { authors: ['  '] })]
+    expect(find(badges([...solo, ...none], T), 'authors-25')).toMatchObject({ earned: false, progress: { done: 24, goal: 25 } })
+  })
+
+  it('Mix it up: library and borrowed are paper, Storytel and an old single format count, Other never does', () => {
+    const kinds = (list: Book[]) => find(badges(list, T), 'kinds-3')
+    const three = [read('a', '2026-01-01', { formats: ['library'] }), read('b', '2026-01-02', { format: 'ebook' }), read('c', '2026-01-03', { storytelId: '123' })]
+    expect(kinds(three)).toMatchObject({ earned: true, on: '2026-01-03' })
+    const two = [read('a', '2026-01-01', { formats: ['borrowed'] }), read('b', '2026-01-02', { formats: ['ebook', 'other'] })]
+    expect(kinds(two)).toMatchObject({ earned: false, progress: { done: 2, goal: 3 } })
+    expect(kinds([read('a', '2026-01-01', { formats: ['other'] }), read('b', '2026-01-02')])).toMatchObject({ earned: false, progress: { done: 0, goal: 3 } })
+    // a want-to-read audiobook doesn't count
+    const want = book('w', { status: 'want', formats: ['audiobook'] })
+    expect(kinds([read('a', '2026-01-01', { formats: ['hardcover'] }), read('b', '2026-01-02', { formats: ['ebook'] }), want])).toMatchObject({
+      earned: false,
+      progress: { done: 2, goal: 3 },
+    })
+  })
+
+  it('Library lover counts different finished library books only: not borrowed, not want-to-read, not did-not-finish', () => {
+    const lib = (i: number) => read(`l${i}`, `2026-03-0${i + 1}`, { formats: ['library'] })
+    const nine = Array.from({ length: 9 }, (_, i) => lib(i))
+    const extras = [
+      book('w', { status: 'want', formats: ['library'] }),
+      book('d', { status: 'dnf', formats: ['library'] }),
+      read('b', '2026-04-01', { formats: ['borrowed'] }),
+      book('r', { formats: ['library'], readCount: 3, finished: ['2026-03-20', '2026-03-21', '2026-03-22'] }),
+    ]
+    // the re-read library book counts once: 9 + 1 = 10, on its first finish
+    expect(find(badges([...nine, ...extras], T), 'library-10')).toMatchObject({ earned: true, on: '2026-03-20' })
+    expect(find(badges([...nine, ...extras.slice(0, 3)], T), 'library-10')).toMatchObject({ earned: false, progress: { done: 9, goal: 10 } })
+    // an old shelf's single `format: 'library'` counts too
+    expect(find(badges([...nine, read('o', '2026-05-01', { format: 'library' })], T), 'library-10')).toMatchObject({ earned: true, on: '2026-05-01' })
+  })
+
+  it('365-day streak runs across New Year and 29 February, counts a day once over several books, and ignores 0 amounts', () => {
+    const run = days('2027-06-01', 365) // through 29 Feb 2028
+    expect(run).toContain('2028-02-29')
+    const zero = logged('z', ['2026-01-01'], 0)
+    const split = [logged('a', run.slice(0, 180)), logged('b', run.slice(180)), logged('c', run.slice(100, 120)), zero]
+    expect(find(badges(split, T), 'streak-365')).toMatchObject({ earned: true, on: run[364] })
+    // a 0 in the middle is a gap
+    const holed = book('h', { status: 'reading', readingLog: Object.fromEntries(run.map((d, i) => [d, i === 300 ? 0 : 0.1])) })
+    expect(find(badges([holed], T), 'streak-365')).toMatchObject({ earned: false, progress: { done: 300, goal: 365 } })
+    // a run longer than a year: earned on its 365th day
+    const long = days('2024-01-01', 400)
+    expect(find(badges([logged('l', long)], T), 'streak-365')).toMatchObject({ earned: true, on: long[364] })
+  })
+
+  it('Birthday book: 29 February counts only on 29 February, never 28 Feb or 1 March of other years', () => {
+    const near = [read('a', '2025-02-28'), read('b', '2025-03-01'), read('c', '2026-02-28'), read('d', '2027-03-01')]
+    expect(find(badges(near, T, { birthday: '02-29' }), 'birthday').earned).toBe(false)
+    expect(find(badges([...near, read('e', '2028-02-29')], T, { birthday: '02-29' }), 'birthday')).toMatchObject({
+      earned: true,
+      on: '2028-02-29',
+      secret: true,
+    })
+  })
+
+  it('Birthday book: a bad birthday option earns nothing and never throws; the earliest year wins; a re-read counts', () => {
+    const shelf = [read('a', '2026-05-14'), read('b', '2024-05-14')]
+    for (const bad of ['', '13-40', 'abc', '5-14', '05/14', '2026-05-14', ' 05-14'])
+      expect(find(badges(shelf, T, { birthday: bad }), 'birthday').earned, bad).toBe(false)
+    expect(find(badges(shelf, T, { birthday: '05-14' }), 'birthday')).toMatchObject({ earned: true, on: '2024-05-14' })
+    const reread = book('r', { readCount: 2, finished: ['2020-01-01', '2025-12-31'] })
+    expect(find(badges([reread], T, { birthday: '12-31' }), 'birthday')).toMatchObject({ earned: true, on: '2025-12-31' })
+    // a hidden medal with no progress, birthday set or not
+    expect(find(badges([read('z', '2026-01-01')], T, { birthday: '05-14' }), 'birthday').progress).toBeUndefined()
   })
 })
