@@ -6,7 +6,7 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 
 ## Open
 
-None.
+- [T-0040 Add travel badges: countries 5/10/25/50, a postcard per continent and a World tour, imaginary lands 3/10, and a secret Home sweet home for a book set in the Netherlands](T-0040-travel-badges.md) (small): src/lib/badges.ts gets travel badges counted from the places of her finished books exactly as the world map counts them (D-0037): Passport stamped, Frequent flyer, World traveller and Around the world for 5/10/25/50 countries, a Postcard from each of six continents plus World tour for all six, Dreamwalker and Realm hopper for 3/10 imaginary lands, and the secret Home sweet home with a riddle; each dated by the first finish of the book that earned it.
 
 ## Doing
 
