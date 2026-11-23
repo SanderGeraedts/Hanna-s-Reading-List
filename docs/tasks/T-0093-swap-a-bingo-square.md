@@ -99,7 +99,126 @@ and that a square already on the card can never be swapped in.
 
 # Design
 
-To be written by the UX designer.
+Written by the UX designer, 2026-11-23, before the build.
+
+## 1. Where Swap lives
+
+Tapping an empty square on the card being played already opens the `.bingo-suggest` panel under
+the grid, with the square's label as its heading, a suggested book, **Open**, **Another one**
+and a `×`. **Swap** joins that panel. No new surface, no dialog, nothing that opens by itself
+(D-0013).
+
+```
+┌──────────────────────────────────────┐
+│ Book bingo 2026            3 of 16   │
+│ ┌────┬────┬────┬────┐                │
+│ │Over│ A  │ An │ A  │                │
+│ │500 │book│audi│5★  │                │
+│ │page│ in │obok│read│                │
+│ └────┴────┴────┴────┘                │
+│  …                                   │
+│ ┌──────────────────────────────┐  ×  │
+│ │ A listen over 15 hours       │     │
+│ │ ┌──┐ Babel                   │     │
+│ │ │▓▓│ R. F. Kuang             │     │
+│ │ └──┘ [ Open ] [🎲 Another one]│     │
+│ │ [ ⇄ Swap ]                   │     │
+│ └──────────────────────────────┘     │
+└──────────────────────────────────────┘
+```
+
+- **⇄ Swap** is a `.btn.small` on its own line under the suggestion's actions, so it never sits
+  next to **Open** where a thumb could hit the wrong one. It is **last in tab order** of the
+  panel's actions, after **Open** and **Another one**, before the `×`.
+- When no book fits the square (`No book on your shelf fits this one yet.`) the panel still
+  shows **Swap** — that is exactly when she wants it.
+
+## 2. When Swap is there and when it is not
+
+| the card | Swap |
+|---|---|
+| the card being played, this year, **nothing ticked** | on every open square |
+| the card being played, **one or more ticked** | nowhere on the card |
+| a past year | nowhere |
+| a full card in the history strip | nowhere (it has no panel) |
+
+No greyed-out button and no explanation when it is gone: a card she has started is a card she
+is playing, and the empty squares still suggest books, which is their other job. (A greyed
+**Swap** with a reason under it would be the hint text D-0014 forbids.)
+
+## 3. The picker
+
+Tapping **Swap** replaces the panel's body with the list, keeping the heading:
+
+```
+┌──────────────────────────────┐
+│ A listen over 15 hours       │
+│ Pick another square          │
+│ [ Over 700 pages           ] │
+│ [ From the library         ] │
+│ [ A borrowed book          ] │
+│ [ A classic (before 1950)  ] │
+│ …                            │
+│ [ Cancel ]                   │
+└──────────────────────────────┘
+```
+
+- Every square the card has **not** got, in the order `SQUARE_IDS` has them (a fixed order, so
+  the list is in the same place every time), each a full-width `.btn` of at least `--tap`
+  height, scrolling inside the panel past six (`max-height: 50vh`).
+- The square she came from is not in the list (swapping a square for itself is nothing), and
+  neither is any square already on the card (D-0063 §4).
+- Picking one swaps at once — no confirm. It is a reversible choice: she can swap the slot
+  again as often as she likes, and nothing is ticked yet by definition.
+- The grid behind updates in place; the panel closes and focus returns to that slot's square,
+  which now carries the new label.
+- **Cancel** and `Escape` close the list and return focus to the square. `Escape` from the list
+  goes back to the square directly, not to the suggestion step, so one Escape always gets out.
+
+## 4. 390 and 1280
+
+- At 390 the panel is full width under the grid and the list's buttons are full width; the
+  list scrolls inside the panel, so the page behind does not jump.
+- At 1280 the panel is the same width as the card's grid, and the list is **two columns** of
+  buttons (`grid-template-columns: repeat(2, 1fr)`), because 20-odd full-width buttons on a
+  wide screen is a very long ribbon.
+- Both wallpapers: the panel is `.bingo-suggest`, which already sits on `--surface` and is
+  checked by `colours.test.ts`. The chosen square keeps its existing `.chosen` gold outline
+  while the panel is open, so it is clear which slot is being changed.
+
+## 5. What the dashboard shows
+
+The dashboard's compact bingo block draws the **swapped** card — it has to, or the same card
+would read two different ways on two screens — but it offers **no Swap**. Swapping belongs on
+the Challenges page, with the whole card, its history and the rest of the challenges.
+
+## 6. Exact words
+
+- Button: `⇄ Swap`, accessible name `Swap this square`.
+- The list's heading line: `Pick another square` (a `.muted.small-text` label on the
+  `role="group"`, not a sentence of instruction).
+- Each option's name is the square's own label, e.g. `Over 700 pages`.
+- `Cancel`.
+- Nothing else. No "your swap was saved", no counter of swaps left: there is no limit.
+
+## 7. Keyboard and screen reader
+
+- **Swap** is a `<button aria-expanded>` controlling the list by `aria-controls`.
+- The list is a `role="group"` named `Pick another square`; its options are plain buttons, so
+  Tab walks them and Enter picks.
+- After a pick, focus goes to the swapped square in the grid, whose accessible name is now the
+  new label, so a screen-reader user hears what changed.
+- The grid's squares keep their current names (`<label>, suggest a book`); a swapped square is
+  not marked as swapped in its name — it is simply the square that is there now.
+
+## 8. Screenshots the developer must take
+
+1. `swap-390-lavender-panel.jpg` — the open square panel with **⇄ Swap**.
+2. `swap-390-lavender-list.jpg` — the picker open on a phone.
+3. `swap-1280-midnight-list.jpg` — the two-column picker on midnight.
+4. `swap-390-after.jpg` — the grid with the new square in that slot.
+5. `swap-390-ticked.jpg` — a card with one square ticked: the panel with **no** Swap.
+6. `swap-390-focus.jpg` — the focus ring on an option in the list.
 
 # Test
 
@@ -108,3 +227,4 @@ To be written by the tester.
 # Log
 
 - 2026-11-23 architect: wrote CH4 as a full task; recorded D-0063 (a swap is a `place` event with a `b:` key in the live choice log, so nothing waits for Sander; only on an untouched card, never to a square the card already has). Hand to the UX designer.
+- 2026-11-23 ux-designer: designed (the ring row and confetti, the four cards, the extra rule fields and the swap flow, each for 390 and 1280 on both wallpapers). Hand to the developer.

@@ -127,7 +127,159 @@ migration and nothing for Sander.
 
 # Design
 
-To be written by the UX designer.
+Written by the UX designer, 2026-11-23, before the build.
+
+All four are ordinary `.dash-card` blocks in the page's grid, so they arrange, hide and
+anchor like every other challenge. Each has the standard `.dash-card-head`: `h2`, then a
+`.muted.small-text` count on the right.
+
+## 1. Around the world — `world`
+
+```
+┌──────────────────────────────────────┐
+│ Around the world      7 of 12        │
+│ ████████████░░░░░░░░                 │  ← .progress-bar
+│ Japan · Italy · Ireland · Mexico ·   │
+│ Nigeria · Peru · United Kingdom      │
+└──────────────────────────────────────┘
+```
+
+- The bar is the existing `.progress-bar` with `role="progressbar"`, `aria-valuemax={12}`.
+- Under it, the countries so far as plain chips (`.chip`, `--fs-small`), in the order she first
+  finished a book in each, newest last. A chip is **not** a button: tapping a country does
+  nothing here, because the world map is where countries are explored and two places to tap a
+  country would be two answers to the same question.
+- At 1280 the chips sit on one or two lines; at 390 they wrap freely. No horizontal scroller.
+- Complete: the bar is full and the count reads `12 of 12 · Done! 🎉`, matching the
+  own-challenge card's existing `Done! 🎉`.
+- Empty: `No countries yet this year.` (an empty-block message, which D-0014 keeps). The bar is
+  still drawn, at zero, so the card is not a blank rectangle.
+- Exact words: heading **Around the world**; count `7 of 12`; the word *countries* is in the
+  accessible name of the bar (`Around the world: 7 of 12 countries`), not repeated in the
+  count.
+
+## 2. Seasonal — `season`
+
+```
+┌──────────────────────────────────────┐
+│ Seasonal              2 of 4         │
+│ 🌸 Spring   ███████░░░   3 of 3  ✓   │
+│ ☀️ Summer   ████░░░░░░   2 of 5      │
+│ 🍂 Autumn   ██████████   3 of 3  ✓   │  ← now: .current, gold outline
+│ ❄️ Winter   ░░░░░░░░░░   0 of 3      │
+└──────────────────────────────────────┘
+```
+
+- One row per season: icon + name (`SEASON_ICON`, `SEASON_LABEL`, already in the garden), a
+  thin `.progress-bar`, and `3 of 3` with a `✓` when done.
+- The **current** season's row has the gold outline the current month tile already uses
+  (`--accent-line`), and the accessible name says `, now`. A past year has no current season.
+- The head's count is **seasons completed**, `2 of 4`.
+- Rows are `<li>` in a `<ul aria-label="Seasonal 2026">`, not buttons: nothing to open.
+- Empty (no finishes at all): all four rows at zero. There is no separate empty state — four
+  named seasons at zero say it better than a sentence.
+- Exact words: heading **Seasonal**; the rows' accessible names
+  `Spring: 3 of 3 romance, contemporary and coming-of-age books, done`,
+  `Summer: 2 of 5 beach reads`, `Autumn: 3 of 3 cosy or spooky reads, done, now`,
+  `Winter: 0 of 3 fantasy, classic and historical books`. The card itself shows only the
+  season name and the numbers: the word lists would be hint text (D-0014), so they live in the
+  accessible name and the `title`, where she can reach them on purpose.
+
+## 3. Minutes a day — `minutes`
+
+```
+┌──────────────────────────────────────┐
+│ Minutes a day         ‹ March ›      │
+│ 12 of 23 days · 20 min a day         │
+│  M  T  W  T  F  S  S                 │
+│              ▓  ▓  ░  ▓              │  ← a filled cell = 20 min reached
+│  ▓  ▓  ░  ▓  ▓  ▓  ▓                 │
+│  ▓  ░  ░  ▣  ·  ·  ·                 │  ← ▣ today, · still to come
+│  ·  ·  ·  ·  ·  ·  ·                 │
+└──────────────────────────────────────┘
+```
+
+- A month grid, Monday-first, the same shape as the dashboard calendar so it is instantly
+  familiar. Cells are 26 px at 390 and 30 px at 1280, `--radius-small`.
+- **Filled** (`on`): the day reached 20 minutes — `--accent-soft` with an `--accent-line`
+  border. **Open**: the day happened and did not reach it — `--surface-sunken`. **Future**: a
+  faint dot, no box. **Today** gets the gold outline.
+- The month switch is the existing `.period-pick` `‹ March ›` group, bounded by the year: it
+  cannot walk out of the challenge's year.
+- The second line is the count for the **year**, not the month: `12 of 23 days · 20 min a day`.
+  The month grid is the picture; the ring and this line are the score, and both are the year,
+  so they can never disagree with each other.
+- Empty: `Nothing read yet in March.` under the grid, with the grid still drawn.
+- A day's accessible name: `14 March: 25 minutes, reached` / `15 March: 8 minutes` /
+  `22 March: still to come`. Cells are `role="img"`, not buttons: the calendar page is where a
+  day is opened.
+- Exact words: heading **Minutes a day**; `12 of 23 days · 20 min a day`; the weekday letters
+  `M T W T F S S` are `aria-hidden` with the full day name in each cell's own name.
+
+## 4. Read the series — `series`
+
+```
+┌──────────────────────────────────────┐
+│ Read the series       1 of 3         │
+│ The Lord of the Rings   ███  3 of 3 ✓│
+│ Throne of Glass        ██░░  5 of 8  │
+│ The Kane Chronicles    ░░░░  0 of 3  │
+│                                      │
+│ ＋ Add a series  [ pick one…   ▾ ]   │
+└──────────────────────────────────────┘
+```
+
+- One row per series she picked: name, a `.progress-bar`, `5 of 8`, a `✓` when every book of it
+  on her shelf is read, and a `✕` to take the series off the list (named `Remove Throne of
+  Glass from the challenge`, with the same `window.confirm` the own-challenge delete uses, so a
+  stray tap cannot wipe a pick).
+- Tapping the series **name** opens nothing (the shelf arranged by series is where a series is
+  browsed). The row is an `<li>`.
+- **＋ Add a series** reveals a labelled `select` of the series on her shelf that she has not
+  picked, alphabetical, plus **Add**. A series with only one book on the shelf is not in the
+  list (the shelf does not treat it as a series at all). While every series is picked, the
+  button is absent rather than disabled.
+- The head's count is **series completed**, `1 of 3`.
+- Empty: `Pick a series to finish this year.` and the **＋ Add a series** button.
+- A past year: the rows show, the **＋ Add a series** button and the `✕` are gone.
+- A pick whose series is no longer on the shelf shows its saved name and `0 of 7`, so she can
+  see it and remove it. It is never silently dropped.
+- Exact words: heading **Read the series**; `1 of 3`; button `＋ Add a series`; the select's
+  label `Which series`; its first option `Pick one…`; the add button `Add`; empty line
+  `Pick a series to finish this year.`
+
+## 5. Both wallpapers, both widths
+
+Every card is `.dash-card`, which already carries `--surface` over both wallpapers and is
+checked by `colours.test.ts`. At 390 all four are one column; at 1280 they sit in the page's
+two columns, and `DEFAULT_ORDER` puts **world** and **minutes** in the left column (the two
+wide pictures) and **season** and **series** in the right (the two list cards), so neither
+column is all lists.
+
+## 6. Keyboard and screen reader
+
+- Each card is a `<section aria-labelledby>` with its `h2`, so the ring row's jump lands on a
+  named heading.
+- Nothing in the four cards opens a dialog or steals focus (D-0013).
+- The month switch is a `role="group"` named `Month` with two buttons, disabled at the year's
+  edges — the same pattern as the page's year switch.
+- The series picker is a `<label>` + `<select>` + `<button>`; after adding, focus moves to the
+  new row's `✕` so a keyboard user knows it landed.
+- The grids are made of `role="img"` cells with full names; no cell is a tab stop, so Tab does
+  not have to walk 31 days.
+
+## 7. Screenshots the developer must take
+
+1. `world-390-lavender.jpg`, `world-1280-midnight.jpg` — part way, with chips.
+2. `world-390-empty.jpg` — no countries this year.
+3. `season-390-lavender.jpg`, `season-1280-midnight.jpg` — autumn current, two done.
+4. `minutes-390-lavender.jpg`, `minutes-1280-midnight.jpg` — a part-filled month with today.
+5. `minutes-390-february-2028.jpg` — the leap-day month, 29 cells.
+6. `series-390-lavender.jpg`, `series-1280-midnight.jpg` — three picks, one done.
+7. `series-390-add.jpg` — the picker open.
+8. `series-390-empty.jpg` — the empty state.
+9. `challenges-390-all.jpg`, `challenges-1280-all.jpg` — the whole page with all eight
+   challenges and the ring row, both widths.
 
 # Test
 
@@ -136,3 +288,4 @@ To be written by the tester.
 # Log
 
 - 2026-11-23 architect: wrote CH2 as a full task; recorded D-0061 (what each of the four counts, and that only Read the series saves anything, as own challenges). Hand to the UX designer.
+- 2026-11-23 ux-designer: designed (the ring row and confetti, the four cards, the extra rule fields and the swap flow, each for 390 and 1280 on both wallpapers). Hand to the developer.
