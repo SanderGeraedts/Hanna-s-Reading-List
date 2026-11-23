@@ -2,7 +2,7 @@
 id: T-0038
 title: "Keep the Arrange bar small: its Hidden chips scroll inside a capped area, and on a short screen the bar no longer sticks over the blocks"
 description: "While arranging, the Hidden: chips of the Arrange bar (Dashboard and Challenges) sit in an area at most about two chip rows high that scrolls inside, so the bar never grows taller than the screen however many blocks are hidden; on a short screen (a phone held sideways) the bar stays at the top of the page instead of sticking under the header, so no bingo square ends up under it."
-status: Open
+status: Doing
 size: small
 depends_on: [T-0020, T-0035]
 decisions: [D-0014, D-0020, D-0022, D-0028]
@@ -112,6 +112,47 @@ Hanna wasn't asked anything (night mode). The architect took these:
 
 No design before the build (small task). The UX designer reviews the screenshots after.
 
+# Build notes
+
+- **CSS only** (`src/styles.css`); no change to `Dashboard.tsx`, `ChallengesPage.tsx` or
+  `useArrangeBarHeight`.
+- **The chip area:** `.hidden-blocks` gets `--chip-row` (one `.btn.small` chip:
+  `var(--fs-small) * 1.25 + 2 * var(--space-1) + 2px`, about 26 px) and `--chip-gap` (its existing
+  0.4rem gap), `max-height: calc(2 * var(--chip-row) + var(--chip-gap) + 2 * var(--space-1))` and
+  `overflow-y: auto`. On a touch screen (`@media (pointer: coarse)`) `--chip-row` is 36px, the
+  `min-height` `.btn.small` already has there. The area has `padding: var(--space-1)` taken back
+  by `margin: calc(-1 * var(--space-1))`: nothing moves, and a focused chip's outline (2 px +
+  2 px offset) isn't clipped by the scroll area.
+- **Short screens:** a new `@media (max-height: 500px)` block sets `.dashboard-bar.arranging` to
+  `position: static` and `.dashboard:has(.dashboard-bar.arranging)` to the plain `.dashboard`
+  `scroll-padding-top` (no `--arrange-h`). The hook still measures the bar; the value just isn't
+  used there.
+- **Tests:** two new cases in `src/styles.test.ts` (chip area: `max-height` from `--chip-row`,
+  `overflow-y: auto`; the 500 px block: `position: static`, and a scroll padding without
+  `--arrange-h` that is exactly the `.dashboard` one). Both fail on `main` (no `max-height`, no
+  such media block). The six T-0035 cases are unchanged and pass.
+- **The focus script:** `docs/tasks/T-0038-screens/focus-check.mjs`, extended from T-0035's: Arrange
+  on, Dashboard and Challenges, 0 / 6 / 30 hidden, five sizes, plus the bar's height and position,
+  sideways scroll and console errors per run; then at 390 × 844 it hides **every** block with real
+  Playwright clicks, brings every block back with real clicks on the chips, and Tabs through the
+  chips with 30 hidden. The Challenges page has only **4** blocks to hide, so its "6" and "30" runs
+  are 4 hidden (the lines say `4-hidden`). On `main`, where a real Hide click fails, the script
+  falls back to `dispatchEvent('click')` so the count still runs (and says so). `main` was run by
+  putting `main`'s `styles.css` in place on the same dev server (the CSS is the only difference),
+  then restoring it. Outputs: `focus-before-main.txt`, `focus-after-branch.txt`.
+- **Screenshots:** `docs/tasks/T-0038-screens/screens.mjs`; per-shot measurements in
+  `screens-branch.txt`.
+- **For the UX designer:** with the chip area at exactly two rows, the third row is cut off at the
+  gap, so on a phone (no visible scroll bar) nothing shows there are more chips
+  (`arrange-30-hidden-390-*`: 3 chips visible of 30). The task says no hint text (D-0014); a
+  `max-height` of about 2½ rows, so the third row peeks out, would hint without text. Not done:
+  that's the designer's call.
+- **Found, not fixed (for the architect):** in the `max-width: 720px` rule `.dashboard`'s padding
+  changes to `calc(var(--header-h) + var(--space-2))` but its `scroll-padding-top` stays the
+  `--space-3` sum (4 px apart on a phone in portrait); harmless, older than this task. The
+  Challenges page's Arrange bar is centred, not full width, on the computer and sideways (look of
+  T-0020, unchanged).
+
 # Test
 
 # Log
@@ -122,3 +163,22 @@ No design before the build (small task). The UX designer reviews the screenshots
   500 px of height the bar doesn't stick. Night mode: choices under *Choices made by the team*,
   one question for the morning. No new decision. Size: **small**. Handed to the **developer**; the
   UX designer reviews after the build.
+- 2026-11-23 developer: built it in `src/styles.css` (CSS only): `.hidden-blocks` capped at two
+  chip rows (`--chip-row`, 36px on a touch screen) with `overflow-y: auto`; `@media (max-height:
+  500px)` makes the arranging bar `position: static` and its scroll padding the plain `.dashboard`
+  one. `src/styles.test.ts` +2 cases (8 passed). Focus script
+  (`docs/tasks/T-0038-screens/focus-check.mjs`, no backend, 150 demo books, Arrange on), elements
+  under the header or the bar, **main → branch**: 844 × 390 Dashboard 0 / **14 of 174** / 0 hidden
+  0, 6, 30 → **0 / 0 / 0**; 800 × 360 Dashboard **14 of 285** / **24 of 174** / 0 → **0 / 0 / 0**;
+  800 × 360 Challenges 0 hidden **14 of 32** → **0**; every other run 0 on both; total **66 → 0**.
+  Bar height with 30 hidden: 390 × 844 **699 → 148 px (17.6 %)**, 360 × 800 **742 → 148 px
+  (18.5 %)**, 1280 × 800 178 → 117 px (14.7 %); with 6 hidden 233 → 148 px on the phones, 84 px at
+  1280 (one chip row, unchanged). Sideways: bar `static`, 148 px with 6 hidden. Real clicks at
+  390 × 844: main 29 of 30 Hide buttons then `Timeout ... exceeded`; branch **30 of 30 Hide
+  buttons and 30 of 30 chips**. Tab with 30 hidden: **30 of 30 chips fully visible** in the chip
+  area. No console errors, no sideways scroll in any run. Screenshots: `arrange-30-hidden-390-
+  lavender/midnight`, `arrange-30-hidden-1280-lavender`, `arrange-6-hidden-844x390-lavender/
+  midnight` (focused bingo square 171–353 px, header ends at 121), `arrange-challenges-844x390-
+  lavender`. `pnpm test` 95 files, 952 passed, 9 skipped; `tsc --noEmit` exit 0; `pnpm run build`
+  ✓ built. Handed to the **UX designer** for the screenshot review (see *Build notes*: a third row
+  that peeks out?).

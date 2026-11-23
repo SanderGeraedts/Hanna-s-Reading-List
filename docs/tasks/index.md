@@ -6,7 +6,7 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 
 ## Open
 
-- [T-0038 Keep the Arrange bar small: its Hidden chips scroll inside a capped area, and on a short screen the bar no longer sticks over the blocks](T-0038-arrange-bar-fit.md) (small): While arranging, the Hidden: chips of the Arrange bar (Dashboard and Challenges) sit in an area at most about two chip rows high that scrolls inside, so the bar never grows taller than the screen however many blocks are hidden; on a short screen (a phone held sideways) the bar stays at the top of the page instead of sticking under the header, so no bingo square ends up under it.
+None.
 
 ## Doing
 
@@ -17,6 +17,7 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 - [T-0026 Show the taken-out book in front of a zoomed-in shelf and dim the room, and keep the search pop-up on screen](T-0026-open-book-zoomed.md): Zoomed in, a book she opens flies to a spot inside the bookcase and the dimming sheet sits behind the case (phone at 1.5× and more; the dimming also at 3× on the computer); the camera steps back while a book is out so both land in front of the case. Also: at 1024–1400 px the search pop-up opens half off the left edge.
 - [T-0034 Bring the hardcover books back on phones, lighter to draw, with a Detailed books switch in the room panel](T-0034-hardcovers-on-the-phone-again.md): Phones show the hardcovers (pages, boards, spine, ridges) again instead of the simple blocks from T-0003, after making each hardcover one merged piece of at most two draws on the shelf; measured against the blocks at 390 × 844 with 150 books; a Detailed books on/off switch in the 🎨 room panel, per device, on by default; the SafeBookshelf note stays.
 - [T-0035 Give the header a band she can read on the Dashboard, Challenges and Calendar, and keep a focused card or button out from under it](T-0035-readable-header-over-the-pages.md) (small): On the page views (Dashboard, Challenges, Calendar) the header gets a solid band in its own --header-fade colour, so cards scrolled under it no longer show through the title, the stats line and the page tabs, on both wallpapers (checked by colours.test.ts); .dashboard gets a scroll-padding-top of the header's height (plus the Arrange bar while arranging), so a card or button scrolled to or focused never lands under the header; the shelf keeps its haze.
+- [T-0038 Keep the Arrange bar small: its Hidden chips scroll inside a capped area, and on a short screen the bar no longer sticks over the blocks](T-0038-arrange-bar-fit.md) (small): While arranging, the Hidden: chips of the Arrange bar (Dashboard and Challenges) sit in an area at most about two chip rows high that scrolls inside, so the bar never grows taller than the screen however many blocks are hidden; on a short screen (a phone held sideways) the bar stays at the top of the page instead of sticking under the header, so no bingo square ends up under it.
 
 ## Done
 
