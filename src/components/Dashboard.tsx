@@ -1,28 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Book, NewBook } from '#/lib/library'
 import { localDay } from '#/lib/library'
-import { formatDuration } from '#/lib/listening'
 import {
   BookLine,
-  BreakdownCard,
   CurrentlyReadingCard,
-  GoalCard,
   LentCard,
-  MonthlyChart,
   FactCard,
   OnThisDayCard,
   PileCard,
-  RecordsCard,
   RecentCard,
   SeriesCard,
   dayStory,
 } from './DashboardExtras'
-import { AuthorsCard, BingoCard, HeatmapCard, PaceCard, SpiceCard, WrappedCard } from './DashboardMore'
+import { AuthorsCard, BingoCard, PaceCard, SpiceCard, WrappedCard } from './DashboardMore'
+import { MyYearCard } from './MyYearCard'
+import { YearStory } from './YearStory'
 import { pickReadNext, readNextChoices } from '#/lib/readNext'
 import { pendingRatings } from '#/lib/ratingAsk'
 import { seriesQuestions } from '#/lib/sleepSeries'
 import { WaitingCard } from './WaitingCard'
-import { BooksWorldMapCard, GenreFlowerCard, PagesPerMonthCard } from './PictureBlocks'
+import { BooksWorldMapCard } from './PictureBlocks'
 import { WrapUpCard } from './WrapUpCard'
 import { wrapKey, wrapUpDue } from '#/lib/wrapup'
 import { cleanDustOff, dustOffDismiss, dustOffPick, dustOffSeen, waitedText, weekOf } from '#/lib/pile'
@@ -36,7 +33,7 @@ import { OpenLink } from './OpenLink'
 import type { ChallengeSection } from './ChallengesPage'
 import { topRated } from '#/lib/ratings'
 import { StarRating } from './StarRating'
-import { monthWeeks, periodStats, readingYears } from '#/lib/stats'
+import { monthWeeks, readingYears } from '#/lib/stats'
 import { amountText, amountUnit, finishedIn, monthEntries, startedIn } from '#/lib/readingLog'
 import type { DayEntry } from '#/lib/readingLog'
 import { percentText } from '#/lib/progress'
@@ -62,7 +59,7 @@ import type { ArrowKey, BlockId, SectionId } from '#/lib/dashboardLayout'
 import { TodayStrip } from './TodayStrip'
 import { useDashboardLayout } from './useDashboardLayout'
 import { useArrangeBarHeight } from './useArrangeBarHeight'
-import { BadgesCard, CoverWallCard, RhythmCard, useBirthday } from './NewBlocks'
+import { BadgesCard, CoverWallCard, useBirthday } from './NewBlocks'
 import { TropesCard, tropesBlock } from './TropesCard'
 import { badges, newBadges } from '#/lib/badges'
 import { CreaturesCard } from './CreaturesCard'
@@ -112,6 +109,8 @@ interface DashboardProps extends Props {
   onOpenCreatures?: (step?: 'choose' | 'hatch' | 'duplicate') => void
   /** "Open ›" on the Garden block: the Garden tab (T-0065) */
   onOpenGarden?: () => void
+  /** "Open ›" on My year: the Stats page (T-0080) */
+  onOpenStats?: () => void
   /** her wishlist (D-0053): only the Wishlist block sees these, never anything that counts */
   wishes?: Book[]
   /** "I bought it ›": the wish joins the shelf today and the follow-up opens */
@@ -181,15 +180,14 @@ export function Dashboard({
   onAdd,
   onOpenCreatures,
   onOpenGarden,
+  onOpenStats,
   wishes = EMPTY_WISHES,
   onBought,
   onRemoveWish,
 }: DashboardProps) {
   const open = (section: ChallengeSection) => (onOpenChallenges ? () => onOpenChallenges(section) : undefined)
-  const now = new Date()
-  // the period picked under "Books read"; the charts and records follow it
-  const [pick, setPick] = useState<PeriodPick>({ kind: 'year', year: now.getFullYear(), month: now.getMonth() + 1 })
-  const period = toPeriod(pick)
+  // the year wrap-up story she opened with ▶ Play (T-0081); null: no story open
+  const [storyYear, setStoryYear] = useState<number | null>(null)
   const [layout, setLayout] = useDashboardLayout(accountId)
   const [arranging, setArranging] = useState(false)
   const arrangeBar = useArrangeBarHeight()
@@ -349,9 +347,6 @@ export function Dashboard({
     badges: <BadgesCard books={books} />,
     tropes: <TropesCard books={books} onShowBook={onShowBook} />,
     covers: <CoverWallCard books={books} onShowBook={onShowBook} />,
-    rhythm: <RhythmCard books={books} />,
-    flower: <GenreFlowerCard books={books} />,
-    months: <PagesPerMonthCard books={books} />,
     world: <BooksWorldMapCard books={books} onShowBook={onShowBook} />,
     challenge: (
       <ChallengeCard
@@ -364,20 +359,13 @@ export function Dashboard({
         onOpen={open('monthly')}
       />
     ),
-    // Books read, with the books per month under it
-    count: (
-      <ReadCount books={books} onShowBook={onShowBook} pick={pick} onPick={setPick}>
-        <MonthlyChart books={books} year={pick.year} bare />
-      </ReadCount>
-    ),
-    goal: <GoalCard books={books} accountId={accountId} onOpen={open('goal')} />,
+    // the one block about her reading left on the dashboard (D-0060); the charts are on the Stats page
+    myyear: <MyYearCard books={books} accountId={accountId} onOpen={onOpenStats} />,
     next: <ReadNextCard books={books} onShowBook={onShowBook} />,
     newforyou: <NewForYouCard books={books} accountId={accountId} onAdd={onAdd ?? (() => {})} />,
     reading: <CurrentlyReadingCard books={books} onShowBook={onShowBook} />,
     series: <SeriesCard books={books} onShowBook={onShowBook} />,
     calendar: <Calendar books={books} onShowBook={onShowBook} onOpen={onOpenCalendar} onUpdate={onUpdate} />,
-    breakdown: <BreakdownCard books={books} period={period} label={periodLabel(pick)} />,
-    records: <RecordsCard books={books} period={period} label={periodLabel(pick)} onShowBook={onShowBook} />,
     pile: <PileCard books={books} />,
     onthisday: <OnThisDayCard books={books} onShowBook={onShowBook} />,
     lent: <LentCard books={books} onShowBook={onShowBook} />,
@@ -386,9 +374,8 @@ export function Dashboard({
     top: <RatingsCard books={books} onShowBook={onShowBook} />,
     fact: <FactCard books={books} />,
     pace: <PaceCard books={books} onShowBook={onShowBook} />,
-    heatmap: <HeatmapCard books={books} />,
     authors: <AuthorsCard books={books} />,
-    wrapped: <WrappedCard books={books} onShowBook={onShowBook} />,
+    wrapped: <WrappedCard books={books} onShowBook={onShowBook} onPlay={setStoryYear} />,
     recent: <RecentCard books={books} onShowBook={onShowBook} />,
     // the wishlist is not on the shelf and is counted nowhere (D-0053): this is the one
     // block that is given the wishes instead of her books
@@ -609,6 +596,9 @@ export function Dashboard({
     <div className="dashboard" ref={root}>
       {wrapOpen && (
         <WrapUpCard books={books} year={wrapOpen.year} month={wrapOpen.month} onShowBook={onShowBook} onClose={() => setWrapOpen(null)} />
+      )}
+      {storyYear !== null && (
+        <YearStory books={books} year={storyYear} onShowBook={onShowBook} onClose={() => setStoryYear(null)} />
       )}
       <TodayStrip books={books} accountId={accountId} onShowBook={onShowBook} />
       <div className={`dashboard-bar${arranging ? ' arranging' : ''}`} ref={arrangeBar}>
@@ -943,57 +933,6 @@ function TopRatedCard({ books, onShowBook, switcher }: Props & { switcher?: Reac
           ))}
         </ol>
       )}
-    </section>
-  )
-}
-
-function ReadCount({
-  books,
-  onShowBook,
-  pick,
-  onPick,
-  children,
-}: Props & { pick: PeriodPick; onPick: (pick: PeriodPick) => void; children?: React.ReactNode }) {
-  const { kind, year, month } = pick
-  const stats = useMemo(() => periodStats(books, toPeriod({ kind, year, month })), [books, kind, year, month])
-  const label = periodLabel(pick)
-
-  return (
-    <section className="dash-card count-card" aria-labelledby="count-title">
-      <div className="dash-card-head">
-        <h2 id="count-title">Books read</h2>
-        <PeriodTabs pick={pick} onPick={onPick} />
-      </div>
-
-      <PeriodSelect books={books} pick={pick} onPick={onPick} />
-
-      <p className="big-number" aria-live="polite">
-        <strong>{stats.books}</strong> {stats.books === 1 ? 'book' : 'books'} <span className="muted">{label}</span>
-      </p>
-      <p className="muted count-details">
-        {[
-          stats.reads > stats.books &&
-            `${stats.reads - stats.books} re-read${stats.reads - stats.books === 1 ? '' : 's'}`,
-          stats.pages > 0 && `${stats.pages.toLocaleString('en-GB')} pages`,
-          stats.minutes > 0 && `${formatDuration(stats.minutes)} listened`,
-        ]
-          .filter(Boolean)
-          .join(' · ') || (kind === 'all' ? 'Nothing finished yet.' : 'Nothing finished with a date here yet.')}
-      </p>
-
-      {stats.list.length > 0 && (
-        <ul className="cover-row" aria-label={`Books read ${label}`}>
-          {stats.list.slice(0, 40).map((b) => (
-            <li key={b.id}>
-              <button className="cover-btn" title={b.title} aria-label={b.title} onClick={() => onShowBook(b.id)}>
-                <Cover book={b} small />
-              </button>
-            </li>
-          ))}
-          {stats.list.length > 40 && <li className="muted more">+{stats.list.length - 40}</li>}
-        </ul>
-      )}
-      {children}
     </section>
   )
 }

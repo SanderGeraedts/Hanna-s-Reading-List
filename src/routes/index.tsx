@@ -29,6 +29,7 @@ import { SparkleLayer, sparkle } from '#/components/Sparkles'
 import { WishCard } from '#/components/WishCard'
 import { RoomPanel, useRoom } from '#/components/RoomPanel'
 import { ChallengesPage } from '#/components/ChallengesPage'
+import { StatsPage } from '#/components/StatsPage'
 import { CalendarPage } from '#/components/CalendarPage'
 import { CreaturesPage } from '#/components/CreaturesPage'
 import { GardenPage } from '#/components/GardenPage'
@@ -57,7 +58,7 @@ export const Route = createFileRoute('/')({
   validateSearch: (
     search: Record<string, unknown>,
   ): {
-    view?: 'dashboard' | 'challenges' | 'calendar' | 'creatures' | 'garden'
+    view?: 'dashboard' | 'stats' | 'challenges' | 'calendar' | 'creatures' | 'garden'
     focus?: ChallengeSection
     month?: string
     step?: 'choose' | 'hatch' | 'duplicate'
@@ -65,6 +66,7 @@ export const Route = createFileRoute('/')({
   } => {
     const view =
       search.view === 'dashboard' ||
+      search.view === 'stats' ||
       search.view === 'challenges' ||
       search.view === 'calendar' ||
       search.view === 'creatures' ||
@@ -332,6 +334,11 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     select(null)
     navigate({ search: { view: 'garden' } })
   }, [navigate, select])
+  /** "Open ›" on My year: the Stats page (T-0080) */
+  const openStats = useCallback(() => {
+    select(null)
+    navigate({ search: { view: 'stats' } })
+  }, [navigate, select])
   /** the Shop view (T-0031): switching Den ↔ Shop is a history entry (Back returns), a category change replaces it */
   const openShop = useCallback(
     (shop: ShopCategory | null, opts?: { replace?: boolean }) =>
@@ -565,6 +572,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             onAdd={addBook}
             onOpenCreatures={openCreatures}
             onOpenGarden={openGarden}
+            onOpenStats={openStats}
             wishes={wishes}
             onBought={(id) => {
               // twice in a row (a double tap) moves it once: the second press finds no wish
@@ -573,6 +581,14 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
               setBought(id)
             }}
             onRemoveWish={removeBook}
+          />
+        )}
+        {view === 'stats' && (
+          <StatsPage
+            books={books}
+            accountId={account?.id ?? null}
+            onShowBook={showBook}
+            onOpenGoal={() => openChallenges('goal')}
           />
         )}
         {view === 'calendar' && <CalendarPage books={books} onShowBook={showBook} onUpdate={updateBook} startMonth={search.month} />}
@@ -745,11 +761,12 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   )
 }
 
-type View = 'shelf' | 'dashboard' | 'challenges' | 'calendar' | 'creatures' | 'garden'
+type View = 'shelf' | 'dashboard' | 'stats' | 'challenges' | 'calendar' | 'creatures' | 'garden'
 
 const VIEWS = [
   { view: 'shelf', icon: '📚', label: 'Bookshelf' },
   { view: 'dashboard', icon: '📊', label: 'Dashboard' },
+  { view: 'stats', icon: '📈', label: 'Stats' },
   { view: 'challenges', icon: '🏆', label: 'Challenges' },
   { view: 'calendar', icon: '📅', label: 'Calendar' },
   { view: 'creatures', icon: '🐾', label: 'Creatures' },

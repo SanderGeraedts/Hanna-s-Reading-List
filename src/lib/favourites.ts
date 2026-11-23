@@ -1,4 +1,4 @@
-import { BLOCKS, type BlockId } from './dashboardLayout'
+import { BLOCKS, asBlock, oldNamesOf, type BlockId } from './dashboardLayout'
 
 /**
  * The dashboard's favourites kept with the account (#182), so every device
@@ -19,11 +19,24 @@ export const MAX_FAVOURITES = Object.keys(BLOCKS).length
 
 const isBlock = (id: unknown): id is BlockId => typeof id === 'string' && Object.hasOwn(BLOCKS, id)
 
-/** A saved list made safe: only known blocks, each once, in her order, at most one per block. */
+/**
+ * A saved list made safe: only known blocks, each once, in her order, at most
+ * one per block. A star on a block that became another one (T-0080, D-0060)
+ * reads as that block, so a star she set before a move is not lost.
+ */
 export function cleanFavourites(raw: unknown): BlockId[] {
   if (!Array.isArray(raw)) return []
-  return [...new Set(raw.filter(isBlock))].slice(0, MAX_FAVOURITES)
+  return [...new Set(raw.map(asBlock).filter(isBlock))].slice(0, MAX_FAVOURITES)
 }
+
+/**
+ * What an unstar sends to the account: the block, and the ids it used to be
+ * saved under. Without them an old id would sit on the account for ever and
+ * star the block again on the next read (T-0080).
+ */
+export const unstarIds = (remove: readonly BlockId[]): string[] => [
+  ...new Set(remove.flatMap((id) => [id as string, ...oldNamesOf(id)])),
+]
 
 export interface FavouritesChange {
   add: BlockId[]

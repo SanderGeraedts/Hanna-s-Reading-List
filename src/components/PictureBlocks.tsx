@@ -4,6 +4,9 @@ import type { Book } from '#/lib/library'
 import { genrePetals, petalLength } from '#/lib/genreFlower'
 import { monthlyAmounts, niceMax } from '#/lib/monthlyPages'
 import type { MonthAmount } from '#/lib/monthlyPages'
+import { compareLine } from '#/lib/yearCompare'
+import type { StatsYear } from '#/lib/yearCompare'
+import { CompareNote } from './CompareNote'
 import { monthName } from './Dashboard'
 import { byBooks, worldMap } from '#/lib/places'
 import { coverAtSize } from '#/lib/cover'
@@ -11,30 +14,45 @@ import { LAT_TOP, polygonsToPath } from '#/lib/worldPath'
 import { MAP_ZOOM_MAX, MAP_ZOOM_STEP, between, panView, wholeMap, zoomAround, zoomOf } from '#/lib/mapZoom'
 import type { MapView } from '#/lib/mapZoom'
 
+/** A year with nothing in it, for the chart that compares with no second year. */
+const EMPTY_MONTHS: MonthAmount[] = Array.from({ length: 12 }, (_, i) => ({ month: i + 1, pages: 0, minutes: 0 }))
+
 /** Petal colours: soft and warm, readable on the walnut cards, one per genre. */
 export const PETAL_COLOURS = ['#e8a0b4', '#f2c46d', '#9fc9e6', '#b8d98f', '#c9a6e6', '#f2a37a', '#8fd1c4', '#d9c9a6']
 
-/** Your genres as a flower (reading in pictures, part 2). */
-export function GenreFlowerCard({ books }: { books: Book[] }) {
-  const year = new Date().getFullYear()
+/**
+ * Your genres as a flower (reading in pictures, part 2). On the Stats page
+ * (T-0080) the page's own year picker says which year, so the card's switch
+ * is left out and a compare year puts the other year's count beside each
+ * genre in the legend.
+ */
+export function GenreFlowerCard({ books, year: forYear, compare }: { books: Book[]; year?: StatsYear; compare?: number }) {
+  const thisYear = new Date().getFullYear()
   const [which, setWhich] = useState<'year' | 'all'>('year')
-  const { petals, books: count } = useMemo(() => genrePetals(books, which === 'year' ? year : 'all'), [books, which, year])
+  const chosen: StatsYear = forYear ?? (which === 'year' ? thisYear : 'all')
+  const { petals, books: count } = useMemo(() => genrePetals(books, chosen), [books, chosen])
+  const other = useMemo(
+    () => (compare === undefined ? null : new Map(genrePetals(books, compare).petals.map((p) => [p.genre, p.count]))),
+    [books, compare],
+  )
   const max = Math.max(0, ...petals.map((p) => p.count))
   const n = petals.length
   return (
     <section className="dash-card flower-card" aria-labelledby="flower-title">
       <div className="dash-card-head">
         <h2 id="flower-title">Genre flower</h2>
-        <div className="segmented" role="group" aria-label="Period">
-          {(['year', 'all'] as const).map((k) => (
-            <button key={k} className={which === k ? 'active' : ''} aria-pressed={which === k} onClick={() => setWhich(k)}>
-              {k === 'year' ? String(year) : 'All time'}
-            </button>
-          ))}
-        </div>
+        {forYear === undefined && (
+          <div className="segmented" role="group" aria-label="Period">
+            {(['year', 'all'] as const).map((k) => (
+              <button key={k} className={which === k ? 'active' : ''} aria-pressed={which === k} onClick={() => setWhich(k)}>
+                {k === 'year' ? String(thisYear) : 'All time'}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       {n === 0 ? (
-        <p className="muted small-text">No genres yet {which === 'year' ? `in ${year}` : ''}: they bloom once finished books have genres.</p>
+        <p className="muted small-text">No genres yet {chosen === 'all' ? '' : `in ${chosen}`}: they bloom once finished books have genres.</p>
       ) : (
         <div className="flower-body">
           <svg viewBox="-110 -110 220 220" className="flower" role="img" aria-label={petals.map((p) => `${p.genre}: ${p.count}`).join(', ')}>
@@ -62,13 +80,17 @@ export function GenreFlowerCard({ books }: { books: Book[] }) {
             </text>
           </svg>
           <ul className="flower-legend">
-            {petals.map((p, i) => (
-              <li key={p.genre}>
-                <span className="flower-dot" style={{ background: PETAL_COLOURS[i % PETAL_COLOURS.length] }} aria-hidden />
-                <span>{p.genre}</span>
-                <span className="muted small-text">{p.count}</span>
-              </li>
-            ))}
+            {petals.map((p, i) => {
+              const line = other && compare !== undefined ? compareLine(p.count, other.get(p.genre) ?? 0, compare) : null
+              return (
+                <li key={p.genre}>
+                  <span className="flower-dot" style={{ background: PETAL_COLOURS[i % PETAL_COLOURS.length] }} aria-hidden />
+                  <span>{p.genre}</span>
+                  <span className="muted small-text">{p.count}</span>
+                  {line && <CompareNote line={line} />}
+                </li>
+              )
+            })}
           </ul>
         </div>
       )}
@@ -76,13 +98,19 @@ export function GenreFlowerCard({ books }: { books: Book[] }) {
   )
 }
 
-/** Pages (or listening hours) per month, this year next to last year (reading in pictures, part 3). */
-export function PagesPerMonthCard({ books }: { books: Book[] }) {
+/**
+ * Pages (or listening hours) per month, one year next to another (reading in
+ * pictures, part 3). On the dashboard that was always this year next to last
+ * year; on the Stats page (T-0080) it is the year she picked next to the year
+ * she compares with, and only one year's bars when she compares with nothing.
+ */
+export function PagesPerMonthCard({ books, year: forYear, compare }: { books: Book[]; year?: number; compare?: number }) {
   const now = new Date()
-  const year = now.getFullYear()
+  const year = forYear ?? now.getFullYear()
+  const other = forYear === undefined ? year - 1 : compare
   const [unit, setUnit] = useState<'pages' | 'hours'>('pages')
   const thisYear = useMemo(() => monthlyAmounts(books, year), [books, year])
-  const lastYear = useMemo(() => monthlyAmounts(books, year - 1), [books, year])
+  const lastYear = useMemo(() => (other === undefined ? EMPTY_MONTHS : monthlyAmounts(books, other)), [books, other])
   const value = (m: MonthAmount) => (unit === 'pages' ? m.pages : Math.round(m.minutes / 60))
   const top = niceMax(Math.max(...thisYear.map(value), ...lastYear.map(value)))
   const hasListening = [...thisYear, ...lastYear].some((m) => m.minutes > 0)
@@ -106,7 +134,8 @@ export function PagesPerMonthCard({ books }: { books: Book[] }) {
         )}
       </div>
       <p className="muted small-text">
-        {total.toLocaleString('en-GB')} {unit === 'pages' ? 'pages' : 'hours'} in {year} so far
+        {total.toLocaleString('en-GB')} {unit === 'pages' ? 'pages' : 'hours'} in {year}
+        {year === now.getFullYear() ? ' so far' : ''}
       </p>
       <svg viewBox={`0 0 ${W} ${H + 18}`} className="months-chart" role="img" aria-label={thisYear.map((m) => `${monthName(m.month, 'short')}: ${value(m)}`).join(', ')}>
         {[0.5, 1].map((f) => (
@@ -125,8 +154,8 @@ export function PagesPerMonthCard({ books }: { books: Book[] }) {
           const hLast = (value(last) / top) * H
           return (
             <g key={m.month}>
-              <rect x={x - bar - 1} y={H - hLast} width={bar} height={hLast} rx={2} className="months-last" />
-              <rect x={x + 1} y={H - hNow} width={bar} height={hNow} rx={2} className="months-now" />
+              {other !== undefined && <rect x={x - bar - 1} y={H - hLast} width={bar} height={hLast} rx={2} className="months-last" />}
+              <rect x={other === undefined ? x - bar / 2 : x + 1} y={H - hNow} width={bar} height={hNow} rx={2} className="months-now" />
               <text x={x} y={H + 13} textAnchor="middle" className="months-label">
                 {monthName(m.month, 'short').slice(0, 1)}
               </text>
@@ -135,7 +164,13 @@ export function PagesPerMonthCard({ books }: { books: Book[] }) {
         })}
       </svg>
       <p className="months-key small-text">
-        <span className="months-swatch now" aria-hidden /> {year} <span className="months-swatch last" aria-hidden /> {year - 1}
+        <span className="months-swatch now" aria-hidden /> {year}
+        {other !== undefined && (
+          <>
+            {' '}
+            <span className="months-swatch last" aria-hidden /> {other}
+          </>
+        )}
       </p>
     </section>
   )

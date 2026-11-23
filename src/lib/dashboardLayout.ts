@@ -13,22 +13,18 @@
 export const BLOCKS = {
   waiting: 'Waiting for you',
   challenge: 'Monthly challenge',
-  count: 'Books read',
-  goal: 'Reading goal',
+  myyear: 'My year',
   next: 'What next?',
   newforyou: 'New for you',
   reading: 'Currently reading',
   series: 'Series',
   calendar: 'Calendar',
-  breakdown: 'What I read',
-  records: 'Records',
   pile: 'Want-to-read pile',
   onthisday: 'On this day',
   lent: 'Lent out',
   top: 'My ratings',
   fact: 'Fact of the day',
   pace: 'Finish by',
-  heatmap: 'A year of reading',
   authors: 'Favourite authors',
   wrapped: 'Year in review',
   bingo: 'Book bingo',
@@ -37,9 +33,6 @@ export const BLOCKS = {
   badges: 'Badges',
   tropes: 'Tropes & characters',
   covers: 'Cover wall',
-  rhythm: 'When I read most',
-  flower: 'Genre flower',
-  months: 'Pages per month',
   world: 'Where your books are set',
   again: 'Give it another try',
   creatures: 'Creatures',
@@ -79,10 +72,10 @@ export const DEFAULT_LAYOUT: DashboardLayout = {
       ['waiting', 'reading', 'pace', 'lent', 'again'],
       ['challenge', 'creatures', 'garden', 'next', 'newforyou', 'recent', 'wishlist'],
     ],
-    challenges: [['goal', 'alphabet'], ['bingo']],
+    challenges: [['alphabet'], ['bingo']],
     stats: [
-      ['count', 'heatmap', 'breakdown', 'flower', 'authors'],
-      ['calendar', 'months', 'records', 'rhythm', 'series', 'pile'],
+      ['myyear', 'authors'],
+      ['calendar', 'series', 'pile'],
     ],
     fun: [
       ['badges', 'tropes', 'fact', 'wrapped'],
@@ -99,6 +92,35 @@ const HOME = Object.fromEntries(
   SECTION_IDS.flatMap((s) => DEFAULT_LAYOUT.sections[s].flat().map((id) => [id, s])),
 ) as Record<BlockId, SectionId>
 
+/**
+ * Blocks that became another block (T-0080, D-0060). A saved layout or a
+ * starred favourite that names one of these keeps working: it reads as the
+ * block that took its place, and the duplicates fold into one.
+ *
+ * `count` (Books read), `goal` (Reading goal) and the six big charts moved to
+ * the Stats page; what is left of them on the dashboard is `myyear`, with
+ * "Open ›" to that page.
+ */
+export const MERGED_INTO: Readonly<Record<string, BlockId>> = {
+  count: 'myyear',
+  goal: 'myyear',
+  heatmap: 'myyear',
+  months: 'myyear',
+  flower: 'myyear',
+  rhythm: 'myyear',
+  breakdown: 'myyear',
+  records: 'myyear',
+}
+
+/** A saved id as it is read today: itself, or the block it became. */
+export const asBlock = (id: unknown): unknown => (typeof id === 'string' && MERGED_INTO[id] ? MERGED_INTO[id] : id)
+
+/** The ids a block used to be saved under, newest first; empty for a block that never moved. */
+export const oldNamesOf = (id: BlockId): string[] =>
+  Object.entries(MERGED_INTO)
+    .filter(([, to]) => to === id)
+    .map(([from]) => from)
+
 const isBlock = (id: unknown): id is BlockId => typeof id === 'string' && Object.hasOwn(BLOCKS, id)
 const isSection = (id: unknown): id is SectionId => typeof id === 'string' && Object.hasOwn(SECTIONS, id)
 const isFold = (id: unknown): id is FoldId => id === 'favourites' || isSection(id)
@@ -106,31 +128,36 @@ const emptySections = (): Record<SectionId, Columns> =>
   Object.fromEntries(SECTION_IDS.map((s) => [s, [[], []]])) as unknown as Record<SectionId, Columns>
 
 /**
- * A saved layout made safe: unknown blocks dropped (also the ones merged into
- * another, like Books per month), each block once, new blocks added in their
- * section. A layout saved before the sections had two long columns: each
- * block goes to its section, in her order and on her side.
+ * A saved layout made safe: unknown blocks dropped, blocks that became another
+ * block read as that one (`MERGED_INTO`, so her arrangement and her stars
+ * survive a move), each block once, new blocks added in their section. A
+ * layout saved before the sections had two long columns: each block goes to
+ * its section, in her order and on her side.
  */
 export function cleanLayout(raw: unknown): DashboardLayout {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
   const seen = new Set<BlockId>()
   const take = (list: unknown): BlockId[] =>
-    (Array.isArray(list) ? list : []).filter((id): id is BlockId => isBlock(id) && !seen.has(id) && !!seen.add(id))
+    (Array.isArray(list) ? list : [])
+      .map(asBlock)
+      .filter((id): id is BlockId => isBlock(id) && !seen.has(id) && !!seen.add(id))
   const sections = emptySections()
+  const hasSections = !!r.sections && typeof r.sections === 'object'
+  if (!hasSections && !Array.isArray(r.columns)) return structuredClone(DEFAULT_LAYOUT)
 
-  const hidden = take(r.hidden)
-  if (r.sections && typeof r.sections === 'object') {
+  // the sections come first, so a block that is both somewhere and "hidden"
+  // (two merged blocks, one of each) stays where she can see it
+  if (hasSections) {
     const saved = r.sections as Record<string, unknown>
     for (const s of SECTION_IDS) {
       const cols = Array.isArray(saved[s]) ? (saved[s] as unknown[]) : []
       sections[s] = [take(cols[0]), take(cols[1])]
     }
-  } else if (Array.isArray(r.columns)) {
+  } else {
     // before the sections: two long columns
     for (const c of [0, 1] as const) for (const id of take((r.columns as unknown[])[c])) sections[HOME[id]][c].push(id)
-  } else {
-    return structuredClone(DEFAULT_LAYOUT)
   }
+  const hidden = take(r.hidden)
 
   // "Waiting for you" goes first, also on a dashboard arranged before it existed
   if (!seen.has('waiting')) sections.today[0].unshift('waiting'), seen.add('waiting')
@@ -148,9 +175,9 @@ export function cleanLayout(raw: unknown): DashboardLayout {
 
   const folded = (Array.isArray(r.folded) ? r.folded : []).filter(isFold)
   // favourites: known blocks, each once, not hidden
-  const favourites = [...new Set((Array.isArray(r.favourites) ? r.favourites : []).filter(isBlock))].filter(
-    (id) => !hidden.includes(id),
-  )
+  const favourites = [
+    ...new Set((Array.isArray(r.favourites) ? r.favourites : []).map(asBlock).filter(isBlock)),
+  ].filter((id) => !hidden.includes(id))
   return { sections, hidden, folded: [...new Set(folded)], favourites }
 }
 
