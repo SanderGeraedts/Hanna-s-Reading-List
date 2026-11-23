@@ -662,3 +662,25 @@ Developer's own checks (2026-11-23, night); the tester's independent run goes he
   pill sit on the header card), the layout test change. Worth doing: keep *This week* parts from
   breaking inside at 390. Back to the developer; re-review after new den, egg and block
   screenshots.
+- 2026-11-23 developer: fixed the UX review's three must-fixes and the non-blocking item. (1) The
+  den walls are unlit (`meshBasicMaterial`, `toneMapped={false}`): the back wall is `#3a2c24` and
+  the left wall `#362c2a`. Floor, rug, cushion and creature are unchanged. Sampled 5×5 patches in
+  the new screenshots: back wall `#3a2b24` in `tab-1280-lav`, `tab-1280-mid`, `tab-390-mid`,
+  `tab-390-lav` and `tab-egg-1280-mid` (within ±12 of `#3a2c24`); left wall `#362c2a` in all of
+  them (no channel below `#2a`, R > G > B); 14/14 PASS. (2) The egg's spots: each one undoes the
+  egg's [1, 1.28, 1] scale at its point and is turned to the stretched shell's real normal, instead
+  of `lookAt` with local coordinates. They now lie flat as round gold dots (`tab-egg-*`, and the
+  96 px block in the new `block-egg-390-lav` / `block-egg-1280-mid`). (3) `CREATURES_START` in
+  `src/lib/creatures/numbers.ts` is now the go-live day, set to the planned 2026-11-24 with a
+  comment. The tests are written relative to it (they also passed with it set to 2026-12-05, then
+  set back). **Whoever rebases on `main` to open the PR: set `CREATURES_START` to the actual merge
+  day** (it can't merge before #241; the tester moves it again if the merge slips). The `tab-egg-*`
+  shots now use the go-live day as the clock: 🍪 9, only today's reading. (4) This week at 390:
+  each part ("45 min", "🌙 30 min", "📗 title") is a `nowrap` span, and only a book title may wrap
+  inside (`tab-390-lav-card`). Retook `tab-egg-*`, `tab-*`, `block-*` and `waiting-egg-*` on both
+  wallpapers (port 3146, vite stopped afterwards). The other older shots (stages, moods, fed,
+  negative, choose, hello) still show the old dark walls and the 2026-11-23 balances; the review
+  didn't ask for them, so the tester or the re-review can retake them. `tsc --noEmit`: no output.
+  Touched tests: 9 files, 114 passed. Lesson added. Still no PR (after #241). Remaining: UX
+  re-review; draft PR after #241 with `CREATURES_START` set to the merge day; tester; Hanna's five
+  morning questions; Done when 5.

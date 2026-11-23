@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Book } from '#/lib/library'
 import { speciesById } from '#/lib/creatures/species'
 import type { SpeciesId } from '#/lib/creatures/species'
@@ -474,14 +474,28 @@ function WeekCard({ c, phone }: { c: Creatures; phone: boolean }) {
 }
 
 function WeekRow({ line, today }: { line: WeekLine; today: string }) {
-  const parts: string[] = []
-  if (Math.round(line.minutes) > 0) parts.push(minutesText(line.minutes))
-  if (Math.round(line.sleepMinutes) > 0) parts.push(`🌙 ${minutesText(line.sleepMinutes)}`)
-  for (const b of line.finished) parts.push(`📗 ${b.title}`)
+  // each part wraps as a whole ("🌙 30 min" never splits); only a long book title may wrap inside
+  const parts: React.ReactNode[] = []
+  if (Math.round(line.minutes) > 0) parts.push(<span className="week-part">{minutesText(line.minutes)}</span>)
+  if (Math.round(line.sleepMinutes) > 0) parts.push(<span className="week-part">🌙 {minutesText(line.sleepMinutes)}</span>)
+  line.finished.forEach((b) =>
+    parts.push(
+      <span className="week-part">
+        📗 <span className="week-title">{b.title}</span>
+      </span>,
+    ),
+  )
   return (
     <li>
       <span className="week-day">{dayLabel(line.day, today)}</span>
-      <span className="week-what">{parts.join(' · ')}</span>
+      <span className="week-what">
+        {parts.map((part, i) => (
+          <Fragment key={i}>
+            {i > 0 && ' · '}
+            {part}
+          </Fragment>
+        ))}
+      </span>
       <span className="week-cookies">+{line.cookies} 🍪</span>
     </li>
   )

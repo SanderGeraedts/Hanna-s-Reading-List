@@ -6,8 +6,15 @@ import type { SpeciesId } from './species'
  * them (what earns, that nothing is ever lost) are D-0033's.
  */
 
-/** The day the creatures went live (D-0033 §1): nothing before it earns. yyyy-mm-dd, device time. */
-export const CREATURES_START = '2026-11-23'
+/**
+ * The go-live day of the creatures (D-0033 §1, §3): the day this reaches `main`. Nothing before it
+ * earns, so on her first visit the welcome egg comes with no cookies. yyyy-mm-dd, device time.
+ *
+ * SET THIS TO THE ACTUAL MERGE DAY when rebasing on `main` to open the pull request (and the
+ * tester moves it again if the merge slips). 2026-11-24 is the planned day, after T-0027 (#241).
+ * Tests work relative to it, so changing it needs no other change.
+ */
+export const CREATURES_START = '2026-11-24'
 
 // ---- cookies (D-0033 §2) ----------------------------------------------------------------
 

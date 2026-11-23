@@ -5267,6 +5267,12 @@ button.today-item:hover {
 .week-cookies {
   white-space: nowrap;
 }
+.week-part {
+  white-space: nowrap;
+}
+.week-title {
+  white-space: normal;
+}
 
 /* the dashboard block */
 .creatures-row {

@@ -75,6 +75,7 @@ vi.mock('#/server/creatures', async () => {
 
 const { useCreatureChoices, creaturesKey } = await import('#/components/useCreatureChoices')
 const { deriveCreatures } = await import('./creature')
+const { CREATURES_START } = await import('./numbers')
 
 const ACCOUNT = 'hanna123'
 
@@ -111,7 +112,7 @@ class Device {
     return JSON.parse(this.storage.get(creaturesKey(this.account)) ?? '[]')
   }
   creature() {
-    return deriveCreatures([], this.log, new Date('2026-11-25T12:00:00')).pet
+    return deriveCreatures([], this.log, new Date(`${CREATURES_START}T12:00:00`)).pet
   }
   async comeBack() {
     Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })

@@ -42,6 +42,7 @@ interface Props {
 }
 
 const WALL = '#3a2c24'
+const SIDE_WALL = '#362c2a'
 const FLOOR = '#5a3f2c'
 const RUG = '#6e4f8f'
 const GOLD = '#d9a85b'
@@ -151,13 +152,16 @@ function Room({ phone }: { phone: boolean }) {
         <planeGeometry args={[12, 12]} />
         <meshStandardMaterial color={FLOOR} roughness={0.9} />
       </mesh>
-      <mesh position={[0, 3, -1.6]} receiveShadow={!phone}>
+      {/* the walls show their own colour, untouched by light and tone mapping (the key light sits
+          behind the left wall's plane, and ACES made both nearly black): the back wall #3a2c24, the
+          left one a little darker but still warm brown */}
+      <mesh position={[0, 3, -1.6]}>
         <planeGeometry args={[12, 6]} />
-        <meshStandardMaterial color={WALL} roughness={1} />
+        <meshBasicMaterial color={WALL} toneMapped={false} />
       </mesh>
-      <mesh position={[-2.2, 3, 0]} rotation={[0, Math.PI / 2, 0]} receiveShadow={!phone}>
+      <mesh position={[-2.2, 3, 0]} rotation={[0, Math.PI / 2, 0]}>
         <planeGeometry args={[12, 6]} />
-        <meshStandardMaterial color={WALL} roughness={1} />
+        <meshBasicMaterial color={SIDE_WALL} toneMapped={false} />
       </mesh>
       {/* a skirting board where wall meets floor, so the corner reads */}
       <mesh position={[0, 0.04, -1.58]}>
@@ -228,6 +232,38 @@ const SPOTS: Array<[number, number]> = [
   [5.7, 0.7],
 ]
 
+/**
+ * The six gold spots on the upper half, lying flat on the shell. They live inside the egg's
+ * [1, 1.28, 1] group, so each one first undoes that scale (scale [1, 1/1.28, 1] at its point) and is
+ * then turned to the shell's real normal there: a non-uniform parent scale would otherwise skew the
+ * flattened discs sideways into slits.
+ */
+const EGG_STRETCH = 1.28
+const SPOT_PLACES = SPOTS.map(([a, h]) => {
+  // a point on the unit-scaled half sphere: angle a round it, height h (0 equator … 1 top)
+  const phi = (1 - h) * (Math.PI / 2)
+  const p = new THREE.Vector3(Math.sin(phi) * Math.cos(a), Math.cos(phi), Math.sin(phi) * Math.sin(a))
+  // the normal of the stretched egg at that point
+  const n = new THREE.Vector3(p.x, p.y / EGG_STRETCH, p.z).normalize()
+  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), n)
+  return { position: p.multiplyScalar(EGG_R * 0.985).toArray() as [number, number, number], quaternion: q }
+})
+
+function EggSpots() {
+  return (
+    <>
+      {SPOT_PLACES.map((s, i) => (
+        <group key={i} position={s.position} scale={[1, 1 / EGG_STRETCH, 1]}>
+          <mesh quaternion={s.quaternion} scale={[1, 1, 0.3]}>
+            <sphereGeometry args={[0.032, 10, 6]} />
+            <meshStandardMaterial color={GOLD} roughness={0.7} />
+          </mesh>
+        </group>
+      ))}
+    </>
+  )
+}
+
 function EggHalf({ top, phone }: { top: boolean; phone: boolean }) {
   const seg = phone ? 16 : 24
   return (
@@ -236,20 +272,7 @@ function EggHalf({ top, phone }: { top: boolean; phone: boolean }) {
         <sphereGeometry args={[EGG_R, seg, seg / 2, 0, Math.PI * 2, top ? 0 : Math.PI / 2, Math.PI / 2]} />
         <meshStandardMaterial color={EGG} roughness={1} side={THREE.DoubleSide} />
       </mesh>
-      {top &&
-        SPOTS.map(([a, h], i) => {
-          // on the upper half's surface, at angle a round it and height h (0 equator … 1 top)
-          const phi = (1 - h) * (Math.PI / 2)
-          const x = EGG_R * Math.sin(phi) * Math.cos(a)
-          const z = EGG_R * Math.sin(phi) * Math.sin(a)
-          const y = EGG_R * Math.cos(phi)
-          return (
-            <mesh key={i} position={[x * 0.97, y * 0.97, z * 0.97]} scale={[1, 1, 0.35]} onUpdate={(m) => m.lookAt(x * 2, y * 2, z * 2)}>
-              <sphereGeometry args={[0.03, 8, 6]} />
-              <meshStandardMaterial color={GOLD} roughness={0.7} />
-            </mesh>
-          )
-        })}
+      {top && <EggSpots />}
     </group>
   )
 }

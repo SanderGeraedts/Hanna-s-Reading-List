@@ -2,7 +2,8 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Book } from '#/lib/library'
 import { suggestedName } from '#/lib/creatures/creature'
-import { SUGGESTED_NAMES, WELCOME_EGG } from '#/lib/creatures/numbers'
+import { CREATURES_START, SUGGESTED_NAMES, WELCOME_EGG } from '#/lib/creatures/numbers'
+import { addDays } from '#/lib/creatures/days'
 
 // no server: signed out, every server function mocked like the other dashboard tests
 vi.mock('#/server/shelf', () => ({
@@ -36,7 +37,8 @@ const { Dashboard } = await import('./Dashboard')
  * (as on a device without it) and the hatch goes straight to the name step.
  */
 
-const TODAY = '2026-11-25'
+// relative to the go-live day, so moving CREATURES_START to the merge day needs no change here
+const TODAY = addDays(CREATURES_START, 2)
 const LOG_KEY = 'hannas-reading-list:creatures:local'
 // 20 % of 300 pages = 60 pages = 90 minutes = 18 cookies, today
 const BOOKS: Book[] = [
@@ -150,7 +152,7 @@ describe('the welcome flow', () => {
   })
 
   it('says “Your creatures arrive soon.” before the start day', () => {
-    vi.setSystemTime(new Date('2026-11-20T12:00:00'))
+    vi.setSystemTime(new Date(`${addDays(CREATURES_START, -3)}T12:00:00`))
     try {
       tab()
       expect(screen.getByText('Your creatures arrive soon.')).toBeTruthy()
@@ -287,10 +289,10 @@ describe('Waiting for you and the dashboard block', () => {
   it('shows only the newest level-up, once, until Nice! on this device', () => {
     hatchSaved('cat', 'Biscuit')
     // a lot of reading over a week: 7 reading days and plenty of cookies fed
-    const days = Array.from({ length: 7 }, (_, i) => `2026-11-${String(19 + i).padStart(2, '0')}`)
+    const days = Array.from({ length: 7 }, (_, i) => addDays(TODAY, i - 6))
     const books = [{ ...BOOKS[0], pages: 3000, readingLog: Object.fromEntries(days.map((d) => [d, 0.05])) }]
     const log = savedLog()
-    log[0].at = new Date('2026-11-23T08:00:00').getTime()
+    log[0].at = new Date(`${CREATURES_START}T08:00:00`).getTime()
     log.push({ id: 'feed-big', at: new Date(`${TODAY}T09:00:00`).getTime(), kind: 'feed', pet: WELCOME_EGG, amount: 60 })
     localStorage.setItem(LOG_KEY, JSON.stringify(log))
     render(
@@ -316,7 +318,7 @@ describe('Waiting for you and the dashboard block', () => {
   it('never puts a mood in Waiting for you', () => {
     hatchSaved('cat', 'Biscuit')
     const log = savedLog()
-    log[0].at = new Date('2026-11-18T08:00:00').getTime()
+    log[0].at = new Date(`${addDays(TODAY, -7)}T08:00:00`).getTime()
     localStorage.setItem(LOG_KEY, JSON.stringify(log))
     act(() => void dash())
     expect(screen.queryByText(/misses you/, { selector: '.waiting-card *' })).toBeNull()
