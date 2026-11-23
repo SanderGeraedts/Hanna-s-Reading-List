@@ -5,7 +5,8 @@ import type { ChoiceEvent } from './choices'
 import { chooseEvent, deriveCreatures, isShinyEgg, releaseEvent } from './creature'
 import type { Creatures } from './creature'
 import { addDays } from './days'
-import { eggSpecies } from './eggs'
+import { readingDays } from './cookies'
+import { earnedEggs, eggSpecies } from './eggs'
 import { CREATURES_START, EGG_PRICE, WELCOME_CHOICES, WELCOME_EGG } from './numbers'
 
 /**
@@ -304,5 +305,81 @@ describe('a fixed past day after hatching (tester, sent back: un-skip with the f
     expect(after.pets.map((p) => [p.id, p.name, p.shiny])).toEqual(before.pets.map((p) => [p.id, p.name, p.shiny]))
     expect(after.waiting.map((w) => w.egg)).toEqual(before.waiting.map((w) => w.egg))
     expect(after.bonus).toBe(before.bonus)
+  })
+})
+
+describe('hatch order after the fix (tester re-check)', () => {
+  const snap = (books: Book[], log: ChoiceEvent[]) => {
+    const c = derive(books, log)
+    return { pets: c.pets.map((p) => [p.id, p.species, p.shiny, p.name].join(':')), waiting: c.waiting.map((w) => w.egg), bonus: c.bonus, shinyFound: [...c.shinyFound].sort() }
+  }
+  let seed = 7
+  const rnd = () => (seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 2 ** 32
+  const daily = (nb: number) => Array.from({ length: nb }, (_, i) => book({ pages: 40, finished: [day(i)], readingLog: { [day(i)]: 1 } }))
+
+  it('no fix to past days changes a pet, a shiny, a name, a waiting duplicate or the duplicate cookies (60 random fixes)', () => {
+    for (let trial = 0; trial < 60; trial++) {
+      const nb = 20 + Math.floor(rnd() * 60)
+      const books = daily(nb)
+      const log: ChoiceEvent[] = [hatchWelcome(WELCOME_CHOICES[Math.floor(rnd() * 5)])]
+      let t = at(day(nb + 2))
+      for (const e of earnedEggs(books, readingDays(books), day(400))) log.push(hatchEgg(e.id, (t += 1000)))
+      for (const w of derive(books, log).waiting) if (rnd() < 0.8) log.push(ev({ kind: 'choose', egg: w.egg, pick: rnd() < 0.5 ? 'keep' : 'cookies' }, (t += 1000)))
+      for (const p of derive(books, log).pets) if (rnd() < 0.3) log.push(ev({ kind: 'name', key: p.id, name: `N${trial}` }, (t += 1000)))
+      const before = snap(books, log)
+      // the fix: un-finish a few books (and their reading), and move a few finish days
+      const fixed = books.map((b) => ({ ...b }))
+      for (let k = 0; k < 1 + Math.floor(rnd() * 5); k++) fixed[Math.floor(rnd() * nb)] = { ...fixed[0], id: `x${k}`, finished: [], readingLog: {}, status: 'want' }
+      for (let k = 0; k < 3; k++) {
+        const i = Math.floor(rnd() * nb)
+        const d = day(Math.floor(rnd() * nb))
+        fixed[i] = { ...fixed[i], finished: [d], readingLog: { [d]: 1 } }
+      }
+      expect(snap(fixed, log)).toEqual(before)
+    }
+  })
+
+  it('two devices offline with the same books, each hatching oldest first, give what one device would (40 random cases)', () => {
+    for (let trial = 0; trial < 40; trial++) {
+      const nb = 30 + Math.floor(rnd() * 40)
+      const books = daily(nb)
+      const earned = earnedEggs(books, readingDays(books), day(400)).map((e) => e.id)
+      const welcome = hatchWelcome('cat')
+      const device = () => {
+        let t = at(day(nb + 2)) + Math.floor(rnd() * 1e7)
+        return earned.slice(0, Math.floor(rnd() * earned.length)).map((e) => hatchEgg(e, (t += 1 + Math.floor(rnd() * 1e6))))
+      }
+      const a = device()
+      const b = device()
+      const set = new Set([...a, ...b].map((e) => (e as { egg: string }).egg))
+      let t = at(day(nb + 2))
+      const one = derive(books, [welcome, ...earned.filter((e) => set.has(e)).map((e) => hatchEgg(e, (t += 1000)))])
+      const both = derive(books, [welcome, ...a, ...b])
+      expect(both.duplicates.map((d) => [d.egg, d.shiny])).toEqual(one.duplicates.map((d) => [d.egg, d.shiny]))
+      expect(both.pets.map((p) => [p.id, p.shiny])).toEqual(one.pets.map((p) => [p.id, p.shiny]))
+    }
+  })
+
+  it('two devices offline with different books: a named pet may go back to waiting, and Keep brings it back with its name', () => {
+    // A known edge (see the task's Test): the phone has a finish the computer hasn't got yet.
+    const hs = eggSpecies('m:hours-10', 'common')
+    let n = 5
+    while (n % 25 === 0 || eggSpecies(`m:books-${n}`, 'common') !== hs) n += 5
+    const shorts = Array.from({ length: n }, (_, i) => book({ pages: 1, finished: [day(i)] }))
+    const audio = book({ status: 'reading', formats: ['storytel'], minutes: 600, pages: 600, readingLog: { [day(n + 5)]: 1 } })
+    const books = [...shorts, audio]
+    const common: ChoiceEvent[] = [hatchWelcome(WELCOME_CHOICES.find((w) => w !== hs)!)]
+    let t = at(day(n + 6), '09:00')
+    for (let k = 5; k < n; k += 5) common.push(hatchEgg(`m:books-${k}`, (t += 1000)))
+    for (const x of derive(books, common).waiting) common.push(ev({ kind: 'choose', egg: x.egg, pick: 'keep' }, (t += 1000)))
+    // the computer, without the n-th finish, hatches hours-10 at 10:00; the phone hatches books-n at 11:00
+    const computer = [hatchEgg('m:hours-10', at(day(n + 6), '10:00')), ev({ kind: 'name', key: 'm:hours-10', name: 'Coco' }, at(day(n + 6), '10:01'))]
+    const phone = [hatchEgg(`m:books-${n}`, at(day(n + 6), '11:00')), ev({ kind: 'name', key: `m:books-${n}`, name: 'Precious' }, at(day(n + 6), '11:01'))]
+    expect(snap(books, [...common, ...phone]).pets).toContain(`m:books-${n}:${hs}:false:Precious`)
+    const merged = snap(books, [...common, ...phone, ...computer])
+    expect(merged.pets).toContain(`m:hours-10:${hs}:false:Coco`)
+    expect(merged.waiting).toContain(`m:books-${n}`)
+    const kept = snap(books, [...common, ...phone, ...computer, ev({ kind: 'choose', egg: `m:books-${n}`, pick: 'keep' }, at(day(n + 7)))])
+    expect(kept.pets).toContain(`m:books-${n}:${hs}:false:Precious`)
   })
 })

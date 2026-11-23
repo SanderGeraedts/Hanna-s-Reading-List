@@ -877,6 +877,61 @@ nothing).
 `pets.test.ts` *power-ups and releases together (tester)*, 2 tests. Plus the two skipped
 regressions for the faults above.
 
+### Tester re-check after the send-back (2026-11-23)
+
+**Verdict: passed.** I re-checked only the two faults and what the fix touches: the hatch-order
+derivation in `deriveCreatures` and the pending pick in `CreaturesPage`.
+
+- **CI** (`gh pr checks 252`, run 45112907287 on `2b15d66`, attempt 1): `checks / checks` pass
+  (1 m 16 s), deploy preview ready, e2e and shards skipping as before. Log: `Test Files 114 passed
+  | 1 skipped (115)`, `Tests 1490 passed | 9 skipped (1499)`. No retries (`grep -ciE
+  "retry|flaky"` → 0). Main (T-0039, #248) is merged in, and #252 has no conflicts.
+- **Commands** (clean `pnpm install --frozen-lockfile`): `pnpm test`: `Test Files 114 passed | 1
+  skipped (115)`, `Tests 1493 passed | 9 skipped (1502)` (with my 3 new tests). The new and
+  affected tests 5 times shuffled (`vitest run src/lib/creatures src/components/CreaturesEggs.test.tsx
+  src/components/CreaturesPage.test.tsx src/components/creatures --sequence.shuffle`): `Test
+  Files 13 passed (13)`, `Tests 330 passed (330)` each time. `tsc --noEmit`: no output. `pnpm run
+  build`: `✓ built` (client and server). `harness check`: ✓ tasks 43, ✓ decisions 42 (3 overrules
+  valid), ✓ engineers 2, ✓ generated files current. Both of my regressions are un-skipped and pass.
+- **Fault 1 (a fixed past day), tried to break it:**
+  - *60 random fixes* (new test): random shelves of 20 to 80 books, every egg hatched, random
+    keep / cookies choices and names. Then I un-finished 1 to 5 books and moved 3 finish days.
+    Pets, species, **shiny**, names, waiting duplicates, duplicate cookies and found shinies were
+    unchanged in all 60. Shinies stay put after a fix.
+  - *Two devices offline with the same books* (new test, 40 random cases): each device hatches
+    oldest first at its own random times, and the logs are merged. This gives exactly what one
+    device hatching the same eggs in earned order gives (duplicates, shinies, pets). The
+    developer's argument holds, and here is why. If egg e1 was earned before e2, then on every
+    device hatch(e1) < hatch(e2). So the earliest hatch of e1 comes before the device that
+    hatched e2 first hatched e1, which comes before that device's hatch of e2. The merged order
+    can't invert.
+  - *Where it can still happen* (new test that records it): the devices have **different books**
+    while both are offline. Say the phone has a finish the computer hasn't got yet, and each one
+    hatches a different "oldest" egg of the same species. After the merge, the later hatch
+    becomes the duplicate. A pet the phone had named ("Precious") goes back to waiting as "Your
+    new capybara is waiting". Choosing **Keep brings it back with its name**, so nothing is lost
+    for good. In that case a duplicate's shiny chance can change, and so can a cookies choice
+    made on the phone. Wrong device clocks can do the same. This needs two devices that are
+    offline at the same time, with different shelves, both hatching. I'm leaving it as a known
+    edge for the architect, not a send-back. A full cure would need the hatch outcome saved,
+    which D-0033 §1 rules out today.
+- **Fault 2 (the pending pick)**, in real Chrome (no-backend dev server on 3164, playwright-core,
+  390 × 844 with touch and 1280 × 800; vite stopped afterwards, port free). At both sizes:
+  - tap Blizzard, then Dashboard 0.25 s later: the block shows "Blizzard the polar bear, level
+    1.", one `current` event is saved, and Creatures still shows Blizzard with no second event;
+  - tap Pip, then reload 0.3 s later: Pip is current, saved once;
+  - tap Pumpkin, then the page is hidden 0.2 s later (`visibilitychange` to hidden): saved at
+    once, and no second event when the 1 s timer would have run;
+  - 4 × ArrowDown: nothing saved while arrowing, one event 1.5 s later. Down, Up, Up and then
+    straight to Dashboard keeps only the last pick (Pumpkin). One run at 390 had lost a key press
+    on the slow software renderer; the rerun was clean 3 out of 3, with every step logged.
+  - opening the tab and leaving without a pick saves nothing.
+  - No page errors.
+
+**Tests added in the re-check** (`pets.test.ts`, *hatch order after the fix (tester re-check)*):
+60 random past-day fixes; two offline devices with the same books; two offline devices with
+different books (the known edge, and that Keep brings the pet back with its name).
+
 # Log
 
 - 2026-11-22 architect: wrote CR2 from Hanna's brief and D-0033 (milestones, tiers, shiny safety).
@@ -933,3 +988,9 @@ regressions for the faults above.
   Dashboard or reload): 4/4 PASS at 390 touch and 1280, one `current` event saved and the picked
   pet shown; vite stopped, port free. Lesson added. Remaining: tester re-check; Hanna's six morning
   questions; Done when 4.
+- 2026-11-23 tester: passed (re-check of the send-back: hatch outcomes stay put after 60 random
+  past-day fixes, shinies included; two offline devices with the same books can't invert the hatch
+  order; a pick survives a tab switch, a reload and the page being hidden, in real Chrome at 390
+  and 1280). Known edge for the architect: two devices offline at once with different shelves can
+  put a named pet back to "waiting", and Keep restores it with its name. Remaining: Hanna confirms
+  the album on the live site (Done when 4); Hanna's six morning questions (Design).
