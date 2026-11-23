@@ -5582,3 +5582,381 @@ button.today-item:hover {
     display: none;
   }
 }
+
+/* ---- eggs, the album, pets and release (T-0030) ------------------------------------------ */
+.still-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+.still-missing {
+  display: grid;
+  place-items: center;
+  max-width: 100%;
+  aspect-ratio: 1;
+  font-family: var(--serif);
+  color: var(--muted);
+  font-size: 1.4rem;
+}
+.tier-line {
+  font-size: var(--fs-small);
+  white-space: nowrap;
+}
+.tier-gems {
+  color: var(--accent);
+  letter-spacing: 0.05em;
+}
+.tier-word {
+  color: var(--muted);
+}
+.reveal .tier-line .tier-word,
+.album-group h3 {
+  color: var(--text);
+}
+.reveal h2 {
+  overflow-wrap: anywhere;
+}
+.reveal-new {
+  margin: 0;
+}
+
+/* the duplicate choice: three full-width buttons in a column, 44 px at least */
+.dup-choices {
+  display: grid;
+  gap: var(--space-2);
+  width: 100%;
+}
+.dup-choices .btn,
+.dup-which .btn,
+.release-confirm .btn {
+  min-height: 44px;
+}
+.dup-which,
+.dup-warn {
+  display: grid;
+  gap: var(--space-3);
+  width: 100%;
+}
+.which-list {
+  display: grid;
+  gap: var(--space-2);
+}
+.which-list:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: var(--radius-small);
+}
+.which-title {
+  margin: 0;
+}
+
+/* the "This is a shiny!" warning */
+.shiny-warning {
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-card);
+  padding: var(--space-3);
+  color: var(--text);
+  display: grid;
+  gap: var(--space-1);
+}
+.shiny-warning p {
+  margin: 0;
+}
+
+/* the hold button: a secondary button in --danger; a fill grows left to right over 2 s */
+.hold-btn {
+  position: relative;
+  overflow: hidden;
+  border-color: var(--danger);
+  color: var(--danger);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+}
+.hold-btn:hover:not(:disabled) {
+  border-color: var(--danger);
+}
+.hold-fill {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--danger) 35%, transparent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 200ms ease-out;
+  pointer-events: none;
+}
+.hold-btn.holding .hold-fill {
+  transform: scaleX(1);
+  transition: transform var(--hold-ms, 2000ms) linear;
+}
+.hold-label {
+  position: relative;
+}
+.danger-btn,
+.release-btn {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.release-btn {
+  border-color: var(--border-strong);
+}
+.release-btn[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: default;
+}
+.release-row {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: var(--space-1);
+}
+.release-confirm {
+  display: grid;
+  gap: var(--space-2);
+}
+.release-confirm h3,
+.release-confirm p {
+  margin: 0;
+}
+.release-confirm h3 {
+  overflow-wrap: anywhere;
+}
+
+/* the Eggs card */
+.eggs-card {
+  gap: var(--space-3);
+}
+.eggs-row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+.eggs-tile {
+  flex: none;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.eggs-info {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.eggs-info p {
+  margin: 0;
+}
+.eggs-then {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.eggs-small {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.eggs-small li {
+  width: 40px;
+  min-height: 40px;
+  display: grid;
+  place-items: center;
+}
+.next-egg {
+  margin: 0;
+}
+
+/* Your pets: one row per pet, the whole row is the target */
+.pets-card h2 .muted {
+  font-weight: 400;
+}
+.pets-list {
+  display: grid;
+  gap: var(--space-2);
+}
+.pet-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 56px;
+  padding: var(--space-1) var(--space-2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface-sunken);
+  cursor: pointer;
+}
+.pet-row:hover {
+  border-color: var(--accent-line);
+}
+.pet-row.current {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+.pet-row:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.pet-tile {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+.pet-text {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+}
+.pet-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pet-line {
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.pet-chip {
+  flex: none;
+  font-size: var(--fs-small);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
+}
+
+/* the album: 5 a row at 1280, 2 at 390 */
+.album-card {
+  gap: var(--space-3);
+}
+.album-head {
+  display: grid;
+  gap: var(--space-1);
+}
+.album-count {
+  margin: 0;
+  font-size: var(--fs-body);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.album-bar {
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+.album-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--radius-pill);
+}
+.album-group {
+  display: grid;
+  gap: var(--space-2);
+}
+.album-group h3 {
+  margin: 0;
+  font-size: var(--fs-body);
+}
+.album-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-3);
+}
+@media (max-width: 720px) {
+  .album-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+}
+.album-item {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface-raised);
+  min-width: 0;
+}
+.album-item.legendary {
+  border-color: var(--accent-line);
+}
+.album-pic {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius-small);
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 240, 215, 0.14), transparent 70%),
+    var(--surface-sunken);
+  margin-bottom: var(--space-1);
+  display: grid;
+  place-items: center;
+}
+.album-item.unknown .album-pic {
+  border: 2px dashed var(--border-strong);
+}
+.silhouette {
+  filter: brightness(0) drop-shadow(0 0 1.5px rgba(244, 234, 217, 0.5));
+}
+.album-count-pill {
+  position: absolute;
+  top: var(--space-1);
+  left: var(--space-1);
+  font-size: var(--fs-small);
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-solid);
+  color: var(--text);
+}
+.album-shiny-toggle {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-solid);
+  cursor: pointer;
+  font-size: 1.1rem;
+  display: grid;
+  place-items: center;
+}
+.album-shiny-toggle[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.album-shiny-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.album-name {
+  font-weight: 600;
+  font-size: var(--fs-body);
+  overflow-wrap: anywhere;
+}
+.album-label {
+  font-size: var(--fs-small);
+  color: var(--text);
+}
+.album-source {
+  font-size: var(--fs-tiny);
+  color: var(--muted);
+}

@@ -2,8 +2,9 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import type { Mood, Stage } from '#/lib/creatures/creature'
-import type { SpeciesId } from '#/lib/creatures/species'
+import type { SpeciesId, Tier } from '#/lib/creatures/species'
 import { creatureFor, eyeOpen, headTilt, rigOf, usePageVisible } from './pose'
+import { SPARKLE_SPOTS, glowTex, makeEgg, sparkleTexture } from './eggModel'
 import type { Rig } from './pose'
 
 /**
@@ -20,7 +21,10 @@ import type { Rig } from './pose'
  * tab unmounts it.
  */
 
-export type DenShows = { kind: 'egg' } | { kind: 'crack'; species: SpeciesId; shiny: boolean } | { kind: 'creature'; species: SpeciesId; shiny: boolean; stage: Stage; mood: Mood | null }
+export type DenShows =
+  | { kind: 'egg'; tier?: Tier }
+  | { kind: 'crack'; species: SpeciesId; shiny: boolean; tier?: Tier }
+  | { kind: 'creature'; species: SpeciesId; shiny: boolean; stage: Stage; mood: Mood | null }
 
 /** A tap reaction: a new `n` starts it again. */
 export interface Reaction {
@@ -48,7 +52,6 @@ const RUG = '#6e4f8f'
 const GOLD = '#d9a85b'
 const COOKIE = '#c98a4b'
 const BOWL = '#7a5236'
-const EGG = '#f3e9d8'
 
 /** Share of the canvas height a creature fills, per stage (Design §5). */
 const FILL: Record<Stage, number> = { grown: 0.6, young: 0.46, baby: 0.33 }
@@ -102,9 +105,17 @@ export function DenScene({ shows, cookies, phone, reduce, paused, reaction, onCr
       <directionalLight position={[0, 3, -4]} intensity={0.5} color="#fff3e0" />
       <Room phone={phone} />
       <Bowl cookies={cookies} phone={phone} />
-      {shows.kind === 'egg' && <Egg phone={phone} reduce={reduce} rock={!phone && !reduce} />}
+      {shows.kind === 'egg' && <Egg key={shows.tier ?? 'common'} tier={shows.tier ?? 'common'} phone={phone} rock={!phone && !reduce} />}
       {shows.kind === 'crack' && (
-        <Crack species={shows.species} shiny={shows.shiny} phone={phone} reduce={reduce} onDone={onCrackDone} />
+        <Crack
+          key={`${shows.species}|${shows.tier ?? 'common'}`}
+          species={shows.species}
+          shiny={shows.shiny}
+          tier={shows.tier ?? 'common'}
+          phone={phone}
+          reduce={reduce}
+          onDone={onCrackDone}
+        />
       )}
       {shows.kind === 'creature' && (
         <Creature
@@ -219,67 +230,12 @@ function Bowl({ cookies, phone }: { cookies: number; phone: boolean }) {
   )
 }
 
-// ---- the welcome egg ----------------------------------------------------------------------
-
-/** 0.55 model units tall, scaled [1, 1.28, 1]; as two halves, so it can crack. */
-const EGG_R = 0.55 / 2 / 1.28
-const SPOTS: Array<[number, number]> = [
-  [0.3, 0.35],
-  [1.4, 0.55],
-  [2.5, 0.3],
-  [3.6, 0.6],
-  [4.7, 0.4],
-  [5.7, 0.7],
-]
-
-/**
- * The six gold spots on the upper half, lying flat on the shell. They live inside the egg's
- * [1, 1.28, 1] group, so each one first undoes that scale (scale [1, 1/1.28, 1] at its point) and is
- * then turned to the shell's real normal there: a non-uniform parent scale would otherwise skew the
- * flattened discs sideways into slits.
- */
-const EGG_STRETCH = 1.28
-const SPOT_PLACES = SPOTS.map(([a, h]) => {
-  // a point on the unit-scaled half sphere: angle a round it, height h (0 equator … 1 top)
-  const phi = (1 - h) * (Math.PI / 2)
-  const p = new THREE.Vector3(Math.sin(phi) * Math.cos(a), Math.cos(phi), Math.sin(phi) * Math.sin(a))
-  // the normal of the stretched egg at that point
-  const n = new THREE.Vector3(p.x, p.y / EGG_STRETCH, p.z).normalize()
-  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), n)
-  return { position: p.multiplyScalar(EGG_R * 0.985).toArray() as [number, number, number], quaternion: q }
-})
-
-function EggSpots() {
-  return (
-    <>
-      {SPOT_PLACES.map((s, i) => (
-        <group key={i} position={s.position} scale={[1, 1 / EGG_STRETCH, 1]}>
-          <mesh quaternion={s.quaternion} scale={[1, 1, 0.3]}>
-            <sphereGeometry args={[0.032, 10, 6]} />
-            <meshStandardMaterial color={GOLD} roughness={0.7} />
-          </mesh>
-        </group>
-      ))}
-    </>
-  )
-}
-
-function EggHalf({ top, phone }: { top: boolean; phone: boolean }) {
-  const seg = phone ? 16 : 24
-  return (
-    <group>
-      <mesh castShadow={!phone}>
-        <sphereGeometry args={[EGG_R, seg, seg / 2, 0, Math.PI * 2, top ? 0 : Math.PI / 2, Math.PI / 2]} />
-        <meshStandardMaterial color={EGG} roughness={1} side={THREE.DoubleSide} />
-      </mesh>
-      {top && <EggSpots />}
-    </group>
-  )
-}
+// ---- the egg ------------------------------------------------------------------------------
 
 /** The egg on the cushion: tilted 6°; on a computer it rocks ±4° for 0.8 s about every 6 s. */
-function Egg({ phone, rock }: { phone: boolean; reduce: boolean; rock: boolean }) {
+function Egg({ tier, phone, rock }: { tier: Tier; phone: boolean; rock: boolean }) {
   const g = useRef<THREE.Group>(null)
+  const egg = useMemo(() => makeEgg(tier, phone), [tier, phone])
   useFrame(({ clock }) => {
     if (!g.current) return
     const t = clock.elapsedTime % 6
@@ -289,10 +245,7 @@ function Egg({ phone, rock }: { phone: boolean; reduce: boolean; rock: boolean }
   return (
     <group position={[0, SEAT, 0]}>
       <group ref={g} rotation={[0, 0, (6 * Math.PI) / 180]}>
-        <group scale={[1, 1.28, 1]} position={[0, EGG_R * 1.28, 0]}>
-          <EggHalf top phone={phone} />
-          <EggHalf top={false} phone={phone} />
-        </group>
+        <primitive object={egg.root} />
       </group>
     </group>
   )
@@ -312,11 +265,31 @@ const BIG = 1.7
  * (0.6 → 1 in 0.3 s, a small overshoot). With reduce motion a 200 ms
  * cross-fade from egg to baby.
  */
-function Crack({ species, shiny, phone, reduce, onDone }: { species: SpeciesId; shiny: boolean; phone: boolean; reduce: boolean; onDone?: () => void }) {
+function Crack({
+  species,
+  shiny,
+  tier,
+  phone,
+  reduce,
+  onDone,
+}: {
+  species: SpeciesId
+  shiny: boolean
+  tier: Tier
+  phone: boolean
+  reduce: boolean
+  onDone?: () => void
+}) {
   const egg = useRef<THREE.Group>(null)
-  const topHalf = useRef<THREE.Group>(null)
-  const bottomHalf = useRef<THREE.Group>(null)
+  const parts = useMemo(() => makeEgg(tier, phone), [tier, phone])
+  const topHalf = useRef<THREE.Group>(parts.top)
+  const bottomHalf = useRef<THREE.Group>(parts.bottom)
   const baby = useRef<THREE.Group>(null)
+  const glow = useRef<THREE.Sprite>(null)
+  const ring = useRef<THREE.Group>(null)
+  // rarity in the moment (T-0030 Design §3): a glow for rare and up, also a ring of sparkles for epic and up
+  const glows = tier === 'rare' || tier === 'very rare' || tier === 'epic' || tier === 'legendary'
+  const rings = tier === 'epic' || tier === 'legendary'
   const start = useRef<number | null>(null)
   const done = useRef(false)
   const { invalidate } = useThree()
@@ -350,6 +323,23 @@ function Crack({ species, shiny, phone, reduce, onDone }: { species: SpeciesId; 
         const over = p < 1 ? 0.6 + 0.4 * (1 - Math.pow(1 - p, 3)) + Math.sin(p * Math.PI) * 0.12 : 1
         baby.current.visible = p > 0
         baby.current.scale.setScalar(scale * over)
+        // the glow behind the baby while it pops (0.6 s), the ring drifting out and fading (1 s)
+        const g = t - WOBBLE - SPLIT * 0.6
+        if (glow.current) {
+          const k = g < 0 ? 0 : g < 0.6 ? Math.sin((g / 0.6) * Math.PI) : 0
+          glow.current.visible = k > 0
+          glow.current.material.opacity = k
+        }
+        if (ring.current) {
+          const k = g < 0 ? -1 : g
+          ring.current.visible = k >= 0 && k < 1
+          ring.current.children.forEach((child, i) => {
+            const an = (i / 12) * Math.PI * 2
+            const r = 0.25 + 0.55 * Math.max(0, k)
+            child.position.set(Math.cos(an) * r, 0.35 + Math.sin(an) * r * 0.6, 0.2)
+            ;((child as THREE.Sprite).material as THREE.SpriteMaterial).opacity = Math.max(0, 1 - k)
+          })
+        }
       }
     }
     if (t < total + 0.05) invalidate()
@@ -362,17 +352,25 @@ function Crack({ species, shiny, phone, reduce, onDone }: { species: SpeciesId; 
   return (
     <group position={[0, SEAT, 0]}>
       <group ref={egg} scale={BIG}>
-        <group scale={[1, 1.28, 1]} position={[0, EGG_R * 1.28, 0]}>
-          <group ref={topHalf}>
-            <EggHalf top phone={phone} />
-          </group>
-          <group ref={bottomHalf}>
-            <EggHalf top={false} phone={phone} />
-          </group>
-        </group>
+        <primitive object={parts.root} />
       </group>
+      {glows && !reduce && (
+        <sprite ref={glow} position={[0, 0.32, -0.25]} scale={[1.1, 1.1, 1]} visible={false}>
+          <spriteMaterial map={glowTex()} transparent opacity={0} depthWrite={false} toneMapped={false} />
+        </sprite>
+      )}
+      {rings && !reduce && (
+        <group ref={ring} visible={false}>
+          {Array.from({ length: 12 }, (_, i) => (
+            <sprite key={i} scale={[0.07, 0.07, 1]}>
+              <spriteMaterial map={sparkleTexture()} transparent opacity={0} depthWrite={false} toneMapped={false} />
+            </sprite>
+          ))}
+        </group>
+      )}
       <group ref={baby} visible={reduce} scale={reduce ? scale : scale * 0.6}>
         <primitive object={rig.root} />
+        {shiny && <Sparkles height={rig.height} twinkle={false} />}
       </group>
     </group>
   )
@@ -478,18 +476,50 @@ function Creature({
   return (
     <group ref={holder} position={[0, SEAT, 0]} scale={scale}>
       <primitive object={rig.root} />
+      {shiny && <Sparkles height={rig.height} twinkle={!phone && !reduce} />}
     </group>
   )
 }
 
-/** The welcome egg standing still (the dashboard block's picture): 0.55 model units tall, tilted 6°. */
-export function StillEgg({ phone }: { phone: boolean }) {
+/** An egg standing still (the dashboard block's picture): 0.55 model units tall, tilted 6°. */
+export function StillEgg({ phone, tier = 'common' }: { phone: boolean; tier?: Tier }) {
+  const egg = useMemo(() => makeEgg(tier, phone), [tier, phone])
   return (
     <group rotation={[0, 0, (6 * Math.PI) / 180]}>
-      <group scale={[1, 1.28, 1]} position={[0, EGG_R * 1.28, 0]}>
-        <EggHalf top phone={phone} />
-        <EggHalf top={false} phone={phone} />
-      </group>
+      <primitive object={egg.root} />
+    </group>
+  )
+}
+
+/**
+ * The shiny sparkle (T-0030 Design §4): 8 tiny four-point stars in #f4d68c on a loose ring at head
+ * and shoulder height. On a computer they twinkle (each in its own 2–3 s) and drift round once in
+ * about 20 s; on a phone and with reduce motion they stand still at 70 %.
+ */
+function Sparkles({ height, twinkle }: { height: number; twinkle: boolean }) {
+  const g = useRef<THREE.Group>(null)
+  const tex = sparkleTexture()
+  useFrame(({ clock }) => {
+    if (!twinkle || !g.current) return
+    const t = clock.elapsedTime
+    g.current.rotation.y = (t / 20) * Math.PI * 2
+    g.current.children.forEach((child, i) => {
+      const period = 2 + (i % 3) * 0.5
+      ;((child as THREE.Sprite).material as THREE.SpriteMaterial).opacity = 0.65 + 0.35 * Math.sin((t / period) * Math.PI * 2 + i)
+    })
+  })
+  const r = height * 0.55
+  return (
+    <group ref={g}>
+      {SPARKLE_SPOTS.map((sp, i) => (
+        <sprite
+          key={i}
+          position={[Math.cos(sp.angle) * r, sp.y * height, Math.sin(sp.angle) * r]}
+          scale={[sp.size * height * 1.4, sp.size * height * 1.4, 1]}
+        >
+          <spriteMaterial map={tex} transparent opacity={0.7} depthWrite={false} toneMapped={false} />
+        </sprite>
+      ))}
     </group>
   )
 }

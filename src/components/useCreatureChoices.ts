@@ -44,6 +44,10 @@ export interface CreatureChoices {
   rename: (pet: string, name: string) => void
   /** gives a pet cookies; quick taps within 2 s become one event with the total */
   feed: (pet: string, amount: number) => void
+  /** saves the hatch of a milestone egg, at once (T-0030 Design §3) */
+  hatchEgg: (egg: string) => void
+  /** saves another choice (a duplicate choice, a release, the current pet), already checked by the caller */
+  record: (event: { kind: 'choose' | 'release' | 'current' } & Record<string, string | number | undefined>) => void
 }
 
 /**
@@ -173,7 +177,25 @@ export function useCreatureChoices(accountId: string | null, storage?: Storage, 
     [key, now, st, store, sync],
   )
 
-  return { log, hatch, rename, feed }
+  const hatchEgg = useCallback(
+    (egg: string) => {
+      const at = now()
+      add([{ id: newEventId('hatch', at), at, kind: 'hatch', egg }])
+    },
+    [add, now],
+  )
+
+  const record = useCallback<CreatureChoices['record']>(
+    (body) => {
+      const at = now()
+      const e: Record<string, string | number> = { id: newEventId(body.kind, at), at }
+      for (const [k, v] of Object.entries(body)) if (v !== undefined) e[k] = v
+      add([e as unknown as ChoiceEvent])
+    },
+    [add, now],
+  )
+
+  return { log, hatch, rename, feed, hatchEgg, record }
 }
 
 /** The newest level she has seen a level-up of, per pet, on this device (Design §11). */

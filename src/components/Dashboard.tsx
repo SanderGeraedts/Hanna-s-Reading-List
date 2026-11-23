@@ -100,8 +100,11 @@ interface DashboardProps extends Props {
   onOpenCalendar?: (month: string) => void
   /** put a suggested book on the shelf ("New for you") */
   onAdd?: (book: NewBook) => void
-  /** the Creatures tab; `choose`: straight to choosing the first creature (a Hatch button) */
-  onOpenCreatures?: (choose?: boolean) => void
+  /**
+   * the Creatures tab; `choose`: straight to choosing the first creature, `hatch`: hatching the
+   * oldest egg, `duplicate`: the choice for a duplicate (a Hatch or Choose button)
+   */
+  onOpenCreatures?: (step?: 'choose' | 'hatch' | 'duplicate') => void
 }
 
 export interface PeriodPick {
@@ -253,8 +256,14 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
     : undefined
   // her creature (T-0029): the welcome egg and the newest level-up wait here too, never in a pop-up
   const creatures = useCreatures(books)
-  const hatchEgg = onOpenCreatures ? () => onOpenCreatures(true) : undefined
+  const hatchEgg = onOpenCreatures ? () => onOpenCreatures('choose') : undefined
   const creatureEgg = creatures.c.egg && hatchEgg ? { onHatch: hatchEgg } : undefined
+  // milestone eggs and duplicates waiting for her choice (T-0030), only once she has her first pet
+  const hatchMilestone = onOpenCreatures ? () => onOpenCreatures('hatch') : undefined
+  const creatureEggs = creatures.c.pet && creatures.c.eggs.length && hatchMilestone ? { eggs: creatures.c.eggs, onHatch: hatchMilestone } : undefined
+  const waitingDup = creatures.c.pet ? creatures.c.waiting[0] : undefined
+  const creatureDuplicate =
+    waitingDup && onOpenCreatures ? { species: waitingDup.species, onChoose: () => onOpenCreatures('duplicate') } : undefined
   const levelUp = creatures.levelUp
   const creatureLevelUp = levelUp
     ? {
@@ -273,6 +282,8 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
     !wrapUp &&
     !dustOff &&
     !creatureEgg &&
+    !creatureEggs &&
+    !creatureDuplicate &&
     !creatureLevelUp
 
   const blocks: Record<BlockId, React.ReactNode> = {
@@ -287,6 +298,8 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
         wrapUp={wrapUp}
         dustOff={dustOff}
         creatureEgg={creatureEgg}
+        creatureEggs={creatureEggs}
+        creatureDuplicate={creatureDuplicate}
         creatureLevelUp={creatureLevelUp}
       />
     ),
@@ -296,6 +309,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
         onFeed={creatures.feed}
         onOpen={onOpenCreatures ? () => onOpenCreatures() : undefined}
         onHatch={hatchEgg}
+        onHatchMilestone={hatchMilestone}
       />
     ),
     badges: <BadgesCard books={books} />,

@@ -6,6 +6,9 @@ import { joinSeries, notInSeries } from '#/lib/sleepSeries'
 import type { SeriesQuestion } from '#/lib/sleepSeries'
 import { ratingText, spiceText, NO_SPICE } from '#/lib/ratings'
 import type { Badge } from '#/lib/badges'
+import type { Egg } from '#/lib/creatures/eggs'
+import type { SpeciesId } from '#/lib/creatures/species'
+import { eggReason, eggsWaitingLine, speciesWord } from '#/lib/creatures/words'
 import { StarRating } from './StarRating'
 import { Cover } from './Dashboard'
 
@@ -25,6 +28,10 @@ interface Props {
   dustOff?: { book: Book; waited: string; onDismiss: () => void }
   /** the welcome egg, until she hatches it (T-0029): Hatch goes to the Creatures tab */
   creatureEgg?: { onHatch: () => void }
+  /** milestone eggs waiting, oldest first (T-0030): one line, Hatch hatches the oldest in the Creatures tab */
+  creatureEggs?: { eggs: Egg[]; onHatch: () => void }
+  /** a duplicate waiting for her choice (T-0030) */
+  creatureDuplicate?: { species: SpeciesId; onChoose: () => void }
   /** her creature's newest level-up, not seen on this device yet (T-0029) */
   creatureLevelUp?: { text: string; onNice: () => void; onVisit: () => void }
 }
@@ -45,6 +52,8 @@ export function WaitingCard({
   wrapUp,
   dustOff,
   creatureEgg,
+  creatureEggs,
+  creatureDuplicate,
   creatureLevelUp,
 }: Props) {
   const heading = useRef<HTMLHeadingElement>(null)
@@ -59,6 +68,8 @@ export function WaitingCard({
         !wrapUp &&
         !dustOff &&
         !creatureEgg &&
+        !creatureEggs &&
+        !creatureDuplicate &&
         !creatureLevelUp && <p className="muted small-text">Nothing waiting.</p>}
       {creatureEgg && (
         <ul className="waiting-list">
@@ -73,6 +84,55 @@ export function WaitingCard({
               <div className="chips">
                 <button type="button" className="btn small primary" onClick={creatureEgg.onHatch}>
                   Hatch
+                </button>
+              </div>
+            </div>
+          </li>
+        </ul>
+      )}
+      {creatureEggs && (
+        <ul className="waiting-list">
+          <li>
+            <span className="badge-icon" aria-hidden>
+              🥚
+            </span>
+            <div className="waiting-info">
+              <p className="waiting-title">
+                <strong>{eggsWaitingLine(creatureEggs.eggs)}</strong>
+              </p>
+              {creatureEggs.eggs.length === 1 && <p className="muted small-text">{eggReason(creatureEggs.eggs[0])}</p>}
+              <div className="chips">
+                <button
+                  type="button"
+                  className="btn small primary"
+                  aria-label={creatureEggs.eggs.length === 1 ? `Hatch the ${creatureEggs.eggs[0].tier} egg` : 'Hatch the oldest egg'}
+                  onClick={creatureEggs.onHatch}
+                >
+                  Hatch
+                </button>
+              </div>
+            </div>
+          </li>
+        </ul>
+      )}
+      {creatureDuplicate && (
+        <ul className="waiting-list">
+          <li>
+            <span className="badge-icon" aria-hidden>
+              🐣
+            </span>
+            <div className="waiting-info">
+              <p className="waiting-title">
+                <strong>Your new {speciesWord(creatureDuplicate.species)} is waiting for you to choose</strong>
+              </p>
+              <div className="chips">
+                <button
+                  type="button"
+                  className="btn small primary"
+                  aria-label={`Choose for your new ${speciesWord(creatureDuplicate.species)}`}
+                  onClick={creatureDuplicate.onChoose}
+                >
+                  Choose
                 </button>
               </div>
             </div>

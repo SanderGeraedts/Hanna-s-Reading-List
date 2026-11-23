@@ -84,7 +84,7 @@ describe('the first hatch', () => {
   it('is shiny or not the same way for the same egg every time (1 in 20)', () => {
     expect(isShinyEgg(WELCOME_EGG)).toBe(isShinyEgg(WELCOME_EGG))
     const ids = Array.from({ length: 4000 }, (_, i) => `m:books-${i}`)
-    const shinies = ids.filter(isShinyEgg).length
+    const shinies = ids.filter((id) => isShinyEgg(id)).length
     expect(shinies).toBeGreaterThan(140)
     expect(shinies).toBeLessThan(260)
     const c1 = deriveCreatures([], [hatch('cat', at(S))], at(S))
