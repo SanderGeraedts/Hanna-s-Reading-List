@@ -817,6 +817,7 @@ textarea.input {
 /* ---- finding and zooming on the shelf -------------------------------- */
 /* on the lavender wall: light buttons with dark plum text, like ↻ */
 .zoom-controls .btn,
+.world-zoom .btn,
 .shelf-pan .btn,
 .topbar .btn.search-clear {
   background: rgba(255, 255, 255, 0.78);
@@ -824,6 +825,7 @@ textarea.input {
   border-color: rgba(45, 32, 56, 0.2);
 }
 .zoom-controls .btn:hover:not(:disabled),
+.world-zoom .btn:hover:not(:disabled),
 .shelf-pan .btn:hover:not(:disabled):not([aria-disabled='true']),
 .topbar .btn.search-clear:hover:not(:disabled) {
   background: #fff;
@@ -838,6 +840,7 @@ textarea.input {
   gap: var(--space-2);
 }
 .zoom-controls .btn,
+.world-zoom .btn,
 .shelf-pan .btn {
   width: var(--tap);
   height: var(--tap);
@@ -3771,9 +3774,7 @@ textarea.input {
   cursor: pointer;
 }
 .own-challenge-books img,
-.own-challenge-books .cover-chip,
-.world-land-books img,
-.world-land-books .cover-chip {
+.own-challenge-books .cover-chip {
   display: block;
   width: 2.2rem;
   height: 3.3rem;
@@ -4513,17 +4514,135 @@ textarea.input {
 }
 
 /* ---- reading in pictures: where your books are set -------------------- */
-.world-map {
-  width: 100%;
-  height: auto;
+/* the frame holds the map and, under it, the zoom strip, in the same ocean tint (T-0039) */
+.world-map-frame {
   margin: var(--space-2) 0;
   border-radius: var(--radius-small);
   background: rgba(120, 160, 200, 0.12);
 }
+.world-map {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-small) var(--radius-small) 0 0;
+  overflow: hidden;
+}
+.world-map.zoomed,
+.world-map.zoomed .world-country,
+.world-map.zoomed .world-zone {
+  cursor: grab;
+}
+.world-map.grabbing,
+.world-map.grabbing .world-country,
+.world-map.grabbing .world-zone {
+  cursor: grabbing;
+}
+.world-map:focus {
+  outline: none;
+}
+.world-map:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.world-zoom {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2) var(--space-2);
+}
 .world-country {
   fill: rgba(255, 255, 255, 0.1);
   stroke: rgba(0, 0, 0, 0.35);
-  stroke-width: 0.25;
+  /* as thin at 8× as at zoom one */
+  stroke-width: 0.3px;
+  vector-effect: non-scaling-stroke;
+  cursor: pointer;
+}
+/* an SVG path can't take an outline reliably: the focused country gets the dashed gold mark instead */
+.world-country:focus {
+  outline: none;
+}
+@media (hover: hover) {
+  .world-country:not(.lit):hover {
+    fill: var(--border-strong);
+  }
+}
+/* tiny lit countries: an invisible 44 px edge to tap (T-0039) */
+.world-zone {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 44px;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+/* the chosen country: 2.5 px gold over a 5 px dark edge; the Tab-focused one dashed */
+.world-marks path {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.world-mark-edge {
+  stroke: var(--bg);
+  stroke-width: 5px;
+}
+.world-marks .world-mark-edge.plain {
+  fill: var(--accent-soft);
+}
+.world-mark {
+  stroke: var(--accent);
+  stroke-width: 2.5px;
+}
+.world-mark.focus {
+  stroke-dasharray: 4 3;
+}
+/* the country card: the bingo suggestion card's look, right under the map */
+.bingo-suggest.world-pick {
+  margin: 0 0 var(--space-3);
+}
+.world-pick h3 {
+  overflow-wrap: anywhere;
+}
+#world-title:focus {
+  outline: none;
+}
+#world-title:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.world-covers,
+.world-land-books {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.world-covers {
+  margin: 0;
+}
+.world-cover {
+  display: block;
+  border: 0;
+  padding: 0;
+  background: none;
+  border-radius: var(--radius-small);
+  cursor: pointer;
+}
+.world-cover:focus-visible,
+.world-name:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.world-cover img,
+.world-cover .cover-chip {
+  display: block;
+  width: 3rem;
+  height: 4.5rem;
+  border-radius: var(--radius-small);
+  object-fit: cover;
 }
 /* a lit country is filled with its covers (inline style), its outline drawn on top (T-0018) */
 .world-country.lit {
@@ -4557,6 +4676,30 @@ textarea.input {
   font-size: var(--fs-body);
   color: var(--text);
 }
+/* each name opens its country's card, and still reads as a plain name */
+.world-name {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--fs-body);
+  color: var(--text);
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.world-name.chosen {
+  color: var(--accent);
+  font-weight: 600;
+}
+@media (pointer: coarse) {
+  .world-name {
+    min-height: var(--tap);
+  }
+}
 .world-lands-block {
   margin-top: var(--space-3);
 }
@@ -4580,12 +4723,7 @@ textarea.input {
   overflow-wrap: anywhere;
 }
 .world-land-books {
-  list-style: none;
   margin: var(--space-1) 0 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
 }
 
 /* ---- Set in, in the book panel (T-0015) -----------------------------------

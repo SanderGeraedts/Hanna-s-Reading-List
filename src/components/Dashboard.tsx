@@ -317,7 +317,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
     rhythm: <RhythmCard books={books} />,
     flower: <GenreFlowerCard books={books} />,
     months: <PagesPerMonthCard books={books} />,
-    world: <BooksWorldMapCard books={books} />,
+    world: <BooksWorldMapCard books={books} onShowBook={onShowBook} />,
     challenge: (
       <ChallengeCard
         books={books}
