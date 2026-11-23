@@ -8,7 +8,7 @@ depends_on: [T-0015, T-0040]
 decisions: [D-0023, D-0026, D-0037]
 raised_on: 2026-11-23
 done_on: ""
-result: []
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/247"]
 ---
 
 # Goal
@@ -117,4 +117,5 @@ spellings.
   home for "The Netherlands" and "Nederland". Check output: `vitest run places badges setIn
   continents`: 4 files, 74 tests passed (the 4 new tests on the change fail without it).
   `pnpm exec tsc --noEmit`: no errors. `pnpm exec harness check`: tasks, decisions, engineers
-  and generated files all ✓. Nothing a user sees changes in layout, so handed to the **tester**.
+  and generated files all ✓. Draft PR #247. Nothing a user sees changes in layout, so handed
+  to the **tester**.
