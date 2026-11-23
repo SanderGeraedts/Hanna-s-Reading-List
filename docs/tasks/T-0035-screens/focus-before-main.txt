@@ -1,0 +1,48 @@
+main 390 dashboard: 62 of 198 focusable elements under the header
+    e.g. button "Share" top 0 < 143
+    e.g. button "Copy" top 0 < 143
+    e.g. button "Hidden badge: show its riddle" top 91 < 143
+main 390 challenges: 11 of 25 focusable elements under the header
+    e.g. button "A new author, suggest a book" top 126 < 143
+    e.g. button "Started and finished in a week, suggest " top 126 < 143
+    e.g. button "A re-read, suggest a book" top 126 < 143
+main 390 calendar: 2 of 36 focusable elements under the header
+    e.g. button "Year" top 135 < 143
+    e.g. button "Month" top 135 < 143
+main 390 dashboard+arrange: 125 of 285 focusable elements under the header or the Arrange bar
+    e.g. button "Hide Where your books are set" top 111 < 143
+    e.g. button "Add Where your books are set to the favo" top 111 < 143
+    e.g. button "Move Where your books are set: drag it, " top 111 < 143
+main 390 challenges+arrange: 14 of 32 focusable elements under the header or the Arrange bar
+    e.g. button "From a series of 5+, suggest a book" top 211 < 217
+    e.g. button "A spicy read (4+ 🌶️), suggest a book" top 211 < 217
+    e.g. button "Not fantasy, suggest a book" top 211 < 217
+main 390 dashboard+arrange+6-hidden: 115 of 174 focusable elements under the header or the Arrange bar
+    e.g. select "Year" top 384 < 388
+    e.g. button "Hide Year in review" top 377 < 388
+    e.g. button "Add Year in review to the favourites" top 377 < 388
+main 1280 dashboard: 51 of 198 focusable elements under the header
+    e.g. button "Hidden badge: show its riddle" top 115 < 129
+    e.g. button "Hidden badge: show its riddle" top 115 < 129
+    e.g. button "Hidden badge: show its riddle" top 54 < 129
+main 1280 challenges: 4 of 25 focusable elements under the header
+    e.g. button "Gone in 2 days, suggest a book" top 74 < 129
+    e.g. button "An audiobook, suggest a book" top 74 < 129
+    e.g. button "A book in Dutch, suggest a book" top 74 < 129
+main 1280 calendar: 5 of 36 focusable elements under the header
+    e.g. button "1 November" top 117 < 129
+    e.g. button "✨ Wrap-up" top 7 < 129
+    e.g. button "Today" top 8 < 129
+main 1280 dashboard+arrange: 111 of 285 focusable elements under the header or the Arrange bar
+    e.g. button "Hidden badge: show its riddle" top 176 < 200
+    e.g. button "Hidden badge: show its riddle" top 176 < 200
+    e.g. button "Hidden badge: show its riddle" top 115 < 200
+main 1280 challenges+arrange: 10 of 32 focusable elements under the header or the Arrange bar
+    e.g. button "A mystery or thriller, suggest a book" top 197 < 200
+    e.g. button "Under 200 pages, suggest a book" top 197 < 200
+    e.g. button "A 5-star read, suggest a book" top 197 < 200
+main 1280 dashboard+arrange+6-hidden: 66 of 174 focusable elements under the header or the Arrange bar
+    e.g. button "Hidden badge: show its riddle" top 176 < 233
+    e.g. button "Hidden badge: show its riddle" top 176 < 233
+    e.g. button "Hidden badge: show its riddle" top 115 < 233
+main total: 576 elements under the header

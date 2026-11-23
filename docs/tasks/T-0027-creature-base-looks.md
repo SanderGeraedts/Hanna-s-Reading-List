@@ -2,12 +2,12 @@
 id: T-0027
 title: "Design the base 3D look of the 20 book creatures, each once by a Fable agent"
 description: "First step of the book creatures (D-0033): the species list with rarity, IUCN Red List category and source in the code, and one cute low-poly 3D base model per creature, designed once per animal by an agent on the Fable model; shown on the unlinked /style page; nothing in the app links to them yet."
-status: Doing
+status: Done
 size: full
 depends_on: []
 decisions: [D-0002, D-0017, D-0020, D-0022, D-0033]
 raised_on: 2026-11-22
-done_on: ""
+done_on: "2026-11-23"
 result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/241"]
 ---
 
@@ -767,6 +767,91 @@ Taken at night with the recommended option, without asking Hanna (all reversible
 
 # Test
 
+Tester, 2026-11-23, on `83d031e` (branch `t-0027-book-creatures`, draft PR #241).
+
+**CI's run, read, not repeated.** Run 45081995103 (attempt 1, no re-runs): `checks / checks`
+pass. `harness check`: 34 tasks, index in step; 38 decisions, 3 overrules valid; generated files
+current. `pnpm test`: `Test Files 95 passed | 1 skipped (96)`, `Tests 1028 passed | 9 skipped
+(1037)`; no retry in the log. `pnpm run build`: client and server built. `e2e` and `shards`
+skipped (this project's CI passes no e2e command; the same on `main`). Netlify deploy preview
+ready.
+
+**Run here, from clean.** `pnpm install --frozen-lockfile`: done. `pnpm exec harness check`: all
+four ✓. `pnpm test` (Done when 1, 2, 6): `Test Files 95 passed | 1 skipped (96)`, `Tests 1028
+passed | 9 skipped (1037)`, the same as CI. `pnpm exec tsc --noEmit`: clean. `pnpm run build`:
+built. The creature tests five times, shuffled, no retries (`vitest run src/components/creatures
+src/lib/creatures --sequence.shuffle --retry=0`): `3 passed (3)`, `172 passed (172)` all five
+times.
+
+**Code read (targeted).**
+- `model.ts`: the merge bakes each slot colour into a `color` attribute per vertex, merges per
+  part and kind into the four shared materials, flips the winding of mirrored parts, and disposes
+  the raw geometries, the clones and the slot materials that were drawn with. Bounds use
+  `setFromObject(root, true)` (vertex-precise) in both `finishCreature` and `inspectCreature`.
+  `front()` is the ellipsoid surface formula, clamped at 0 outside the outline. `disposeCreature`
+  frees geometries only and leaves the shared materials alone, as it should.
+- `species.ts`: 20 species, tiers 5/3/3/3/2/4 in order, commons first, all with `shiny: true`
+  and a shiny palette whose body differs; 15 wild animals with scientific name, category, year
+  where known and https sources; the cat `domestic`; the four fantasy ones legendary with no
+  category. `speciesById` throws on an unknown id.
+- Registry (`models/index.ts`): finds model files by name with `import.meta.glob`; `makeCreature`
+  throws `No model for creature <id> yet`. The model test checks every file is found and all 20
+  exist.
+
+**Tried to break it.** New test file `src/components/creatures/creatures.stress.test.ts`
+(62 tests, the gaps the model test left):
+- every creature × 3 stages × 2 qualities × plain and shiny (240 builds): within budget (1,500
+  low / 3,000 high triangles, ≤ 12 draw calls), on y = 0, at most 1.15 tall, only the shared
+  materials, no NaN vertex, a vertex colour on every vertex: **pass**;
+- leaks: every geometry made while building is either in the finished creature or disposed,
+  every slot material that was drawn with is disposed, `disposeCreature` frees every geometry
+  left and never a shared material; then all 20 built and disposed 10 times over (200 builds):
+  no geometry left alive, the four shared materials unchanged: **pass**. I made sure the test
+  bites: removing any of the three dispose calls (raw geometries, slot materials, or half of
+  `disposeCreature`) fails 21 tests;
+- an unknown id (`unicorn-cat`): `modelFor` gives undefined, `makeCreature` and `speciesById`
+  throw a clear error: **pass**;
+- no colour of its own in any model file: no hex, `rgb()`, `0x…`, `THREE.Color`, `.color.set…`,
+  `emissive` or `vertexColors` (on top of the model test's check): **pass**; a grep of the 20
+  files finds no colour literal at all.
+
+Finding, not blocking: `creatureMaterials()` makes all eight slot materials, but
+`finishCreature` disposes only the ones a mesh used, so a creature that never paints with, say,
+`accent2` leaves that material undisposed. It is never drawn, so it holds nothing on the GPU and
+the garbage collector takes it (the test pins exactly that: only unused slot materials stay).
+T-0029 may dispose all eight to be tidy.
+
+**/style in Chrome** (no-backend `vite dev --port 3145`, playwright-core; stopped afterwards and
+the port checked free): at 390 × 844 (touch) and 1280 × 800, on lavender and midnight, plain and
+shiny: 20 tiles with the right names, none "Not modelled yet", every tile's square has a drawn
+creature (each square's screenshot 5.3–22 KB; samples looked at by eye), the wallpaper attribute
+follows the buttons. 30 fast Shiny/wallpaper flips and a live 1280 ↔ 390 resize: no page error,
+WebGL context not lost. Console: no error from the page or the creatures; only `favicon.ico`
+404 on the dev server and r3f's `THREE.Clock` deprecation warning, which the home page shows too
+(both already on `main`). The home page loads no creature module.
+
+**Bundle (code splitting).** All creature code sits in the `/style` route chunk only (the
+species ids and `No model for creature` appear in `style-*.js` and no other chunk).
+`style-*.js` grows from 5.89 kB to 63.70 kB (15.53 kB gzip); the home page's chunks go from
+`index` 342.04 + `routes` 1,406.86 + `StarRating` 25.41 kB (main's CI) to `index` 342.04 +
+`routes` 476.89 + `RoomPanel` 955.82 kB: +0.44 kB (+0.24 kB gzip), the same code split
+differently because `/style` now shares `useRoom`. No page without creatures grew.
+
+**Done when.** 1, 2 and 6: the tests pass (above). 3: seen myself on 3145, screenshots in
+`docs/tasks/T-0027-screens/`. 4 and 7: the UX designer's review and re-review pass. 5: the Fable
+tokens are logged per batch of four or five creatures with a total (595,975), not per creature,
+because the agents reported only batch totals (*Developer notes* 11); recorded as it is, not
+invented.
+
+**Verdict: passed.** The PR stays a **draft** on purpose: the 15 Red List categories still need
+a person to check them on iucnredlist.org (the site refuses automated reading), or Hanna's OK on
+the cited sources. Once that is done and noted here, it is ready to go: mark it ready and it
+merges itself when green.
+
+**Update, 2026-11-23 (about 03:30):** Hanna OKs the cited sources (no check on iucnredlist.org
+by hand needed) and keeps the looks as they are. Nothing remains: the task is Done and the PR
+marked ready.
+
 # Log
 
 - 2026-11-22 architect: wrote the task from Hanna's agreed brief; picked the 20 creatures and
@@ -799,3 +884,5 @@ Taken at night with the recommended option, without asking Hanna (all reversible
 - 2026-11-23 ux-designer: reviewed: changes needed. The family passes (Done when 4) and 16 of 20 are recognisable at 120 px; five must-fix items (bookmark fox ribbons and its shiny ribbon colours, unicorn mane, nostrils and hat anchor, capybara snout and ears, African penguin chest spots), each tried on the dev server and with the model test, then reverted. Integrator notes accepted except the unicorn's hat anchor. §7's bookmark-fox shiny row updated. Back to the developer. Remaining: must-fix 1–5 and new screenshots, a quick UX look at the four changed tiles, the Red List check by hand, and the tester.
 - 2026-11-23 developer: must-fix 1–5 from *Review after building* applied exactly, no Fable: bookmark-fox side ribbons up beside the head; bookmark-fox shiny ribbons `#9a5fb5` / `#5f86d9` in `species.ts`; starlight-unicorn mane down its left side, nostrils removed (nose slot unused), `hat` at (0, 0.348, −0.08) with `rotation.x = −0.35`, top comment updated; capybara longer snout, wider darker top, nose forward, ears set back; african-penguin chest spots below the band. The two optional tweaks were left alone. Check: `vitest run src/components/creatures src/lib/creatures` 2 files, 110 tests passed; `model bookmark-fox: 2000 / 1000 tris, 9 / 9 calls, 0.82 wide × 1.08 tall × 0.76 deep`; `model starlight-unicorn: 2864 / 1288 tris, 9 / 9 calls, 0.71 wide × 1.11 tall × 0.68 deep`; `model capybara: 2296 / 1056 tris, 7 / 7 calls, 0.72 wide × 0.97 tall × 0.80 deep`; `model african-penguin: 2608 / 1156 tris, 8 / 8 calls, 0.65 wide × 0.97 tall × 0.68 deep` (all as the review expected); `tsc --noEmit` clean. All 16 screenshots re-taken with the same script on `vite dev --port 3141` (no errors, all 20 tiles render), vite stopped and the port checked free. Lesson added to `docs/lessons.md`. Remaining: a quick UX look at the four changed tiles, the Red List check by hand, and the tester.
 - 2026-11-23 ux-designer: reviewed: pass. Re-review of must-fix 1–5 (commit 11382ff, new screenshots): bookmark fox ribbons and shiny ribbons, unicorn mane, muzzle and hat anchor, capybara snout and ears, African penguin chest spots all as specified and readable at 120 px on both wallpapers. Hand-over to the tester. Remaining: the Red List check by hand on iucnredlist.org, and the tester.
+- 2026-11-23 tester: passed. CI green on the first attempt; tests, build and `harness check` re-run here; 62 new tests in `creatures.stress.test.ts` (all stages × qualities × plain/shiny, leaks over 200 builds, unknown id, colour writes); /style seen at 390 and 1280 on both wallpapers with no page errors; creature code only in the /style chunk. Not marked ready: it waits for the Red List check. Remaining: a person opens the 15 wild animals on iucnredlist.org by hand (or Hanna OKs the cited sources) and notes the date here; then mark PR #241 ready and it merges itself.
+- 2026-11-23 tester: Hanna answered (about 03:30): the cited Red List sources are good enough, so nobody needs to check iucnredlist.org by hand, and she keeps the looks as they are. That resolves the open item; nothing remains for a person. Done; PR #241 marked ready.

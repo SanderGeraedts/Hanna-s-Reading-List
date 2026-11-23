@@ -377,7 +377,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     // her creature choices once for the whole page: the Creatures tab, the dashboard block and Waiting for you share them
     <CreaturesProvider accountId={account?.id ?? null}>
     <div className="app" style={headerPx ? ({ '--header-h': `${headerPx}px` } as React.CSSProperties) : undefined}>
-      <header className="topbar" ref={header}>
+      <header className={offShelf ? 'topbar on-page' : 'topbar'} ref={header}>
         <div className="brand">
           <div className="brand-title">
             {/* the ☰ menu only holds the shelf's tools on a phone: elsewhere it would be empty */}
@@ -616,6 +616,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           }}
           onClose={() => select(null)}
           onSheet={onSheet}
+          headerPx={headerPx}
         />
       )}
 

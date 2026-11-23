@@ -718,3 +718,10 @@ Developer's own checks (2026-11-23, night); the tester's independent run goes he
   week parts wrap whole. The older stage, mood, feed, negative, choose and hello shots don't block
   the hand-over, but the tester retakes them on the go-live clock before marking the PR ready.
   Hand-over to the tester (after the draft PR, once #241 is merged).
+- 2026-11-23 developer: T-0027 (#241) is on `main`. Merged `origin/main` into the branch (no
+  rebase, since the branch is pushed). Conflicts: this task file and `docs/lessons.md` kept the
+  branch's version (main had the architect's older copy and lacked the new lesson); T-0027's file
+  took main's (Done); `docs/tasks/index.md` was regenerated with `harness tasks-index`. The
+  decision index merged cleanly with every entry. Set `CREATURES_START` to **2026-11-23**, the
+  expected merge day; if the merge slips, the tester moves it to the actual day before marking the
+  PR ready. Opened the draft PR (see `result`).
