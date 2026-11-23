@@ -701,6 +701,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           book={allBooks.find((b) => b.id === bought) ?? null}
           onUpdate={updateBook}
           onClose={() => setBought(null)}
+          // the row it was pressed on is on the shelf now: focus goes back to the block's heading
+          returnFocusId="wishlist-title"
         />
       )}
 

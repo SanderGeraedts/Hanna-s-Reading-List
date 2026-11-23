@@ -1,4 +1,5 @@
 import type { Book, BookFormat } from './library'
+import { FORMAT_LABELS } from './library'
 import type { IsbnLookup } from '#/server/openLibrary'
 import { sameIsbn } from './isbn'
 import { asksPrice, parsePrice } from './price'
@@ -162,3 +163,9 @@ export function listHeading(rows: ScanRow[]): string {
 
 /** What the summary says once **Add all** has run. */
 export const addedText = (n: number): string => `Added ${n} book${n === 1 ? '' : 's'}.`
+
+/** How a row says it is had, when its own chips are shut: "Paperback", "Paperback · E-book", "Not set". */
+export function formatList(formats: BookFormat[]): string {
+  const names = formats.map((f) => FORMAT_LABELS[f])
+  return names.length ? names.join(' · ') : 'Not set'
+}

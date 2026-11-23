@@ -15,10 +15,13 @@ export function FollowUpDialog({
   book,
   onUpdate,
   onClose,
+  returnFocusId,
 }: {
   book: Book | null
   onUpdate: (id: string, patch: Partial<Book>) => void
   onClose: () => void
+  /** the id of the element focus goes back to; the row it was opened from has gone to the shelf */
+  returnFocusId?: string
 }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const handle = useRef<FollowUpHandle>(null)
@@ -36,6 +39,7 @@ export function FollowUpDialog({
         // closing early keeps what was valid in the price field
         handle.current?.flush()
         onClose()
+        if (returnFocusId) document.getElementById(returnFocusId)?.focus()
       }}
       onClick={(e) => {
         if (e.target === dialog.current) dialog.current?.close()

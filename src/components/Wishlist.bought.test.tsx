@@ -62,6 +62,7 @@ function setup(initial: Book[] = [BABEL]) {
             book={library.find((b) => b.id === bought) ?? null}
             onUpdate={update}
             onClose={() => setBought(null)}
+            returnFocusId="wishlist-title"
           />
         )}
       </>
@@ -147,6 +148,15 @@ describe('"I bought it ›" moves a wish to the shelf (T-0062, D-0044)', () => {
       ;(document.querySelector('dialog') as HTMLDialogElement).close()
     })
     expect(state.library[0].price).toBe(9.5)
+  })
+
+  it('closing the follow-up puts focus back on the Wishlist heading, not nowhere', () => {
+    setup()
+    fireEvent.click(screen.getByRole('button', { name: 'I bought Babel' }))
+    act(() => {
+      ;(document.querySelector('dialog') as HTMLDialogElement).close()
+    })
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Wishlist' }))
   })
 
   it('the follow-up it opens is a dialog, headed like the add dialog (D-0013)', () => {

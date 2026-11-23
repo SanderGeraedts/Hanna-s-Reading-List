@@ -2,13 +2,13 @@
 id: T-0060
 title: "Pick the cover before a book is added, and guess its series afterwards"
 description: "Tapping a search result opens a row of covers from every edition of that work, best first, with 📷 Take a photo of her own copy, and she picks one before the book is added; after adding, a Part of a series? step guesses the series from her own shelf and from numbers in the title, with no AI, which she confirms with one tap or types herself."
-status: Open
+status: Doing
 size: full
 depends_on: []
 decisions: [D-0002, D-0013, D-0014, D-0017, D-0018, D-0020, D-0024]
 raised_on: 2026-11-23
 done_on: ""
-result: []
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/PRNUM"]
 ---
 
 # Goal
@@ -99,6 +99,29 @@ her own shelf and from the title she already has.
   this book") is an empty-block message, which D-0014 keeps.
 - The barcode scanner needs a camera: tests and screenshots stub it (see T-0061). This task
   touches the Search tab; the Scan tab's cover handling is T-0061's.
+
+# Choices made while Hanna was at work
+
+Hanna was at work on 23 November 2026 and could not be asked. Each of these took the
+recommended option where there was one, and otherwise the one that is easiest to undo. She can
+change any of them; none needs more than a small change.
+
+1. **The series step is asked for every book added from Search, ISBN or Manual**, even when
+   there is nothing to guess — then it is just the **Series name** field with **Skip**. The
+   alternative was to show it only when there is a guess, which would have made the feature
+   invisible for most books. *To change:* one condition in `AddBookDialog.tsx` (`askSeries`).
+2. **The step is not asked for a scanned batch or a Storytel import.** Twenty questions after
+   one batch would be worse than the dashboard's *Waiting for you* asking one at a time
+   (D-0013). *To change:* add `'scan'` to `ASKS_SERIES`.
+3. **At most three guesses are offered**, best first, and a guess read from the title wins over
+   one read from her shelf, which wins over one read from her author. *To change:*
+   `MAX_GUESSES` and the order of the three rules in `seriesGuess.ts`.
+4. **The "…" is taken off a guessed name.** Her shelf calls a shared opening *Harry Potter and
+   the …*; the chip offers **Harry Potter**, because that is a name she would confirm.
+5. **The tab row wraps to two lines at 390 px** now that there are six tabs, rather than
+   shortening any label. *To change:* shorter labels, which D-0041 §6 would have to allow.
+6. **The extra "cover by ISBN" tile was dropped** during the UX review: it guessed at a picture
+   that often does not exist.
 
 # Design
 
@@ -224,46 +247,134 @@ handle for `.dialog`.
 
 ## 7. Screenshots the designer will review
 
+In `docs/tasks/T-0060-screens/`. A dialog is opaque (`--surface-solid`), so the wallpaper
+cannot be seen in a shot cropped to the dialog: the two wallpapers are covered by one
+full-page shot each instead.
+
 | Name | Width | Wallpaper |
 | --- | --- | --- |
 | `cover-step-390.jpg` | 390 | lavender |
-| `cover-step-one-edition-390.jpg` | 390 | lavender |
-| `cover-step-no-cover-390.jpg` | 390 | midnight |
 | `cover-step-1280.jpg` | 1280 | lavender |
-| `cover-step-40-editions-1280.jpg` | 1280 | midnight |
+| `cover-step-many-editions-1280.jpg` | 1280 | — (33 tiles) |
+| `cover-step-in-the-room-midnight-390.jpg` | 390 | midnight, full page |
+| `cover-step-in-the-room-lavender-1280.jpg` | 1280 | lavender, full page |
 | `series-step-390.jpg` | 390 | lavender |
 | `series-step-no-guess-390.jpg` | 390 | midnight |
 | `series-step-1280.jpg` | 1280 | lavender |
 
 ## Review after the build
 
-Written by the UX designer, 2026-11-23, from the screenshots above on the no-backend dev
-server at port 3175.
+Written by the UX designer, 2026-11-23, from the built app on the no-backend dev server at
+port 3175 (real Open Library, the camera never asked for), the screenshots above, and
+measurements taken in the page.
 
-| What the design asks | What was built | Verdict |
+| What the design asks | What is there | Verdict |
 | --- | --- | --- |
-| Cover step replaces the tab body, title as its heading | `cover-step-390.jpg`: the tab row is hidden, the title and byline head the step | matches |
-| First cover picked on open, gold ring **and** ✓ | Both present on tile 1; the ✓ sits in the top-right corner over a dark scrim so it reads on a pale cover | matches |
-| 72 px tiles at 390, wrapping, one scroll | Two rows of four at 390, the dialog body is the only scroller | matches |
-| One edition: one tile, picked, still adds | `cover-step-one-edition-390.jpg` | matches |
-| No cover: `.muted` message, button reads **Add without a cover** | `cover-step-no-cover-390.jpg`, on midnight | matches |
-| 40 editions: all shown, grid wraps, actions below | `cover-step-40-editions-1280.jpg`: 36 tiles (the server's cap), five to a row | matches |
-| Series step after How I have it, up to three chips | `series-step-390.jpg`: two chips, *Percy Jackson* first | matches |
-| No guess: no chip row, only the field | `series-step-no-guess-390.jpg` | matches |
-| Focus: picked tile, then first chip or the field | Checked in Chrome: `document.activeElement` is the picked radio on open, the first chip on the series step, the field when there is no chip | matches |
-| No hint text anywhere (D-0014) | Nothing but labels, the empty-state line and the `role="status"` line | matches |
+| The step replaces the tab **body**, with the book's title as its heading | `cover-step-390.jpg`: `<h3>The Night Circus</h3>` and the byline head the step; the tab **row** stays above it | difference, accepted (below) |
+| First cover picked when the step opens, marked by a ring **and** a ✓ | Tile 1 has the gold ring and a ✓ in its top-right corner over a dark disc, so it reads on a pale cover too | matches |
+| Tiles wrap, one scroll, no sideways scroll | Measured: grid `scrollWidth` 310 = `clientWidth` 310, page `scrollWidth` 390 = the viewport. 3 columns at 390, 6 at 1280. The grid's own `max-height` is removed in the step, so the dialog body is the only scroller | matches |
+| Many editions: all shown, grid wraps, the actions below it | `cover-step-many-editions-1280.jpg`: 33 covers for *The Night Circus*, six to a row | matches |
+| Series step after **How I have it**, up to three chips, best first | `series-step-390.jpg`: one chip, *Percy Jackson*, for a shelf with two Percy Jackson books | matches |
+| No guess: no chip row at all, only the field | `series-step-no-guess-390.jpg` | matches |
+| Focus: the picked tile, then the first chip, else the field | **Checked in Chrome, not only in happy-dom** (docs/lessons.md): on the cover step `document.activeElement` is `button[role=radio] "Cover 1 of 36" aria-checked=true`; ArrowRight moves it to `"Cover 2 of 36"`; on *How I have it* it is `Paperback`; on the series step it is the `Percy Jackson` chip; after **Done** it is back in the search box | matches |
+| No hint text (D-0014) | Only labels, the empty-state line and the `role="status"` line | matches |
 
-Two differences, neither blocking:
+**One thing was sent back to the developer during this review and fixed:**
 
-1. At 390 px the **Back** and **Add this one** buttons sit on one row and **Add without a
-   cover** wraps that row to two lines. Accepted: it is still one tap and nothing is cut off.
-2. The photo tile's 📷 badge is 14 px, smaller than the 16 px the design implied. Accepted.
+- **The tab row did not fit.** With the sixth tab (*Wishlist*, T-0062) the row overflowed at
+  390 px and *Storytel* and *Wishlist* were cut off — the design says it wraps. Fixed with
+  `flex-wrap: wrap` on `.tabs`; measured again at 79 px high (two lines) at 390 and 38 px
+  (one line) at 1280. `wishlist-tab-390.jpg` in T-0062's screens shows the wrapped row.
+
+**Differences that stay, none of them blocking:**
+
+1. **The tab row stays visible** over the cover step, where the design said the step replaces
+   the whole tab area as the follow-up does. Accepted, and better: the tabs are how she leaves
+   for *Scan* or *Manual* without first pressing **Back**, and now that the row wraps nothing
+   is cut off.
+2. **Tiles are about 99 px at 390 and 80 px at 1280**, not the 72/88 the design named: the
+   grid is `auto-fill` with `minmax(72px, 1fr)`, so the columns share the width that is left.
+   Accepted — nothing overflows and the covers are easier to tell apart.
+3. **"Open Library has no covers" is rarer than the design assumed.** A search result that
+   carries its own cover always has at least that one tile, so the empty state (and
+   **Add without a cover**) only appears for a result with no cover of its own *and* no
+   editions with one. That is the better behaviour and it is what the step does; the design's
+   wording is the thing that was wrong. During the review the extra "cover by ISBN" tile was
+   **removed** from the step: it guessed at a picture that often does not exist, and the guess
+   was what hid the honest empty state.
+4. **Two states are not in the screenshots:** a work with exactly one edition, and a work with
+   no cover anywhere. Open Library cannot be asked to produce either on demand, and faking its
+   reply did not survive decoding, so both are covered by `CoverStep.test.tsx` only (one tile,
+   picked, still adds; and the empty state with **Add without a cover**). Written down here so
+   the tester checks them in the tests rather than looking for a picture.
 
 **Verdict: passes.** Hand to the tester.
 
 # Test
 
-Written by the tester.
+Written by the tester, 2026-11-23, on `better-adding` after
+`pnpm install --frozen-lockfile`.
+
+## The checks, as written
+
+```
+$ pnpm exec tsc --noEmit
+(no output, exit 0)
+
+$ pnpm test
+ Test Files  146 passed | 2 skipped (148)
+      Tests  1875 passed | 22 skipped (1897)
+
+$ pnpm run build
+✓ built in 922ms     (client)
+✓ built in 843ms     (server)
+
+$ pnpm exec harness check
+✓ tasks: 52 tasks, index in step
+✓ decisions: 47 records, index complete, 3 overrules valid
+✓ engineers: 2 listed
+✓ generated files: current
+```
+
+The new and affected tests, run three times over (17 files, 187 tests: `wishlist`,
+`wishlist.break`, `wishlist.exclusion`, `seriesGuess`, `batchScan`, `batchScan.break`,
+`CoverStep`, `CoverStep.break`, `BatchScan`, `AddFollowUp`, `AddFollowUp.series`, `AddWish`,
+`WishlistCard`, `Wishlist.bought`, `dashboardLayout`, `recommend`, `merge`):
+
+```
+ Test Files  17 passed (17)      Tests  187 passed (187)
+ Test Files  17 passed (17)      Tests  187 passed (187)
+ Test Files  17 passed (17)      Tests  187 passed (187)
+```
+
+No test needed a retry.
+
+## Trying to break it
+
+| What I tried | What happened |
+| --- | --- |
+| **A work with one edition** | One tile, picked, **Add this one** live, adds once (`CoverStep.test.tsx`). Not screenshotted: Open Library cannot be asked for a one-edition work, which the UX review records. |
+| **A work with forty editions** | The server caps at 36; the real *The Night Circus* gives 33 and every one is shown, the grid wrapping inside the dialog's one scroll (`cover-step-many-editions-1280.jpg`, and 36 tiles in `CoverStep.test.tsx`). |
+| **No cover at all** | The `.muted` line and **Add without a cover**; the book is added with no `coverUrl` and takes its colour from its title (`colorFromString`). A result that has a cover of its own always shows at least that one — the UX review records this as the design's wording being wrong, not the build. |
+| **Open Library unreachable** | The same quiet state, no error colour, and the book can still be added. `getCoverChoices` rejecting is caught. |
+| **A cover that will not load** | `That picture could not be loaded. Try another one.` and nothing added. |
+| **A photo she takes** | Goes first, picked, with its 📷 badge, and is the cover the book is added with (`CoverStep.break.test.tsx`). A second photo replaces the first. A text file gives `Choose an image file.`; a picture that cannot be read gives `That picture could not be read. Try a JPEG or PNG.`; neither changes the list or adds anything. The input is `accept="image/*" capture="environment"` — the **back** camera, and never a request for real hardware anywhere in the tests. |
+| **Add pressed twice in a row** | The button is `disabled` while the cover is being read, so the book is added once. |
+| **A very long title and three authors** | The heading and byline wrap (`overflow-wrap: anywhere`); nothing is cut off. |
+| **Back, and closing the dialog on the cover step** | Nothing is added either way; **Back** returns to the results with her query still there. |
+| **A series guess that is wrong** | Typing over it un-presses every chip and saves what she typed (`AddFollowUp.series.test.tsx`). Tapping the pressed chip again empties the field. |
+| **A series step with nothing to guess** | No chip row at all, only **Series name**; **Done** with it empty saves `seriesAsked: true` and nothing else, so *Waiting for you* never asks about that book again. |
+| **The order D-0024 fixes** | Price → series → the free e-book's link, in that order, with each answer saved: asserted end to end. |
+| **No AI, no second book API** | `seriesGuess.ts` is read as text and must contain no `fetch(`, `anthropic`, `openai`, `API_KEY`, `googleapis` or `books/v1`, and no `#/server` import (D-0017, D-0018). |
+| **Nothing in the repo reaches a new service** | `getCoverChoices` is the server function the "Change cover" dialog already had; no new endpoint, no key, nothing in `deploy/nas/`, `.github/` or `netlify/`. |
+
+## What still works
+
+`AddFollowUp.test.tsx` (T-0016's price and e-book-link steps), `price.test.ts`,
+`merge.test.ts`, `NewForYouCard.test.tsx` (which mocks `buildBook` from `AddBookDialog`, still
+re-exported from there) and `recommend.test.ts` all pass unchanged.
+
+**Verdict: passed.**
 
 # Log
 
@@ -275,3 +386,22 @@ Written by the tester.
 - 2026-11-23 ux-designer: designed the cover step and the series step (390 and 1280, both
   wallpapers, keyboard and screen reader, exact wording, eight screenshots). Handed to the
   developer.
+- 2026-11-23 developer: built the cover step (`CoverStep.tsx`, reusing the existing
+  `getCoverChoices` server function and a shared `coverPhoto.ts`), the rule-based guess
+  (`seriesGuess.ts`) and the series step in `AddFollowUp.tsx`; `buildBook` moved to
+  `lib/buildBook.ts` and is re-exported from `AddBookDialog` so "New for you" is untouched.
+  Check output: `pnpm exec tsc --noEmit` clean; `pnpm test` 143 files, 1849 passed, 22
+  skipped; `pnpm run build` built in 801 ms; `pnpm exec harness check` all four lines ✓.
+  Handed to the UX designer.
+- 2026-11-23 ux-designer: reviewed the built flow at 390 and 1280 and in real Chrome. Sent one
+  thing back (the six-tab row overflowed at 390 instead of wrapping), which the developer fixed
+  with `flex-wrap: wrap` on `.tabs`; also had the speculative "cover by ISBN" tile removed.
+  Three wording-level differences recorded and accepted. **Passed.** Handed to the tester.
+- 2026-11-23 tester: ran the checks and the new tests independently (output in *Test*), three
+  repeated runs with no retry, and spent the rest trying to break the cover step: one edition,
+  thirty-three editions, no cover, Open Library unreachable, a cover that will not load, the
+  photo she takes (and a text file, and an unreadable picture), Add pressed twice, a very long
+  title, Back and closing the dialog, and a wrong series guess typed over. Added
+  `CoverStep.break.test.tsx` for the photo path, which nothing covered. **Passed.**
+  Remaining: Hanna reads *Choices made while Hanna was at work* above and says which of the six
+  she wants changed — nothing is blocked while she does.

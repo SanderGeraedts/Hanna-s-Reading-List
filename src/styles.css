@@ -538,6 +538,8 @@ textarea.input {
 }
 .tabs {
   display: flex;
+  /* six tabs (Search … Wishlist, T-0062) don't fit on one line at 390 px: they wrap */
+  flex-wrap: wrap;
   gap: 0.25rem;
   border-bottom: 1px solid var(--border);
 }
@@ -6838,6 +6840,8 @@ button.today-item:hover {
   padding: 0;
   display: grid;
   gap: var(--space-2);
+  /* a grid item's min-width is auto by default: without this the chips push the dialog wider */
+  min-width: 0;
 }
 .batch-row {
   display: grid;
@@ -6847,6 +6851,15 @@ button.today-item:hover {
   padding: var(--space-2);
   border-radius: var(--radius-small);
   background: var(--surface-raised);
+  min-width: 0;
+}
+/* collapsed, a row says how she has that book; tapping opens its own chips */
+.batch-formats {
+  justify-self: start;
+}
+.batch-row .format-chip {
+  font-size: 0.72rem;
+  padding: 2px var(--space-2);
 }
 .batch-cover {
   width: 48px;

@@ -21,7 +21,11 @@ export function WishlistCard({
   const list = wishOrder(wishes)
   return (
     <section className="dash-card" aria-labelledby="wishlist-title">
-      <h2 id="wishlist-title">Wishlist</h2>
+      {/* focusable so that closing the "I bought it ›" follow-up can come back here: the row it
+          was pressed on has gone to the shelf (T-0062) */}
+      <h2 id="wishlist-title" tabIndex={-1}>
+        Wishlist
+      </h2>
       {list.length === 0 ? (
         <p className="muted small-text">Nothing on your wishlist yet.</p>
       ) : (

@@ -15,6 +15,7 @@ import {
   addedText,
   anyLooking,
   firstPriceProblem,
+  formatList,
   formatsOfRow,
   listHeading,
   patchRow,
@@ -56,6 +57,8 @@ export function BatchScan({ existing, onAdd, onManual, onClose, paused = false, 
   const [adding, setAdding] = useState(false)
   const [added, setAdded] = useState<number | null>(null)
   const [problem, setProblem] = useState<{ isbn: string; problem: PriceProblem } | null>(null)
+  /** the row whose own "How I have it" chips are open; only one at a time keeps the list short */
+  const [open, setOpen] = useState<string | null>(null)
   const priceInputs = useRef(new Map<string, HTMLInputElement | null>())
   const summary = useRef<HTMLParagraphElement>(null)
   /** the rows as they are right now, so a scan can be worked out without updating in a render */
@@ -218,20 +221,33 @@ export function BatchScan({ existing, onAdd, onManual, onClose, paused = false, 
                   </span>
                 )}
                 {row.kind === 'found' && (
-                  <div className="chips format-chips">
-                    {(Object.entries(FORMAT_LABELS) as Array<[BookFormat, string]>).map(([k, label]) => (
-                      <button
-                        key={k}
-                        type="button"
-                        className="format-chip"
-                        aria-label={`${label} — ${name}`}
-                        aria-pressed={formats.includes(k)}
-                        onClick={() => setFormats(row, k)}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
+                  <>
+                    <button
+                      type="button"
+                      className="btn small batch-formats"
+                      aria-expanded={open === row.isbn}
+                      aria-label={`How I have ${name}: ${formatList(formats)}`}
+                      onClick={() => setOpen(open === row.isbn ? null : row.isbn)}
+                    >
+                      {formatList(formats)} {open === row.isbn ? '▴' : '▾'}
+                    </button>
+                    {open === row.isbn && (
+                      <div className="chips format-chips">
+                        {(Object.entries(FORMAT_LABELS) as Array<[BookFormat, string]>).map(([k, label]) => (
+                          <button
+                            key={k}
+                            type="button"
+                            className="format-chip"
+                            aria-label={`${label} — ${name}`}
+                            aria-pressed={formats.includes(k)}
+                            onClick={() => setFormats(row, k)}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
                 {showsPrice && (
                   <PriceInput

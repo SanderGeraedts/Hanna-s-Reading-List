@@ -2,13 +2,13 @@
 id: T-0061
 title: "Scan a pile of books in one go and add them together"
 description: "The barcode scanner stays open and drops each book it reads into a list with its cover; at the end one How I have it covers the whole pile (changeable per book), each book has its own price field under D-0024's rules, and Add all puts them on the shelf, with the same ISBN counted once and a book already on the shelf or the wishlist marked."
-status: Open
+status: Doing
 size: full
 depends_on: [T-0060]
 decisions: [D-0002, D-0013, D-0014, D-0017, D-0018, D-0020, D-0024, D-0044]
 raised_on: 2026-11-23
 done_on: ""
-result: []
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/PRNUM"]
 ---
 
 # Goal
@@ -102,6 +102,27 @@ Backlog item AD2, agreed 22 November 2026:
   until **Add all** runs.
 - No hint text (D-0014); the scanner's own "Point the camera at the barcode…" line stays,
   because D-0014 keeps the barcode texts.
+
+# Choices made while Hanna was at work
+
+Hanna was at work on 23 November 2026 and could not be asked. Each of these took the cautious,
+easy-to-undo option.
+
+1. **A batch opens no after-adding follow-up.** The summary has already asked how she has them
+   and what they cost, so there is nothing left to ask. *To change:* `BatchScan` would call
+   `addFrom('scan')` again instead of `onAdd`.
+2. **A batch asks no "Part of a series?" per book** (see T-0060's list).
+3. **The list holds 40 books; the 41st is refused out loud** instead of pushing the oldest book
+   off. Nothing she scanned is ever lost silently. *To change:* `MAX_ROWS`.
+4. **The pile starts at Paperback**, because a barcode on the back of a book nearly always is
+   one.
+5. **A row says how it is had as one small button and opens its own chips when tapped.** The
+   design had every row's eight chips open; at 390 px that pushed the dialog wider than the
+   phone, and a pile of twenty was sixty lines of chips. *To change:* render the chips always.
+6. **No highlight on a newly landed row.** The design asked for a 300 ms fade; it is not built.
+   The live region already says what landed. Easy to add.
+7. **A row's cover is Open Library's, at size M, and is not analysed until Add all.** Analysing
+   twenty covers while she is still scanning would make her phone crawl.
 
 # Design
 
@@ -220,6 +241,10 @@ half-way: either every addable row goes on the shelf or none does.
 
 ## 7. Screenshots the designer will review
 
+In `docs/tasks/T-0061-screens/`. The camera in every one of them is Chrome's **fake** media
+stream (the green test pattern) with a stubbed `BarcodeDetector` reading barcodes out of a
+queue; no hardware was asked for.
+
 | Name | Width | Wallpaper |
 | --- | --- | --- |
 | `batch-empty-390.jpg` | 390 | lavender |
@@ -231,29 +256,69 @@ half-way: either every addable row goes on the shelf or none does.
 
 ## Review after the build
 
-Written by the UX designer, 2026-11-23, from the screenshots above.
+Written by the UX designer, 2026-11-23, from the built app on the no-backend dev server at
+port 3175 with a faked camera, and the screenshots above.
 
-| What the design asks | What was built | Verdict |
+| What the design asks | What is there | Verdict |
 | --- | --- | --- |
-| Camera stays running, list grows under it | `batch-four-390.jpg`: four rows, the camera still live above them | matches |
-| Newest first, one-off highlight | Row order newest-first; the highlight is a 300 ms background fade, off under reduced motion | matches |
-| Pile formats between camera and list, starting at Paperback | matches |
-| Five kinds of row, each with its words not just its colour | `batch-mixed-390.jpg`: `On shelf`, `On your wishlist`, `Not found` all carry their words | matches |
-| Price only for paperback / hardcover / e-book, cleared when taken off | Asserted per row in the tests and visible in `batch-four-390.jpg` | matches |
-| One price error blocks the whole add, focus to that field | `batch-price-error-390.jpg` | matches |
-| `Add all 4 books`, `Nothing to add yet` | matches |
-| One live region only | One region under the camera | matches |
-| 20 rows at 1280 scroll inside the dialog | `batch-twenty-1280.jpg` | matches |
+| The camera never stops; the list grows under it | `batch-four-390.jpg`: four rows with the camera still live and sticky above them; `batch-twenty-1280.jpg`: twenty | matches |
+| Newest first | *Pride and Prejudice* (scanned last) is row 1 in the four-book shot | matches |
+| The pile's **How I have it** between the camera and the list, starting at **Paperback** | matches, and at 1280 its eight chips sit on two short rows | matches |
+| The kinds of row that will not be added each carry their words | `batch-mixed-390.jpg`: `On shelf` (Piranesi), `On your wishlist` (Babel) and `Not found` + **Add it by hand** (an ISBN Open Library answers 404 for), all greyed but readable, each keeping its ✕ | matches |
+| A price field only for paperback, hardcover or e-book, cleared when the last of them goes | Visible per row; asserted per row in the tests | matches |
+| One bad price blocks the whole add, with the error under that row and focus in its field | `batch-price-error-390.jpg`: `Try 12.50 or 12,50.` under *The Night Circus*, nothing added | matches |
+| `4 books` / `Add all 4 books`, `Nothing to add yet` / a dead **Add all** | Measured: empty → `Nothing to add yet` + `Add all`; four found → `4 books` + `Add all 4 books`; the mixed list with one addable row → `1 book` + `Add all 1 book` | matches |
+| One live region only | One `aria-live="polite"` under the camera | matches |
+| `Added 4 books.` with **Scan more** and **Done** | `batch-added-1280.jpg` | matches |
 
-One difference, not blocking: at 390 px a row with four pressed format chips wraps to three
-lines and the price field drops to a line of its own. Accepted — it stays readable and the
-field keeps its € and its width.
+**One thing was sent back to the developer during this review and fixed:**
+
+- **A row's eight format chips blew the dialog wider than the phone.** At 390 px the chips
+  pushed `.batch-row` past the dialog's width and *E-book* and *From the library* were cut off
+  (a grid item's `min-width` is `auto`). Two changes: `min-width: 0` on the list and the row,
+  and — the bigger one — **each row now shows how it is had as one small button**
+  (`Paperback ▾`, named `How I have <title>: Paperback` for a screen reader) and opens *that*
+  row's chips when she taps it, one row at a time. A pile of twenty is now readable instead of
+  sixty lines of chips, and changing one book is still one tap away. The design's §1 sketch is
+  superseded on this point.
+
+**Differences that stay, neither blocking:**
+
+1. **No one-off highlight on a new row.** The design asked for a 300 ms fade on the row that
+   just landed; it was not built. The live region already says what landed, and the row appears
+   at the top where her eye is. Worth adding later; written down rather than sent back.
+2. **The sticky camera covers the top of the first row** when the list is scrolled (visible in
+   `batch-four-390.jpg`). Accepted: the camera staying put is the point of the feature, and the
+   row scrolls clear with one more flick.
 
 **Verdict: passes.** Hand to the tester.
 
 # Test
 
-Written by the tester.
+Written by the tester, 2026-11-23. The checks and the repeated runs are in T-0060's *Test*
+section; they cover all three tasks, which ship in one pull request.
+
+## Trying to break it
+
+| What I tried | What happened |
+| --- | --- |
+| **Scanning twenty books** | Twenty rows, newest first, all twenty added by **Add all** with their covers, formats and prices (`BatchScan.test.tsx`), and seen in the browser with a faked camera: `batch-twenty-1280.jpg`, heading `20 books`, button `Add all 20 books`. |
+| **The same ISBN twice** | One row. Also when the two scans use the ISBN-10 and the ISBN-13 of the same book (`sameIsbn`), and also while the first lookup is still running. The live region says `Already in the list: The Night Circus`. |
+| **The forty-first book** | Refused out loud — `The list is full (40 books). Add them before scanning more.` — and **nothing already in the list is dropped or shifted** (asserted on the oldest row). Removing one makes room again. |
+| **An ISBN Open Library does not know** | `9798765432105` (a well-formed EAN-13 Open Library answers 404 for): the row keeps the number, says `Not found` and offers **Add it by hand**, which opens the Manual tab with the number filled in. It is left out of **Add all**. |
+| **A barcode that is not a book** | `isbnFromBarcode` refuses a wrong check digit, a 13-digit non-978/979 EAN, a short number and anything with letters, so it never becomes a row at all. |
+| **A lookup that fails** | The row says **Try again**, the rest of the list is untouched, and trying again turns it into a book. A reply that comes back after she removed the row changes nothing. |
+| **A book already on her shelf, and one on her wishlist** | Marked `On shelf` / `On your wishlist` with the copy she already has, greyed but readable, and skipped by **Add all** (`batch-mixed-390.jpg`). With nothing else in the list the heading reads `Nothing to add yet` and **Add all** is dead. |
+| **A price that is not a price** | `Try 12.50 or 12,50.` under *that* row, focus moved into its field, and **nothing at all added** — not even the rows that were fine (`batch-price-error-390.jpg`). `99999` gives `That’s more than €9,999.99.` |
+| **D-0024's price rule, per row** | A price field only while that row's formats include paperback, hardcover or e-book; unticking the last of them takes the field and what was in it away; a price on a library-only row is never checked and never saved. |
+| **One How I have it for all, changed per book** | The pile's chips set every row she has not touched; a row she set herself keeps its own formats when the pile changes again. Collapsed, a row reads `Paperback ▾`; only one row's chips are open at a time, with `aria-expanded` saying which. |
+| **A very long title** | The row keeps its price field and its chips; the title wraps (`overflow-wrap: anywhere`). Measured at 390 px: grid `scrollWidth` = `clientWidth`, page `scrollWidth` = 390, so nothing scrolls sideways. |
+| **Closing the dialog mid-pile** | Nothing is added and nothing is left on the shelf. |
+| **A screen reader** | Exactly one `aria-live="polite"` region, carrying only the newest event, asserted after three different kinds of scan. Every ✕ is named `Remove <title> from the list`; every chip is named `<format> — <title>`; every price field is named `Price of <title>, in euros`. |
+| **The camera** | Never asked for. The tests replace `BarcodeDetector` with a stub and never touch `getUserMedia`; the screenshots use Chrome's fake media stream. `canScanBarcodes()` still returns false on a browser without the API, and the Scan tab then shows the text D-0014 keeps. |
+| **After Add all** | `Added 4 books.`, focus on that line, **Scan more** empties the list with the camera still running, **Done** closes the dialog. |
+
+**Verdict: passed.**
 
 # Log
 
@@ -266,3 +331,23 @@ Written by the tester.
 - 2026-11-23 ux-designer: designed the batch list and its summary (390 and 1280, both
   wallpapers, keyboard and screen reader, exact wording, six screenshots). Handed to the
   developer.
+- 2026-11-23 developer: built `lib/batchScan.ts` (the list's rules, pure) and
+  `components/BatchScan.tsx` (the camera, the rows, the per-row price, **Add all**); the Scan
+  tab's one-at-a-time card is gone. Tests fake `BarcodeDetector` and `getUserMedia`; no
+  hardware. Check output: `pnpm exec tsc --noEmit` clean; `pnpm test` 143 files, 1849 passed,
+  22 skipped; `pnpm run build` built in 801 ms; `pnpm exec harness check` all four lines ✓.
+  Handed to the UX designer.
+- 2026-11-23 ux-designer: reviewed the built list at 390 and 1280 with a faked camera. Sent one
+  thing back (a row's eight chips pushed the dialog wider than the phone), which the developer
+  fixed with `min-width: 0` and a per-row **How I have it** button that opens that row's chips.
+  One design point dropped (the new-row highlight) and written down. **Passed.** Handed to the
+  tester.
+- 2026-11-23 tester: ran the checks and the new tests independently (output in T-0060's
+  *Test*), three repeated runs with no retry, and tried to break the list: twenty books, the
+  same ISBN twice (both spellings, and during its own lookup), the forty-first book, an ISBN
+  Open Library answers 404 for, a barcode that is not a book, a failed lookup and its retry, a
+  book on the shelf and one on the wishlist, a price that is not a price, and a very long
+  title. Added `batchScan.break.test.ts` for the cap, the late reply and the mixed list. The
+  camera was stubbed everywhere; no hardware was asked for. **Passed.**
+  Remaining: Hanna reads *Choices made while Hanna was at work* above — in particular the
+  collapsed per-row **How I have it** and the missing highlight on a new row.

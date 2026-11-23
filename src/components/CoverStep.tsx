@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
-import { analyzeCover, colorFromString, coverUrlForId, coverUrlForIsbn } from '#/lib/cover'
+import { analyzeCover, colorFromString, coverUrlForId } from '#/lib/cover'
 import { shrinkImage } from '#/lib/coverPhoto'
 import { getCoverChoices } from '#/server/openLibrary'
 import type { SearchResult } from '#/server/openLibrary'
@@ -63,10 +63,6 @@ export function CoverStep({ result, addLabel = 'Add this one', onAdd, onBack }: 
     if (seen.has(id)) continue
     seen.add(id)
     choices.push({ key: `id:${id}`, url: coverUrlForId(id), label: '' })
-  }
-  // an edition with an ISBN but no cover id of its own: Open Library serves it by ISBN
-  if (!choices.length && ids !== null && result.isbn) {
-    choices.push({ key: `isbn:${result.isbn}`, url: coverUrlForIsbn(result.isbn), label: '' })
   }
   for (const [i, c] of choices.entries()) {
     if (!c.label) c.label = `Cover ${i + 1} of ${choices.length}`

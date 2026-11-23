@@ -80,6 +80,9 @@ async function scan(isbn: string) {
 
 const rows = () => screen.queryAllByRole('listitem')
 const rowFor = (title: string) => rows().find((li) => li.querySelector('strong')?.textContent === title)!
+/** opens a row's own How I have it chips */
+const openRow = (title: string) =>
+  fireEvent.click(within(rowFor(title)).getByRole('button', { name: new RegExp('^How I have ' + title) }))
 const addAll = () => screen.getByRole('button', { name: /^Add all/ })
 const live = () => screen.getByText((_, el) => el?.getAttribute('aria-live') === 'polite')
 
@@ -113,18 +116,37 @@ describe('scanning a pile of books in one go (T-0061)', () => {
     await scan(CIRCE)
     const pile = screen.getByRole('group', { name: 'How I have it' })
     expect(within(pile).getByRole('button', { name: 'Paperback' }).getAttribute('aria-pressed')).toBe('true')
-    // her own choice on one row
+    // a row says how it is had with its chips shut
+    expect(screen.getByRole('button', { name: 'How I have Circe: Paperback' })).toBeTruthy()
+    // her own choice on one row, after opening that row's chips
+    openRow('Circe')
     fireEvent.click(within(rowFor('Circe')).getByRole('button', { name: 'E-book — Circe' }))
     fireEvent.click(within(rowFor('Circe')).getByRole('button', { name: 'Paperback — Circe' }))
+    expect(screen.getByRole('button', { name: 'How I have Circe: E-book' })).toBeTruthy()
     // the pile changes to Hardcover
     fireEvent.click(within(pile).getByRole('button', { name: 'Paperback' }))
     fireEvent.click(within(pile).getByRole('button', { name: 'Hardcover' }))
+    openRow('The Night Circus')
     expect(
       within(rowFor('The Night Circus')).getByRole('button', { name: 'Hardcover — The Night Circus' }).getAttribute('aria-pressed'),
     ).toBe('true')
     // the row she set herself keeps what she set
+    openRow('Circe')
     expect(within(rowFor('Circe')).getByRole('button', { name: 'E-book — Circe' }).getAttribute('aria-pressed')).toBe('true')
     expect(within(rowFor('Circe')).getByRole('button', { name: 'Hardcover — Circe' }).getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('opens one row’s chips at a time, and says so to a screen reader', async () => {
+    setup()
+    await scan(NIGHT)
+    await scan(CIRCE)
+    const summary = (title: string) => within(rowFor(title)).getByRole('button', { name: new RegExp(`^How I have ${title}`) })
+    expect(summary('Circe').getAttribute('aria-expanded')).toBe('false')
+    openRow('Circe')
+    expect(summary('Circe').getAttribute('aria-expanded')).toBe('true')
+    openRow('The Night Circus')
+    expect(summary('Circe').getAttribute('aria-expanded')).toBe('false')
+    expect(summary('The Night Circus').getAttribute('aria-expanded')).toBe('true')
   })
 
   it('shows a price field per row only for a bought format, and clears it when that goes (D-0024)', async () => {
@@ -134,6 +156,7 @@ describe('scanning a pile of books in one go (T-0061)', () => {
     const field = () => row().queryByLabelText('Price of The Night Circus, in euros') as HTMLInputElement | null
     expect(field()).not.toBeNull()
     fireEvent.change(field()!, { target: { value: '12.50' } })
+    openRow('The Night Circus')
     // unticking the last bought format takes the field, and what was in it, away
     fireEvent.click(row().getByRole('button', { name: 'Paperback — The Night Circus' }))
     expect(field()).toBeNull()
