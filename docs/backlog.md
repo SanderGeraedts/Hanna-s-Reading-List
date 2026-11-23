@@ -218,6 +218,11 @@ the queue continues.
   to "waiting" (Keep restores it; nothing is lost). The full cure would be storing the hatch
   result, which D-0033 forbids. The architect may look at this again once Sander's #239
   events are live.
+- **F14 (from Hanna, 2026-11-23, her phone):** in the creatures' den the cushion the creature
+  sits on swallows its feet: the cushion's top is higher than the creature's seat, so the feet
+  (and the bottom of the body) sink into it. Seat the creature on top of the cushion (raise it
+  by the cushion's height at that spot, per growth stage) or lower and flatten the cushion,
+  for every species and stage, in the den, the hatch view and the dashboard block's picture.
 
 ## Waiting for Sander
 
