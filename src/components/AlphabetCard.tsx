@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { drawSuggestion } from '#/lib/bingoSuggest'
+import { letterPool } from '#/lib/alphabetSuggest'
 import type { Book } from '#/lib/library'
 import { LETTERS, alphabetYear, pickLetter, type AlphabetKind } from '#/lib/alphabet'
 import type { ShareSpec } from '#/lib/shareImage'
@@ -40,6 +42,50 @@ export function AlphabetCard({ books, onShowBook, onUpdate, kind: firstKind = 't
   const title = `${TITLES[kind]} ${year}`
   const id = `alphabet-${kind}-title`
   const choosing = open ? a.done.get(open) : undefined
+  // a letter she has not read yet suggests a book from her pile, as a bingo square does (D-0070)
+  const suggestId = useId()
+  const [asking, setAsking] = useState<string | null>(null)
+  const [shown, setShown] = useState<string[]>([])
+  const [focusTick, setFocusTick] = useState(0)
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  const letterRefs = useRef(new Map<string, HTMLButtonElement>())
+  const pool = useMemo(() => (asking ? letterPool(asking, books, kind) : null), [asking, books, kind])
+  const suggested = pool?.find((c) => c.book.id === shown.at(-1))?.book
+  const openAsking = (letter: string) => {
+    setOpen(null)
+    setAsking(letter)
+    setShown(drawSuggestion(letterPool(letter, books, kind))?.shown ?? [])
+    setFocusTick((n) => n + 1)
+  }
+  const closeAsking = (toLetter: boolean) => {
+    const letter = asking
+    setAsking(null)
+    setShown([])
+    if (toLetter && letter) letterRefs.current.get(letter)?.focus()
+  }
+  const another = () => {
+    const next = pool && drawSuggestion(pool, shown)
+    if (next) setShown(next.shown)
+  }
+  useEffect(() => {
+    if (!focusTick) return
+    const h = headingRef.current
+    if (!h) return
+    h.focus({ preventScroll: true })
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    h.closest('.bingo-suggest')?.scrollIntoView?.({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' })
+  }, [focusTick])
+  // the shelf changed under an open letter: a letter now read closes it, and a book that no
+  // longer counts makes room for another one
+  useEffect(() => {
+    if (!asking) return
+    if (a.done.has(asking)) {
+      setAsking(null)
+      setShown([])
+      return
+    }
+    if (pool && pool.length && !suggested) setShown((old) => drawSuggestion(pool, old)?.shown ?? [])
+  }, [asking, a, pool, suggested])
   const options = open ? (a.options.get(open) ?? []) : []
 
   const share = (): ShareSpec => ({
@@ -87,10 +133,32 @@ export function AlphabetCard({ books, onShowBook, onUpdate, kind: firstKind = 't
         {LETTERS.map((l) => {
           const hit = a.done.get(l)
           if (!hit) {
+            // on the dashboard the letters only look back; on the page an empty one suggests (D-0070)
+            if (compact)
+              return (
+                <span key={l} role="listitem" className="alphabet-letter" title={`${l}: not yet`} aria-label={`${l}: not yet`}>
+                  {l}
+                </span>
+              )
+            const label = `${l}: not yet, suggest a book`
             return (
-              <span key={l} role="listitem" className="alphabet-letter" title={`${l}: not yet`} aria-label={`${l}: not yet`}>
+              <button
+                key={l}
+                type="button"
+                role="listitem"
+                ref={(el) => {
+                  if (el) letterRefs.current.set(l, el)
+                  else letterRefs.current.delete(l)
+                }}
+                className={`alphabet-letter${asking === l ? ' open' : ''}`}
+                title={label}
+                aria-label={label}
+                aria-expanded={asking === l}
+                aria-controls={asking === l ? suggestId : undefined}
+                onClick={() => (asking === l ? closeAsking(true) : openAsking(l))}
+              >
                 {l}
-              </span>
+              </button>
             )
           }
           const count = a.options.get(l)?.length ?? 1
@@ -103,7 +171,10 @@ export function AlphabetCard({ books, onShowBook, onUpdate, kind: firstKind = 't
               title={label}
               aria-label={label}
               aria-expanded={open === l}
-              onClick={() => setOpen(open === l ? null : l)}
+              onClick={() => {
+                closeAsking(false)
+                setOpen(open === l ? null : l)
+              }}
             >
               <span className="alphabet-cover" aria-hidden>
                 <Cover book={hit.book} small />
@@ -114,6 +185,42 @@ export function AlphabetCard({ books, onShowBook, onUpdate, kind: firstKind = 't
           )
         })}
       </div>
+      {asking && (
+        <section className="bingo-suggest alphabet-suggest" id={suggestId} aria-labelledby={`${suggestId}-title`}>
+          <div className="bingo-suggest-top">
+            <h3 id={`${suggestId}-title`} ref={headingRef} tabIndex={-1}>
+              {kind === 'author' ? `An author with ${asking}` : `A title with ${asking}`}
+            </h3>
+          </div>
+          {suggested ? (
+            <div className="next-book">
+              <Cover book={suggested} />
+              <div>
+                <div aria-live="polite" aria-atomic="true">
+                  <p className="next-title bingo-suggest-title">{suggested.title}</p>
+                  {suggested.authors.length > 0 && <p className="muted">{suggested.authors.join(', ')}</p>}
+                </div>
+                <div className="next-actions bingo-suggest-actions">
+                  <button type="button" className="btn primary" aria-label={`Open ${suggested.title}`} onClick={() => onShowBook(suggested.id)}>
+                    Open
+                  </button>
+                  {(pool?.length ?? 0) > 1 && (
+                    <button type="button" className="btn" aria-label={`Another book for ${asking}`} onClick={another}>
+                      <span aria-hidden>🎲</span> Another one
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="muted">No book on your shelf counts for {asking} yet.</p>
+          )}
+          {/* last in tab order (after Open and Another one), drawn top right */}
+          <button type="button" className="btn icon small bingo-suggest-close" aria-label="Close" onClick={() => closeAsking(true)}>
+            ×
+          </button>
+        </section>
+      )}
       {open && choosing && (
         <div className="alphabet-choose">
           <p className="small-text">
@@ -152,22 +259,6 @@ export function AlphabetCard({ books, onShowBook, onUpdate, kind: firstKind = 't
           <button type="button" className="link-btn small-text" onClick={() => onShowBook(choosing.book.id)}>
             Show {choosing.book.title} on the shelf
           </button>
-        </div>
-      )}
-      {!compact && a.tips.length > 0 && (
-        <div className="alphabet-tips">
-          <p className="muted small-text">From your pile:</p>
-          <ul className="book-list">
-            {a.tips.slice(0, 5).map(({ letter, book }) => (
-              <li key={letter}>
-                <strong className="alphabet-tip-letter">{letter}</strong>{' '}
-                <button className="link-btn" onClick={() => onShowBook(book.id)}>
-                  {book.title}
-                </button>
-                {kind === 'author' && <span className="muted small-text"> · {book.authors.join(', ')}</span>}
-              </li>
-            ))}
-          </ul>
         </div>
       )}
       {!compact && (

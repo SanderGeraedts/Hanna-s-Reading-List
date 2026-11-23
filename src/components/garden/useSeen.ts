@@ -1,7 +1,8 @@
 import { useMemo, useRef } from 'react'
 import type { Garden } from '#/lib/garden/garden'
-import { newness, snapshot } from '#/lib/garden/seen'
-import type { Newness, Seen } from '#/lib/garden/seen'
+import type { GardenItemId } from '#/lib/garden/numbers'
+import { freshUnlocks, newness, readSeen, snapshot } from '#/lib/garden/seen'
+import type { Newness } from '#/lib/garden/seen'
 
 /**
  * What is new in the garden since she last looked (T-0066). The note of how it
@@ -9,40 +10,46 @@ import type { Newness, Seen } from '#/lib/garden/seen'
  * nothing else without Sander (D-0052 §6) — so the phone and the computer each
  * keep their own.
  *
- * `read` is false for the dashboard block, which shows the news but does not
- * clear it: only opening the Garden tab counts as having looked.
+ * `read` is false for the dashboard, which shows the news but does not clear
+ * it: only opening the Garden tab counts as having looked.
  */
 
 const KEY = 'hannas-reading-list:garden-seen'
 
-function load(): Seen | null {
+export interface GardenNews {
+  plants: Map<string, Newness>
+  unlocked: GardenItemId[]
+}
+
+const NOTHING: GardenNews = { plants: new Map(), unlocked: [] }
+
+function load(garden: Garden) {
   try {
-    const raw = JSON.parse(localStorage.getItem(KEY) ?? 'null')
-    return raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Seen) : null
+    return readSeen(JSON.parse(localStorage.getItem(KEY) ?? 'null'), garden)
   } catch {
     // a private window, storage switched off, or something else in the key
     return null
   }
 }
 
-function save(seen: Seen) {
+function save(garden: Garden) {
   try {
-    localStorage.setItem(KEY, JSON.stringify(seen))
+    localStorage.setItem(KEY, JSON.stringify(snapshot(garden)))
   } catch {
-    /* nothing of hers is lost: the glow simply shows again next time */
+    /* nothing of hers is lost: the news simply shows again next time */
   }
 }
 
-export function useSeen(garden: Garden, read: boolean): Map<string, Newness> {
+export function useSeen(garden: Garden, read: boolean): GardenNews {
   // worked out once per visit: the glow must not go out while she is looking at it
   const done = useRef(false)
   return useMemo(() => {
-    if (typeof window === 'undefined') return new Map<string, Newness>()
-    if (done.current) return new Map<string, Newness>()
-    const news = newness(load(), garden)
+    if (typeof window === 'undefined' || done.current) return NOTHING
+    const seen = load(garden)
+    const news: GardenNews = { plants: newness(seen, garden), unlocked: freshUnlocks(seen, garden) }
     if (read) {
       done.current = true
-      save(snapshot(garden))
+      save(garden)
     }
     return news
     // the garden itself may change as she tends it; the news of this visit stays as it was

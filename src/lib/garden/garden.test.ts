@@ -197,30 +197,17 @@ describe('beds', () => {
 describe('her own spots', () => {
   it('puts a plant where she put it', () => {
     const b = finished('2026-01-01')
+    // the spots she once moved plants to are left in the log and no longer read (D-0071 §1)
     const g = deriveGarden([b], log({ key: plantKey(b.id), bed: 0, spot: 7 }), { today: TODAY })
-    expect(g.years[0].plants[0]).toMatchObject({ bed: 0, spot: 7, placed: true })
+    expect(g.years[0].plants[0]).toMatchObject({ bed: 0, spot: 0 })
   })
 
   it('ignores the place choices of the den, which in turn ignores the garden’s', () => {
     const b = finished('2026-01-01')
     const g = deriveGarden([b], log({ key: 'home:bed', item: 'bed-basket' }), { today: TODAY })
-    expect(g.years[0].plants[0].placed).toBe(false)
     expect(g.years[0].plants[0].spot).toBe(0)
   })
 
-  it('moves only the plant whose spot was taken, never the whole garden', () => {
-    const books = Array.from({ length: 6 }, (_, i) => finished(addDays('2026-01-01', i)))
-    const plain = deriveGarden(books, [], { today: TODAY }).years[0].plants
-    // she moves the first plant to spot 4, where the fifth plant stands
-    const moved = deriveGarden(books, log({ key: plantKey(books[0].id), bed: 0, spot: 4 }), { today: TODAY }).years[0].plants
-    const at = (list: typeof plain, id: string) => list.find((p) => p.id === id)!.spot
-    expect(at(moved, books[0].id)).toBe(4)
-    // the plants before it stay exactly where they were; only the plants that wanted the spot she
-    // took, and those behind them, step along one — never the whole garden
-    for (const i of [1, 2, 3]) expect(at(moved, books[i].id), `plant ${i}`).toBe(at(plain, books[i].id))
-    expect(at(moved, books[4].id)).toBe(5)
-    expect(at(moved, books[5].id)).toBe(6)
-  })
 })
 
 describe('garden items and visitors', () => {

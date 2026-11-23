@@ -30,7 +30,7 @@ const log = (...events: Array<Record<string, unknown>>) =>
 const TODAY = '2026-11-23'
 
 describe('choices left over from books that are gone', () => {
-  it('ignores the saved spot of a book that is no longer on the shelf, and gives nobody a worse spot for it', () => {
+  it('closes the gap a removed book leaves, and ignores the spot it was once given', () => {
     const left = finished('2026-01-01')
     const stays = finished('2026-01-02')
     const withBoth = deriveGarden([left, stays], log({ key: plantKey(left.id), bed: 0, spot: 6 }), { today: TODAY })
@@ -56,22 +56,30 @@ describe('choices left over from books that are gone', () => {
 })
 
 describe('two devices', () => {
-  it('lets the newest spot win for a plant, whichever order the logs meet in', () => {
+  it('gives both devices the same garden, because a plant is never moved (D-0071 §1)', () => {
     const b = finished('2026-02-02')
+    // the spots she once moved plants to are left in the log and no longer read
     const phone = log({ key: plantKey(b.id), bed: 0, spot: 1 })
     const computer = [{ id: 'c1', at: 5000, kind: 'place', key: plantKey(b.id), bed: 0, spot: 9 }] as unknown as ChoiceEvent[]
     for (const merged of [mergeLogs(phone, computer), mergeLogs(computer, phone)])
-      expect(deriveGarden([b], merged, { today: TODAY }).years[0].plants[0].spot).toBe(9)
+      expect(deriveGarden([b], merged, { today: TODAY }).years[0].plants[0].spot).toBe(0)
   })
 
-  it('keeps both plants’ spots when each device moved a different plant', () => {
-    const a = finished('2026-02-02')
-    const c = finished('2026-02-03')
-    const phone = log({ key: plantKey(a.id), bed: 0, spot: 5 })
-    const computer = [{ id: 'c1', at: 5000, kind: 'place', key: plantKey(c.id), bed: 0, spot: 8 }] as unknown as ChoiceEvent[]
-    const year = yearOf(deriveGarden([a, c], mergeLogs(phone, computer), { today: TODAY }), 2026)!
-    expect(year.plants.find((p) => p.id === a.id)!.spot).toBe(5)
-    expect(year.plants.find((p) => p.id === c.id)!.spot).toBe(8)
+  it('lets the newest slot win for an item, whichever order the logs meet in', () => {
+    const b = finished('2026-02-02')
+    const phone = log({ key: itemKey(2026, 'bench'), slot: 1 })
+    const computer = [{ id: 'c1', at: 5000, kind: 'place', key: itemKey(2026, 'bench'), slot: 4 }] as unknown as ChoiceEvent[]
+    for (const merged of [mergeLogs(phone, computer), mergeLogs(computer, phone)])
+      expect(yearOf(deriveGarden([b], merged, { today: TODAY }), 2026)!.items.get('bench')).toBe(4)
+  })
+
+  it('keeps both items when each device placed a different one', () => {
+    const b = finished('2026-02-02')
+    const phone = log({ key: itemKey(2026, 'bench'), slot: 1 })
+    const computer = [{ id: 'c1', at: 5000, kind: 'place', key: itemKey(2026, 'path'), slot: 2 }] as unknown as ChoiceEvent[]
+    const year = yearOf(deriveGarden([b], mergeLogs(phone, computer), { today: TODAY }), 2026)!
+    expect(year.items.get('bench')).toBe(1)
+    expect(year.items.get('path')).toBe(2)
   })
 })
 

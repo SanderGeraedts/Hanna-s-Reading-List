@@ -3,25 +3,12 @@ import type { Book } from '#/lib/library'
 import { GARDEN_ITEMS } from '#/lib/garden/numbers'
 import type { GardenItemId } from '#/lib/garden/numbers'
 import { startYear, yearOf } from '#/lib/garden/garden'
-import type { Plant } from '#/lib/garden/garden'
-import type { Spot } from '#/lib/garden/spots'
-import { SEASON_LABEL } from '#/lib/garden/seasons'
+import type { YearGarden } from '#/lib/garden/garden'
+import { SEASONS, SEASON_LABEL, isNight } from '#/lib/garden/seasons'
 import type { Season } from '#/lib/garden/seasons'
-import {
-  EMPTY_GARDEN,
-  LEFT_SAY,
-  countLine,
-  emptyYear,
-  gardenSentence,
-  lockedLine,
-  nextLine,
-  pickedUpSay,
-  plantLabel,
-  seasonChip,
-} from '#/lib/garden/words'
+import { EMPTY_GARDEN, countLine, emptyYear, gardenSentence, lockedLine, nextLine, seasonChip } from '#/lib/garden/words'
 import { findPlants } from '#/lib/garden/find'
 import type { Found } from '#/lib/garden/find'
-import { readingSigns, signsFor } from '#/lib/garden/signs'
 import { newsLine } from '#/lib/garden/seen'
 import { gardenLayout } from '#/lib/garden/view'
 import { useSay } from './creatures/parts'
@@ -30,19 +17,21 @@ import { SceneBoundary } from './creatures/SceneBoundary'
 import { GardenFlat } from './garden/GardenFlat'
 import { GardenScene } from './garden/GardenScene'
 import { SpotLayer } from './garden/SpotLayer'
-import { CoverSigns } from './garden/CoverSigns'
+import { PlantPeek } from './garden/PlantPeek'
+import { GardenShareButton } from './garden/GardenShare'
 import { flatPlace, sceneAspect, sceneColumns, scenePlace } from './garden/gardenView'
 import { useGarden } from './garden/useGarden'
 import { useSeen } from './garden/useSeen'
-import type { PlaceEvent } from '#/lib/garden/tend'
 
 /**
  * The 🌱 Garden tab (T-0061 Design §1–§5, T-0063, T-0064, T-0066): the year's
  * garden drawn flat on a phone and in the cosy 3D on a computer (D-0051), the
- * chips for her reading years, the plants she can move between spots and beds,
- * Tidy and its Undo, finding a book's plant, the signs with the covers of what
- * she has just finished, the garden items she has unlocked by reading, and the
- * season.
+ * chips for her reading years, one bed at a time for a closer look, the cover
+ * behind a plant, finding a book, a look at another season or after dark, a
+ * picture to share, and the garden items she has unlocked by reading.
+ *
+ * Nothing here moves a plant: they stand in the order she finished the books
+ * (D-0071 §1), so the garden is read, not arranged.
  */
 
 interface Props {
@@ -51,90 +40,81 @@ interface Props {
   paused?: boolean
   /** opens a book's panel from its plant (T-0066) */
   onShowBook?: (id: string) => void
+  /** the hour of the day, for tests; the device's clock otherwise */
+  hour?: number
 }
 
-export function GardenPage({ books, paused, onShowBook }: Props) {
+/** One bed on its own, as a year garden of its own, so either view draws it unchanged. */
+function oneBed(year: YearGarden, bed: number): YearGarden {
+  return {
+    ...year,
+    beds: 1,
+    plants: year.plants.filter((p) => p.bed === bed).map((p) => ({ ...p, bed: 0 })),
+    items: new Map(),
+  }
+}
+
+export function GardenPage({ books, paused, onShowBook, hour }: Props) {
   const phone = usePhone()
   const reduce = useReducedMotion()
   const [gl, setGl] = useState(false)
   useEffect(() => setGl(webglAvailable()), [])
-  const { garden, move, place, takeAway, tidy, apply } = useGarden(books, { phone })
   const [said, say] = useSay()
   const [year, setYear] = useState<number | null>(null)
-  const [pickedId, setPicked] = useState<string | null>(null)
-  const [undo, setUndo] = useState<PlaceEvent[] | null>(null)
+  const [bed, setBed] = useState<number | null>(null)
+  const [peekId, setPeek] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [foundId, setFound] = useState<string | null>(null)
-  // opening the tab is what counts as having looked: the block only reports it
-  const news = useSeen(garden, true)
+  // a look at another season or after dark: never saved, always back to now (D-0071 §5)
+  const [look, setLook] = useState<Season | null>(null)
+  const [dark, setDark] = useState<boolean | null>(null)
+  const { garden, place: placeItem, takeAway } = useGarden(books, { phone, season: look ?? undefined })
+  const night = dark ?? isNight(hour ?? new Date().getHours())
+  const looking = look !== null || dark !== null
+  const seen = useSeen(garden, true)
+  const news = seen.plants
   const shown = year !== null && garden.years.some((y) => y.year === year) ? year : startYear(garden)
   const current = yearOf(garden, shown)
   // the flat garden on a phone, and wherever 3D can't be drawn (D-0051 §4)
   const flat = phone || !gl
-  const columns = flat ? 1 : sceneColumns(current?.beds ?? 1)
-  const layout = useMemo(() => gardenLayout(current?.beds ?? 1, columns), [current?.beds, columns])
-  const picked = current?.plants.find((p) => p.id === pickedId) ?? null
-  // the books she has just finished, and the one she is reading now on the spot waiting for it
-  const signs = useMemo(
-    () => (current ? [...signsFor(current, garden.today), ...readingSigns(books, current, garden.today)] : []),
-    [books, current, garden.today],
-  )
+  const inBed = current && bed !== null && bed < current.beds ? oneBed(current, bed) : null
+  const drawn = inBed ?? current
+  const columns = flat ? 1 : sceneColumns(drawn?.beds ?? 1)
+  const layout = useMemo(() => gardenLayout(drawn?.beds ?? 1, columns), [drawn?.beds, columns])
+  const peeked = drawn?.plants.find((p) => p.id === peekId) ?? null
   const hits = useMemo(() => findPlants(garden, query), [garden, query])
   const stage = useRef<HTMLDivElement>(null)
 
-  // a plant picked up in one year garden is put down when she looks at another,
-  // and an Undo belongs to the garden it was made in
-  useEffect(() => {
-    setPicked(null)
-    setUndo(null)
-  }, [shown])
+  // a cover left open in one year or bed is closed when she looks somewhere else,
+  // and a closer look belongs to the year it was taken in
+  useEffect(() => setPeek(null), [shown, bed])
+  useEffect(() => setBed(null), [shown])
 
-  if (!garden.years.length || !current) {
+  if (!garden.years.length || !current || !drawn) {
     return (
       <div className="dashboard">
         <div className="garden-page">
-          <Head garden={garden} year={null} news="" />
+          <Head garden={garden} year={null} news="" night={night} />
           <p className="creatures-empty">{EMPTY_GARDEN}</p>
         </div>
       </div>
     )
   }
 
-  const onDrop = (at: Spot) => {
-    if (!picked) return
-    const r = move(current, picked.id, at)
-    setPicked(null)
-    say(r.ok ? r.say : LEFT_SAY)
-  }
-
-  const onTidy = () => {
-    const r = tidy(current)
-    if (r.ok) {
-      setUndo(r.undo ?? null)
-      setPicked(null)
-      setFound(null)
-    }
-    say(r.ok ? r.say : 'Already in reading order.')
-  }
-
-  const onUndo = () => {
-    if (!undo) return
-    apply(undo)
-    setUndo(null)
-    say('Put back the way it was.')
-  }
+  const place = (b: number, spot: number) => (flat ? flatPlace(layout, b, spot) : scenePlace(layout, b, spot))
 
   const onFound = (hit: Found) => {
     setYear(hit.year)
+    setBed(null)
     setFound(hit.plant.id)
     setQuery('')
-    say(`${hit.plant.book.title} stands in the ${hit.label} garden, bed ${hit.plant.bed + 1}, spot ${hit.plant.spot + 1}.`)
+    say(`${hit.plant.book.title} stands in the ${hit.label} garden, bed ${hit.plant.bed + 1}.`)
   }
 
   return (
     <div className="dashboard">
       <div className="garden-page">
-        <Head garden={garden} year={current.year} news={newsLine(news)} />
+        <Head garden={garden} year={current.year} news={newsLine(news)} night={night} />
         <Find query={query} onQuery={setQuery} hits={hits} onPick={onFound} />
         {garden.years.length > 1 && (
           <div className="chips garden-years" role="group" aria-label="Reading years">
@@ -151,70 +131,82 @@ export function GardenPage({ books, paused, onShowBook }: Props) {
             ))}
           </div>
         )}
+        {current.beds > 1 && (
+          <div className="chips garden-beds" role="group" aria-label="Look closer">
+            <button
+              type="button"
+              className={bed === null ? 'btn small active' : 'btn small'}
+              aria-pressed={bed === null}
+              onClick={() => setBed(null)}
+            >
+              Whole year
+            </button>
+            {Array.from({ length: current.beds }, (_, b) => (
+              <button
+                key={b}
+                type="button"
+                className={bed === b ? 'btn small active' : 'btn small'}
+                aria-pressed={bed === b}
+                onClick={() => setBed(b)}
+              >
+                Bed {b + 1}
+              </button>
+            ))}
+          </div>
+        )}
         <section className="dash-card garden-card" aria-label={`${current.label} garden`}>
-          {current.plants.length === 0 ? (
+          {drawn.plants.length === 0 ? (
             <p className="creatures-empty">{emptyYear(current.label)}</p>
           ) : (
             <>
               <div
                 ref={stage}
-                className={`garden-stage ${flat ? 'flat' : 'scene'}`}
+                className={`garden-stage ${flat ? 'flat' : 'scene'}${night ? ' night' : ''}`}
                 style={{ aspectRatio: flat ? `${layout.width} / ${layout.depth}` : `${sceneAspect(layout)}` }}
               >
                 {flat ? (
-                  <GardenFlat year={current} season={garden.season} columns={1} reduce={reduce} picked={pickedId} found={foundId} />
+                  <GardenFlat year={drawn} season={garden.season} night={night} columns={1} reduce={reduce} found={foundId} />
                 ) : (
                   <SceneBoundary onFail={() => setGl(false)}>
-                    <GardenScene year={current} season={garden.season} reduce={reduce} paused={paused} />
+                    <GardenScene year={drawn} season={garden.season} night={night} reduce={reduce} paused={paused} />
                   </SceneBoundary>
                 )}
-                <CoverSigns signs={signs} place={(bed, spot) => (flat ? flatPlace(layout, bed, spot) : scenePlace(layout, bed, spot))} />
                 <SpotLayer
-                  year={current}
-                  place={(bed, spot) => (flat ? flatPlace(layout, bed, spot) : scenePlace(layout, bed, spot))}
-                  picked={picked}
-                  coarse={phone}
+                  year={drawn}
+                  place={place}
+                  peeked={peekId}
                   news={news}
                   found={foundId}
-                  onPick={(p) => {
-                    setPicked(p.id)
+                  onPeek={(p) => {
+                    setPeek(p.id)
                     setFound(null)
-                    say(pickedUpSay(p))
                   }}
-                  onDrop={onDrop}
-                  onCancel={() => {
-                    setPicked(null)
-                    say(LEFT_SAY)
-                  }}
+                  onClose={() => setPeek(null)}
                 />
+                {peeked && (
+                  <PlantPeek plant={peeked} at={place(peeked.bed, peeked.spot)} onClose={() => setPeek(null)} onShowBook={onShowBook} />
+                )}
               </div>
-              <p className="visually-hidden">{gardenSentence(current, garden.season)}</p>
+              <p className="visually-hidden">{gardenSentence(drawn, garden.season)}</p>
               <div className="garden-tools">
-                <p className="garden-counts">{countLine(current)}</p>
-                <div className="chips garden-tidy">
-                  <button type="button" className="btn small" onClick={onTidy}>
-                    Tidy by reading order
-                  </button>
-                  {undo && (
-                    <button type="button" className="btn small" onClick={onUndo}>
-                      Undo
-                    </button>
-                  )}
-                </div>
+                <p className="garden-counts">{countLine(drawn)}</p>
+                <GardenShareButton stage={stage} label={`${current.label} garden`} line={countLine(drawn)} />
               </div>
-              {picked && (
-                <PickedPanel
-                  plant={picked}
-                  onPutBack={() => {
-                    setPicked(null)
-                    say(LEFT_SAY)
-                  }}
-                  onShowBook={onShowBook}
-                />
-              )}
             </>
           )}
         </section>
+        <Look
+          season={garden.season}
+          night={night}
+          looking={looking}
+          onSeason={setLook}
+          onDark={setDark}
+          onNow={() => {
+            setLook(null)
+            setDark(null)
+            say('Back to now.')
+          }}
+        />
         <section className="dash-card garden-items-card" aria-labelledby="garden-items-title">
           <h2 id="garden-items-title">Garden items</h2>
           <div className="chips garden-items">
@@ -229,7 +221,7 @@ export function GardenPage({ books, paused, onShowBook }: Props) {
                 here={garden.available.includes(item.id)}
                 placed={current.items.has(item.id)}
                 onPlace={() => {
-                  const r = place(current.year, item.id)
+                  const r = placeItem(current.year, item.id)
                   if (r.ok) say(r.say)
                   else if (r.why === 'no-slot') say('Every place in this garden is taken.')
                 }}
@@ -250,12 +242,25 @@ export function GardenPage({ books, paused, onShowBook }: Props) {
   )
 }
 
-function Head({ garden, year, news }: { garden: ReturnType<typeof useGarden>['garden']; year: number | null; news: string }) {
+function Head({
+  garden,
+  year,
+  news,
+  night,
+}: {
+  garden: ReturnType<typeof useGarden>['garden']
+  year: number | null
+  news: string
+  night: boolean
+}) {
   return (
     <header className="challenges-head garden-head">
       <h1>Garden</h1>
       <div className="garden-state">
-        <span className="garden-season">{seasonChip(garden.season)}</span>
+        <span className="garden-season">
+          {seasonChip(garden.season)}
+          {night ? ' · 🌙 Night' : ''}
+        </span>
         <span className="garden-total">
           {garden.plants} plant{garden.plants === 1 ? '' : 's'}
         </span>
@@ -263,6 +268,58 @@ function Head({ garden, year, news }: { garden: ReturnType<typeof useGarden>['ga
       </div>
       {year === null && <span className="visually-hidden">Nothing planted yet.</span>}
     </header>
+  )
+}
+
+/** A look at another season or after dark, never saved (D-0071 §5). */
+function Look({
+  season,
+  night,
+  looking,
+  onSeason,
+  onDark,
+  onNow,
+}: {
+  season: Season
+  night: boolean
+  looking: boolean
+  onSeason: (s: Season) => void
+  onDark: (d: boolean) => void
+  onNow: () => void
+}) {
+  return (
+    <section className="dash-card garden-look" aria-labelledby="garden-look-title">
+      <div className="dash-card-head">
+        <h2 id="garden-look-title">Have a look</h2>
+        {looking && (
+          <span className="muted small-text">
+            Looking at {SEASON_LABEL[season].toLowerCase()}
+            {night ? ' at night' : ''}
+          </span>
+        )}
+      </div>
+      <div className="chips garden-look-chips" role="group" aria-label="Have a look">
+        {SEASONS.map((s) => (
+          <button
+            key={s}
+            type="button"
+            className={s === season ? 'btn small active' : 'btn small'}
+            aria-pressed={s === season}
+            onClick={() => onSeason(s)}
+          >
+            {seasonChip(s)}
+          </button>
+        ))}
+        <button type="button" className={night ? 'btn small active' : 'btn small'} aria-pressed={night} onClick={() => onDark(!night)}>
+          🌙 Night
+        </button>
+        {looking && (
+          <button type="button" className="btn small" onClick={onNow}>
+            Now
+          </button>
+        )}
+      </div>
+    </section>
   )
 }
 
@@ -311,28 +368,11 @@ function Find({
   )
 }
 
-/** What she picked up, with the way back and the way into the book (T-0063 §1, T-0066). */
-function PickedPanel({ plant, onPutBack, onShowBook }: { plant: Plant; onPutBack: () => void; onShowBook?: (id: string) => void }) {
-  return (
-    <div className="garden-picked">
-      <p>
-        <strong>{plant.kind.name}</strong> · {plant.book.title}
-      </p>
-      <p className="small-text">{plantLabel(plant)}</p>
-      <div className="chips">
-        <button type="button" className="btn small" onClick={onPutBack}>
-          Put back
-        </button>
-        {onShowBook && (
-          <button type="button" className="btn small" onClick={() => onShowBook(plant.id)}>
-            Open book
-          </button>
-        )}
-      </div>
-    </div>
-  )
-}
-
+/**
+ * A garden item: unlocked by reading, and put in the garden or taken away with
+ * a tap. Plants are no longer moved (D-0071 §1), but an item still is: it is
+ * one tap, never a drag.
+ */
 function ItemButton({
   id,
   name,

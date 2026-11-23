@@ -24,12 +24,14 @@ import { sceneColumns, sceneView, NOMINAL_W } from './gardenView'
 export interface GardenSceneProps {
   year: YearGarden
   season: Season
+  /** after dark: moonlight instead of sun, and the night-bloomers show (D-0071) */
+  night?: boolean
   reduce?: boolean
   /** something is over the page: stop rendering */
   paused?: boolean
 }
 
-export function GardenScene({ year, season, reduce, paused }: GardenSceneProps) {
+export function GardenScene({ year, season, night, reduce, paused }: GardenSceneProps) {
   const columns = sceneColumns(year.beds)
   const layout = useMemo(() => gardenLayout(year.beds, columns), [year.beds, columns])
   const view = useMemo(() => sceneView(layout), [layout])
@@ -46,10 +48,22 @@ export function GardenScene({ year, season, reduce, paused }: GardenSceneProps) 
       gl={{ antialias: true, alpha: true, toneMapping: THREE.ACESFilmicToneMapping }}
     >
       <Rig target={target} scale={view.scale} />
-      <hemisphereLight args={['#ffe8cc', '#4a3a2a', 1.15]} />
-      <ambientLight intensity={0.3} color="#ffdcb4" />
-      <directionalLight position={[-4, 7, 4]} intensity={1.7} color="#ffdcae" />
-      <directionalLight position={[3, 4, -5]} intensity={0.4} color="#e8e4ff" />
+      {night ? (
+        <>
+          <hemisphereLight args={['#aebbe6', '#1d2231', 0.5]} />
+          <ambientLight intensity={0.22} color="#9fb0dd" />
+          {/* the moon, low and cool, and a last warm glow from the house */}
+          <directionalLight position={[-4, 7, 4]} intensity={0.75} color="#c3cff2" />
+          <directionalLight position={[3, 4, -5]} intensity={0.25} color="#e8c58a" />
+        </>
+      ) : (
+        <>
+          <hemisphereLight args={['#ffe8cc', '#4a3a2a', 1.15]} />
+          <ambientLight intensity={0.3} color="#ffdcb4" />
+          <directionalLight position={[-4, 7, 4]} intensity={1.7} color="#ffdcae" />
+          <directionalLight position={[3, 4, -5]} intensity={0.4} color="#e8e4ff" />
+        </>
+      )}
       <Garden year={year} season={season} reduce={reduce} paused={paused} />
     </Canvas>
   )

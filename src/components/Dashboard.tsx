@@ -68,6 +68,8 @@ import { WishlistCard } from './WishlistCard'
 import { useCreatures } from './creatures/CreaturesContext'
 import { useGarden } from './garden/useGarden'
 import { GardenCard } from './GardenCard'
+import { useSeen } from './garden/useSeen'
+import { waitingLine } from '#/lib/garden/seen'
 
 const BADGES_SEEN = 'hannas-reading-list:badges-seen'
 /** the month whose wrap-up was opened or put away under Waiting for you (yyyy-mm) */
@@ -306,6 +308,10 @@ export function Dashboard({
         },
       }
     : undefined
+  // the garden's news, without clearing it: only opening the Garden tab counts as looking
+  const gardenSeen = useSeen(garden.garden, false)
+  const gardenLine = waitingLine(gardenSeen.plants, gardenSeen.unlocked)
+  const gardenWaiting = gardenLine && onOpenGarden ? { line: gardenLine, onVisit: onOpenGarden } : undefined
   const nothingWaiting =
     toRate.length === 0 &&
     questions.length === 0 &&
@@ -315,7 +321,8 @@ export function Dashboard({
     !creatureEgg &&
     !creatureEggs &&
     !creatureDuplicate &&
-    !creatureLevelUp
+    !creatureLevelUp &&
+    !gardenWaiting
 
   // nothing noted anywhere yet: the Tropes & characters block keeps out of the way
   const noTropes = tropesBlock(books).empty
@@ -335,6 +342,7 @@ export function Dashboard({
         creatureEggs={creatureEggs}
         creatureDuplicate={creatureDuplicate}
         creatureLevelUp={creatureLevelUp}
+        garden={gardenWaiting}
       />
     ),
     creatures: (

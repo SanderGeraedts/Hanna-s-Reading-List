@@ -3237,13 +3237,16 @@ textarea.input {
 .alphabet-behind {
   color: var(--warning);
 }
-.alphabet-tips {
-  margin-top: 0.6rem;
+/* an empty letter can be tapped for a book from her pile (D-0070) */
+button.alphabet-letter {
+  cursor: pointer;
 }
-.alphabet-tip-letter {
-  display: inline-block;
-  width: 1.2rem;
-  font-family: var(--serif);
+button.alphabet-letter:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.alphabet-suggest {
+  margin-top: 0.6rem;
 }
 /* a done letter shows its book's cover (#150); tap it to pick another (#152) */
 .alphabet-letter {
@@ -6964,64 +6967,10 @@ button.today-item:hover {
   }
 }
 
-/* the little signs with a cover, over either drawing */
-.garden-signs {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-.garden-sign {
-  position: absolute;
-  transform: translate(-50%, -100%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.3));
-}
-.garden-sign-board {
-  background: #8a6440;
-  border: 1px solid #6f4f32;
-  border-radius: 3px;
-  padding: 2px;
-  line-height: 0;
-}
-.garden-sign-board img,
-.garden-sign-blank {
-  display: block;
-  width: 22px;
-  height: 32px;
-  object-fit: cover;
-  border-radius: 1px;
-  background: #e8e0d2;
-}
-.garden-sign-post {
-  width: 2px;
-  height: 10px;
-  background: #6f4f32;
-}
-@media (max-width: 720px) {
-  .garden-sign-board img,
-  .garden-sign-blank {
-    width: 16px;
-    height: 23px;
-  }
-  .garden-sign-post {
-    height: 7px;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   .garden-spot.fresh-new::after {
     animation: none;
   }
-}
-
-/* a sign for the book she is reading: its spot is waiting, nothing is planted yet */
-.garden-sign.reading .garden-sign-board {
-  background: transparent;
-  border-style: dashed;
-}
-.garden-sign.reading .garden-sign-post {
-  opacity: 0.6;
 }
 
 /* ---- books on her shelf that fit a challenge (T-0066) ------------------- */
@@ -7067,6 +7016,66 @@ button.today-item:hover {
   text-align: center;
   line-height: 1.15;
   overflow-wrap: anywhere;
+}
+
+/* ---- a closer look, the cover behind a plant, and the night (D-0071) --- */
+.garden-beds {
+  margin-bottom: var(--space-1);
+}
+.garden-stage.night {
+  background: #16203a;
+}
+.garden-spot.peeked::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  pointer-events: none;
+}
+.garden-peek {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  gap: var(--space-1);
+  width: min(260px, 70%);
+  padding: var(--space-1);
+  border-radius: var(--radius-small);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.35);
+  transform: translate(-50%, calc(-100% - 12px));
+}
+.garden-peek.left {
+  transform: translate(-85%, calc(-100% - 12px));
+}
+.garden-peek-cover {
+  width: 48px;
+  height: 70px;
+  object-fit: cover;
+  border-radius: 3px;
+  flex: none;
+}
+.garden-peek-text {
+  display: grid;
+  gap: 2px;
+  align-content: start;
+  min-width: 0;
+}
+.garden-peek-text p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.garden-peek-title {
+  font-family: var(--serif);
+}
+.garden-peek-close {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+}
+.garden-look-chips {
+  margin: 0;
 }
 
 /* ---- Pick the cover before the book is added (T-0070) ---------------- */

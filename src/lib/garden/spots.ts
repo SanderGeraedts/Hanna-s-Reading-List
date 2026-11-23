@@ -3,13 +3,15 @@ import { EARLIER_YEAR, MAX_ITEM_SLOTS, SPOTS_PER_BED, isItemId } from './numbers
 import type { GardenItemId } from './numbers'
 
 /**
- * Where everything stands (T-0060, D-0052): her saved spots, read out of the
- * existing choice log, over a stable automatic placement, so a garden she has
- * never touched is already tidy and moving one plant never reshuffles the rest.
+ * Where everything stands (T-0060, D-0052, D-0071): the plants by the order
+ * she finished the books, and the garden items where she put them, read out of
+ * the existing choice log.
  *
- * Saved as `place` events with garden keys — `g:p:<book id>` for a plant and
- * `g:i:<year>:<item>` for a garden item — which the den's reader ignores and
- * which this reader keeps apart from the den's own `home:<slot>` keys.
+ * An item is saved as a `place` event with a garden key, `g:i:<year>:<item>`,
+ * which the den's reader ignores and which this reader keeps apart from the
+ * den's own `home:<slot>` keys. The `g:p:<book id>` keys of the plants she
+ * once moved are left in the log untouched and are no longer read: a log only
+ * ever grows (D-0052 §6).
  */
 
 export interface Spot {
@@ -44,21 +46,6 @@ function newestPlaces(log: readonly ChoiceEvent[]): Map<string, ChoiceEvent> {
   return best
 }
 
-/** Her saved plant spots, by book id. Keys that aren't the garden's (the den's `home:…`) are ignored. */
-export function savedPlants(log: readonly ChoiceEvent[]): Map<string, Spot> {
-  const out = new Map<string, Spot>()
-  for (const [key, e] of newestPlaces(log)) {
-    if (!key.startsWith(PLANT_KEY_PREFIX)) continue
-    const book = key.slice(PLANT_KEY_PREFIX.length)
-    const bed = num((e as { bed?: unknown }).bed)
-    const spot = num((e as { spot?: unknown }).spot)
-    if (!book || bed === null || spot === null) continue
-    if (bed < 0 || spot < 0 || spot >= SPOTS_PER_BED || !Number.isInteger(bed) || !Number.isInteger(spot)) continue
-    out.set(book, { bed, spot })
-  }
-  return out
-}
-
 /** Her placed garden items, per year garden: year → item → slot. An item taken away (`off: 1`) is left out. */
 export function savedItems(log: readonly ChoiceEvent[]): Map<number, Map<GardenItemId, number>> {
   const out = new Map<number, Map<GardenItemId, number>>()
@@ -84,8 +71,6 @@ export function savedItems(log: readonly ChoiceEvent[]): Map<number, Map<GardenI
 /** A plant before it has a spot: enough to put it in its place. */
 export interface Placeable {
   id: string
-  /** her own spot for it, when she has moved it */
-  saved?: Spot
 }
 
 export interface Arrangement {
@@ -96,41 +81,17 @@ export interface Arrangement {
 }
 
 /**
- * Where the plants of one year garden stand. The list is in the order the
- * plants were finished; a plant she has not moved wants the spot of its own
- * place in that order, and takes the next free one when hers is there already.
- * Because a plant's wish depends on its own rank and not on what is still free,
- * moving one plant moves at most the one plant whose spot it took — the rest of
- * the garden stays exactly where it was.
+ * Where the plants of one year garden stand: the list is in the order she
+ * finished the books, and each plant takes the spot of its own place in that
+ * order, bed by bed (D-0071 §1). Nothing is read back from her choices, so the
+ * garden is the same on every device without anything being saved.
  */
 export function arrange(plants: readonly Placeable[]): Arrangement {
   const spots = new Map<string, Spot>()
-  const taken = new Set<number>()
-  let top = 0
-  for (const p of plants) {
-    if (!p.saved) continue
-    const at = spotIndex(p.saved)
-    // two saved plants on one spot (two devices, same moment): the first in finish order keeps it
-    if (taken.has(at)) continue
-    taken.add(at)
-    spots.set(p.id, p.saved)
-    top = Math.max(top, at)
-  }
-  plants.forEach((p, rank) => {
-    if (spots.has(p.id)) return
-    let at = rank
-    while (taken.has(at)) at++
-    taken.add(at)
-    spots.set(p.id, spotAt(at))
-    top = Math.max(top, at)
-  })
-  const beds = Math.max(1, Math.ceil(Math.max(plants.length, top + 1) / SPOTS_PER_BED))
+  plants.forEach((p, rank) => spots.set(p.id, spotAt(rank)))
+  const beds = Math.max(1, Math.ceil(plants.length / SPOTS_PER_BED))
   return { spots, beds }
 }
-
-/** A `place` event body for a plant's new spot (the caller adds id and at). */
-export const plantPlace = (bookId: string, to: Spot) =>
-  ({ kind: 'place', key: plantKey(bookId), bed: to.bed, spot: to.spot }) as const
 
 /** A `place` event body for a garden item; `off: 1` takes it away again. */
 export const itemPlace = (year: number, item: GardenItemId, slot: number) =>

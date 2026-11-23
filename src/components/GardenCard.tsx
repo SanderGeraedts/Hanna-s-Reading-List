@@ -17,7 +17,7 @@ import { OpenLink } from './OpenLink'
 
 export function GardenCard({ garden, onOpen }: { garden: Garden; onOpen?: () => void }) {
   const reduce = useReducedMotion()
-  const news = newsLine(useSeen(garden, false))
+  const news = newsLine(useSeen(garden, false).plants)
   const year = yearOf(garden, startYear(garden))
   if (!year) return null
   // the block draws at most two beds, side by side and with no item strip
