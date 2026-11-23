@@ -395,10 +395,11 @@ outfits is about the pet being dressed (§7), for room decorations about this de
 
 - **Unlocked by her purchases** (the choices log, on every device); **shown or hidden per device**
   in the room settings (D-0022), like the eight there now.
-- A bought decoration **joins the room switched on, at the end of the list** (the lowest shelf
-  spot), on this device and on every other device the first time it sees the purchase. Older saved
-  rooms still load: `cleanRoom` adds missing *owned* decorations at the end switched on, and leaves
-  out decorations she doesn't own.
+- A bought decoration **joins the room switched on, at the top of the list** (the highest shelf
+  spot, so it always has a shelf; Hanna 2026-11-23, review after building), on this device and on
+  every other device the first time it sees the purchase. The decorations above it move one place
+  down. Older saved rooms still load: `cleanRoom` adds missing *owned* decorations at the top
+  switched on, and leaves out decorations she doesn't own.
 - **The 🎨 room panel** lists only owned ones, with the same checkbox and ↑↓ as the others; its names
   are the §2 names. Not owned: not in the list at all (no locked rows, no "buy in the shop").
 - **The shop card's Show/Hide in the room** flips the same per-device on/off as the panel (the 3D
@@ -619,6 +620,45 @@ option and list it here for the UX review and the tester.
   `room-panel-1280-lav` the shelf behind the panel hadn't finished drawing under headless software
   WebGL (it also happens without any purchase); the panel's list is the subject.
 
+## After the review (developer, 2026-11-23)
+
+The three must-fixes from *Review after building*:
+
+1. **Seat height per bed (also closes F14).** `shopModels.ts`: `BED_SEAT_Y` and `seatYOf(bed?)` —
+   gold cushion 0.18, cloud cushion 0.22, basket bed 0.14. `DenScene.tsx` passes the seat to the egg,
+   the crack and the creature, so the pet (and the egg) stands **on top** of whichever bed she has
+   placed, and a new bed changes it at once. Four new verification shots in `docs/tasks/T-0031-screens/`:
+   `bed-egg-gold-cushion-390-lav.jpg`, `bed-basket-390-lav.jpg`, `bed-cloud-cushion-390-lav.jpg`. The
+   `denBudget.test.ts` spot-projection test still passes.
+2. **Rain visible and inside the pane.** `shopModels.ts` → `buildWindow`:
+   - A rain-day sky is a little greyer: top `#8fa9bf`, bottom `#a9bccb` (triggered when
+     `weather === 'rain' && sky !== 'night'`; night rain stays the night sky).
+   - Rain is **thin slanted white streaks** (0.006 × 0.04 quads, tilted ~20°), merged into one
+     mesh (still one draw call, no gl_PointSize cap under swiftshader to worry about). Snow stays
+     as white Points as before.
+   - The scatter uses rejection sampling inside the pane's arched shape (rectangle for the body,
+     half-disc for the arch); the `userData.archTop` / `archR` let the DenScene clamp x when a drop
+     wraps to the top on a computer, so nothing lands outside the frame.
+   - New screenshots: `window-rain-1280-lav.jpg`, `window-rain-390-mid.jpg`.
+3. **Bought decoration joins at the top of the 🎨 list** (Hanna 2026-11-23). `cleanRoom` in
+   `src/lib/room.ts` now prepends owned decorations missing from the saved room instead of
+   appending. `shop.test.ts` and `CreaturesShop.test.tsx` updated to expect the top. Design §11 and
+   Done when 9 both say "at the top". Re-taken: `room-3d-1280-lav.jpg`, `room-3d-390-mid.jpg`,
+   `room-panel-1280-lav.jpg` — all three without moving anything by hand (the shelf layout places
+   the two bought decorations on the top shelves on its own).
+
+Nothing else was changed and no polish from "Not required" was taken on.
+
+**Checks (after the fixes)**
+
+- `pnpm exec tsc --noEmit`: clean.
+- `pnpm test`: **1553 passed, 22 skipped** (120 files); den budget low **38 / 4,915 triangles**, high
+  **59 / 16,013 triangles**. Touched tests all pass: `shop.test.ts`, `denBudget.test.ts`,
+  `CreaturesShop.test.tsx`, `CreaturesBlockDress.test.tsx`.
+- `pnpm run build`: ✓.
+- `pnpm exec harness check`: ✓.
+- Dev server on 3165 stopped, port free.
+
 ## Review after building (2026-11-23)
 
 UX designer, daytime; Hanna not asked (her question is in the hand-over). Looked at: the diff
@@ -736,3 +776,16 @@ the "Dress" label of the radio group is only for screen readers; and at 1280 the
   visible and all weather inside the pane, (3) a bought decoration joins at the top of the list so
   it always has a shelf (Done when 9 updated). Back to the developer. Remaining: the fixes, the
   tester, and Hanna's look at the shop on the live site.
+- 2026-11-23 developer: applied the three must-fixes from the review in one commit. (1) Seat
+  height per bed (`BED_SEAT_Y` in `shopModels.ts`, `seatYOf(bed?)`): gold cushion 0.18, cloud
+  cushion 0.22, basket bed 0.14; passed into the egg, the crack and the creature in `DenScene.tsx`;
+  closes backlog F14. (2) Rain: rainy-day sky `#8fa9bf`/`#a9bccb` and short slanted white streaks
+  (merged into one mesh so it stays one draw call, no `gl_PointSize` to fight in swiftshader);
+  scatter uses rejection sampling inside the pane's arched shape; `archTop`/`archR` keep drops
+  clamped inside the arch after wrapping on a computer. (3) `cleanRoom` prepends owned
+  decorations at the top (Design §11 updated, Hanna 2026-11-23). Tests updated and all 1553 pass;
+  den budget low 38 / 4,915 triangles, high 59 / 16,013; `tsc --noEmit` clean; `pnpm run build` ✓;
+  `harness check` ✓. New screenshots: `bed-egg-gold-cushion-390-lav`, `bed-basket-390-lav`,
+  `bed-cloud-cushion-390-lav`, `window-rain-390-mid`; re-taken: `window-rain-1280-lav`,
+  `room-3d-1280-lav`, `room-3d-390-mid`, `room-panel-1280-lav`. One commit, one CI run (Hanna
+  asked to save build minutes). Remaining: the tester and Hanna's look at the shop on the live site.

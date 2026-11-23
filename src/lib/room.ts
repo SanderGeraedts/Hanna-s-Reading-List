@@ -62,9 +62,10 @@ const isKey = <T extends string>(o: Record<T, string>, v: unknown): v is T => ty
 
 /**
  * A saved room made safe: unknown values fall back to the defaults, every decoration exactly once.
- * The shop's decorations (T-0031 Design §11) are in it only when she owns them (`owned`, from her
- * choices log): an owned one missing from the saved room joins at the end, switched on (the first
- * time this device sees the purchase); one she doesn't own is left out. Older saved rooms still load.
+ * The shop's decorations (T-0031 Design §11, review 2026-11-23: at the top) are in it only when
+ * she owns them (`owned`, from her choices log): an owned one missing from the saved room joins
+ * **at the top**, switched on (the first time this device sees the purchase, so it always has a
+ * shelf); one she doesn't own is left out. Older saved rooms still load.
  */
 export function cleanRoom(raw: unknown, owned: readonly ShopDecorKind[] = []): Room {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Partial<Record<keyof Room, unknown>>
@@ -79,8 +80,10 @@ export function cleanRoom(raw: unknown, owned: readonly ShopDecorKind[] = []): R
   }
   // decorations added later come in at the end, switched on
   for (const d of DEFAULT_ROOM.decor) if (!seen.has(d.kind)) decor.push({ ...d })
-  // bought ones she hasn't seen on this device yet: at the end (the lowest shelf), switched on
-  for (const d of SHOP_DECOR) if (owned.includes(d.kind) && !seen.has(d.kind)) decor.push({ kind: d.kind, on: true })
+  // bought ones she hasn't seen on this device yet: at the TOP, switched on, so each gets a shelf
+  const prepend: Room['decor'] = []
+  for (const d of SHOP_DECOR) if (owned.includes(d.kind) && !seen.has(d.kind)) prepend.push({ kind: d.kind, on: true })
+  decor.unshift(...prepend)
   return {
     wood: isKey(WOODS, r.wood) ? r.wood : DEFAULT_ROOM.wood,
     wallpaper: isKey(WALLPAPERS, r.wallpaper) ? r.wallpaper : DEFAULT_ROOM.wallpaper,

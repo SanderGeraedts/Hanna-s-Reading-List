@@ -102,6 +102,37 @@ function safeGlow(): THREE.Texture | null {
   }
 }
 
+/**
+ * The rain streak texture (review 2026-11-23): a thin slanted white line in a 64 × 64 sprite, so
+ * each PointsMaterial point reads as a drop of rain instead of a dot. Built once, then reused.
+ */
+let rainTex: THREE.Texture | null = null
+export function rainTexture(): THREE.Texture | null {
+  if (rainTex) return rainTex
+  try {
+    const c = document.createElement('canvas')
+    c.width = c.height = 64
+    const g = c.getContext('2d')!
+    g.save()
+    g.translate(32, 32)
+    g.rotate(0.35) // ~20° slant
+    g.strokeStyle = 'rgba(255,255,255,0.95)'
+    g.lineWidth = 3
+    g.lineCap = 'round'
+    g.beginPath()
+    g.moveTo(0, -24)
+    g.lineTo(0, 24)
+    g.stroke()
+    g.restore()
+    const t = new THREE.CanvasTexture(c)
+    t.needsUpdate = true
+    rainTex = t
+    return t
+  } catch {
+    return null
+  }
+}
+
 const matte = () => sharedCreatureMaterials().matte
 const satin = () => sharedCreatureMaterials().satin
 const gloss = () => sharedCreatureMaterials().gloss
@@ -355,6 +386,18 @@ export const DEN_SPOTS: Record<DenSlot, V3> = {
 }
 /** The food bowl, front right (nudged in from T-0029's spot so it stays in view on a phone). */
 export const BOWL_SPOT: V3 = [0.66, 0, -0.36]
+
+/**
+ * Where the pet and the egg sit (world y, Design review 2026-11-23, closes backlog F14): the top
+ * of the bed she has placed, so her pet stands on it (not in it) and a new bed changes it at once.
+ * The default is the cosy den's gold cushion.
+ */
+export const BED_SEAT_Y: Record<string, number> = {
+  'cloud-cushion': 0.22,
+  'basket-bed': 0.14,
+}
+export const DEFAULT_SEAT_Y = 0.18
+export const seatYOf = (bed?: string | null) => (bed && BED_SEAT_Y[bed] !== undefined ? BED_SEAT_Y[bed] : DEFAULT_SEAT_Y)
 /** Where the wall items hang: the window's sill and the fairy lights' height. */
 const WALL_Y = 0.9
 
@@ -542,10 +585,12 @@ export function buildWindow(q: CreatureQuality, opts: DenItemOptions = {}): THRE
   f.add(box(W, 0.025, 0.03), WOOD_DARK, [0, y0 + H * 0.55, 0.015])
   g.add(f.mesh(matte(), 'frame', hi(q)))
 
-  // the pane: one unlit mesh with the sky (a gradient at dawn and dusk), the sun or moon and stars
+  // the pane: one unlit mesh with the sky (a gradient at dawn and dusk), the sun or moon and stars.
+  // a rain-day sky is a little greyer so the streaks read on it (Design review 2026-11-23).
   const p = new Paint()
-  const top = { day: '#9cc3e6', dawn: '#e8b49a', dusk: '#e8b49a', night: MIDNIGHT }[sky]
-  const bottom = { day: '#b9d6ee', dawn: '#9a7aa8', dusk: '#7d5f93', night: '#24315a' }[sky]
+  const rainy = weather === 'rain' && sky !== 'night'
+  const top = rainy ? '#8fa9bf' : ({ day: '#9cc3e6', dawn: '#e8b49a', dusk: '#e8b49a', night: MIDNIGHT } as const)[sky]
+  const bottom = rainy ? '#a9bccb' : ({ day: '#b9d6ee', dawn: '#9a7aa8', dusk: '#7d5f93', night: '#24315a' } as const)[sky]
   const rect = new THREE.PlaneGeometry(W, H, 1, 2)
   const arch = new THREE.CircleGeometry(R, hi(q) ? 14 : 8, 0, Math.PI)
   p.add(rect, top, [0, y0 + H / 2, 0])
@@ -584,28 +629,54 @@ export function buildWindow(q: CreatureQuality, opts: DenItemOptions = {}): THRE
     pane.geometry = merged
   }
 
-  // rain or snow: one Points of 40 in front of the pane (falling on a computer, still on a phone)
+  // rain or snow: one Points of 40 in front of the pane (falling on a computer, still on a phone).
+  // scattered inside the pane's arched shape (review 2026-11-23); rain uses a slanted white streak.
   if (weather !== 'sun') {
-    const n = 40
-    const arr = new Float32Array(n * 3)
-    for (let i = 0; i < n; i++) {
-      // a fixed scatter (no Math.random), so the still and the den show the same weather
-      const u = ((i * 0.618034) % 1) - 0.5
-      const v = (i * 0.381966 * 7) % 1
-      arr.set([u * W * 0.92, y0 + 0.02 + v * (H + R * 0.8), 0.006], i * 3)
+    const want = 40
+    const xs: number[] = []
+    const ys: number[] = []
+    // a fixed Fibonacci-like scatter (no Math.random), so the still and the den show the same weather
+    for (let s = 0; s < want * 6 && xs.length < want; s++) {
+      const u = ((s * 0.618034) % 1) - 0.5
+      const v = (s * 0.381966 * 7) % 1
+      const x = u * W * 0.96
+      const y = y0 + 0.02 + v * (H + R * 0.9)
+      const dy = y - (y0 + H)
+      const inside = dy <= 0 ? Math.abs(x) <= W * 0.48 : x * x + dy * dy <= R * R * 0.9
+      if (inside) {
+        xs.push(x)
+        ys.push(y)
+      }
     }
+    const n = xs.length
+    const arr = new Float32Array(n * 3)
+    for (let i = 0; i < n; i++) arr.set([xs[i], ys[i], 0.006], i * 3)
     const geo = new THREE.BufferGeometry()
     geo.setAttribute('position', new THREE.BufferAttribute(arr, 3))
-    const mat = shopMaterials().weather.clone()
-    if (weather === 'rain') {
-      mat.color.set('#dbe9f5')
-      mat.size = 0.02
-      mat.opacity = 0.7
-    } else mat.size = 0.03
-    const pts = new THREE.Points(geo, mat)
-    pts.name = 'weather'
-    pts.userData = { moving: !!opts.moving, kind: weather, bottom: y0 + 0.02, top: y0 + H + R * 0.8, width: W * 0.92 }
-    g.add(pts)
+    if (weather === 'snow') {
+      // snow uses white points, as before
+      const mat = shopMaterials().weather.clone()
+      mat.size = 0.03
+      const pts = new THREE.Points(geo, mat)
+      pts.name = 'weather'
+      pts.userData = { moving: !!opts.moving, kind: weather, bottom: y0 + 0.02, top: y0 + H + R * 0.8, width: W * 0.92, archTop: y0 + H, archR: R }
+      g.add(pts)
+    } else {
+      // rain: short slanted white streaks, merged into one mesh so it stays one draw call and
+      // works around swiftshader's thin gl_PointSize map support (review 2026-11-23).
+      const streak = new Paint()
+      const tilt = 0.35 // ~20°
+      const Wstk = 0.006
+      const Hstk = 0.04
+      for (let i = 0; i < n; i++) {
+        streak.add(box(Wstk, Hstk, 0.001), '#ffffff', [xs[i], ys[i], 0.006], [0, 0, tilt])
+      }
+      if (!streak.empty) {
+        const rain = streak.mesh(shopMaterials().wall, 'weather', false)
+        rain.userData = { kind: weather, moving: !!opts.moving, bottom: y0 + 0.02, top: y0 + H + R * 0.8, width: W * 0.92, archTop: y0 + H, archR: R, Hstk, n }
+        g.add(rain)
+      }
+    }
   }
   return g
 }

@@ -65,8 +65,11 @@ describe.each(['low', 'high'] as const)('the den on %s', (q) => {
       expect(c.calls, i.id).toBeLessThanOrEqual(3)
       expect(c.triangles, i.id).toBeLessThanOrEqual(800)
     }
-    const win = buildDenItem('weather-window', q, { sky: 'day', weather: 'rain' })
-    expect(win.children.filter((o) => (o as THREE.Points).isPoints).length).toBe(1)
+    // snow is one Points (one draw call); rain is one merged-streaks Mesh (one draw call) too
+    const rainWin = buildDenItem('weather-window', q, { sky: 'day', weather: 'rain' })
+    expect(rainWin.children.find((o) => o.name === 'weather')).toBeDefined()
+    const snowWin = buildDenItem('weather-window', q, { sky: 'night', weather: 'snow' })
+    expect(snowWin.children.filter((o) => (o as THREE.Points).isPoints).length).toBe(1)
     expect(buildDenItem('reading-lamp', q).children.filter((o) => (o as THREE.Sprite).isSprite).length).toBe(1)
     for (const h of HABITAT_IDS) {
       const c = drawCost(buildRoom(h, q), false)

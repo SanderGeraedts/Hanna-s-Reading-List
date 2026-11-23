@@ -394,15 +394,15 @@ describe('room decorations (Done when 9)', () => {
     expect(document.activeElement).toBe(within(globe()).getByRole('button', { name: 'Hide the snow globe in the room' }))
     const row = () => within(panel()).getByText('Snow globe').closest('li')!
     expect((within(row()).getByRole('checkbox') as HTMLInputElement).checked).toBe(true)
-    // at the end of the list (the lowest shelf)
-    expect(within(panel()).getAllByRole('listitem').at(-1)).toBe(row())
+    // at the top of the list (the highest shelf, so it always gets a shelf; review 2026-11-23)
+    expect(within(panel()).getAllByRole('listitem').at(0)).toBe(row())
     // decorations not bought appear nowhere
     expect(within(panel()).queryByText('Pennant flags')).toBeNull()
     fireEvent.click(within(globe()).getByRole('button', { name: 'Hide the snow globe in the room' }))
     expect(status()).toBe('The snow globe is hidden in the room on this device.')
     expect((within(row()).getByRole('checkbox') as HTMLInputElement).checked).toBe(false)
     expect(within(globe()).getByText('✓ Owned')).toBeTruthy()
-    expect(JSON.parse(localStorage.getItem(ROOM_KEY)!).decor.at(-1)).toEqual({ kind: 'snow-globe', on: false })
+    expect(JSON.parse(localStorage.getItem(ROOM_KEY)!).decor[0]).toEqual({ kind: 'snow-globe', on: false })
 
     // a second device: the same purchases (synced), its own room: there, switched on
     cleanup()

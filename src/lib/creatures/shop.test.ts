@@ -260,28 +260,30 @@ describe('bought eggs (Design §6, D-0033 §7)', () => {
   })
 })
 
-describe('room decorations (Design §11)', () => {
-  it('a bought decoration joins the room panel list at the end, switched on; one not bought is nowhere', () => {
+describe('room decorations (Design §11, review 2026-11-23: at the top)', () => {
+  it('a bought decoration joins the room panel list at the TOP (so it gets a shelf), switched on; one not bought is nowhere', () => {
     const owned = ownedDecor([buy('snow-globe')])
     expect(owned).toEqual(['snow-globe'])
     const room = cleanRoom(null, owned)
-    expect(room.decor.at(-1)).toEqual({ kind: 'snow-globe', on: true })
+    expect(room.decor[0]).toEqual({ kind: 'snow-globe', on: true })
     expect(room.decor.map((d) => d.kind)).not.toContain('pennant')
     expect(shownDecor(room)).toContain('snow-globe')
     // without the purchase (another account, or not synced yet): not in the list at all
     expect(cleanRoom({ decor: [{ kind: 'snow-globe', on: true }] }).decor.map((d) => d.kind)).not.toContain('snow-globe')
   })
 
-  it('keeps it hidden on this device once she hid it, and an older saved room still loads', () => {
+  it('keeps it hidden on this device once she hid it (where she put it stays), and an older saved room still loads', () => {
     const owned = ownedDecor([buy('snow-globe'), buy('pennant')])
     const saved = { wood: 'cherry', decor: [{ kind: 'snow-globe', on: false }, { kind: 'koala', on: true }] }
     const room = cleanRoom(saved, owned)
     expect(room.wood).toBe('cherry')
-    expect(room.decor[0]).toEqual({ kind: 'snow-globe', on: false })
-    expect(room.decor.at(-1)).toEqual({ kind: 'pennant', on: true })
+    // the snow-globe stays where she left it (not moved to the top again); the pennant is new to
+    // the saved room, so it joins at the top
+    expect(room.decor[0]).toEqual({ kind: 'pennant', on: true })
+    expect(room.decor[1]).toEqual({ kind: 'snow-globe', on: false })
     expect(room.decor.length).toBe(DEFAULT_ROOM.decor.length + 2)
-    // Reset switches owned decorations on again and keeps them
-    expect(cleanRoom(DEFAULT_ROOM, owned).decor.slice(-2)).toEqual([
+    // Reset switches owned decorations on again and keeps them at the top
+    expect(cleanRoom(DEFAULT_ROOM, owned).decor.slice(0, 2)).toEqual([
       { kind: 'pennant', on: true },
       { kind: 'snow-globe', on: true },
     ])

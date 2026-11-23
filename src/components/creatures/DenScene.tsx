@@ -23,6 +23,7 @@ import {
   denRoom,
   denRug,
   dressCreature,
+  seatYOf,
 } from './shopModels'
 
 /**
@@ -82,8 +83,9 @@ const VIEW_H = DEN_VIEW_H
 const LOOK = DEN_LOOK
 const CAMERA = DEN_CAMERA
 const NO_DEN: DenSetup = { habitat: 'cosy', placed: {} }
-/** The cushion's top: where the creature stands. */
-const SEAT = 0.1
+// Where the creature and the egg sit (world y): each bed has its own, from `seatYOf` in
+// shopModels.ts. The gold cushion is 0.18, the cloud cushion 0.22, the basket bed 0.14
+// (review 2026-11-23; closes backlog F14).
 
 export function DenScene({ shows, cookies, phone, reduce, paused, reaction, onCrackDone, dress, den = NO_DEN, now }: Props) {
   const visible = usePageVisible()
@@ -127,7 +129,7 @@ export function DenScene({ shows, cookies, phone, reduce, paused, reaction, onCr
       <Room habitat={den.habitat} q={q} phone={phone} />
       <Spots placed={den.placed} q={q} sky={sky} weather={weather} moving={!phone && !reduce} reduce={reduce} />
       <Bowl cookies={cookies} q={q} />
-      {shows.kind === 'egg' && <Egg key={shows.tier ?? 'common'} tier={shows.tier ?? 'common'} phone={phone} rock={!phone && !reduce} />}
+      {shows.kind === 'egg' && <Egg key={shows.tier ?? 'common'} tier={shows.tier ?? 'common'} phone={phone} rock={!phone && !reduce} seat={seatYOf(den.placed.bed)} />}
       {shows.kind === 'crack' && (
         <Crack
           key={`${shows.species}|${shows.tier ?? 'common'}`}
@@ -136,6 +138,7 @@ export function DenScene({ shows, cookies, phone, reduce, paused, reaction, onCr
           tier={shows.tier ?? 'common'}
           phone={phone}
           reduce={reduce}
+          seat={seatYOf(den.placed.bed)}
           onDone={onCrackDone}
         />
       )}
@@ -150,6 +153,7 @@ export function DenScene({ shows, cookies, phone, reduce, paused, reaction, onCr
           reduce={reduce}
           reaction={reaction ?? null}
           dress={dress}
+          seat={seatYOf(den.placed.bed)}
         />
       )}
       {(phone || reduce) && !stopped && <Idle on={!reduce} />}
@@ -271,13 +275,22 @@ function Spot({
       const pts = o as THREE.Points
       if (pts.isPoints && pts.userData.moving) {
         const pos = pts.geometry.attributes.position as THREE.BufferAttribute
-        const { bottom, top, width, kind } = pts.userData as { bottom: number; top: number; width: number; kind: string }
+        const { bottom, top, width, kind, archTop, archR } = pts.userData as { bottom: number; top: number; width: number; kind: string; archTop: number; archR: number }
         const speed = kind === 'rain' ? 0.5 : 0.08
         for (let i = 0; i < pos.count; i++) {
           let y = pos.getY(i) - speed / 60
+          let x = pos.getX(i)
           if (y < bottom) y = top
+          // after wrapping to the top, keep inside the arched pane (review 2026-11-23)
+          const dy = y - archTop
+          if (dy > 0) {
+            const limit = Math.sqrt(Math.max(0, archR * archR * 0.9 - dy * dy))
+            if (x > limit) x = limit
+            else if (x < -limit) x = -limit
+          }
+          if (kind === 'snow') x = Math.max(-width / 2, Math.min(width / 2, x + Math.sin(t + i) * 0.0004))
           pos.setY(i, y)
-          if (kind === 'snow') pos.setX(i, Math.max(-width / 2, Math.min(width / 2, pos.getX(i) + Math.sin(t + i) * 0.0004)))
+          pos.setX(i, x)
         }
         pos.needsUpdate = true
       }
@@ -302,7 +315,7 @@ function Bowl({ cookies, q }: { cookies: number; q: CreatureQuality }) {
 // ---- the egg ------------------------------------------------------------------------------
 
 /** The egg on the cushion: tilted 6°; on a computer it rocks ±4° for 0.8 s about every 6 s. */
-function Egg({ tier, phone, rock }: { tier: Tier; phone: boolean; rock: boolean }) {
+function Egg({ tier, phone, rock, seat }: { tier: Tier; phone: boolean; rock: boolean; seat: number }) {
   const g = useRef<THREE.Group>(null)
   const egg = useMemo(() => makeEgg(tier, phone), [tier, phone])
   useFrame(({ clock }) => {
@@ -312,7 +325,7 @@ function Egg({ tier, phone, rock }: { tier: Tier; phone: boolean; rock: boolean 
     g.current.rotation.z = (6 * Math.PI) / 180 + r
   })
   return (
-    <group position={[0, SEAT, 0]}>
+    <group position={[0, seat, 0]}>
       <group ref={g} rotation={[0, 0, (6 * Math.PI) / 180]}>
         <primitive object={egg.root} />
       </group>
@@ -340,6 +353,7 @@ function Crack({
   tier,
   phone,
   reduce,
+  seat,
   onDone,
 }: {
   species: SpeciesId
@@ -347,6 +361,7 @@ function Crack({
   tier: Tier
   phone: boolean
   reduce: boolean
+  seat: number
   onDone?: () => void
 }) {
   const egg = useRef<THREE.Group>(null)
@@ -419,7 +434,7 @@ function Crack({
   })
 
   return (
-    <group position={[0, SEAT, 0]}>
+    <group position={[0, seat, 0]}>
       <group ref={egg} scale={BIG}>
         <primitive object={parts.root} />
       </group>
@@ -483,6 +498,7 @@ function Creature({
   reduce,
   reaction,
   dress,
+  seat,
 }: {
   species: SpeciesId
   shiny: boolean
@@ -492,6 +508,7 @@ function Creature({
   reduce: boolean
   reaction: Reaction | null
   dress?: Partial<Record<OutfitSlot, string>>
+  seat: number
 }) {
   const q: CreatureQuality = phone ? 'low' : 'high'
   const rig = useMemo<Rig>(() => rigOf(creatureFor(species, stage, shiny, q)), [species, stage, shiny, q])
@@ -559,7 +576,7 @@ function Creature({
       const look = idle && !phone && !mood && c > 6 ? Math.sin(((c - 6) / 2) * Math.PI) * 0.3 : 0
       rig.head.rotation.set(rig.base.head.x + tilt.x, rig.base.head.y + look, rig.base.head.z + tilt.z)
     }
-    if (holder.current) holder.current.position.y = SEAT + bob * scale
+    if (holder.current) holder.current.position.y = seat + bob * scale
     if (pops.current.length) {
       for (const p of pops.current) {
         if (p.at === null) p.at = t
@@ -572,7 +589,7 @@ function Creature({
   })
 
   return (
-    <group ref={holder} position={[0, SEAT, 0]} scale={scale}>
+    <group ref={holder} position={[0, seat, 0]} scale={scale}>
       <primitive object={rig.root} />
       {shiny && <Sparkles height={rig.height} twinkle={!phone && !reduce} />}
     </group>
