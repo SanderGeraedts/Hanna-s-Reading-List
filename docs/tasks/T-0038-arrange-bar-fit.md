@@ -1,0 +1,124 @@
+---
+id: T-0038
+title: "Keep the Arrange bar small: its Hidden chips scroll inside a capped area, and on a short screen the bar no longer sticks over the blocks"
+description: "While arranging, the Hidden: chips of the Arrange bar (Dashboard and Challenges) sit in an area at most about two chip rows high that scrolls inside, so the bar never grows taller than the screen however many blocks are hidden; on a short screen (a phone held sideways) the bar stays at the top of the page instead of sticking under the header, so no bingo square ends up under it."
+status: Open
+size: small
+depends_on: [T-0020, T-0035]
+decisions: [D-0014, D-0020, D-0022, D-0028]
+raised_on: 2026-11-23
+done_on: ""
+result: []
+---
+
+# Goal
+
+Two things the T-0035 tester found about the sticky Arrange bar (`.dashboard-bar.arranging`,
+from T-0020) on the Dashboard and the Challenges page. Requester: Hanna. Night mode: she wasn't
+asked anything; the team's picks are under *Choices made by the team*.
+
+1. **The bar grows with every hidden block.** The "Hidden:" chips (`.hidden-blocks`) wrap onto
+   new rows, so with every block hidden the bar was 699 px at 390 × 844 (16 rows), 742 px at
+   360 × 800 and 178 px at 1280 × 800. From about 26 hidden blocks on a phone the bar is taller
+   than the screen, and the last blocks' *Hide* buttons can only be reached by scrolling under
+   it (Playwright's real click was blocked). Same on `main` before T-0035.
+2. **A phone held sideways with Arrange on hides part of the bingo squares.** At 844 × 390 and
+   800 × 360 the header plus the sticky bar leave only 93–151 px, and a bingo square is
+   171–182 px tall, so focused squares end up 2–37 px under the bar (14 of 174 at 844 × 390 with
+   6 hidden; 24 of 174 at 800 × 360 with 6 hidden). As the tester wrote: nothing can fit a card
+   taller than the space that's left, so the bar must take less of a short screen.
+
+## The fix
+
+- **Cap the chips.** `.hidden-blocks` keeps wrapping, but gets a **maximum height of about two
+  chip rows** (e.g. `max-height: calc(2 × chip height + gap)`, from the tokens) and
+  `overflow-y: auto`, so beyond two rows the chips scroll inside the bar. The bar's height is then
+  at most its actions row plus two chip rows, whatever the number of hidden blocks. A chip that
+  gets keyboard focus scrolls into view inside the area (the browser does this; check it). The
+  "Hidden:" label scrolls with the chips; that's fine.
+- **Short screens: the bar doesn't stick.** In a `@media (max-height: 500px)` rule the arranging
+  bar is `position: static` (it stays where it is on the page, right under the Today strip,
+  with Reset and Done at hand when she starts arranging), and the arranging scroll padding
+  (`.dashboard:has(.dashboard-bar.arranging)`) falls back to the header's own sum, without
+  `--arrange-h`. Then a focused bingo square only has to fit under the header, which it does
+  (390 − about 130 px header leaves well over 182 px).
+- Both pages share the CSS, so the Challenges page gets the same fix. `useArrangeBarHeight`
+  stays (portrait and the computer still use `--arrange-h`).
+- Nothing else about arranging changes: Reset, Done, the chips' order and what they do, dragging
+  (D-0028), the bar's look.
+
+# Done when
+
+- **`src/styles.test.ts`** (extend it, as T-0035 did): `.hidden-blocks` has a `max-height` and
+  `overflow-y: auto`; a `max-height: 500px` media rule sets `.dashboard-bar.arranging` to
+  `position: static` and gives `.dashboard:has(.dashboard-bar.arranging)` a `scroll-padding-top`
+  **without** `--arrange-h` that equals the plain `.dashboard` sum. The existing T-0035 checks
+  still pass.
+- **The focus script** (`docs/tasks/T-0035-screens/focus-check.mjs`, copied or extended into
+  `docs/tasks/T-0038-screens/`), on a local dev server with no backend (never a production
+  `POCKETBASE_URL`), 150 demo books, Dashboard and Challenges with Arrange on:
+  - **844 × 390 and 800 × 360, with 0, 6 and 30 hidden blocks:** **0** focusable elements under
+    the header or the Arrange bar (before, on `main`: 14 of 174 at 844 × 390 with 6 hidden, 24 of
+    174 at 800 × 360 with 6 hidden). Run on `main` too and put both counts in the *Log*.
+  - **390 × 844, 360 × 800 and 1280 × 800, with 0, 6 and 30 hidden:** 0 under the header or the
+    bar, as after T-0035; the bar's height with 30 hidden is **at most 35 % of the screen
+    height** at 390 × 844 and 360 × 800 (before: 699 / 742 px) and the same with 6 or 30 hidden at
+    1280 × 800 once there are more than two rows of chips.
+  - **Every chip and every *Hide* button can be clicked** with a real (not forced) Playwright
+    click at 390 × 844 with 30 hidden (before: blocked from 26 hidden), and a chip reached by Tab
+    is fully visible inside the chip area.
+- **Screenshots** in `docs/tasks/T-0038-screens/`, lavender and midnight where it says `*`:
+  `arrange-30-hidden-390-*` (bar with the capped, scrollable chips), `arrange-30-hidden-1280-lavender`,
+  `arrange-6-hidden-844x390-*` scrolled to the bingo card (no square under anything; the bar
+  scrolled away with the page), `arrange-challenges-844x390-lavender`.
+- `pnpm test`, `pnpm exec tsc --noEmit`, `pnpm run build` and `pnpm exec harness check` pass;
+  `src/routeTree.gen.ts` is not committed. No console errors, no horizontal scroll.
+
+# Notes
+
+- **Read first:** T-0035 (*Build notes* "While arranging", the tester's Arrange and
+  resize/rotate findings, `focus-check.mjs`), T-0020 (the sticky Arrange bar, why its `top` is
+  small), D-0028 (favourites order while arranging).
+- **Files:** `src/styles.css` (`.dashboard-bar.arranging`, `.hidden-blocks`, the arranging
+  `scroll-padding-top`, a new `max-height: 500px` rule), `src/styles.test.ts`. No change to
+  `Dashboard.tsx` / `ChallengesPage.tsx` is expected; if the developer needs one (e.g. a class),
+  that's fine and still group 1.
+- **Group 1** (guardrails): CSS and a test only, nothing about books or saving, no code-owned path.
+- **Size: small.** A style change within existing pages, no new screen, data or service. The UX
+  designer writes no design before the build and reviews the screenshots after.
+- No new decision. Tokens only (D-0020), both wallpapers (D-0022), no hint text about the
+  scrolling (D-0014).
+
+## Choices made by the team
+
+Hanna wasn't asked anything (night mode). The architect took these:
+
+1. **Chips scroll inside a two-row area**, rather than one sideways-scrolling row: wheel and
+   trackpad scroll it naturally on the computer, and with few hidden blocks (the usual case)
+   nothing looks different from today.
+2. **On a short screen the bar stops sticking** instead of being squeezed further. A bingo square
+   (up to 182 px) can't fit under the header plus any sticky bar on a 360–390 px tall screen, so
+   this is the one fix that guarantees nothing ends up under it. The cost: with the phone
+   sideways she scrolls back up to press Done or bring a block back.
+3. **500 px** as the "short screen" line: every phone held sideways is below it, every computer
+   window and upright phone we check is above it.
+
+## Questions to re-ask Hanna in the morning
+
+1. "With your phone sideways, the Arrange bar (Reset, Done and the hidden blocks) now stays at the
+   top of the page instead of following you down. Is scrolling back up to press Done all right?"
+
+# Design
+
+No design before the build (small task). The UX designer reviews the screenshots after.
+
+# Test
+
+# Log
+
+- 2026-11-23 architect: wrote the task from T-0035's tester notes (phone sideways with Arrange on:
+  bingo squares partly under the bar; 26+ hidden blocks on a phone: the bar taller than the
+  screen, from T-0020). Fix: the Hidden chips scroll inside an area of about two rows, and below
+  500 px of height the bar doesn't stick. Night mode: choices under *Choices made by the team*,
+  one question for the morning. No new decision. Size: **small**. Handed to the **developer**; the
+  UX designer reviews after the build.
