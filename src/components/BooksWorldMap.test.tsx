@@ -478,4 +478,113 @@ describe('Where your books are set: tap a country, zoom the map (T-0039)', () =>
     fireEvent.keyDown(svg, { key: '-' })
     expect(viewBox()[2]).toBeCloseTo(w)
   })
+
+  // ---- tester's gap tests (T-0039 *Test*) ----------------------------------------------------------
+
+  const touch = (el: Element, type: 'pointerDown' | 'pointerMove' | 'pointerUp', id: number, x: number, y = 50) =>
+    fireEvent[type](el, { pointerId: id, pointerType: 'touch', isPrimary: id === 1, clientX: x, clientY: y })
+
+  it('the tap threshold is 6 px: a press that moves 5.9 px opens the card, 6 px does not', async () => {
+    const { country, card } = await setup()
+    const fr = country('France')
+    const press = (dx: number, dy: number) => {
+      touch(fr, 'pointerDown', 1, 50)
+      touch(fr, 'pointerMove', 1, 50 + dx, 50 + dy)
+      touch(fr, 'pointerUp', 1, 50 + dx, 50 + dy)
+      fireEvent.click(fr)
+    }
+    press(6, 0)
+    expect(card()).toBeNull()
+    press(4.3, 4.3) // just over 6 px diagonally
+    expect(card()).toBeNull()
+    press(5.9, 0)
+    expect(within(card()!).getByRole('heading').textContent).toBe('France')
+  })
+
+  it('a second finger turns a press into a pinch: no card, whichever finger lifts first; the next press is a tap again', async () => {
+    const { country, card, svg } = await setup()
+    const fr = country('France')
+    // finger two lands and lifts without moving, then finger one lifts: still no tap
+    touch(fr, 'pointerDown', 1, 50)
+    touch(svg, 'pointerDown', 2, 90)
+    touch(svg, 'pointerUp', 2, 90)
+    touch(fr, 'pointerUp', 1, 50)
+    fireEvent.click(fr)
+    expect(card()).toBeNull()
+    // finger one lifts first, finger two stays and lifts
+    touch(fr, 'pointerDown', 1, 50)
+    touch(svg, 'pointerDown', 2, 90)
+    touch(fr, 'pointerUp', 1, 50)
+    touch(svg, 'pointerUp', 2, 90)
+    fireEvent.click(fr)
+    expect(card()).toBeNull()
+    // a plain press afterwards opens the card
+    touch(fr, 'pointerDown', 1, 50)
+    touch(fr, 'pointerUp', 1, 50)
+    fireEvent.click(fr)
+    expect(within(card()!).getByRole('heading').textContent).toBe('France')
+  })
+
+  it('a pinch zooms between one and eight; the finger left after a pinch does not move the map', async () => {
+    const { svg, viewBox, zoomButtons } = await setup()
+    // spread from 20 px to 60 px apart: three times as close
+    touch(svg, 'pointerDown', 1, 40)
+    touch(svg, 'pointerDown', 2, 60)
+    touch(svg, 'pointerMove', 2, 80)
+    touch(svg, 'pointerMove', 1, 20)
+    expect(viewBox()[2]).toBeCloseTo(120)
+    // far apart: stops at 8×
+    touch(svg, 'pointerMove', 1, -5000)
+    expect(viewBox()[2]).toBeCloseTo(45)
+    expect(zoomButtons()[0].disabled).toBe(true)
+    // finger two lifts; finger one moving on does nothing
+    touch(svg, 'pointerUp', 2, 80)
+    const before = viewBox()
+    touch(svg, 'pointerMove', 1, -4900, 90)
+    expect(viewBox()).toEqual(before)
+    touch(svg, 'pointerUp', 1, -4900, 90)
+    // pinching in hard stops at the whole map
+    touch(svg, 'pointerDown', 1, -2000)
+    touch(svg, 'pointerDown', 2, 2000)
+    touch(svg, 'pointerMove', 1, 0)
+    touch(svg, 'pointerMove', 2, 1)
+    expect(viewBox()).toEqual([0, 0, 360, expect.any(Number)])
+    touch(svg, 'pointerUp', 1, 0)
+    touch(svg, 'pointerUp', 2, 1)
+    expect(svg.style.touchAction).toBe('pan-x pan-y')
+  })
+
+  it('a cancelled press (the page took the swipe) never opens a card', async () => {
+    const { country, card } = await setup()
+    const fr = country('France')
+    touch(fr, 'pointerDown', 1, 50)
+    touch(fr, 'pointerMove', 1, 50, 58)
+    fireEvent.pointerCancel(fr, { pointerId: 1, pointerType: 'touch' })
+    fireEvent.click(fr)
+    expect(card()).toBeNull()
+  })
+
+  it('Escape from a cover in the card closes it and puts focus back on the name; covers open their book by keyboard', async () => {
+    const { card, names, onShowBook } = await setup()
+    const ukName = within(names()).getByRole('button', { name: 'United Kingdom' })
+    fireEvent.click(ukName)
+    const cover = within(card()!).getByRole('button', { name: 'Pride and Prejudice' })
+    act(() => cover.focus())
+    fireEvent.click(cover)
+    expect(onShowBook).toHaveBeenCalledWith('pride')
+    fireEvent.keyDown(cover, { key: 'Escape' })
+    expect(card()).toBeNull()
+    expect(document.activeElement).toBe(ukName)
+  })
+
+  it('+ and − keys on a zoom button zoom one step each, never past the limits', async () => {
+    const { viewBox, zoomButtons } = await setup()
+    const [zoomIn] = zoomButtons()
+    fireEvent.keyDown(zoomIn, { key: '-' })
+    expect(viewBox()[2]).toBe(360)
+    for (let i = 0; i < 5; i++) fireEvent.keyDown(zoomIn, { key: '+' })
+    expect(viewBox()[2]).toBeCloseTo(45)
+    fireEvent.keyDown(zoomIn, { key: '−' })
+    expect(viewBox()[2]).toBeCloseTo(90)
+  })
 })

@@ -610,7 +610,74 @@ build doesn't change them. Handed to the **tester**.
 
 # Test
 
-To be written by the tester.
+(Tester, 2026-11-23, night mode, Hanna not asked. G-0031: I read CI's run instead of repeating it,
+ran the new and affected tests again, then tried to break the change on the dev server.)
+
+**Verdict: sent back to the developer.** One designed behaviour fails (F1 below). Everything else
+held up. The pull request stays a draft.
+
+**CI** (`gh pr checks 248`, run 45096647175, head `812ee5c`): `checks / checks` passed in 59 s on
+**attempt 1** (no re-run). *Test Files 98 passed | 1 skipped (99)*, `✓ tasks` and both builds
+(`✓ built`) in the log, no retried test. `checks / shards` and `checks / e2e` are skipped by the
+harness workflow, the same as on every PR here. The Netlify deploy preview is ready.
+
+**Local, from clean:** `pnpm install --frozen-lockfile` (done), `pnpm exec tsc --noEmit` (clean),
+`pnpm exec harness check` (✓ tasks, ✓ decisions, ✓ engineers, ✓ generated files). The new and
+affected tests (`vitest run BooksWorldMap.test.tsx mapZoom.test.ts Dashboard`) ran three times:
+**38 passed (38)** each time.
+
+**Tried to break it** on `vite dev --port 3156` with no `POCKETBASE_URL` and no backend, the demo
+shelf from `screens.mjs`, and playwright-core with Chrome. The phone runs used 390 × 844 with touch
+emulation and real CDP touch events, the computer runs 1280 × 800. The scripts are scratch files
+and are not committed. 58 phone checks and 50 computer checks passed, apart from F1. No console
+errors and no horizontal scroll in any run.
+
+| Area | What I tried | Result |
+|---|---|---|
+| **F1 tap zones** | Lit countries' boxes against their tap zones at 390, zoom 1 | **FAIL.** France gets **no tap zone**: its box is 59 × 45 px because it includes French Guiana, but mainland France is only **11.7 × 8.1 px**. The sea next to mainland France is covered by its neighbours' zones, so a tap 3–8 px west of France (Bay of Biscay) **opens the Netherlands** (`elementsFromPoint` there: Netherlands, Germany, UK, Spain and Italy zones, then the svg). The design says "every lit country gets a tap zone of at least 44 × 44 px". The USA has no zone for the same reason (Alaska), but the mainland is 53 × 22 px, so that matters less. |
+| Tap vs pan, touch, zoom 1 | Finger moves 0 / 3 / 5 / 5.9 px, then 6.5 / 8 / 12 / 20 px; held for 1.2 s; out 15 px and back | 0 to 5.9 px opens; 6.5 px and more opens nothing; a slow tap is still a tap; out and back is a drag ✓ |
+| Tap vs pan, touch, zoom 2 | 4 / 5.5 px, then 7 / 10 px | Under 6 px: a tap with no pan. 7 and 10 px: pans (y 35.5 → 31.7 → 26.3), no card, the page doesn't scroll ✓ |
+| Tap vs pan, mouse | 3 / 5.5 / 6.5 / 10 px at zoom 1 and 2 (India) | Under 6 px opens with no pan. Over 6 px: nothing at zoom 1, pans at zoom 2. Cursor `grabbing` while dragging, even off the map, then `grab`. A right-button drag doesn't pan ✓ |
+| Pinch with a finger lifted | Pinch, lift finger 2, move finger 1 40 px; lift finger 1 first; finger 2 lands and lifts without moving | No card in any case. The remaining finger doesn't move or jump the map (viewBox unchanged). The next plain tap opens a card. A fresh one-finger drag pans ✓ |
+| Pinch limits | Pinch in hard at 2×; pinch out at 8× | Stops at `0 0 360 142` and touch-action is `pan-x pan-y` again; stays at 8× (w 45.000) ✓ |
+| 8× and the edges | + three times, then 14 swipes to each edge | 45 × 17.75 units; + disabled; x stops at 315.000 and 0, y at 124.250 and 0; the zoom never changes while dragging. − at the corner gives 4×, still inside the map. At 8× only Romania and the Netherlands keep zones ✓ |
+| Ctrl+scroll vs wheel | Plain wheel at zoom 1 and zoomed; Ctrl+wheel; 40 Ctrl+wheels at the corner; a line-mode 1e9 delta; a sideways wheel; Ctrl+wheel over the zoom strip | Plain wheel scrolls the page (4050 → 4350) and leaves the map alone. Ctrl+wheel zooms, the page doesn't scroll, and the point under the pointer stays within 0.75 px. 41/41 `preventDefault`; stops at 8× inside the map; the huge zoom-out lands exactly on the whole map; the sideways wheel does nothing; the strip is left to the browser ✓ |
+| Page scroll at zoom 1, phone | Swipe up starting on a lit country, a plain country, the Netherlands' zone, a land cover; again after ⤢ | The page scrolls about 320 px each time, with no card and no book opened. Zoomed in, the same swipe pans and doesn't scroll. After ⤢ it scrolls again ✓ |
+| Keyboard | Tab through the block; Enter and Space; Escape from a name and from a card cover; `+ = - −`; arrows at 1× and zoomed; 30 × → and ↑ | Tab order: 14 lit countries (alphabetical), then Zoom in (− and ⤢ are skipped at 1×), names, land covers. The map itself is a stop only when zoomed. The card: heading, covers, then Close. Escape puts focus back on the opener. Arrows pan by a fifth (135, 53.25 → 153, 60.35), clamp at the north-east edge, and don't scroll the page. At 1× ↓ doesn't pan. The dashed mark shows only on Tab focus. The ring on names is 2 px gold ✓ |
+| Card + wallpaper / resize | France card open, then 844 × 390, 320 × 640 and back; midnight via the page; the Room panel round trip; 1280 → 900 / 600 / 1600 | Card, gold mark and zones stay; a wider map has fewer zones (9 instead of 12); the gold is identical on midnight; after the Room panel France opens normally ✓ |
+| Imaginary lands | Tap the first and last land cover; swipe from one | Each opens its own book (48 × 72); the swipe scrolls and opens nothing ✓ |
+| No digits | Text, every `aria-label`/`title`/`alt`, svg `<title>`, CSS `content`: at 8×, with the UK card, a plain card, a 105-cover card, and Japan at 1280 | None ✓ |
+| 300 books | 40 lit countries, 324 tiles, a 105-cover France card, phone at CPU ×1 and ×4 | ×1: frames 10 ms median and p95 for the glide, drag and pinch, no long tasks; the card opens in 57 ms. ×4: drag p95 60 ms, pinch p95 80 ms, the button glide 200–260 ms a frame (it plays as a jump on a slow phone), the card in 342 ms. Acceptable, see below |
+
+**Smaller things seen, not blocking** (for the developer while fixing F1, or a later task):
+
+- **Keyboard focus is lost** when the focused button becomes disabled: Enter on + at 4× (to 8×),
+  Enter on − at 2× (to 1×), or `-` on the zoomed map until 1× (the map stops being a Tab stop).
+  Focus then sits on `<body>` with no ring. The next Tab goes on from there (to the names), so no
+  one gets stuck.
+- **A tap within about 150–400 ms after panning the zoomed map** gets no `click` from Chrome in
+  emulation, also on the + button outside the map. I didn't see this after a page scroll. It
+  might be Chrome's own tap suppression. Worth a look on a real phone.
+- **Crossing the dashboard's one/two-column width** (between 900 and 600 px) remounts the block, so
+  the card closes and the map shows whole again. A phone turned sideways keeps it. This matches
+  team choice 3 (zoom not remembered).
+- **Tapping a cover opens the book on the shelf**, as every dashboard cover does (`showBook`
+  leaves the dashboard). So the card doesn't "stay open behind it" as the design's table says.
+  After Back, the book panel is still open over the dashboard; that was already so before this task.
+- At CPU ×4 the button glide runs at about 4 frames a second (each frame changes the zoom).
+
+**Gap tests added** in `src/components/BooksWorldMap.test.tsx` (all pass, 30 tests in the file):
+the 6 px threshold (5.9 px is a tap; 6 px straight or diagonal is not); a second finger makes a
+pinch whichever finger lifts first, and the next press is a tap again; a pinch zooms between 1 and
+8 and the remaining finger doesn't move the map; a cancelled press never opens a card; Escape from
+a card cover closes it with focus back on the name; `+`/`−` keys on a zoom button take one step
+within the limits.
+
+**To pass next time:** every lit country has a 44 px tap target around its **mainland** (for
+example, measure the largest piece, or give each small piece its own zone). The check: at 390 and
+zoom 1, a tap 6 px west of mainland France opens France, and the Netherlands still opens from
+15 px off its edge. Plus a component test that mocks the svg's width so France's zone is decided
+the way it is in a browser.
 
 # Log
 
@@ -642,3 +709,7 @@ To be written by the tester.
   `.dashboard`; two console messages filtered; T-0018 tests find the map as a group and covers as
   buttons). Three small differences noted, not to fix. Design checks ticked. Handed to the
   **tester**.
+- 2026-11-23 tester: sent back: France (its box stretched by French Guiana) gets no tap zone, so
+  mainland France is an 11.7 × 8.1 px target on the phone, and a tap a few px off it opens the
+  Netherlands (see *Test*, F1). CI attempt 1 green; everything else held up; six gap tests added.
+  #248 stays a draft. Handed back to the **developer**.
