@@ -102,6 +102,9 @@ makes it something she can explore.
     right, labelled `Zoom in`, `Zoom out`, `Show the whole map`; one press doubles or halves the zoom
     and the maximum is reached in three presses;
   - at zoom 1 on 390, a tap about 15 px outside the Netherlands' edge (on the sea) opens its card;
+  - at zoom 1 on 390, mainland France has a tap zone; a tap a few px off it opens the nearest lit
+    coast (France where no neighbour is nearer), never the Netherlands; the UK opens the UK;
+  - reaching 8× or zoom 1 with the keyboard leaves focus on the other zoom button, not the page;
   - the chosen country has the thick gold mark (2.5 px over 5 px) on both wallpapers, a plain one
     with the gold wash too; a Tab-focused lit country has the dashed mark;
   - opening a card moves focus to its heading; × and Escape put focus back on the lit country or
@@ -206,6 +209,10 @@ same place on the phone and the computer. The strip adds 56 px of height (44 + `
 | `⤢` | `Show the whole map` | `Show the whole map` | at zoom 1 |
 
 - Disabled buttons use the existing `.btn:disabled` look (dimmed) and are skipped by Tab.
+- **Focus at the limits** (re-review 2026-11-23): a press that disables the focused control moves
+  focus to the other end of the strip, so a keyboard user never lands on the page: reaching 8× from
+  `+` moves focus to `−`; reaching zoom 1 from `−`, `⤢` or the zoomed map itself (which stops being
+  a Tab stop) moves focus to `+`. The buttons stay truly `disabled`.
 - **One press doubles or halves the zoom**, around the middle of what is shown: zoom 1, 2, 4, 8.
   Three presses to the maximum on a small map; the shelf's 1.4 step would need seven.
 - **Maximum zoom 8×** (the architect's number, kept): the Netherlands, about 6 px wide on a phone at
@@ -273,7 +280,18 @@ about 1 px). Every lit country gets a **tap zone of at least 44 × 44 px on scre
   so it shrinks away as the country grows: at 8× the Netherlands is big enough and has none.
 - Larger lit countries need no zone (their own shape is the target), so a lit USA never steals a tap
   meant for Canada.
-- **Overlapping zones:** the smaller country is drawn last and wins (draw zones largest first).
+- **A zone is drawn around the country's main landmass** (its largest piece), and that piece decides
+  whether the country is "tiny": mainland France without French Guiana, the USA without Alaska.
+- **Who wins a tap** (re-review 2026-11-23), in this order:
+  1. **a lit country's own shape under the finger** wins over any zone (a tap in the UK opens the
+     UK, never the Netherlands' zone over it);
+  2. **where zones overlap, the nearest coast within 8 px** on screen wins (a tap just off Brittany
+     opens France, not the Netherlands, whose zone also reaches there; with Spain's or the UK's
+     coast nearer, that one);
+  3. **further out at sea, the smallest country** wins (zones are drawn largest first, so the
+     smallest is on top: the Netherlands from 15 px north).
+  So "6 px off a tiny country opens it" holds only where no other lit coast is nearer; a tiny
+  country ringed by lit neighbours is reached by zooming in, its name, or Tab.
 - **Plain countries get no zone:** at zoom 1 Belgium is a sliver next to a zoned Netherlands; she
   zooms in to tap Belgium. Plain countries matter less, and a zone around every tiny plain country
   would cover the lit ones.
@@ -561,6 +579,42 @@ enlarged, since the UK and the Netherlands are only a few pixels at zoom 1),
 Questions 2 and 3 for Hanna (strip placement, bigger land covers) stay open for the morning; the
 build doesn't change them. Handed to the **tester**.
 
+### Re-review (2026-11-23)
+
+**Verdict: accepted. The new overlap rule and the focus at the limits become the design** (the
+*Tap targets* and *Zoom buttons* text above and two *Done when* lines are updated). Looked at
+`git diff 812ee5c 9b97ebf -- src` (`nearestCoast`, `COAST_PX`, the `main` landmass, `zoomTo`),
+`screens-output.txt` (101 ok, 0 FAIL), `tiny-390-lavender` and the new component tests.
+
+- **The overlap rule (own shape, then nearest coast within 8 px, then the smallest).** The old
+  rule, "the smaller country is drawn last and wins", was a drawing order, not an intention: it
+  let the Netherlands take taps that are plainly next to France. What a finger means near a coast
+  is "the land I'm next to", and nearest-coast says exactly that. The developer is right that the
+  send-back's check ("6 px off France opens France") can't hold on the demo shelf: there Spain or
+  the UK is 0.5 to 2.5 px nearer, and opening France would mean taking a tap from the country the
+  finger is actually closer to. What the send-back was really about holds: France has a zone of
+  its own around its mainland, it opens from 6 px off when its neighbours aren't lit, and the
+  Netherlands never wins next to France. The far-out case keeps the old behaviour (the
+  Netherlands from 15 px north), and the UK still opens the UK. 8 px is a fair reach: inside it a
+  finger is clearly "at" that coast, beyond it the small country needs the help more. The cost,
+  already accepted in the first review, is that a tiny lit country ringed by lit neighbours has
+  little sea of its own at zoom 1; zoom, its name in the list and Tab still reach it.
+- **Main landmass.** Judging and drawing zones by the largest piece is the right reading of
+  "tiny": nobody aims for mainland France by tapping French Guiana. Islands next to the mainland
+  (Corsica, Sicily) are not in the zone or the coast distance; they are rarely tapped at zoom 1
+  and their own shape still opens their country. Not to fix.
+- **Focus at the limits.** Moving focus from `+` to `−` at 8×, and to `+` at zoom 1, keeps a
+  keyboard user in the strip with a visible ring, and the buttons stay truly disabled (dimmed,
+  skipped by Tab), as designed. The ring lands on the button that undoes the step, which is the
+  natural next press. Accepted.
+- **Card across the one/two-column remount.** Matches the design's intent better than the tester's
+  first observation (the card stayed open while she only resized); the zoom still resets (team
+  choice 3). Accepted.
+
+**For the tester:** `nearestCoast` samples each overlapping zone's outline with
+`getPointAtLength` on every tap on a zone; check the tap still opens promptly on a phone with a
+slowed CPU.
+
 # Build notes
 
 - **Zoom maths:** `src/lib/mapZoom.ts` (`zoomAround`, `panView`, `clampView`, `between`,
@@ -752,3 +806,7 @@ the way it is in a browser.
   the UK, 6 px west of France with only France and the Netherlands lit opens France, resizing
   1280 → 600 → 1280 keeps the card). Handed to the **UX designer** for review (the overlap rule),
   then the tester.
+- 2026-11-23 ux-designer: reviewed: accepted the new overlap rule (own shape, then nearest coast
+  within 8 px, then the smallest), zones by main landmass, focus moving to the other zoom button at
+  8× and 1×, and the card across the remount; Design and *Done when* updated (see *Re-review*).
+  Handed to the **tester**.
