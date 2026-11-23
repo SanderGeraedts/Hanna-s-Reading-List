@@ -2,12 +2,12 @@
 id: T-0041
 title: "Count \"The Netherlands\", \"Nederland\" and other common spellings of a country on the world map and the travel badges"
 description: "placesOf in src/lib/places.ts ignores a leading \"the\" and accents and knows the native names of a few countries (Nederland, Deutschland, España, …) and \"U.S.A.\", so a book set in \"The Netherlands\" or \"Nederland\" lights up the Netherlands on the map and unlocks Home sweet home."
-status: Doing
+status: Done
 size: small
 depends_on: [T-0015, T-0040]
 decisions: [D-0023, D-0026, D-0037]
 raised_on: 2026-11-23
-done_on: ""
+done_on: 2026-11-23
 result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/247"]
 ---
 
@@ -104,7 +104,67 @@ spellings.
 - Nothing else touched; `setIn.test.ts` still passes (typing "Nederland" in Set in now becomes a
   country, as the task's *Notes* say).
 
+## Review after building (2026-11-23)
+
+Nothing visual changes: the diff touches only `src/lib/places.ts` and its tests, no component,
+style or text, so the world map block, the travel badges and the book panel look exactly as
+before (and the map still shows no numbers, D-0026). What changes is which existing countries
+and badges light up. "Set in" in the book panel (`SetInField.tsx`) saves the row she picks
+from `placeSuggestions`; typing "Nederland" now ends that list with an add row of kind
+*country* that saves "Nederland" (her spelling, as D-0023 wants), not "Nederland (Imaginary
+place)", and its chip counts as the Netherlands; "the netherlands" saves "The Netherlands".
+A made-up "The Shire" typed there still becomes "The shire (Imaginary place)". Checked
+through the code and new tests in `setIn.test.ts`, not on the preview, since nothing on
+screen changes. Small difference, not blocking: typing "cote d'ivoire" saves "Cote D'ivoire"
+(counted as Côte d'Ivoire, but spelled by `countrySpelling`, not by the map's name). Verdict:
+matches *Done when*.
+
 # Test
+
+**CI** (run 45095112033, attempt 1, PR #247): `checks / checks` pass (harness check ✓,
+vitest 97 files passed, 1 skipped; 1047 tests passed, 9 skipped (the PocketBase-only
+suite)); no retries in the log. The e2e jobs are skipped by design (the workflow's `e2e`
+input is empty); Netlify deploy preview ready; its header/redirect/pages checks skipped as
+on every PR.
+
+**Locally**, after `pnpm install --frozen-lockfile`:
+
+- `pnpm exec vitest run src/lib/places.test.ts src/lib/badges.test.ts src/lib/setIn.test.ts`
+  (as written, before my tests): `Test Files 3 passed (3)`, `Tests 69 passed (69)`; run 5
+  times more, 69/69 each time. With the tester's tests: `Tests 76 passed (76)`, 3 runs.
+- `pnpm exec tsc --noEmit`: no output, no errors.
+- `pnpm exec harness check`: `✓ tasks: 33 tasks, index in step`, `✓ decisions: 38 records,
+  index complete, 3 overrules valid`, `✓ engineers: 2 listed`, `✓ generated files: current`.
+
+**Tried to break it** (a probe through `placesOf`, `worldMap`, `badges()` and `placeKind`
+for each place; the map and the badges agreed in every case):
+
+- "the" inside names: "Thessaloniki", "Thailand", "Thenetherlands" untouched; "Netherlands
+  Antilles" and "The Netherlands Antilles" are not the Netherlands; "The The Netherlands" is
+  nothing (only one "the" is stripped). "The Hague" is still no country (out of scope).
+- Capitals and spacing: "  tHe    nEtHeRlAnDs  ", "The" + non-breaking space + "Netherlands",
+  a tab and newline around "Nederland", "NEDERLAND": all the Netherlands.
+- Accents on map names: "Côte d'Ivoire", "Cote d'Ivoire", "COTE D'IVOIRE", a decomposed "ô",
+  "the Côte d'Ivoire": all Côte d'Ivoire (Africa postcard). Bonus: "Reykjavík" now finds
+  Iceland, "İtalia" Italy, "ΕΛΛΆΔΑ" Greece.
+- Made-up lands with "The": "The Shire" alone is neither country nor land (as before), "The
+  Shire (Imaginary place)" stays the land "The Shire", "The Narnia" stays Narnia, and
+  "Deutschland (Imaginary place)" stays a made-up land (the imaginary path is untouched).
+- Open Library places: "Amsterdam (Netherlands)", "Amsterdam (The Netherlands)", "Utrecht
+  (Nederland)", "Leiden (Netherlands) -- Fiction", "Amsterdam, The Netherlands": all the
+  Netherlands, with Europe and Home sweet home.
+- Gaps found, small and outside the task's table, not blocking (possible follow-up): a curly
+  apostrophe ("Côte d’Ivoire") and "U.S.A" or "USA." without the exact dots are still no
+  country; typed "cote d'ivoire" in Set in is saved as "Cote D'ivoire" (it counts correctly).
+
+**Tests added** for the gaps in coverage: `places.test.ts`, *more spellings of a country:
+tester's checks (T-0041)* (6 tests: "the" inside names, capitals/spaces, accents on map
+names, made-up "The …" lands, Open Library brackets and commas, and the map and the travel
+badges lighting up the same countries); `setIn.test.ts`, one test that typing "Nederland",
+"nederland", "the netherlands" or "België" saves a country and "the shire" a made-up place.
+5 of them fail on `main`'s `places.ts` (checked by swapping the file in and back).
+
+**Verdict: passed.**
 
 # Log
 
@@ -119,3 +179,9 @@ spellings.
   `pnpm exec tsc --noEmit`: no errors. `pnpm exec harness check`: tasks, decisions, engineers
   and generated files all ✓. Draft PR #247. Nothing a user sees changes in layout, so handed
   to the **tester**.
+- 2026-11-23 ux-designer: reviewed: matches (nothing visual changes; "Nederland" in Set in is
+  now saved as a country).
+- 2026-11-23 tester: passed. CI green on the first attempt; Done-when check 69/69 (76/76 with
+  7 tester tests added for "the" inside names, spacing, accents on map names, made-up "The …"
+  lands, Open Library places, map and badges agreeing, and Set in). Small follow-up ideas:
+  curly apostrophes, "U.S.A" without the last dot, the spelling of a typed "cote d'ivoire".

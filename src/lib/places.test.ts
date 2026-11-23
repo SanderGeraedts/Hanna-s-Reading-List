@@ -161,6 +161,67 @@ describe('more spellings of a country (T-0041)', () => {
   })
 })
 
+describe('more spellings of a country: tester’s checks (T-0041)', () => {
+  const countryOf = (place: string) => placesOf([place], MAP_COUNTRY_SET).countries
+  // what the map lights up and which travel badges a finished book with these places earns
+  const seen = (places: string[]) => {
+    const book = b('x', { finished: ['2026-08-01'], places })
+    const map = [...worldMap([book], MAP_COUNTRY_SET).countries.keys()].sort()
+    const earned = badges([book], '2026-11-20')
+      .filter((x) => x.earned && (x.id.startsWith('continent-') || x.id === 'home-sweet-home'))
+      .map((x) => x.id)
+      .sort()
+    return { map, earned }
+  }
+
+  it('leaves “the” inside a name alone', () => {
+    expect(countryOf('Thessaloniki')).toEqual([])
+    expect(countryOf('Thessaloniki (Greece)')).toEqual(['Greece'])
+    expect(countryOf('Thailand')).toEqual(['Thailand'])
+    expect(countryOf('Netherlands Antilles')).toEqual([])
+    expect(countryOf('The Netherlands Antilles')).toEqual([])
+    expect(countryOf('Thenetherlands')).toEqual([])
+    expect(countryOf('The The Netherlands')).toEqual([])
+  })
+
+  it('ignores capitals and extra spaces, tabs and non-breaking spaces', () => {
+    for (const place of ['  tHe    nEtHeRlAnDs  ', 'The Netherlands', '\tNederland\n', 'NEDERLAND', 'the\tnetherlands'])
+      expect([place, countryOf(place)]).toEqual([place, ['Netherlands']])
+  })
+
+  it('ignores accents on the map’s own names too', () => {
+    for (const place of ["Côte d'Ivoire", "Cote d'Ivoire", "COTE D'IVOIRE", "Côte d'Ivoire", "the Côte d'Ivoire"])
+      expect([place, countryOf(place)]).toEqual([place, ["Côte d'Ivoire"]])
+    expect(countryOf('Reykjavík')).toEqual(['Iceland'])
+    expect(countryOf('ΕΛΛΆΔΑ')).toEqual(['Greece'])
+  })
+
+  it('doesn’t turn a made-up land that starts with “The” into a country', () => {
+    expect(placesOf(['The Shire'], MAP_COUNTRY_SET)).toEqual({ countries: [], imaginary: [] })
+    expect(placesOf(['The Shire (Imaginary place)'], MAP_COUNTRY_SET)).toEqual({ countries: [], imaginary: ['The Shire'] })
+    expect(placesOf(['The Narnia'], MAP_COUNTRY_SET)).toEqual({ countries: [], imaginary: ['Narnia'] })
+    expect(placesOf(['Deutschland (Imaginary place)'], MAP_COUNTRY_SET)).toEqual({ countries: [], imaginary: ['Deutschland'] })
+  })
+
+  it('reads Open Library’s places with the country in brackets or after a comma', () => {
+    for (const place of ['Amsterdam (Netherlands)', 'Amsterdam (The Netherlands)', 'Utrecht (Nederland)', 'Leiden (Netherlands) -- Fiction', 'Amsterdam, The Netherlands'])
+      expect([place, countryOf(place)]).toEqual([place, ['Netherlands']])
+  })
+
+  it('lights up the same countries on the map as the travel badges count', () => {
+    expect(seen(['The Netherlands'])).toEqual({ map: ['Netherlands'], earned: ['continent-europe', 'home-sweet-home'] })
+    expect(seen(['Amsterdam (Nederland)', "Cote d'Ivoire"])).toEqual({
+      map: ["Côte d'Ivoire", 'Netherlands'],
+      earned: ['continent-africa', 'continent-europe', 'home-sweet-home'],
+    })
+    expect(seen(['The Bahamas', 'Brasil', 'Ελλάδα'])).toEqual({
+      map: ['Bahamas', 'Brazil', 'Greece'],
+      earned: ['continent-europe', 'continent-north-america', 'continent-south-america'],
+    })
+    expect(seen(['Thessaloniki', 'The Shire'])).toEqual({ map: [], earned: [] })
+  })
+})
+
 describe('the map: small covers (T-0018)', () => {
   it('asks the app’s cover route for another size', () => {
     expect(coverAtSize('/api/cover/id/8231856?size=L', 'S')).toBe('/api/cover/id/8231856?size=S')
