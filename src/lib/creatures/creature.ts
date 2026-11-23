@@ -273,35 +273,32 @@ export function deriveCreatures(books: Book[], log: readonly ChoiceEvent[], now:
   const earnedList = started ? earnedEggs(books, days, today, opts.challenges) : []
   const dayList = [...days.keys()]
 
-  // the order eggs were earned: welcome, the milestones, then hatched eggs no longer earned (a fixed past day)
-  const order = new Map<string, number>([[WELCOME_EGG, 0]])
-  earnedList.forEach((e, i) => order.set(e.id, i + 1))
+  // every hatched egg, in the order she hatched them (the welcome egg first)
   const firstHatch = new Map<string, HatchEvent>()
+  if (welcome) firstHatch.set(WELCOME_EGG, welcome)
   for (const e of [...log].sort(byTime)) {
-    if (!isHatch(e) || firstHatch.has(e.egg)) continue
-    if (e.egg === WELCOME_EGG) {
-      if (welcome) firstHatch.set(e.egg, welcome)
-    } else if (eggTier(e.egg)) firstHatch.set(e.egg, e)
+    if (!isHatch(e) || firstHatch.has(e.egg) || e.egg === WELCOME_EGG) continue
+    if (eggTier(e.egg)) firstHatch.set(e.egg, e)
   }
-  let late = order.size
-  for (const [egg] of [...firstHatch].sort(([, a], [, b]) => byTime(a, b))) if (!order.has(egg)) order.set(egg, late++)
 
-  // what each egg hatches, and whether it is a duplicate: decided by the eggs earned before it (D-0033 §7)
-  const speciesOf = (egg: string, tier: Tier): SpeciesId | null => {
-    if (egg === WELCOME_EGG) return welcome ? welcome.species! : null
+  // what each egg hatched, and whether it was a duplicate: decided by the eggs she hatched before it
+  // (D-0033 §7). Eggs hatch oldest first, so this is the order they were earned; and because it
+  // only looks at hatches, a fixed past day that takes a milestone away never changes a hatch she
+  // has already seen: its species, shiny, duplicate flag and her choice stay (D-0033 §10). A
+  // milestone that goes away only changes eggs that haven't hatched yet.
+  const speciesOf = (egg: string, tier: Tier): SpeciesId => {
+    if (egg === WELCOME_EGG) return welcome!.species!
     if (opts.forceDuplicate && welcome) return welcome.species!
     return eggSpecies(egg, tier)
   }
   const seen = new Set<SpeciesId>()
   const hatched: Hatched[] = []
-  for (const [egg] of [...order].sort(([, a], [, b]) => a - b)) {
+  for (const [egg, hatch] of firstHatch) {
     const tier = eggTier(egg)!
     const species = speciesOf(egg, tier)
-    if (!species) continue
     const duplicate = seen.has(species)
     seen.add(species)
-    const hatch = firstHatch.get(egg)
-    if (hatch) hatched.push({ egg, tier, species, shiny: opts.forceShiny || isShinyEgg(egg, duplicate), duplicate, hatch })
+    hatched.push({ egg, tier, species, shiny: opts.forceShiny || isShinyEgg(egg, duplicate), duplicate, hatch })
   }
   const hatchedBy = new Map(hatched.map((h) => [h.egg, h]))
 

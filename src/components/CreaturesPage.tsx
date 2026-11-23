@@ -104,12 +104,29 @@ export function CreaturesPage({ books, startChoose, onChooseOpened, startStep, o
   useEffect(() => {
     if (picked && c.pet?.id === picked && !pickTimer.current) setPicked(null)
   }, [picked, c.pet])
-  useEffect(
-    () => () => {
-      if (pickTimer.current) clearTimeout(pickTimer.current)
-    },
-    [],
-  )
+  // a pick not saved yet is saved when she leaves: another tab, a reload, the app put away
+  const pending = useRef<string | null>(null)
+  const saveCurrent = useRef(setCurrent)
+  saveCurrent.current = setCurrent
+  const flushPick = useCallback(() => {
+    if (pickTimer.current) clearTimeout(pickTimer.current)
+    pickTimer.current = null
+    const id = pending.current
+    pending.current = null
+    if (id) saveCurrent.current(id)
+  }, [])
+  useEffect(() => {
+    const onHidden = () => {
+      if (document.visibilityState === 'hidden') flushPick()
+    }
+    window.addEventListener('pagehide', flushPick)
+    document.addEventListener('visibilitychange', onHidden)
+    return () => {
+      window.removeEventListener('pagehide', flushPick)
+      document.removeEventListener('visibilitychange', onHidden)
+      flushPick()
+    }
+  }, [flushPick])
 
   const go = (next: Step, focus?: typeof focusNext.current) => {
     focusNext.current = focus ?? null
@@ -181,17 +198,9 @@ export function CreaturesPage({ books, startChoose, onChooseOpened, startStep, o
     setPicked(p.id)
     say(currentSay(p.name))
     if (pickTimer.current) clearTimeout(pickTimer.current)
+    pending.current = p.id
     // arrowing through six pets writes one event, not six (Design §8)
-    pickTimer.current = setTimeout(() => {
-      pickTimer.current = null
-      setCurrent(p.id)
-    }, CURRENT_SAVE_MS)
-  }
-  const flushPick = () => {
-    if (!pickTimer.current || !picked) return
-    clearTimeout(pickTimer.current)
-    pickTimer.current = null
-    setCurrent(picked)
+    pickTimer.current = setTimeout(flushPick, CURRENT_SAVE_MS)
   }
 
   if (!c.started) {

@@ -249,7 +249,7 @@ describe('Your pets (Done when 9)', () => {
 
   // tester, sent back: un-skip with the fix. A pick announced as current must not be lost when
   // she leaves the tab (the page unmounts) before the 1 s save.
-  it.skip('keeps a pick when she leaves the tab within the second', () => {
+  it('keeps a pick when she leaves the tab within the second', () => {
     seed([...welcome(), ...hatched(15, { 10: { pick: 'cookies' } })])
     const { unmount } = tab()
     const radios = within(screen.getByRole('radiogroup', { name: 'Current pet' })).getAllByRole('radio')

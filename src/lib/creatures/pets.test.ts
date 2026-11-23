@@ -295,7 +295,7 @@ describe('a fixed past day after hatching (tester, sent back: un-skip with the f
     return out
   }
 
-  it.skip('keeps her pets, names, duplicates and cookies as they were', () => {
+  it('keeps her pets, names, duplicates and cookies as they were', () => {
     const before = derive([...shorts, audio], log())
     expect(before.pets.find((p) => p.id === `m:books-${n}`)?.name).toBe('Precious')
     expect(before.bonus).toBe(30)

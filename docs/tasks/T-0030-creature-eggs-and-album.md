@@ -643,7 +643,10 @@ option and list it here for the UX review and the tester.
 2. **A milestone hatch saves no species** (it's derived, D-0033 §1). `isHatch` now only asks for a
    species on the welcome egg.
 3. **The tier follows from the egg id alone**, and a hatched egg that a fixed past day takes away
-   stays a pet (it is ordered after the earned eggs). Nothing she has is lost.
+   stays a pet. A hatched egg's outcome is frozen: duplicates are decided by the eggs she hatched
+   before it, in hatch order (the same as earned order, since eggs hatch oldest first), so a
+   milestone that goes away only changes eggs not hatched yet (send-back fix, see *Log*). Nothing is
+   stored for it: the hatch event still carries no species, shiny or duplicate flag.
 4. **Counting:** book eggs count every finish from the start, re-reads and sleep reads included;
    hour eggs count sleep reads at their real minutes (it's time read); streak eggs count days with
    minutes from the start day and come once each (`m:streak-7` once, as the ids in D-0033 say); a
@@ -915,3 +918,18 @@ regressions for the faults above.
   leaves the tab or reloads within the 1 s save. Skipped regression tests for both are in the
   branch; everything else passed (shiny safety in real Chrome, release, album, 126 pictures, one
   canvas). Back to the developer; the pull request stays a draft.
+- 2026-11-23 developer: fixed the tester's send-back. (1) A hatched egg's outcome is frozen:
+  `deriveCreatures` now decides species, duplicate flag and so shiny among the eggs she has
+  hatched, in hatch order (welcome first), and never from the earned order, so a fixed past day
+  that takes a milestone away changes only eggs not hatched yet; her choices, names and duplicate
+  cookies stay. No outcome is stored (the hatch event still has no species/shiny/dup), so the
+  T-0028 route needs nothing new and D-0033 §1 holds. (2) A pick in Your pets that isn't saved
+  yet is saved on unmount, `pagehide` and `visibilitychange` to hidden, instead of being dropped.
+  Un-skipped the tester's two regressions: `pets.test.ts` *keeps her pets, names, duplicates and
+  cookies as they were* and `CreaturesEggs.test.tsx` *keeps a pick when she leaves the tab within
+  the second*; both pass. Touched tests (`src/lib/creatures`, `src/components/creatures`,
+  `CreaturesEggs.test.tsx`, `CreaturesPage.test.tsx`): 327 passed. `tsc --noEmit`: no output.
+  `pnpm run build` ✓. Real Chrome on 3162 (tap the third pet, then after 0.25 s switch to
+  Dashboard or reload): 4/4 PASS at 390 touch and 1280, one `current` event saved and the picked
+  pet shown; vite stopped, port free. Lesson added. Remaining: tester re-check; Hanna's six morning
+  questions; Done when 4.
