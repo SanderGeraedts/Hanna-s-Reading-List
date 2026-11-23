@@ -17,8 +17,9 @@ How to use it:
   a brief says "the architect decides", that choice was left to the team.
 - Already done or in progress, so not listed: the book creatures, the world map, the
   badges, the hardcovers on phones, the header, the listening hours, the Arrange bar, the
-  shelf polish, the country spellings, the book panel tabs (T-0047) and tropes &
-  characters (T-0048).
+  shelf polish, the country spellings, the book panel tabs (T-0047), tropes &
+  characters (T-0048) and the reading garden (T-0060 … T-0065, agreed 23 November 2026 and
+  never part of this queue).
 
 ## The queue
 

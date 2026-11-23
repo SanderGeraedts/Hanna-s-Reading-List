@@ -31,6 +31,7 @@ import { RoomPanel, useRoom } from '#/components/RoomPanel'
 import { ChallengesPage } from '#/components/ChallengesPage'
 import { CalendarPage } from '#/components/CalendarPage'
 import { CreaturesPage } from '#/components/CreaturesPage'
+import { GardenPage } from '#/components/GardenPage'
 import { CreaturesProvider, useCreaturesValue } from '#/components/creatures/CreaturesContext'
 import { useShelfPet } from '#/components/creatures/useShelfPet'
 import { isCategory, ownedDecor } from '#/lib/creatures/shop'
@@ -51,14 +52,18 @@ export const Route = createFileRoute('/')({
   validateSearch: (
     search: Record<string, unknown>,
   ): {
-    view?: 'dashboard' | 'challenges' | 'calendar' | 'creatures'
+    view?: 'dashboard' | 'challenges' | 'calendar' | 'creatures' | 'garden'
     focus?: ChallengeSection
     month?: string
     step?: 'choose' | 'hatch' | 'duplicate'
     shop?: ShopCategory
   } => {
     const view =
-      search.view === 'dashboard' || search.view === 'challenges' || search.view === 'calendar' || search.view === 'creatures'
+      search.view === 'dashboard' ||
+      search.view === 'challenges' ||
+      search.view === 'calendar' ||
+      search.view === 'creatures' ||
+      search.view === 'garden'
         ? search.view
         : undefined
     const focus = FOCUS.find((f) => f === search.focus)
@@ -299,6 +304,10 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     },
     [navigate, select],
   )
+  const openGarden = useCallback(() => {
+    select(null)
+    navigate({ search: { view: 'garden' } })
+  }, [navigate, select])
   /** the Shop view (T-0031): switching Den ↔ Shop is a history entry (Back returns), a category change replaces it */
   const openShop = useCallback(
     (shop: ShopCategory | null, opts?: { replace?: boolean }) =>
@@ -558,6 +567,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             onOpenCalendar={openCalendar}
             onAdd={addBook}
             onOpenCreatures={openCreatures}
+            onOpenGarden={openGarden}
           />
         )}
         {view === 'calendar' && <CalendarPage books={books} onShowBook={showBook} onUpdate={updateBook} startMonth={search.month} />}
@@ -575,6 +585,11 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
               onRoom={setRoom}
               paused={!!selected || adding !== null || wishing}
             />
+          </ClientOnly>
+        )}
+        {view === 'garden' && (
+          <ClientOnly fallback={null}>
+            <GardenPage books={books} paused={!!selected || adding !== null || wishing} />
           </ClientOnly>
         )}
         {view === 'challenges' && (
@@ -713,7 +728,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   )
 }
 
-type View = 'shelf' | 'dashboard' | 'challenges' | 'calendar' | 'creatures'
+type View = 'shelf' | 'dashboard' | 'challenges' | 'calendar' | 'creatures' | 'garden'
 
 const VIEWS = [
   { view: 'shelf', icon: '📚', label: 'Bookshelf' },
@@ -721,6 +736,7 @@ const VIEWS = [
   { view: 'challenges', icon: '🏆', label: 'Challenges' },
   { view: 'calendar', icon: '📅', label: 'Calendar' },
   { view: 'creatures', icon: '🐾', label: 'Creatures' },
+  { view: 'garden', icon: '🌱', label: 'Garden' },
 ] as const
 
 const FOCUS: ChallengeSection[] = ['goal', 'monthly', 'bingo', 'alphabet']

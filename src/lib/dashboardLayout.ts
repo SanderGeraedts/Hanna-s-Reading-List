@@ -43,6 +43,7 @@ export const BLOCKS = {
   world: 'Where your books are set',
   again: 'Give it another try',
   creatures: 'Creatures',
+  garden: 'Garden',
 } as const
 
 export type BlockId = keyof typeof BLOCKS
@@ -75,7 +76,7 @@ export const DEFAULT_LAYOUT: DashboardLayout = {
   sections: {
     today: [
       ['waiting', 'reading', 'pace', 'lent', 'again'],
-      ['challenge', 'creatures', 'next', 'newforyou', 'recent'],
+      ['challenge', 'creatures', 'garden', 'next', 'newforyou', 'recent'],
     ],
     challenges: [['goal', 'alphabet'], ['bingo']],
     stats: [
