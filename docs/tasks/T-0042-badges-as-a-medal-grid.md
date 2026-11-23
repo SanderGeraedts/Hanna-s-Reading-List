@@ -386,6 +386,78 @@ gold medal, has a locked step badge with progress above 0, and hidden medals.
   gold; 10 books locked at 6 / 10; 12 hidden medals. The script prints the medals per row and
   their size: **6 a row at 390, 8 a row at 1280, every medal 48 × 48**, no page errors.
 
+## Review after building (2026-11-23)
+
+Reviewed by the UX designer, at night, from `git diff origin/main...HEAD -- src` and the 12
+screenshots in `docs/tasks/T-0042-screens/`, state by state against the design above.
+
+**Verdict: passes. No must-fix.** Handed to the tester.
+
+Design checks:
+
+- [x] **Head row unchanged:** "Badges ▾" folds the block, "4 of 60 unlocked (7%)" and the gold
+  bar; folded (`-folded`), only the head row, the count and the bar stay.
+- [x] **Grid:** 6 medals a row at 390 (10 rows), 8 at 1280 (8 rows, the last with 4); 48 px
+  circles, 8 px gaps, centred in their columns. The block is about a third of today's height.
+- [x] **Order:** earned newest first (5 books 24 Oct, Explorer, Postcard from Europe, First book
+  25 Aug), then locked (10 books at 6 / 10 first), then the 12 hidden medals last.
+- [x] **Medal looks:** earned medals have a 3 px rim on the raised face: silver 5 books, bronze
+  Explorer and First book, gold 🏰 Postcard. The bronze and gold rims are easy to tell apart on
+  both wallpapers. Locked medals are grey, 2 px `--border-strong` rim, grey half-faded emoji;
+  hidden ones are dark with a dashed rim and a serif "?". Same outer size in all three states.
+- [x] **Tokens:** `--medal-gold` (= `--accent`), `--medal-silver`, `--medal-bronze` and
+  `--medal-hidden` in `:root`; `colours.test.ts` checks the rims at 3 : 1 on a card and on the
+  earned face, and the "?" at 4.5 : 1 on the hidden face, lavender and midnight.
+- [x] **Dropped:** the "Tap one for a riddle" line and the separate hidden list are gone.
+- [x] **The card:** the bingo card's box under the whole grid, × top right (44 px), heading
+  with emoji and name. Earned: "Finish 5 books" / "Silver · Unlocked 24 Oct 2026" in gold.
+  Locked step: the grey emoji, the bar and "6 / 10". Hidden: "? Hidden badge" and the riddle in
+  italics, no name, emoji or how. With no card there is no extra gap under the grid.
+- [x] **Chosen and focus:** the chosen medal has the lighter face and the cream ring; opened
+  with Enter (`-focus`) it also has the gold outline outside the cream ring, both visible.
+- [x] **Screen reader (from the code):** `<ul aria-label="Badges">`; names "5 books, silver,
+  unlocked", "10 books, locked, 6 of 10", "Hidden badge", earned secret ones with ", secret
+  badge"; `aria-expanded` and `aria-controls="badges-card"`; the live region
+  (`aria-live="polite" aria-atomic="true"`) is in the page while the card is closed; × is
+  "Close".
+- [x] **Keyboard (from the code and `BadgesCard.test.tsx`):** one Tab stop (roving
+  `tabIndex`: chosen, else last focused, else first); ← → stop at the ends; ↑ ↓ step by the
+  columns read from `offsetTop`, ↓ from the row above a short last row goes to the last medal;
+  Home / End; Escape anywhere in the block and × close and focus the medal; folding closes the
+  card; focus stays on the medal when it opens. The tester checks the arrows in a real browser
+  at both widths.
+- [x] **The card follows its badge** by id, and closes if the badge is gone.
+
+**Enter and Space in the grid's key handler.** The developer handles Enter and Space in the
+`<ul>`'s `onKeyDown`, with `preventDefault`, instead of letting the `<button>` turn them into a
+click. Judgement: **acceptable, not the choice I'd have made, and not a must-fix.**
+
+- What's right: the click path is still there, so a tap, a mouse click, a screen reader's
+  double-tap or "activate" (VoiceOver, TalkBack, NVDA browse mode) and voice control all go
+  through `onClick` and work. `preventDefault` on keydown stops the button's own click for
+  Enter in every browser, and for Space in Chromium and Safari, so it acts once there. Holding
+  a key no longer toggles the card on and off (`e.repeat`), which is a small gain.
+- What's off: the reason given ("so they act once in every browser") is backwards: a native
+  `<button>` already acts exactly once on Enter and Space everywhere; that's what a button is
+  for. Space fires its click on **keyup**, and only some browsers drop that click when keydown
+  was prevented. A browser that doesn't would open the card and close it at once. The real gain
+  is that jsdom can test it with `fireEvent.keyDown`, which is a test convenience shaping the
+  product code.
+- Why it passes anyway: the block is used mostly by touch, which never goes through this
+  handler; the keyboard path works in Chromium and Safari, and the tester checks a real Space
+  press (keydown and keyup) in Chromium below.
+- **Should (not blocking, a follow-up):** also call `preventDefault()` for Space on `keyup`
+  (as React Aria does), or drop Enter/Space from the handler and test the keyboard in a real
+  browser. Either makes "once" true in every browser.
+
+Smaller notes, none blocking:
+
+- On a **silver** medal the cream "chosen" ring is close to the rim's own colour, so the
+  chosen state reads there mostly as a thicker rim and a lighter face. On bronze, gold, grey and
+  hidden medals it is clear. Worth a look if Hanna mentions it.
+- The closed card's `aria-labelledby` points at a heading that isn't there yet; harmless (an
+  unnamed `<section>` is no landmark), but it is why the card isn't a named region until opened.
+
 # Test
 
 To be written by the tester.
@@ -410,3 +482,6 @@ To be written by the tester.
   `pnpm exec tsc --noEmit` clean; `pnpm run build` "✓ built"; `pnpm exec harness check` all ✓.
   12 screenshots in `docs/tasks/T-0042-screens/` (6 a row at 390, 8 at 1280, 48 × 48, 0 page
   errors). Handed to the **UX designer** for the review.
+- 2026-11-23 ux-designer: reviewed: passes, no must-fix (12 screenshots and the code match the
+  design; Enter/Space in the grid's key handler acceptable, with a non-blocking follow-up to
+  also prevent Space's keyup click). Handed to the **tester**.
