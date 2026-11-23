@@ -11,6 +11,13 @@ done_on: ""
 result: []
 ---
 
+# Note (combined with T-0032)
+
+T-0033 ships together with T-0032 on **one branch and one pull request**
+(`creatures-alive-and-shelf`), to save Netlify build minutes (Hanna, 2026-11-23). The combined
+Design for both tasks lives in `docs/tasks/T-0032-creatures-come-alive.md`; this file points
+to it. Both *Done when* sections still stand.
+
 # Goal
 
 1. **Choose** "Put on the shelf" on a pet in the Creatures tab (one at a time; choosing another moves
@@ -52,8 +59,12 @@ result: []
 
 # Design
 
-For the UX designer, before the build: the spot on the shelf, the poses and the sign, phone and
-computer, both wallpapers.
+See **`docs/tasks/T-0032-creatures-come-alive.md` *Design*** for the combined T-0032 + T-0033
+design (Hanna, 2026-11-23: one branch and one PR to save Netlify build minutes). The shelf
+spot, the little life (sit/yawn/stretch/sleep), the reading reactions (look-at, cheer, sit by
+the reading book, streak sign) and the Put/Take off the shelf button are in §8 there; §10
+covers keyboard and screen-reader; §12 lists the 6 T-0033 screenshots; §13 adds the extra
+visible promise for the tester.
 
 # Test
 
@@ -61,3 +72,6 @@ computer, both wallpapers.
 
 - 2026-11-22 architect: wrote CR4b (creature on the shelf) from Hanna's brief, split from T-0032.
   Size: full.
+- 2026-11-23 ux-designer: combined with T-0032 for one PR (`creatures-alive-and-shelf`); the
+  full design (both tasks) lives in T-0032's *Design*. Over to the developer: build both on
+  that branch; one commit is fine if the diff stays readable, otherwise T-0032 then T-0033.
