@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Creatures } from '#/lib/creatures/creature'
-import { EGG_DESCRIPTION, displayName, levelLine, moodLine, nextLine, stillDescription } from '#/lib/creatures/words'
+import { EGG_DESCRIPTION, displayName, eggsWaitingShort, levelLine, moodLine, nextEggLine, nextLine, stillDescription } from '#/lib/creatures/words'
 import { CookiePill, FeedButton, GrowthBar, useSay } from './creatures/parts'
 import { usePhone, webglAvailable } from './creatures/pose'
 import { CreatureStill } from './creatures/CreatureStill'
@@ -19,9 +19,11 @@ interface Props {
   onFeed: () => { say: string; levelUp: boolean } | null
   onOpen?: () => void
   onHatch?: () => void
+  /** Hatch for a milestone egg (T-0030): the oldest egg, in the Creatures tab */
+  onHatchMilestone?: () => void
 }
 
-export function CreaturesCard({ c, onFeed, onOpen, onHatch }: Props) {
+export function CreaturesCard({ c, onFeed, onOpen, onHatch, onHatchMilestone }: Props) {
   const phone = usePhone()
   const [gl, setGl] = useState(false)
   useEffect(() => setGl(webglAvailable()), [])
@@ -55,6 +57,11 @@ export function CreaturesCard({ c, onFeed, onOpen, onHatch }: Props) {
             <GrowthBar pet={pet} />
             <p className="small-text">{nextLine(pet)}</p>
             {mood && <p className="small-text">{mood}</p>}
+            {c.eggs.length > 0 ? (
+              <p className="small-text">🥚 {eggsWaitingShort(c.eggs)}</p>
+            ) : (
+              c.next && <p className="small-text">🥚 {nextEggLine(c.next)}</p>
+            )}
             <div className="food-bowl">
               <CookiePill n={c.balance} />
               <FeedButton
@@ -65,6 +72,16 @@ export function CreaturesCard({ c, onFeed, onOpen, onHatch }: Props) {
                   if (r) say(r.say)
                 }}
               />
+              {c.eggs.length > 0 && onHatchMilestone && (
+                <button
+                  type="button"
+                  className="btn"
+                  aria-label={c.eggs.length === 1 ? `Hatch the ${c.eggs[0].tier} egg` : 'Hatch the oldest egg'}
+                  onClick={onHatchMilestone}
+                >
+                  Hatch
+                </button>
+              )}
             </div>
           </div>
         ) : (

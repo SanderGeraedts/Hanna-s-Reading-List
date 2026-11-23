@@ -47,7 +47,12 @@ export const Route = createFileRoute('/')({
   // back button returns to the shelf; &focus= scrolls to one challenge ("Open ›")
   validateSearch: (
     search: Record<string, unknown>,
-  ): { view?: 'dashboard' | 'challenges' | 'calendar' | 'creatures'; focus?: ChallengeSection; month?: string; step?: 'choose' } => {
+  ): {
+    view?: 'dashboard' | 'challenges' | 'calendar' | 'creatures'
+    focus?: ChallengeSection
+    month?: string
+    step?: 'choose' | 'hatch' | 'duplicate'
+  } => {
     const view =
       search.view === 'dashboard' || search.view === 'challenges' || search.view === 'calendar' || search.view === 'creatures'
         ? search.view
@@ -55,8 +60,9 @@ export const Route = createFileRoute('/')({
     const focus = FOCUS.find((f) => f === search.focus)
     // &month=2026-11 opens the Calendar page at that month
     const month = typeof search.month === 'string' && /^\d{4}-\d{2}$/.test(search.month) ? search.month : undefined
-    // &step=choose opens the Creatures tab at "Choose your first creature" (a Hatch button, T-0029)
-    const step = search.step === 'choose' ? 'choose' : undefined
+    // &step=choose opens the Creatures tab at "Choose your first creature" (a Hatch button, T-0029);
+    // &step=hatch hatches the oldest milestone egg, &step=duplicate opens a duplicate's choice (T-0030)
+    const step = search.step === 'choose' || search.step === 'hatch' || search.step === 'duplicate' ? search.step : undefined
     return {
       ...(view && { view }),
       ...(view === 'challenges' && focus && { focus }),
@@ -274,9 +280,9 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     [navigate, select],
   )
   const openCreatures = useCallback(
-    (choose?: boolean) => {
+    (step?: 'choose' | 'hatch' | 'duplicate') => {
       select(null)
-      navigate({ search: choose ? { view: 'creatures', step: 'choose' } : { view: 'creatures' } })
+      navigate({ search: step ? { view: 'creatures', step } : { view: 'creatures' } })
     },
     [navigate, select],
   )
@@ -542,6 +548,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
               books={books}
               startChoose={search.step === 'choose'}
               onChooseOpened={choseOpened}
+              startStep={search.step === 'hatch' || search.step === 'duplicate' ? search.step : undefined}
+              onStepOpened={choseOpened}
               paused={!!selected || adding !== null || wishing}
             />
           </ClientOnly>

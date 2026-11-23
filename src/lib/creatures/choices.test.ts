@@ -54,10 +54,11 @@ describe('cleaning', () => {
   it('keeps a kind it can’t read yet (from a newer device) and passes it on', () => {
     const later = { id: 'buy-1', at: 5, kind: 'buy', item: 'scarf', price: 40 }
     expect(cleanLog([later])).toEqual([later])
-    // a later egg's hatch without a chosen species is kept, though this version doesn't read it
+    // a milestone egg's hatch carries no species (T-0030 derives it); a welcome hatch without one isn't read
     const surprise = { id: 'hatch-9', at: 6, kind: 'hatch', egg: 'm:books-5' }
     expect(cleanLog([surprise])).toEqual([surprise])
-    expect(isHatch(surprise as ChoiceEvent)).toBe(false)
+    expect(isHatch(surprise as ChoiceEvent)).toBe(true)
+    expect(isHatch({ id: 'hatch-8', at: 6, kind: 'hatch', egg: 'welcome' } as ChoiceEvent)).toBe(false)
   })
 
   it('reads only what it understands', () => {

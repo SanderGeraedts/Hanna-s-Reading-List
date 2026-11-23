@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Book } from '#/lib/library'
 import { speciesById } from '#/lib/creatures/species'
 import type { SpeciesId } from '#/lib/creatures/species'
@@ -7,23 +7,40 @@ import type { Creatures, Pet } from '#/lib/creatures/creature'
 import { minutesText } from '#/lib/creatures/cookies'
 import type { WeekLine } from '#/lib/creatures/cookies'
 import { addDays } from '#/lib/creatures/days'
-import { CHOICE_LABEL, SPECIES_WORD, WELCOME_CHOICES, WELCOME_EGG } from '#/lib/creatures/numbers'
-import { EGG_DESCRIPTION, denDescription, displayName, levelLine, moodLine, nextLine } from '#/lib/creatures/words'
+import { CHOICE_LABEL, CURRENT_SAVE_MS, SPECIES_WORD, WELCOME_CHOICES, WELCOME_EGG } from '#/lib/creatures/numbers'
+import {
+  EGG_DESCRIPTION,
+  currentSay,
+  denDescription,
+  displayName,
+  eggOnCushion,
+  hatchSay,
+  levelLine,
+  moodLine,
+  nextLine,
+} from '#/lib/creatures/words'
 import { useCreatures } from './creatures/CreaturesContext'
 import { CookiePill, FeedButton, GrowthBar, NameField, useSay } from './creatures/parts'
 import { usePhone, useReducedMotion, webglAvailable } from './creatures/pose'
 import { DenScene } from './creatures/DenScene'
-import type { Reaction } from './creatures/DenScene'
+import type { DenShows, Reaction } from './creatures/DenScene'
 import { ChooseScene } from './creatures/ChooseScene'
 import type { Tile } from './creatures/ChooseScene'
 import { SceneBoundary } from './creatures/SceneBoundary'
+import { EggsCard } from './creatures/EggsCard'
+import { PetsCard } from './creatures/PetsCard'
+import { Album } from './creatures/Album'
+import { Reveal } from './creatures/Reveal'
+import type { RevealOf } from './creatures/Reveal'
+import { HoldButton, ShinyWarning } from './creatures/bits'
 
 /**
- * The Creatures tab (T-0029 Design §2–§7, §10, §12): her creature in its den
- * with its name, level, stage and the cookie balance, Feed and Rename, and
- * *This week* with what she earned each day. Before the hatch it holds the
- * welcome flow: the egg, *Choose your first creature*, the crack and *Say
- * hello* (in the tab, never a pop-up). Album, shop and tricks come later.
+ * The Creatures tab (T-0029 Design §2–§7, §10, §12; T-0030 Design §2–§9): her
+ * current pet in its den with its name, level, stage and the cookie balance,
+ * Feed, Rename and Release; the Eggs card with milestone eggs to hatch; Your
+ * pets to pick the current one; *This week*; and the album. Before the first
+ * hatch it holds the welcome flow: the egg, *Choose your first creature*, the
+ * crack and *Say hello* (in the tab, never a pop-up).
  */
 
 interface Props {
@@ -32,14 +49,18 @@ interface Props {
   startChoose?: boolean
   /** the choose step has been opened from `startChoose` (so a reload doesn't open it again) */
   onChooseOpened?: () => void
+  /** a Hatch or Choose button elsewhere opened the tab: hatch the oldest egg, or open the waiting duplicate */
+  startStep?: 'hatch' | 'duplicate'
+  /** that step has been started (so a reload doesn't start it again) */
+  onStepOpened?: () => void
   /** something is over the page (the book panel, a sheet): the den stops rendering */
   paused?: boolean
 }
 
 type Step = 'egg' | 'choose' | 'crack' | 'hello' | 'home'
 
-export function CreaturesPage({ books, startChoose, onChooseOpened, paused }: Props) {
-  const { c, api, feed } = useCreatures(books)
+export function CreaturesPage({ books, startChoose, onChooseOpened, startStep, onStepOpened, paused }: Props) {
+  const { c, api, feed, choose, release, setCurrent } = useCreatures(books)
   const phone = usePhone()
   const reduce = useReducedMotion()
   const [gl, setGl] = useState(false)
@@ -47,15 +68,23 @@ export function CreaturesPage({ books, startChoose, onChooseOpened, paused }: Pr
   const [said, say] = useSay()
   const [stepState, setStep] = useState<Step>(() => (startChoose ? 'choose' : 'egg'))
   const [reaction, setReaction] = useState<Reaction | null>(null)
+  /** a milestone egg hatching (`crack`) or its reveal below the den */
+  const [reveal, setReveal] = useState<{ egg: string; phase: 'crack' | 'reveal'; said: boolean } | null>(null)
+  /** the pet she just picked in Your pets, shown at once; saved after she stops arrowing */
+  const [picked, setPicked] = useState<string | null>(null)
+  const pickTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hatchBtn = useRef<HTMLButtonElement>(null)
   const chooseHeading = useRef<HTMLHeadingElement>(null)
   const helloHeading = useRef<HTMLHeadingElement>(null)
   const nameHeading = useRef<HTMLHeadingElement>(null)
+  const eggsHeading = useRef<HTMLHeadingElement>(null)
+  const revealHeading = useRef<HTMLHeadingElement>(null)
+  const denCard = useRef<HTMLElement>(null)
   /** where focus goes after the next render */
-  const focusNext = useRef<'choose' | 'hatch' | 'hello' | 'name' | null>(startChoose ? 'choose' : null)
+  const focusNext = useRef<'choose' | 'hatch' | 'hello' | 'name' | 'eggs' | 'reveal' | null>(startChoose ? 'choose' : null)
 
-  const pet = c.pet
-  const step: Step = pet ? (stepState === 'crack' || stepState === 'hello' ? stepState : 'home') : stepState === 'choose' ? 'choose' : 'egg'
+  const pet = c.pets.find((p) => p.id === picked) ?? c.pet
+  const step: Step = c.pet ? (stepState === 'crack' || stepState === 'hello' ? stepState : 'home') : stepState === 'choose' ? 'choose' : 'egg'
 
   useEffect(() => {
     if (startChoose) onChooseOpened?.()
@@ -64,12 +93,23 @@ export function CreaturesPage({ books, startChoose, onChooseOpened, paused }: Pr
   useLayoutEffect(() => {
     const f = focusNext.current
     if (!f) return
-    const el = { choose: chooseHeading, hatch: hatchBtn, hello: helloHeading, name: nameHeading }[f].current
+    const el = { choose: chooseHeading, hatch: hatchBtn, hello: helloHeading, name: nameHeading, eggs: eggsHeading, reveal: revealHeading }[f].current
     if (el) {
       el.focus()
       focusNext.current = null
     }
   })
+
+  // the picked pet is saved: follow the saved one again
+  useEffect(() => {
+    if (picked && c.pet?.id === picked && !pickTimer.current) setPicked(null)
+  }, [picked, c.pet])
+  useEffect(
+    () => () => {
+      if (pickTimer.current) clearTimeout(pickTimer.current)
+    },
+    [],
+  )
 
   const go = (next: Step, focus?: typeof focusNext.current) => {
     focusNext.current = focus ?? null
@@ -86,6 +126,74 @@ export function CreaturesPage({ books, startChoose, onChooseOpened, paused }: Pr
     else go('hello', 'hello')
   }
 
+  // ---- milestone eggs (T-0030 Design §3) ----
+
+  /** Hatch always hatches the oldest egg; the choice is saved on the tap, before the crack. */
+  const hatchOldest = useCallback(() => {
+    const egg = c.eggs[0]
+    if (!egg || !c.pet || reveal) return
+    api.choices.hatchEgg(egg.id)
+    focusNext.current = gl && !reduce ? null : 'reveal'
+    setReveal({ egg: egg.id, phase: gl ? 'crack' : 'reveal', said: false })
+    denCard.current?.scrollIntoView?.({ block: 'start', behavior: reduce ? 'auto' : 'smooth' })
+  }, [api, c.eggs, c.pet, gl, reduce, reveal])
+
+  const openDuplicate = useCallback((egg: string) => {
+    focusNext.current = 'reveal'
+    setReveal({ egg, phase: 'reveal', said: true })
+    denCard.current?.scrollIntoView?.({ block: 'start' })
+  }, [])
+
+  // a Hatch or Choose button elsewhere opened the tab
+  const started = useRef(false)
+  useEffect(() => {
+    if (!startStep || started.current || !c.pet) return
+    started.current = true
+    if (startStep === 'hatch') hatchOldest()
+    else if (c.waiting[0]) openDuplicate(c.waiting[0].egg)
+    onStepOpened?.()
+  }, [startStep, c.pet, c.waiting, hatchOldest, openDuplicate, onStepOpened])
+
+  // what the egg being revealed hatched: worked out from the log, like everything else
+  const revealOf: RevealOf | null = (() => {
+    if (!reveal) return null
+    const d = c.duplicates.find((x) => x.egg === reveal.egg)
+    const p = c.pets.find((x) => x.id === reveal.egg)
+    const tier = d?.tier ?? p?.tier
+    const species = d?.species ?? p?.species
+    if (!tier || !species) return null
+    return { egg: reveal.egg, tier, species, shiny: d?.shiny ?? p!.shiny, duplicate: !!d }
+  })()
+
+  useEffect(() => {
+    if (!reveal || reveal.said || !revealOf) return
+    say(hatchSay(revealOf.tier, revealOf.species, revealOf.shiny, !revealOf.duplicate))
+    setReveal({ ...reveal, said: true })
+  }, [reveal, revealOf, say])
+
+  const endReveal = (text?: string) => {
+    if (text) say(text)
+    focusNext.current = 'eggs'
+    setReveal(null)
+  }
+
+  const pick = (p: Pet) => {
+    setPicked(p.id)
+    say(currentSay(p.name))
+    if (pickTimer.current) clearTimeout(pickTimer.current)
+    // arrowing through six pets writes one event, not six (Design §8)
+    pickTimer.current = setTimeout(() => {
+      pickTimer.current = null
+      setCurrent(p.id)
+    }, CURRENT_SAVE_MS)
+  }
+  const flushPick = () => {
+    if (!pickTimer.current || !picked) return
+    clearTimeout(pickTimer.current)
+    pickTimer.current = null
+    setCurrent(picked)
+  }
+
   if (!c.started) {
     return (
       <div className="dashboard">
@@ -99,12 +207,21 @@ export function CreaturesPage({ books, startChoose, onChooseOpened, paused }: Pr
     )
   }
 
-  const shows =
-    step === 'crack' && pet
-      ? ({ kind: 'crack', species: pet.species, shiny: pet.shiny } as const)
-      : pet
-        ? ({ kind: 'creature', species: pet.species, shiny: pet.shiny, stage: pet.stage, mood: pet.mood } as const)
-        : ({ kind: 'egg' } as const)
+  const hatching = reveal && revealOf
+  const shows: DenShows =
+    step === 'crack' && c.pet
+      ? { kind: 'crack', species: c.pet.species, shiny: c.pet.shiny }
+      : hatching && reveal.phase === 'crack'
+        ? { kind: 'crack', species: revealOf.species, shiny: revealOf.shiny, tier: revealOf.tier }
+        : hatching
+          ? { kind: 'creature', species: revealOf.species, shiny: revealOf.shiny, stage: 'baby', mood: null }
+          : pet
+            ? { kind: 'creature', species: pet.species, shiny: pet.shiny, stage: pet.stage, mood: pet.mood }
+            : { kind: 'egg' }
+  const denText = hatching ? (reveal.phase === 'crack' ? eggOnCushion(revealOf.tier) : `${SPECIES_WORD[revealOf.species]}, a baby, sitting on its cushion in the den.`) : pet ? denDescription(pet) : EGG_DESCRIPTION
+  const home = !!pet && step === 'home'
+  const samePets = revealOf ? c.pets.filter((p) => p.species === revealOf.species && p.id !== revealOf.egg) : []
+  const newPet = revealOf ? c.pets.find((p) => p.id === revealOf.egg) : undefined
 
   return (
     <div className="dashboard">
@@ -116,8 +233,8 @@ export function CreaturesPage({ books, startChoose, onChooseOpened, paused }: Pr
             {c.earnedToday > 0 && <span className="creatures-today">+{c.earnedToday} today</span>}
           </div>
         </header>
-        <div className={`creatures-layout${pet && step === 'home' ? '' : ' no-card'}`}>
-          <section className="dash-card den-card" aria-label={step === 'choose' ? undefined : 'The den'}>
+        <div className={`creatures-layout${home ? '' : ' no-card'}`}>
+          <section ref={denCard} className="dash-card den-card" aria-label={step === 'choose' ? undefined : 'The den'}>
             {step === 'choose' ? (
               <ChooseStep
                 headingRef={chooseHeading}
@@ -140,10 +257,15 @@ export function CreaturesPage({ books, startChoose, onChooseOpened, paused }: Pr
                         reduce={reduce}
                         paused={paused}
                         reaction={reaction}
-                        onCrackDone={() => go('hello', 'hello')}
+                        onCrackDone={() => {
+                          if (reveal?.phase === 'crack') {
+                            focusNext.current = 'reveal'
+                            setReveal({ ...reveal, phase: 'reveal' })
+                          } else go('hello', 'hello')
+                        }}
                       />
                     </SceneBoundary>
-                    <p className="visually-hidden">{pet ? denDescription(pet) : EGG_DESCRIPTION}</p>
+                    <p className="visually-hidden">{denText}</p>
                   </div>
                 )}
                 {step === 'egg' && (
@@ -154,13 +276,33 @@ export function CreaturesPage({ books, startChoose, onChooseOpened, paused }: Pr
                     </button>
                   </div>
                 )}
-                {step === 'hello' && pet && (
+                {step === 'hello' && c.pet && (
                   <HelloStep
-                    pet={pet}
+                    pet={c.pet}
                     headingRef={helloHeading}
                     onDone={(name) => {
-                      if (name !== pet.suggested) api.choices.rename(pet.id, name)
+                      if (name !== c.pet!.suggested) api.choices.rename(c.pet!.id, name)
                       go('home', 'name')
+                    }}
+                  />
+                )}
+                {home && hatching && reveal.phase === 'reveal' && (
+                  <Reveal
+                    key={revealOf.egg}
+                    of={revealOf}
+                    headingRef={revealHeading}
+                    samePets={samePets}
+                    suggested={newPet?.suggested ?? suggestedName(revealOf.species, revealOf.egg)}
+                    onNamed={(name) => {
+                      const p = c.pets.find((x) => x.id === revealOf.egg)
+                      if (p && name !== p.name) api.choices.rename(p.id, name)
+                      endReveal()
+                    }}
+                    onChoose={(choice, opts) => {
+                      const r = choose(revealOf.egg, choice, opts)
+                      if (!r.ok) return false
+                      if (choice !== 'keep') endReveal(r.say)
+                      return true
                     }}
                   />
                 )}
@@ -168,26 +310,41 @@ export function CreaturesPage({ books, startChoose, onChooseOpened, paused }: Pr
             )}
           </section>
           <div className="creatures-side">
-            {pet && step === 'home' && (
+            {home && (
+              <EggsCard c={c} headingRef={eggsHeading} busy={!!reveal} onHatch={hatchOldest} onChoose={openDuplicate} />
+            )}
+            {home && pet && (
               <CreatureCard
                 pet={pet}
                 balance={c.balance}
+                canRelease={c.pets.length > 1}
                 nameRef={nameHeading}
                 onRename={(name) => {
                   api.choices.rename(pet.id, name)
                   say(`Renamed to ${name}.`)
                 }}
                 onFeed={() => {
-                  const r = feed()
+                  const r = feed(pet.id)
                   if (!r) return
                   say(r.say)
                   setReaction((prev) => ({ kind: r.levelUp ? 'levelup' : 'feed', n: (prev?.n ?? 0) + 1 }))
                 }}
+                onRelease={(held) => {
+                  flushPick()
+                  const r = release(pet.id, { confirmed: true, held })
+                  if (!r.ok) return false
+                  setPicked(null)
+                  say(r.say)
+                  focusNext.current = 'name'
+                  return true
+                }}
               />
             )}
+            {home && c.pets.length >= 2 && <PetsCard pets={c.pets} current={pet?.id ?? null} onPick={pick} />}
             <WeekCard c={c} phone={phone} />
           </div>
         </div>
+        {home && <Album c={c} />}
         <p className="visually-hidden" role="status" aria-live="polite">
           {said}
         </p>
@@ -359,29 +516,42 @@ function HelloStep({ pet, headingRef, onDone }: { pet: Pet; headingRef: React.Re
 function CreatureCard({
   pet,
   balance,
+  canRelease,
   nameRef,
   onRename,
   onFeed,
+  onRelease,
 }: {
   pet: Pet
   balance: number
+  /** false for her last pet: Release… is shown but disabled (D-0033 §9) */
+  canRelease: boolean
   nameRef: React.RefObject<HTMLHeadingElement | null>
   onRename: (name: string) => void
   onFeed: () => void
+  /** a confirmed release (held for a shiny); answers whether it was done */
+  onRelease: (held: boolean) => boolean
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const [error, setError] = useState(false)
+  const [confirming, setConfirming] = useState(false)
   const renameBtn = useRef<HTMLButtonElement>(null)
-  const refocus = useRef(false)
+  const releaseBtn = useRef<HTMLButtonElement>(null)
+  const confirmHeading = useRef<HTMLHeadingElement>(null)
+  const refocus = useRef<'rename' | 'release' | 'confirm' | null>(null)
   useEffect(() => {
-    if (!editing && refocus.current) {
-      refocus.current = false
-      renameBtn.current?.focus()
-    }
-  }, [editing])
+    const f = refocus.current
+    if (!f) return
+    if (f === 'rename' && !editing) renameBtn.current?.focus()
+    if (f === 'release' && !confirming) releaseBtn.current?.focus()
+    if (f === 'confirm' && confirming) confirmHeading.current?.focus()
+    refocus.current = null
+  }, [editing, confirming])
+  // another pet became current: no confirm left open for it
+  useEffect(() => setConfirming(false), [pet.id])
   const close = () => {
-    refocus.current = true
+    refocus.current = 'rename'
     setEditing(false)
     setError(false)
   }
@@ -390,6 +560,10 @@ function CreatureCard({
     if (!clean) return setError(true)
     if (clean !== pet.name) onRename(clean)
     close()
+  }
+  const keep = () => {
+    refocus.current = 'release'
+    setConfirming(false)
   }
   const mood = moodLine(pet.name, pet.mood)
   return (
@@ -434,10 +608,63 @@ function CreatureCard({
       <GrowthBar pet={pet} numbers />
       <p className="creature-next">{nextLine(pet)}</p>
       {mood && <p className="creature-mood">{mood}</p>}
-      <div className="food-bowl">
-        <CookiePill n={balance} />
-        <FeedButton name={pet.name} balance={balance} onFeed={onFeed} />
-      </div>
+      {confirming ? (
+        <div
+          className="release-confirm"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.preventDefault()
+              keep()
+            }
+          }}
+        >
+          <h3 ref={confirmHeading} tabIndex={-1}>
+            Release {pet.name}?
+          </h3>
+          {pet.shiny ? <ShinyWarning id="release-warning" line="This can't be undone." /> : <p>This can't be undone.</p>}
+          <div className="chips">
+            <button type="button" className="btn primary" onClick={keep}>
+              Keep
+            </button>
+            {pet.shiny ? (
+              <HoldButton label="Hold to release" ariaLabel={`Hold to release ${pet.name}`} describedBy="release-warning" onDone={() => onRelease(true)} />
+            ) : (
+              <button type="button" className="btn danger-btn" onClick={() => onRelease(false)}>
+                Release
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="food-bowl">
+            <CookiePill n={balance} />
+            <FeedButton name={pet.name} balance={balance} onFeed={onFeed} />
+          </div>
+          <div className="release-row">
+            <button
+              ref={releaseBtn}
+              type="button"
+              className="btn small release-btn"
+              aria-disabled={!canRelease || undefined}
+              aria-describedby={canRelease ? undefined : 'release-last'}
+              title={canRelease ? undefined : 'You always keep one pet.'}
+              onClick={() => {
+                if (!canRelease) return
+                refocus.current = 'confirm'
+                setConfirming(true)
+              }}
+            >
+              Release…
+            </button>
+            {!canRelease && (
+              <span id="release-last" className="visually-hidden">
+                You always keep one pet.
+              </span>
+            )}
+          </div>
+        </>
+      )}
     </section>
   )
 }

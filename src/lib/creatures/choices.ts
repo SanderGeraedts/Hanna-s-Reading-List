@@ -21,8 +21,43 @@ export interface HatchEvent {
   kind: 'hatch'
   /** the egg's id; the pet's id is the egg's id */
   egg: string
-  /** for the welcome egg: the creature she chose (D-0033 §3) */
-  species: SpeciesId
+  /** for the welcome egg: the creature she chose (D-0033 §3); a milestone egg's hatch carries none (its result is derived) */
+  species?: SpeciesId
+}
+
+/** What she did with a duplicate (D-0033 §8, T-0030). */
+export type DuplicatePick = 'keep' | 'cookies' | 'power'
+
+export interface ChooseEvent {
+  id: string
+  at: number
+  kind: 'choose'
+  egg: string
+  pick: DuplicatePick
+  /** for a power-up: the pet that gets the levels */
+  pet?: string
+  /** 1 when she held the hold button (a shiny turned into cookies or a power-up, D-0033 §9) */
+  hold?: number
+}
+
+export interface ReleaseEvent {
+  id: string
+  at: number
+  kind: 'release'
+  pet: string
+  /** 1: she confirmed ("Release Biscuit?") */
+  confirm: number
+  /** 1 when she held the hold button (a shiny) */
+  hold?: number
+}
+
+/** The current pet (a setting with key "pet"). */
+export interface CurrentEvent {
+  id: string
+  at: number
+  kind: 'current'
+  key: string
+  pet: string
 }
 
 export interface NameEvent {
@@ -51,7 +86,7 @@ export interface OtherEvent {
   [field: string]: string | number
 }
 
-export type ChoiceEvent = HatchEvent | NameEvent | FeedEvent | OtherEvent
+export type ChoiceEvent = HatchEvent | NameEvent | FeedEvent | ChooseEvent | ReleaseEvent | CurrentEvent | OtherEvent
 
 /** The kinds the server's route knows (T-0028); anything else it drops, so the device does too. */
 export const KINDS = ['hatch', 'choose', 'release', 'name', 'feed', 'buy', 'wear', 'place', 'habitat', 'current', 'shelf'] as const
@@ -66,9 +101,18 @@ const MAX_FIELDS = 12
 /** At most this many events per call to the route. */
 export const MAX_PER_CALL = 200
 
-/** A hatch this version can read: an egg and a known creature. */
+/** A hatch this version can read: an egg, and for the welcome egg a known creature. */
 export const isHatch = (e: ChoiceEvent): e is HatchEvent =>
-  e.kind === 'hatch' && typeof e.egg === 'string' && isSpeciesId((e as { species?: unknown }).species)
+  e.kind === 'hatch' && typeof e.egg === 'string' && (e.egg !== 'welcome' || isSpeciesId((e as { species?: unknown }).species))
+/** A duplicate choice this version can read. */
+export const isChoose = (e: ChoiceEvent): e is ChooseEvent =>
+  e.kind === 'choose' &&
+  typeof e.egg === 'string' &&
+  (e.pick === 'keep' || e.pick === 'cookies' || (e.pick === 'power' && typeof e.pet === 'string'))
+/** A release this version can read: a pet and the confirm. */
+export const isRelease = (e: ChoiceEvent): e is ReleaseEvent => e.kind === 'release' && typeof e.pet === 'string' && e.confirm === 1
+/** A current-pet setting this version can read. */
+export const isCurrent = (e: ChoiceEvent): e is CurrentEvent => e.kind === 'current' && e.key === 'pet' && typeof e.pet === 'string'
 /** A name this version can read: a name that isn't empty. */
 export const isName = (e: ChoiceEvent): e is NameEvent =>
   e.kind === 'name' && typeof e.key === 'string' && typeof e.name === 'string' && e.name.trim() !== ''

@@ -2,7 +2,7 @@
 id: T-0030
 title: "Give her free eggs at reading milestones and an album of all 20 creatures with their rarity, shinies and a choice for duplicates"
 description: "CR2 of the book creatures (D-0033): milestone eggs that hatch a fixed surprise of the right rarity, an album card per creature (silhouette until found) with tier and IUCN Red List label and source, shiny variants, and keep / cookies / power-up for duplicates, releasing a pet with a confirm step, and an extra warning with hold-to-confirm for a shiny; several pets, one of them current."
-status: Open
+status: Doing
 size: full
 depends_on: [T-0029]
 decisions: [D-0013, D-0014, D-0020, D-0022, D-0033, D-0034]
@@ -610,6 +610,75 @@ I took the recommended option for each of these tonight. Each one is easy to cha
 6. **One line in Waiting for you for all eggs** ("3 eggs are waiting for you!") rather than a line
    per egg. Recommended: as is.
 
+## Build notes (developer, 2026-11-23)
+
+Built at night, nothing asked; where the task left a choice I took the recommended or simplest
+option and list it here for the UX review and the tester.
+
+**Where things are**
+
+- Lib: `src/lib/creatures/eggs.ts` (milestone eggs, tier from the egg id, what an egg hatches,
+  next egg), `creature.ts` (several pets, duplicates, power-ups, release, current pet, album sets,
+  `chooseEvent` / `releaseEvent` that refuse without their confirm steps), `choices.ts` (`choose`,
+  `release`, `current` events), `numbers.ts` (milestones, prices, the 15 new name lists and species
+  words), `words.ts` (all T-0030 wording), `hash.ts`.
+- UI: `CreaturesPage.tsx` (hatch flow, reveal, release in the creature card, layout),
+  `creatures/EggsCard.tsx`, `Reveal.tsx` (reveal, duplicate choice, "Which …?", shiny warning),
+  `PetsCard.tsx`, `Album.tsx`, `bits.tsx` (`Still`, `TierLine`, `HoldButton`, `ShinyWarning`),
+  `eggModel.ts` (the tiered egg, sparkle and glow, shared by den, block and pictures), `DenScene.tsx`
+  (tier eggs, glow for rare+, sparkle ring for epic+, shiny sparkle), `CreaturesCard.tsx` (block),
+  `WaitingCard.tsx` (🥚 and 🐣 lines), `routes/index.tsx` (`&step=hatch`, `&step=duplicate`).
+- Pictures: `public/creatures/` (120 creatures + 6 eggs, 192 × 192 WebP, 809 KB), made by the
+  committed script `pnpm run render:creatures` (`scripts/render-creature-stills.mjs` starts a bare
+  Vite server for `scripts/creature-stills/`, renders `src/components/creatures/stills.ts` in
+  headless Chrome with software WebGL). `stills.test.ts` checks all 126 exist and are WebP.
+
+**Choices taken**
+
+1. **What a milestone egg hatches uses a finalised hash** (`mixedHash`: FNV-1a + murmur3's
+   fmix32). Plain FNV's low bits repeat for ids that differ in one digit, which left 3 species out of
+   their tier in a 20 000-egg check. `seededHash` itself is unchanged, so T-0029's live names and the
+   welcome egg's shiny stay as they are. The shiny check keeps `seededHash` (1 in 20 / 1 in 5 hold
+   within ±1 % over 20 000 ids).
+2. **A milestone hatch saves no species** (it's derived, D-0033 §1). `isHatch` now only asks for a
+   species on the welcome egg.
+3. **The tier follows from the egg id alone**, and a hatched egg that a fixed past day takes away
+   stays a pet (it is ordered after the earned eggs). Nothing she has is lost.
+4. **Counting:** book eggs count every finish from the start, re-reads and sleep reads included;
+   hour eggs count sleep reads at their real minutes (it's time read); streak eggs count days with
+   minutes from the start day and come once each (`m:streak-7` once, as the ids in D-0033 say); a
+   series needs 2+ books all read, earned the day its last book was first finished; her own
+   challenge on the day of its target-th book; the monthly challenge per month done; a bingo card on
+   the day it was filled.
+5. **Her own challenges** come into the creatures through `useOwnChallenges` in
+   `CreaturesProvider`, so a page load asks the server for them once more (signed in only).
+6. **The rules are enforced in the derivation too:** a shiny's cookies, power-up or release without
+   `hold: 1`, a release without `confirm: 1`, or a release of her last pet (also when two devices
+   release every pet at once) is ignored. A choice made in the same millisecond as its hatch counts
+   (hatches sort first on a tie: found by a component test).
+7. **A power-up adds the growth of the next 3 levels at the moment it is used**, so the level goes
+   up by exactly 3 and the bar keeps its place.
+8. **The crack:** the den switches straight to the tier's egg (no separate fade-out of the current
+   pet); during the reveal the den shows the new baby, then the current pet again.
+9. **The block's Hatch** sits in the bowl row and wraps under Feed at 390 (`block-egg-390-lav`).
+10. **A dev-only switch** `localStorage['hannas-reading-list:dev-duplicate'] = '1'` makes every
+    milestone egg hatch her first pet's species (next to T-0029's `dev-shiny`); never in a build.
+
+**Checks**
+
+- Canvas count on the tab: the Creatures page has one, the den. The document has two, because the
+  bookshelf's own canvas stays mounted behind every view (as before this task).
+- Red List: re-checked 2026-11-23. The latest IUCN Red List update is the one of 9 July 2026, before
+  T-0027's check of 2026-11-22, so the categories in T-0027's table are unchanged.
+- Screenshots: 35 files in `docs/tasks/T-0030-screens/` for all 15 sets, from the no-backend dev
+  server on demo data (the welcome cat Biscuit plus short books finished one a day, so book eggs 5,
+  10, 15… hatch red squirrel, red squirrel, red fox, a **shiny** red fox duplicate, a rare polar
+  bear, …; the 50th a legendary starlight unicorn). The shiny shots show that shiny red-fox
+  duplicate; `release-shiny-1280-mid` uses `dev-shiny`. `crack-legendary-1280-mid` is a real frame:
+  software WebGL draws too slowly to catch 1.45 s into the crack, so the screenshot script ran the
+  page's `performance.now` at 8 % speed (only in the script, not in the app). Album: 5 a row at
+  1280, 2 at 390.
+
 # Test
 
 # Log
@@ -622,3 +691,24 @@ I took the recommended option for each of these tonight. Each one is easy to cha
   warning and hold-to-confirm, the album as still pictures, Your pets with a current pet, release,
   next egg, keyboard and screen reader, wording, screenshots; Done when 5–11 added). Hanna was asked
   nothing (night); six questions for the morning under *Design*. Handed to the developer.
+- 2026-11-23 developer: built CR2 on branch `t-0030-eggs-album`: milestone eggs worked out from
+  reading (books every 5th / 25th rare / 50th legendary, hours every 10 / 100th rare, streaks
+  7/30/100, finished series, own and monthly challenges, full bingo cards), hatching a fixed
+  surprise of the egg's tier with shinies (1 in 20, 1 in 5 for a duplicate), the duplicate choice
+  (keep / half-price cookies / +3 levels, "Which …?"), shiny safety with one hold button (2 s, mouse,
+  touch and Space/Enter; a short press, a click or key repeats do nothing), the album (20 cards in six
+  tier groups, silhouettes, ×N, ✨ toggle, Red List label and source, plain images only), Your pets
+  with a current pet (one `current` event after 1 s of arrowing), Release… with its confirm (Keep
+  first, Escape = Keep, shiny warning + "Hold to release", disabled for her last pet), the
+  Waiting for you 🥚 and 🐣 lines, the block's egg line / next-egg line and Hatch, the den's tier
+  eggs, reveal glow and sparkle ring and the shiny sparkle, and 126 pre-rendered pictures from the
+  real models by the committed `pnpm run render:creatures` with a test that all exist. Choices
+  taken at night are under *Build notes* (nothing asked). Nothing in `src/server/shelf.ts`,
+  `src/lib/shelfMerge.ts`, `deploy/nas/` or any CODEOWNERS path. Checks: `tsc --noEmit` no output;
+  `pnpm test` 1404 passed, 9 skipped (112 files), of which new: `eggs.test.ts` 19, `pets.test.ts`
+  17, `CreaturesEggs.test.tsx` 17, `stills.test.ts` 2; `pnpm run build` ✓ (pictures in
+  `dist/client/creatures/`); `harness check` ✓ tasks 41 / decisions 41 / engineers 2 / generated
+  files current; 35 screenshots for the 15 sets (port 3162, server stopped afterwards). Red List
+  re-checked 2026-11-23: no update since 9 July 2026, so no change since T-0027. Remaining: UX
+  review; tester; Hanna's six morning questions (Design); Done when 4 (Hanna confirms the album on
+  the live site).

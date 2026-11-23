@@ -323,7 +323,7 @@ describe('Waiting for you and the dashboard block', () => {
     const waiting = screen.getByRole('region', { name: 'Waiting for you' })
     expect(within(waiting).getByText('A welcome egg is waiting for you!')).toBeTruthy()
     fireEvent.click(within(waiting).getByRole('button', { name: 'Hatch' }))
-    expect(open).toHaveBeenCalledWith(true)
+    expect(open).toHaveBeenCalledWith('choose')
     const block = screen.getByRole('region', { name: 'Creatures' })
     expect(within(block).getByText('A welcome egg')).toBeTruthy()
   })

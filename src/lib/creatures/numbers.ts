@@ -1,4 +1,4 @@
-import type { SpeciesId } from './species'
+import type { SpeciesId, Tier } from './species'
 
 /**
  * Every number of the book creatures game in one place (T-0029 Design §1,
@@ -72,12 +72,28 @@ export const SHINY_ONE_IN = 20
 export const NAME_MAX = 20
 
 /** Suggested names per species (Design §9); the first is picked by a seeded hash of the egg id. */
-export const SUGGESTED_NAMES: Partial<Record<SpeciesId, readonly string[]>> = {
+export const SUGGESTED_NAMES: Record<SpeciesId, readonly string[]> = {
   cat: ['Biscuit', 'Mochi', 'Pudding', 'Marmalade', 'Tofu', 'Whiskers'],
   'red-fox': ['Maple', 'Ember', 'Clementine', 'Rusty', 'Pumpkin', 'Ginger'],
   capybara: ['Pebble', 'Dumpling', 'Bean', 'Potato', 'Coco', 'Waffle'],
   'red-squirrel': ['Hazel', 'Nutmeg', 'Acorn', 'Conker', 'Cinnamon', 'Pip'],
   'adelie-penguin': ['Waddles', 'Pepper', 'Oreo', 'Puffin', 'Button', 'Domino'],
+  // T-0030 Design §10
+  hedgehog: ['Bramble', 'Prickles', 'Conker', 'Sprout', 'Truffle', 'Thimble'],
+  otter: ['Ripple', 'Pebbles', 'Splash', 'Wren', 'Brook', 'Otto'],
+  platypus: ['Puddle', 'Paddle', 'Duckie', 'Noodle', 'Bilby', 'Pip'],
+  koala: ['Kiki', 'Gumnut', 'Eucy', 'Bonnie', 'Wattle', 'Mopsy'],
+  'giant-panda': ['Bao', 'Mei', 'Bamboo', 'Panko', 'Dim Sum', 'Lychee'],
+  'polar-bear': ['Frost', 'Snowdrop', 'Nanook', 'Blizzard', 'Marshmallow', 'Igloo'],
+  'red-panda': ['Sunny', 'Paprika', 'Fizz', 'Rowan', 'Peaches', 'Momo'],
+  'emperor-penguin': ['Admiral', 'Tux', 'Duchess', 'Flurry', 'Captain', 'Pingu'],
+  'ring-tailed-lemur': ['Ziggy', 'Jubilee', 'Stripes', 'Banjo', 'Mango', 'Rafi'],
+  'african-penguin': ['Kaapie', 'Sandy', 'Dotty', 'Boulder', 'Pebble', 'Jazz'],
+  axolotl: ['Bubbles', 'Blossom', 'Miso', 'Sakura', 'Gill', 'Lotus'],
+  'book-dragon': ['Inkwell', 'Quill', 'Ember', 'Vellum', 'Saga', 'Folio'],
+  'library-owl': ['Hootsworth', 'Dewey', 'Sage', 'Parchment', 'Athena', 'Ollie'],
+  'bookmark-fox': ['Ribbon', 'Page', 'Tassel', 'Chapter', 'Marigold', 'Dog-Ear'],
+  'starlight-unicorn': ['Stardust', 'Luna', 'Nova', 'Celeste', 'Twinkle', 'Aurora'],
 }
 
 /** "the house cat" in "Hatch the house cat" (Design §3b). */
@@ -90,10 +106,58 @@ export const CHOICE_LABEL: Partial<Record<SpeciesId, string>> = {
 }
 
 /** "house cat" in "Say hello to your house cat!" and "Your house cat hatched!". */
-export const SPECIES_WORD: Partial<Record<SpeciesId, string>> = {
+export const SPECIES_WORD: Record<SpeciesId, string> = {
   cat: 'house cat',
   'red-fox': 'red fox',
   capybara: 'capybara',
   'red-squirrel': 'red squirrel',
   'adelie-penguin': 'Adélie penguin',
+  // T-0030 Design §10
+  hedgehog: 'hedgehog',
+  otter: 'otter',
+  platypus: 'platypus',
+  koala: 'koala',
+  'giant-panda': 'giant panda',
+  'polar-bear': 'polar bear',
+  'red-panda': 'red panda',
+  'emperor-penguin': 'emperor penguin',
+  'ring-tailed-lemur': 'ring-tailed lemur',
+  'african-penguin': 'African penguin',
+  axolotl: 'axolotl',
+  'book-dragon': 'book dragon',
+  'library-owl': 'library owl',
+  'bookmark-fox': 'bookmark fox',
+  'starlight-unicorn': 'starlight unicorn',
 }
+
+/** Species words that take "an" (Design §10): "It's an otter!". */
+export const AN_WORDS: readonly SpeciesId[] = ['otter', 'emperor-penguin', 'african-penguin', 'axolotl']
+
+// ---- milestone eggs (D-0033 §6, T-0030) -------------------------------------------------
+
+/** Every this many finished books (from the start) gives an egg: common, rare at 25, legendary at 50. */
+export const BOOKS_STEP = 5
+export const BOOKS_RARE = 25
+export const BOOKS_LEGENDARY = 50
+/** Every this many hours read or listened gives a common egg; every 100th a rare one. */
+export const HOURS_STEP = 10
+export const HOURS_RARE = 100
+/** Streak eggs: days in a row, and the tier each gives. */
+export const STREAK_EGGS: ReadonlyArray<readonly [number, Tier]> = [
+  [7, 'uncommon'],
+  [30, 'very rare'],
+  [100, 'epic'],
+]
+export const SERIES_TIER: Tier = 'uncommon'
+export const CHALLENGE_TIER: Tier = 'uncommon'
+export const BINGO_TIER: Tier = 'very rare'
+/** Shop prices per tier (D-0033 §6); a duplicate turned into cookies gives half. */
+export const EGG_PRICE: Record<Tier, number> = { common: 60, uncommon: 90, rare: 120, 'very rare': 160, epic: 200, legendary: 300 }
+/** 1 in this many duplicate hatches is shiny (D-0033 §7). */
+export const SHINY_DUPLICATE_ONE_IN = 5
+/** Levels a duplicate gives as a power-up (D-0033 §8). */
+export const POWER_UP_LEVELS = 3
+/** Arrowing through the pets saves one `current` choice after this long without a change (Design §8). */
+export const CURRENT_SAVE_MS = 1000
+/** The hold of the hold button (Design §5). */
+export const HOLD_MS = 2000
