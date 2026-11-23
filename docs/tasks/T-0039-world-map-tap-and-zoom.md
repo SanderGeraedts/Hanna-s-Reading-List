@@ -884,6 +884,44 @@ when* line isn't affected.
 step; a component test where the click lands on a different zone than the finger; CI green on
 attempt 1.
 
+## Third re-check (2026-11-23)
+
+(Tester, night mode, Hanna not asked. G-0031: F3 and what it touches, the tap rule and the
+Ctrl+scroll focus race.)
+
+**Verdict: passed.** Every step of the tap rule is judged where the finger went down, and no tap
+opens a country whose zone isn't under the finger. The only answers that differ from my own
+distances are the island taps the UX re-review accepted.
+
+**CI** (`gh pr checks 248`, run 45110444903, head `b925dc3`): `checks / checks` passed on
+**attempt 1**. Log: *Test Files 110 passed | 1 skipped (111)*, *Tests 1427 passed | 9 skipped
+(1436)*, `✓ tasks: 43 tasks, index in step`, both builds `✓ built`; no retry in the log. `shards` and
+`e2e` skipped as on every PR; Netlify preview ready.
+
+**Local:** `pnpm install --frozen-lockfile` (done), `pnpm exec tsc --noEmit` (clean),
+`pnpm exec harness check` (✓ tasks, ✓ decisions: 42 records, ✓ engineers, ✓ generated files).
+`vitest run BooksWorldMap.test.tsx mapZoom.test.ts Dashboard`, three times: *Test Files 5 passed
+(5), Tests 73 passed (73)* each time.
+
+**In Chrome:** the same two scratch scripts as the second re-check, unchanged, on
+`vite dev --port 3156` with no `POCKETBASE_URL` and no backend (stopped afterwards). 390 × 844 with
+real CDP touch events, and 1280 × 800.
+
+| Area | Result |
+|---|---|
+| **F3, demo shelf** (162 real-touch taps around France and the Netherlands) | **151 / 162** follow the rule judged from the finger (116 if judged at Chrome's moved click, which moves a tap by 6.1 px median, 12.7 max). **No tap opens a country whose zone isn't under the finger** (8 before). The other 11 are all taps near Sardinia (Italy), Crimea (Russia) and Corsica (France), where my distances use the whole outline and the app the main landmass, as the re-review accepted. Within 8 px of France the Netherlands never opened where France was nearer (46 taps) ✓ |
+| **F3, only France and the Netherlands lit** (107 taps) | **104 / 107**; none opens a country whose zone isn't under the finger (1 before; the finger at 217, 480 now opens France). The other 3 are 7 px off Corsica, where the Netherlands opens because France's mainland is more than 8 px away: the accepted island case. The script's "the Netherlands never opens where France is nearer" check prints FAIL for those same 3 Corsica taps ✓ (accepted) |
+| Own shapes, the far case | Taps inside the UK, France, Spain, Germany, Italy, the Netherlands open each; 15 px north of the Netherlands 5 / 5; a 12 px drag opens nothing and the next tap opens the Netherlands ✓ |
+| Focus (touched by the gesture-time change) | Enter or Space on ⤢ at 8×, 4×, 2× → +; Ctrl+scroll to 8× from + → −, to 1× from −, ⤢ **and the zoomed map** → + (the race seen last time is gone); a name keeps its focus; pinch to 8× and to 1× with focus on +, −, ⤢ ✓ |
+| Effects | No console errors, no horizontal scroll ✓ |
+
+The scripts print **3 FAIL** lines: the two tap-set lines and the Corsica line above. Each one is
+only the island taps the re-review accepted; none is a regression.
+
+**Remaining for a human:** Hanna's three morning questions (zoom in on a tapped country by itself?
+the zoom buttons in a strip under the map, or on it? the bigger imaginary-land covers). None blocks
+the merge; an answer that asks for a change becomes a new task.
+
 # Log
 
 - 2026-11-23 architect: wrote the task from Hanna's agreed brief ("a better world map", parts 1
@@ -970,3 +1008,9 @@ attempt 1.
   passed" (104 ok). `vitest run BooksWorldMap Dashboard mapZoom`: 50 passed (50). `pnpm test`: 110 files
   passed, 1427 tests passed, 9 skipped. `pnpm exec tsc --noEmit` clean, `harness check` ✓. Handed to
   the **tester**.
+- 2026-11-23 tester: passed. CI attempt 1 green (1427 passed); the map and dashboard tests 3 × 73
+  passed; in Chrome with real touch, no tap opens a country whose zone isn't under the finger
+  (demo shelf 151 / 162, France and the Netherlands only 104 / 107; the rest are the accepted island
+  taps), F2 and the Ctrl+scroll focus race fixed (see *Test*). #248 marked ready.
+  Remaining: Hanna answers the three morning questions (zoom on a tapped country by itself; zoom
+  buttons in a strip under the map or on it; the bigger imaginary-land covers).
