@@ -4,8 +4,11 @@ This is the queue of work Hanna agreed in feature chats, most of it on 22 Novemb
 that has **not been started yet**. On 23 November 2026 she asked the team to stop once the
 book creatures are finished (T-0031 shop, T-0032 creatures come alive, T-0033 creature on
 the shelf). On 23 November 2026 she asked for the next two items as well, the book panel
-tabs and tropes & characters, which became T-0047 and T-0048; the rest of the queue stays
-**paused until Hanna says to continue.**
+tabs and tropes & characters, which became T-0047 and T-0048. Later that day she asked for
+the three shelf-and-room items — bookcases & filters, book poses and the cosy room extras —
+which became **T-0051, T-0052 and T-0053**, built together on one branch because all three
+are the 3D shelf and its room. The rest of the queue stays **paused until Hanna says to
+continue.**
 
 How to use it:
 
@@ -17,45 +20,13 @@ How to use it:
   a brief says "the architect decides", that choice was left to the team.
 - Already done or in progress, so not listed: the book creatures, the world map, the
   badges, the hardcovers on phones, the header, the listening hours, the Arrange bar, the
-  shelf polish, the country spellings, the book panel tabs (T-0047) and tropes &
-  characters (T-0048).
+  shelf polish, the country spellings, the book panel tabs (T-0047), tropes &
+  characters (T-0048), and the bookcases & filters, book poses and cosy room extras
+  (T-0051, T-0052, T-0053).
 
 ## The queue
 
-### 1. Bookcases & filters (S2)
-
-*Agreed 22 November 2026.*
-
-- A switch above the shelf: **All · Read · To read · Digital** (Digital = e-books and
-  audiobooks).
-- Filters next to the genre filter: rating and spice (a minimum), year read, language, and
-  tropes (D-0042). They can be combined, with a **Clear** button.
-- Sorting and the room stay as they are.
-- Not doing: her own named bookcases; rooms side by side.
-
-### 2. Book poses: standing, face-out, lying flat (S3)
-
-*Agreed 22 November 2026.*
-
-- Per book a pose in the book panel's **Looks** tab: **Standing · Face-out · Lying flat**.
-- A new **optional** field on a book (D-0002), synced.
-- Neighbouring books lying flat form a small stack.
-- A face-out book shows its cover and takes more width on the shelf.
-
-### 3. Cosy room extras (S4)
-
-*Agreed 22 November 2026.*
-
-Each extra is a toggle in the 🎨 room panel, like the decorations. Keep the phone's
-performance in mind.
-
-- A reading chair with a blanket and a floor lamp.
-- Day and night: the room is darker in the evening, and the lamp and fairy lights glow.
-- A growing plant that grows with the books she finished this year.
-- Seasonal decorations: pumpkins in October, a tree with lights in December, flowers in
-  spring.
-
-### 4. Stats tab with year compare (ST1)
+### 1. Stats tab with year compare (ST1)
 
 *Agreed 22 November 2026.*
 
@@ -72,7 +43,7 @@ performance in mind.
 - Check the dashboard layout migration (`dashboardLayout`): saved layouts and favourites
   that refer to removed blocks must keep working.
 
-### 5. Year wrap-up story (ST2)
+### 2. Year wrap-up story (ST2)
 
 *Agreed 22 November 2026.*
 
@@ -85,7 +56,7 @@ performance in mind.
 - It opens only when she taps it (fits D-0013, no pop-ups).
 - The monthly wrap-up stays as it is.
 
-### 6. Better adding: covers & series (AD1)
+### 3. Better adding: covers & series (AD1)
 
 *Agreed 22 November 2026.* (Files: `AddBookDialog.tsx`, `AddFollowUp.tsx`,
 `CoverPicker.tsx`.)
@@ -97,7 +68,7 @@ performance in mind.
   confirm, or she types it.
 - Not doing (for all of better adding): importing from Goodreads or StoryGraph.
 
-### 7. Batch scan (AD2)
+### 4. Batch scan (AD2)
 
 *Agreed 22 November 2026.* (Files: `BarcodeScanner.tsx`, `AddBookDialog.tsx`.)
 
@@ -107,7 +78,7 @@ performance in mind.
   and **Add all**.
 - The same book scanned twice is added once; a book already on the shelf is marked.
 
-### 8. Wishlist (AD3)
+### 5. Wishlist (AD3)
 
 *Agreed 22 November 2026.*
 
@@ -119,7 +90,7 @@ performance in mind.
 - Stored with her books and synced (an optional field or flag, D-0002), unless that needs a
   server change: then flag it for Sander, or pick another way.
 
-### 9. Better challenges (CH1–CH4)
+### 6. Better challenges (CH1–CH4)
 
 *Agreed 22 November 2026.* Several tasks. (Files: `ChallengesPage.tsx`, `ownChallenges.ts`,
 `bingo.ts`.)
