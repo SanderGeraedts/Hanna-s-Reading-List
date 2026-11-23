@@ -8,7 +8,7 @@ depends_on: [T-0030]
 decisions: [D-0013, D-0014, D-0020, D-0022, D-0033, D-0034]
 raised_on: 2026-11-22
 done_on: ""
-result: []
+result: [https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/255]
 ---
 
 # Goal
@@ -646,5 +646,5 @@ option and list it here for the UX review and the tester.
   `denBudget.test.ts` 12, `CreaturesBlockDress.test.tsx` 1, `stills.test.ts` +1; den budget low 38
   calls / 4,879 triangles, high 59 / 16,445; browser at 390: 28 calls, ~3,890 triangles a frame;
   `pnpm run build` ✓; `harness check` ✓ (tasks, decisions, engineers, generated files). Dev server on
-  3165 stopped, port free. Remaining: the UX review, the tester, and Hanna's look at the shop on the
+  3165 stopped, port free. Draft PR #255. Remaining: the UX review, the tester, and Hanna's look at the shop on the
   live site.
