@@ -47,6 +47,8 @@ import { NO_GENRE, reorderShown } from '#/lib/genreFilter'
 import { START_VIEW, applyView, cleanFilters, filterOptions, isFiltered, viewSummary } from '#/lib/shelfFilter'
 import type { ShelfView } from '#/lib/shelfFilter'
 import { ShelfBar } from '#/components/ShelfBar'
+import { boughtPatch, shelfBooks, wishBooks } from '#/lib/wishlist'
+import { FollowUpDialog } from '#/components/FollowUpDialog'
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -150,8 +152,18 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
       account?.id ?? null,
       onExpired,
     )
-  // books not out yet are on the shelf too, as want-to-read
-  const books = allBooks
+  /**
+   * **The one filter** (D-0053). Books not out yet are on the shelf too, as
+   * want-to-read; books on her **wishlist** are not. Everything below this line
+   * is given `books`, so the shelf, the pile, the statistics, the suggestions,
+   * the map, the challenges, the badges, the creatures and the Reading Garden
+   * all leave the wishlist out without any code of their own. Only the Wishlist
+   * block, the add dialog's duplicate check and the sync hooks see `allBooks`.
+   */
+  const books = useMemo(() => shelfBooks(allBooks), [allBooks])
+  const wishes = useMemo(() => wishBooks(allBooks), [allBooks])
+  /** the wish she just bought, while the follow-up asks how she has it (T-0072) */
+  const [bought, setBought] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   // the 3D shelf: zoomed in (1 is the whole case) and what a search lights up
   const [zoom, setZoom] = useState(1)
@@ -553,6 +565,14 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             onAdd={addBook}
             onOpenCreatures={openCreatures}
             onOpenGarden={openGarden}
+            wishes={wishes}
+            onBought={(id) => {
+              // twice in a row (a double tap) moves it once: the second press finds no wish
+              if (!wishes.some((w) => w.id === id)) return
+              updateBook(id, boughtPatch())
+              setBought(id)
+            }}
+            onRemoveWish={removeBook}
           />
         )}
         {view === 'calendar' && <CalendarPage books={books} onShowBook={showBook} onUpdate={updateBook} startMonth={search.month} />}
@@ -656,6 +676,18 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           book={selected}
           onChange={(patch) => updateBook(selected.id, patch)}
           onClose={() => setPickingCover(false)}
+        />
+      )}
+
+      {/* a wish she just bought: how she has it and what it cost, in a dialog she opened (D-0013) */}
+      {bought && (
+        <FollowUpDialog
+          key={bought}
+          book={allBooks.find((b) => b.id === bought) ?? null}
+          onUpdate={updateBook}
+          onClose={() => setBought(null)}
+          // the row it was pressed on is on the shelf now: focus goes back to the block's heading
+          returnFocusId="wishlist-title"
         />
       )}
 

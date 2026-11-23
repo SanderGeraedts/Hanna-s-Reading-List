@@ -3,16 +3,13 @@ import type { ChangeEvent } from 'react'
 import type { Book } from '#/lib/library'
 import { analyzeCover, coverUrlForId } from '#/lib/cover'
 import { getCoverChoices } from '#/server/openLibrary'
+import { shrinkImage } from '#/lib/coverPhoto'
 
 interface Props {
   book: Book
   onChange: (patch: Pick<Book, 'coverUrl' | 'coverAspect' | 'color'>) => void
   onClose: () => void
 }
-
-/** Covers are stored with the library in localStorage, so uploads are kept small. */
-const UPLOAD_MAX_HEIGHT = 560
-const UPLOAD_QUALITY = 0.82
 
 /**
  * Pick a different front cover: another edition's cover from Open Library,
@@ -126,16 +123,4 @@ export function CoverPicker({ book, onChange, onClose }: Props) {
       </div>
     </dialog>
   )
-}
-
-/** Scales a picture down and re-encodes it as JPEG, returning a data URL. */
-async function shrinkImage(file: File): Promise<string> {
-  const bitmap = await createImageBitmap(file)
-  const scale = Math.min(1, UPLOAD_MAX_HEIGHT / bitmap.height)
-  const canvas = document.createElement('canvas')
-  canvas.width = Math.round(bitmap.width * scale)
-  canvas.height = Math.round(bitmap.height * scale)
-  canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-  bitmap.close()
-  return canvas.toDataURL('image/jpeg', UPLOAD_QUALITY)
 }
