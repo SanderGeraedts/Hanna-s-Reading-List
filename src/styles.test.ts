@@ -82,6 +82,11 @@ describe('the Arrange bar stays small (T-0038)', () => {
     expect(prop(chips, 'overflow-y')).toBe('auto')
   })
 
+  it('a chip scrolled into view by Tab keeps its focus outline (T-0044, F7)', () => {
+    const chips = rule('.hidden-blocks')
+    expect(prop(chips, 'scroll-padding-block')).toBe('var(--space-1)')
+  })
+
   it('on a touch screen a chip row is as tall as a .btn.small chip there, so the cap still shows 2½ rows', () => {
     // every `@media (pointer: coarse)` block, and the rule inside them that sets each selector
     const coarse = css.split('\n@media (pointer: coarse) {').slice(1).map((b) => b.slice(0, b.indexOf('\n}')))

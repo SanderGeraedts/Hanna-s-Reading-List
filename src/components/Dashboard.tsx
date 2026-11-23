@@ -439,11 +439,25 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
   // the screen-reader line in Favourites, and the handle to focus again after a key move
   const [favSay, setFavSay] = useState('')
   const refocus = useRef<BlockId | null>(null)
+  /** A Hidden chip was restored (Enter): after re-render, focus moves to the next chip or to the block's handle (T-0044, F7). */
+  const restoreFocus = useRef<{ nextId: BlockId | null; blockId: BlockId } | null>(null)
   useEffect(() => {
     const id = refocus.current
     if (!id) return
     refocus.current = null
     root.current?.querySelector<HTMLElement>(`.dash-favourites-grid [data-favourite="${id}"] .block-handle`)?.focus()
+  }, [layout])
+  useEffect(() => {
+    const r = restoreFocus.current
+    if (!r) return
+    restoreFocus.current = null
+    const chip = r.nextId
+      ? root.current?.querySelector<HTMLElement>(`.hidden-blocks [data-hidden="${r.nextId}"]`)
+      : null
+    if (chip) return chip.focus()
+    root.current
+      ?.querySelector<HTMLElement>(`.dashboard-grid [data-block="${r.blockId}"] .block-handle`)
+      ?.focus()
   }, [layout])
   const say = (text: string) => {
     if (text !== favSay) return setFavSay(text)
@@ -573,8 +587,16 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
             {layout.hidden.length > 0 && (
               <div className="hidden-blocks">
                 <span className="muted small-text">Hidden:</span>
-                {layout.hidden.map((id) => (
-                  <button key={id} className="btn small" onClick={() => setLayout(showBlock(layout, id))}>
+                {layout.hidden.map((id, i) => (
+                  <button
+                    key={id}
+                    data-hidden={id}
+                    className="btn small"
+                    onClick={() => {
+                      restoreFocus.current = { nextId: layout.hidden[i + 1] ?? null, blockId: id }
+                      setLayout(showBlock(layout, id))
+                    }}
+                  >
                     + {BLOCKS[id]}
                   </button>
                 ))}

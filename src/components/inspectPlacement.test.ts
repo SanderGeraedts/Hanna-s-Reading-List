@@ -500,15 +500,27 @@ describe('T-0037 F3: a screen that is not portrait frames the book in the free s
   })
 
   for (const [width, height, header] of LARGE) {
-    it(`${width}×${height}: the frame stays exactly { fill: 0.6, yShift: 0, xShift: 0 }`, () => {
+    it(`${width}×${height}: a book without a clip is centred at { fill: 0.6, yShift: 0, xShift: 0 }`, () => {
       const { shortest, tallest } = shelfAt(width, height, 1)
       for (const bookH of [shortest, tallest]) {
-        for (const clip of [false, true]) {
-          expect(frameFor(width, height, header, bookH, clip)).toEqual({ fill: 0.6, yShift: 0, xShift: 0 })
-        }
+        expect(frameFor(width, height, header, bookH, false)).toEqual({ fill: 0.6, yShift: 0, xShift: 0 })
       }
     })
   }
+
+  it('a book with a clip at 1280 × 800 no longer uses the centred frame: its clip was touching the toolbar (T-0044, F8)', () => {
+    const [width, height, header] = [1280, 800, 184] as const
+    const { shortest, tallest } = shelfAt(width, height, 1)
+    for (const bookH of [shortest, tallest]) {
+      const frame = frameFor(width, height, header, bookH, true)
+      // the free-rectangle framing centres the book plus its clip below the header, so yShift is non-zero
+      expect(frame.yShift, `book ${bookH.toFixed(3)}`).not.toBe(0)
+      // the top of the clip sits below the header + edge, in NDC
+      const bookPx = frame.fill * height
+      const topOfClipPx = height / 2 - bookPx / 2 - bookPx * clipOf(bookH, true) - frame.yShift * height
+      expect(topOfClipPx, `book ${bookH.toFixed(3)}`).toBeGreaterThanOrEqual(header + 12 - 1e-6)
+    }
+  })
 })
 
 describe('T-0037 F2: with reduced motion the camera jumps back only once the book is home', () => {

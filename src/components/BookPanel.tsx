@@ -102,7 +102,7 @@ function useSheet(onSheet?: (share: number) => void, headerPx = 0) {
   const [height, setHeight] = useState<number | null>(null)
   const drag = useRef<{ y: number; h: number; id: number; moved: boolean } | null>(null)
   const panel = useRef<HTMLElement>(null)
-  /** the clamped height was saved when the panel opened */
+  /** the clamped height was saved when the panel opened (upright phone only, T-0037) */
   const remembered = useRef(false)
 
   useEffect(() => {
@@ -120,13 +120,15 @@ function useSheet(onSheet?: (share: number) => void, headerPx = 0) {
       return
     }
     // on opening, turning the phone or a header that changes height: the height she last saw,
-    // under the cap. On opening, what is remembered becomes that height, so nothing jumps between
-    // books; while the screen turns it is only shown, so a passing in-between size is not kept
+    // under the cap. On an upright opening the clamped share becomes the preference, so nothing
+    // jumps between books; a sideways open or a mid-rotation size is only shown, not saved
+    // (T-0037, T-0044 F8). Only a drag by Hanna saves a new share otherwise (below).
     const fit = () => {
       const screen = window.innerHeight
       const saved = savedSheetShare()
       const h = openingSheetPx(saved, screen, sheetCap(headerShareOf(headerPx, screen)))
-      if (!remembered.current && h / screen < saved - 0.001) saveSheetShare(h / screen)
+      const upright = window.innerWidth < screen
+      if (!remembered.current && upright && h / screen < saved - 0.001) saveSheetShare(h / screen)
       remembered.current = true
       setHeight(h)
       onSheet?.(h / screen)

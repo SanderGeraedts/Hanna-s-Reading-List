@@ -6,7 +6,7 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 
 ## Open
 
-None.
+- [T-0044 Small polish: Arrange chip focus, the open book's clip and the shelf after rotation, the birthday row's focus](T-0044-small-polish.md) (small): Three small follow-ups found by the team: the Hidden chips keep their full focus outline when Tab scrolls one into view and focus moves to a sensible spot after Enter; the open book's paper clip stays clear of the toolbar on the computer, the shelf snaps back to the top row when the phone turns with a book open, and a sideways-only sheet height is no longer saved as the preference; focus stays on the birthday row after Save or Clear.
 
 ## Doing
 

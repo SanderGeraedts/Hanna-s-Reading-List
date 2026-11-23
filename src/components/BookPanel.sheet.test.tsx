@@ -109,6 +109,18 @@ describe('T-0037 F1: the sheet remembers what she last saw, under the cap (teste
     expect(last(onSheet)).toBeCloseTo(Math.round(0.558 * 844) / 844, 3)
   })
 
+  it('opening a book on a small phone held sideways does not save the sideways cap as the preference (T-0044, F8)', () => {
+    // 667 × 375, header 162 px: the sheet matches (< 720), the cap is small (~0.32)
+    setScreen(667, 375)
+    localStorage.setItem(KEY, '0.880')
+    const onSheet = vi.fn()
+    render(panel(book('a'), 162, onSheet))
+    const sidewaysCap = 1 - 162 / 375 - 0.25
+    expect(last(onSheet)).toBeLessThanOrEqual(sidewaysCap + 0.002)
+    // the preference is unchanged: a next upright open still remembers 0.88
+    expect(saved()).toBe('0.880')
+  })
+
   it('the next book opens at the height she dragged to; a drag above the cap is saved as the cap', () => {
     const onSheet = vi.fn()
     const { unmount, container } = render(panel(book('a'), 162, onSheet))

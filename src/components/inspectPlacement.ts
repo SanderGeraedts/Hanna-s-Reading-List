@@ -73,7 +73,14 @@ export function landscapeInspect(frame: InspectFrame, r: FreeRect, clip = 0, edg
   const { width: W, height: H } = r
   const half = (DEFAULT_INSPECT.fill * H) / 2
   const halfW = half * WIDEST_COVER
-  const fits = W / 2 + halfW <= r.right - edge && W / 2 - halfW >= edge && H / 2 + half <= r.bottom - edge
+  // the clip sits above the book's top (its height is `clip` of the book's height): a book with a
+  // clip in the default centred frame must also keep the clip clear of the header (T-0044, F8)
+  const topOfClip = H / 2 - half - DEFAULT_INSPECT.fill * H * clip
+  const fits =
+    W / 2 + halfW <= r.right - edge &&
+    W / 2 - halfW >= edge &&
+    H / 2 + half <= r.bottom - edge &&
+    (clip === 0 || topOfClip >= r.top + edge)
   if (fits) {
     Object.assign(frame, DEFAULT_INSPECT)
     return

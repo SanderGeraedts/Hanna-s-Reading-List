@@ -1,0 +1,79 @@
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { DEFAULT_LAYOUT, type BlockId } from '#/lib/dashboardLayout'
+
+// no server: the dashboard signed out, its server functions mocked like the other dashboard tests
+vi.mock('#/server/shelf', () => ({
+  loadShelf: async () => null,
+  saveShelf: async () => ({ updated: 't' }),
+  loadGoals: async () => ({}),
+  saveGoal: async () => ({}),
+  loadChallenges: async () => [],
+  saveChallenges: async () => [],
+}))
+vi.mock('#/server/openLibrary', () => ({
+  searchBooks: async () => [],
+  getWorkDetails: async () => null,
+  browseBooks: async () => [],
+  lookupIsbn: async () => null,
+  getPublishDate: async () => null,
+  getCoverChoices: async () => [],
+}))
+vi.mock('#/server/favourites', () => ({
+  loadFavourites: async () => ({ kept: false }),
+  saveFavourites: async () => ({ kept: false }),
+}))
+
+const { Dashboard } = await import('./Dashboard')
+
+/**
+ * Enter on a Hidden chip restores the block (T-0044, F7): the clicked chip is removed and
+ * focus moves to the next chip, or to the restored block's drag handle when no chip is left.
+ * Without the fix focus falls to the page body.
+ */
+
+const KEY = 'hannas-reading-list:dashboard:local'
+const HIDDEN: BlockId[] = ['goal', 'reading', 'pace']
+
+beforeAll(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-11-22T12:00:00'))
+})
+afterAll(() => vi.useRealTimers())
+beforeEach(() => {
+  localStorage.clear()
+  localStorage.setItem(KEY, JSON.stringify({ ...DEFAULT_LAYOUT, hidden: HIDDEN }))
+})
+afterEach(cleanup)
+
+const show = () => render(<Dashboard books={[]} onShowBook={() => {}} accountId={null} onUpdate={() => {}} />)
+const arrange = () => fireEvent.click(screen.getByRole('button', { name: 'Arrange' }))
+const chips = () => Array.from(document.querySelectorAll<HTMLButtonElement>('.hidden-blocks [data-hidden]'))
+
+describe('Enter on a Hidden chip keeps focus on the row (T-0044, F7)', () => {
+  it('after Enter on a chip, focus moves to the next chip', () => {
+    show()
+    arrange()
+    const first = chips().find((c) => c.dataset.hidden === 'goal')!
+    first.focus()
+    expect(document.activeElement).toBe(first)
+    fireEvent.click(first)
+    // 'goal' is gone, the first remaining chip is 'reading'
+    const next = chips()
+    expect(next.map((c) => c.dataset.hidden)).toEqual(['reading', 'pace'])
+    expect(document.activeElement).toBe(next[0])
+  })
+
+  it('after Enter on the last chip, focus moves to the restored block\'s handle', () => {
+    localStorage.setItem(KEY, JSON.stringify({ ...DEFAULT_LAYOUT, hidden: ['reading'] }))
+    show()
+    arrange()
+    const last = chips()[0]
+    expect(last.dataset.hidden).toBe('reading')
+    fireEvent.click(last)
+    expect(chips()).toHaveLength(0)
+    const handle = document.querySelector<HTMLElement>('.dashboard-grid [data-block="reading"] .block-handle')
+    expect(handle).toBeTruthy()
+    expect(document.activeElement).toBe(handle)
+  })
+})

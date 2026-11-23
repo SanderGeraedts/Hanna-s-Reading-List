@@ -358,6 +358,27 @@ describe('the birthday row (T-0043)', () => {
     expect(daySelect().value).toBe('')
   })
 
+  it('keeps focus on the row after Save and after Clear, in the same paint (T-0044, F12)', () => {
+    // a body-focus between the state change and the focus move would let a page-level key handler
+    // steal the next key; useLayoutEffect in BirthdayRow runs before the browser paints
+    const bodyFocuses: Event[] = []
+    const onBodyFocus = (e: Event) => bodyFocuses.push(e)
+    document.body.addEventListener('focusin', onBodyFocus)
+    try {
+      render(<BadgesCard books={shelf} />)
+      pickDay('14', '05')
+      press('Save')
+      expect(document.activeElement).toBe(within(row()).getByRole('button', { name: 'Change birthday' }))
+      // no intermediate focusin on the body (its target is the Change button, not body)
+      expect(bodyFocuses.find((e) => e.target === document.body)).toBeUndefined()
+      press('Clear birthday')
+      expect(document.activeElement).toBe(daySelect())
+      expect(bodyFocuses.find((e) => e.target === document.body)).toBeUndefined()
+    } finally {
+      document.body.removeEventListener('focusin', onBodyFocus)
+    }
+  })
+
   it('folding while changing drops the unsaved picks', () => {
     localStorage.setItem(KEY, '05-14')
     render(<BadgesCard books={shelf} />)
