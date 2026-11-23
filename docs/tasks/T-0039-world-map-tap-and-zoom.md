@@ -758,6 +758,61 @@ zoom 1, a tap 6 px west of mainland France opens France, and the Netherlands sti
 15 px off its edge. Plus a component test that mocks the svg's width so France's zone is decided
 the way it is in a browser.
 
+## Re-check after the send-back (2026-11-23)
+
+(Tester, night mode, Hanna not asked. G-0031: only what I sent back and its effects: France and
+the overlapping zones, the focus at the zoom limits, the one/two-column resize.)
+
+**Verdict: sent back to the developer.** France and the overlapping zones now pass, and so does
+the resize. One hole in the focus fix fails the *Done when* line the UX re-review added (F2
+below). The pull request stays a draft.
+
+**CI** (`gh pr checks 248`, run 45102579061, head `338a20d`, after merging main): `checks / checks`
+passed in 55 s on **attempt 1**. Log: *Test Files 102 passed | 1 skipped (103)*, *Tests 1286
+passed | 9 skipped (1295)*, `✓ tasks: 42 tasks, index in step`, both builds `✓ built`; no retry
+anywhere in the log. `shards` and `e2e` skipped by the harness workflow as on every PR; the
+Netlify preview is ready.
+
+**Local, from clean:** `pnpm install --frozen-lockfile` (done), `pnpm exec tsc --noEmit` (clean),
+`pnpm exec harness check` (✓ tasks, ✓ decisions: 41 records, ✓ engineers, ✓ generated files).
+`vitest run BooksWorldMap.test.tsx mapZoom.test.ts Dashboard`, three times: *Test Files 5 passed
+(5), Tests 69 passed (69)* each time.
+
+**The task's Playwright script, rerun once after the merge of main** (the developer's last run was
+before it): `node docs/tasks/T-0039-screens/screens.mjs --url=http://localhost:3156` on
+`vite dev --port 3156` with no `POCKETBASE_URL` and no backend: **101 ok, 0 FAIL, "all checks
+passed"**, exit 0. Its screenshots came out the same as the committed ones in content and were not
+recommitted. The dev server was stopped afterwards.
+
+**My own checks** (scratch script, not committed; 390 × 844 with touch emulation and real CDP
+touch events, and 1280 × 800):
+
+| Area | What I tried | Result |
+|---|---|---|
+| **France and the overlapping zones** | 97 real-touch taps on a 2 px grid over the sea and plain land around mainland France and the Netherlands (every point covered by a zone and not by a lit shape), judged against the re-review's rule with my own distances to each lit country's drawn outline | **96 / 97** follow the rule. The Netherlands never opened where France's coast was nearer (33 taps within 8 px of France; France itself opened at 2, because Spain, Italy or the UK was nearer at the rest, as the developer measured). The one other answer: 2 px off Sardinia, France opened instead of Italy, because coasts are measured on the main landmass only (mainland Italy is further than Corsica). The re-review accepted this for islands ✓ |
+| Chrome's touch adjustment | Where the click lands compared with the finger | Chrome moves a tap's click by **6 px (median), up to 13 px** towards a target nearby, and the rule is applied where the click lands. That is how a real Android phone behaves too, so the 8 px is measured from Chrome's adjusted point, not the finger. The promises the design makes still held: |
+| Own shapes, the far case | Real-touch taps inside the UK, France, Spain, Germany, Italy; 15 px north of the Netherlands | Each opens itself; the Netherlands opens from 15 px north ✓ |
+| Tap vs drag on the zones | A 3 px wobble; a 9 px move | The wobble opens a card; the 9 px move opens nothing ✓ |
+| Speed | A tap on 3 to 8 overlapping zones at CPU ×4 | The card opens in 289 to 398 ms (it was 342 ms for a plain card before the fix); `nearestCoast` adds no visible delay ✓ |
+| **Focus at the limits** | Keyboard on 1280: Enter/Space on + up to 8×; `+` on − at 8×; Enter on ⤢ at 8×; `-` on − at 2×; `-` on the zoomed map at 2×; Tab after a move | + to 8×: focus moves to − with the 2 px ring ✓. `-` on − or on the map to 1×: focus moves to + ✓, and Tab goes on from there ✓. **Enter on ⤢ at 8×: focus is lost to `<body>`** (F2) |
+| **One/two-column resize** | Zoomed in with the Italy card open: 1280 → 700 → 560 → 1280 → 900 → 1600; a plain Brazil card 1280 → 600 → 1280; phone 390 × 844 → 844 × 390 → back; a later visit | The card stays open each time, the country and its name keep `aria-expanded="true"`, the gold mark is drawn; the zoom goes back to the whole map (team choice 3); a later visit starts with no card ✓ |
+| Effects | Console, page width | No console errors, no horizontal scroll ✓ |
+
+**F2: Enter (or Space) on ⤢ at 8× loses keyboard focus.** To see it: Tab to + and press it three
+times (focus moves to − at 8×, fine), Tab once more to ⤢ and press Enter. The map goes back to
+whole, ⤢ and − become disabled, and focus sits on `<body>` with no ring. From 2× or 4× the same ⤢
+press moves focus to + as designed. Cause, from the code: `zoomTo` calls `zoomInRef.current.focus()`
+straight away, while + is still `disabled` from 8× (the re-render that enables it comes later), so
+the browser ignores the focus call. The *Done when* line "reaching 8× or zoom 1 with the keyboard
+leaves focus on the other zoom button, not the page" fails for this path.
+
+**Not blocking, for the developer while there:** Ctrl+scroll (or a pinch) back to zoom 1 while −
+or ⤢ has focus also leaves focus on `<body>`; only button and key presses move it. A mouse or
+touch user doesn't see focus, so the design doesn't require it.
+
+**To pass next time:** Enter on ⤢ at 8× leaves focus on + (with the ring), plus a component test
+for it; CI green on attempt 1.
+
 # Log
 
 - 2026-11-23 architect: wrote the task from Hanna's agreed brief ("a better world map", parts 1
@@ -810,3 +865,8 @@ the way it is in a browser.
   within 8 px, then the smallest), zones by main landmass, focus moving to the other zoom button at
   8× and 1×, and the card across the remount; Design and *Done when* updated (see *Re-review*).
   Handed to the **tester**.
+- 2026-11-23 tester: sent back: Enter on ⤢ at 8× loses keyboard focus to the page (+ is still
+  disabled when focus is moved to it; see *Test*, F2). France and the overlapping zones (96 of 97
+  real-touch taps follow the new rule; the one other is the accepted island case) and the
+  column resize pass; `screens.mjs` rerun after the merge of main: 101 ok, 0 FAIL; CI attempt 1
+  green. #248 stays a draft. Handed back to the **developer**.
