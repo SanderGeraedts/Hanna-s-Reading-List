@@ -117,7 +117,35 @@ const ALIASES: Record<string, string> = {
   'cape town': 'South Africa',
   johannesburg: 'South Africa',
   transylvania: 'Romania',
+  // T-0041: native names and other spellings (keys without accents, see `fold`)
+  nederland: 'Netherlands',
+  deutschland: 'Germany',
+  belgie: 'Belgium',
+  espana: 'Spain',
+  italia: 'Italy',
+  osterreich: 'Austria',
+  oesterreich: 'Austria',
+  schweiz: 'Switzerland',
+  suisse: 'Switzerland',
+  svizzera: 'Switzerland',
+  danmark: 'Denmark',
+  norge: 'Norway',
+  sverige: 'Sweden',
+  suomi: 'Finland',
+  polska: 'Poland',
+  cesko: 'Czechia',
+  ελλαδα: 'Greece',
+  eire: 'Ireland',
+  brasil: 'Brazil',
+  'u.s.a.': 'United States of America',
 }
+
+/** Lower case without accents ("België" → "belgie", "Ελλάδα" → "ελλαδα"), for the country lookup (T-0041). */
+const fold = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
 
 /**
  * Made-up places that Open Library doesn't always mark as imaginary, with the
@@ -170,9 +198,10 @@ export function placesOf(places: string[], known: ReadonlySet<string>): BookPlac
   const countries = new Set<string>()
   // key -> the spelling counted: a built-in land's short name, else the first spelling
   const imaginary = new Map<string, string>()
-  const knownLower = new Map([...known].map((c) => [c.toLowerCase(), c]))
+  const knownLower = new Map([...known].map((c) => [fold(c), c]))
   const country = (raw: string) => {
-    const s = clean(raw).toLowerCase()
+    // "The Netherlands", "the UK" (T-0041)
+    const s = fold(clean(raw)).replace(/^the\s+/, '')
     return knownLower.get(s) ?? ALIASES[s]
   }
   for (const place of places) {

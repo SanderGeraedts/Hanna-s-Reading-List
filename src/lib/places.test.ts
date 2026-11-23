@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { Book } from './library'
 import { byBooks, needsPlaces, placesOf, worldMap } from './places'
 import { coverAtSize } from './cover'
+import { badges } from './badges'
+import { MAP_COUNTRY_SET } from './mapCountries'
 
 const KNOWN = new Set(['United Kingdom', 'France', 'United States of America', 'Japan', 'Italy', 'Greece'])
 
@@ -92,6 +94,70 @@ describe('the map: books per place in tile order (T-0018)', () => {
       ['Japan', ['a']],
     ])
     expect(byBooks(m.imaginary).map(([l]) => l)).toEqual(['Narnia', 'Atlantis', 'Oz'])
+  })
+})
+
+describe('more spellings of a country (T-0041)', () => {
+  const countryOf = (place: string) => placesOf([place], MAP_COUNTRY_SET).countries
+
+  it('maps native names, accents and other spellings to the map’s country', () => {
+    const cases: Array<[string, string]> = [
+      ['Nederland', 'Netherlands'],
+      ['Deutschland', 'Germany'],
+      ['België', 'Belgium'],
+      ['Belgie', 'Belgium'],
+      ['España', 'Spain'],
+      ['Espana', 'Spain'],
+      ['Italia', 'Italy'],
+      ['Österreich', 'Austria'],
+      ['Oesterreich', 'Austria'],
+      ['Schweiz', 'Switzerland'],
+      ['Suisse', 'Switzerland'],
+      ['Svizzera', 'Switzerland'],
+      ['Danmark', 'Denmark'],
+      ['Norge', 'Norway'],
+      ['Sverige', 'Sweden'],
+      ['Suomi', 'Finland'],
+      ['Polska', 'Poland'],
+      ['Česko', 'Czechia'],
+      ['Ελλάδα', 'Greece'],
+      ['Éire', 'Ireland'],
+      ['Brasil', 'Brazil'],
+      ['México', 'Mexico'],
+      ['U.S.A.', 'United States of America'],
+      ['United States of America', 'United States of America'],
+      ['Great Britain', 'United Kingdom'],
+      ['Amsterdam (Nederland)', 'Netherlands'],
+    ]
+    for (const [place, country] of cases) expect([place, countryOf(place)]).toEqual([place, [country]])
+  })
+
+  it('ignores a leading “the”, only as a whole word', () => {
+    expect(countryOf('The Netherlands')).toEqual(['Netherlands'])
+    expect(countryOf('the Netherlands')).toEqual(['Netherlands'])
+    expect(countryOf('THE  NETHERLANDS')).toEqual(['Netherlands'])
+    expect(countryOf('the UK')).toEqual(['United Kingdom'])
+    expect(countryOf('The United States')).toEqual(['United States of America'])
+    expect(countryOf('The Czech Republic')).toEqual(['Czechia'])
+    expect(countryOf('Thessaloniki')).toEqual([])
+    expect(countryOf('The')).toEqual([])
+  })
+
+  it('leaves imaginary lands as they are', () => {
+    expect(placesOf(['The Shire (Imaginary place)', 'Narnia'], MAP_COUNTRY_SET)).toEqual({ countries: [], imaginary: ['The Shire', 'Narnia'] })
+  })
+
+  it('counts the same country in two spellings once', () => {
+    expect(placesOf(['The Netherlands', 'Nederland', 'Holland'], MAP_COUNTRY_SET).countries).toEqual(['Netherlands'])
+    const m = worldMap([b('nl', { places: ['The Netherlands', 'Nederland'] })], MAP_COUNTRY_SET)
+    expect([...m.countries].map(([c, list]) => [c, ids(list)])).toEqual([['Netherlands', ['nl']]])
+  })
+
+  it('unlocks Home sweet home for “The Netherlands” and for “Nederland”', () => {
+    for (const place of ['The Netherlands', 'Nederland']) {
+      const all = badges([b('nl', { finished: ['2026-08-01'], places: [place] })], '2026-11-20')
+      expect([place, all.find((x) => x.id === 'home-sweet-home')]).toMatchObject([place, { earned: true, on: '2026-08-01' }])
+    }
   })
 })
 

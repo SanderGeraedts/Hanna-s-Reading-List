@@ -91,6 +91,19 @@ spellings.
 
 ## Build notes (developer)
 
+- `src/lib/places.ts`: the `country` lookup in `placesOf` now folds both the place and the map's
+  names with a new `fold` (Unicode NFD, marks removed, lower case) and strips a leading
+  `the ` (whole word, `/^the\s+/`) before looking up the map's name and then `ALIASES`. The 20
+  new aliases are one block at the end of `ALIASES`, keys without accents; existing aliases are
+  untouched. The imaginary-land path is not changed.
+- `src/lib/places.test.ts`: a new `more spellings of a country (T-0041)` block with 5 tests
+  (every spelling in the table and the extra checks, "the" only as a whole word, imaginary lands
+  unchanged, two spellings counted once on the map, Home sweet home earned for "The
+  Netherlands" and for "Nederland" via `badges()`). All 4 tests that touch the change fail on
+  the old `places.ts` (checked by running them against `HEAD`'s file).
+- Nothing else touched; `setIn.test.ts` still passes (typing "Nederland" in Set in now becomes a
+  country, as the task's *Notes* say).
+
 # Test
 
 # Log
@@ -99,3 +112,9 @@ spellings.
   Netherlands" and "Nederland"), widened to a leading "the", accents and the native names of
   common countries. Follows D-0023, D-0026, D-0037; no new decision. Night mode: Hanna wasn't
   asked. Size: **small**. Handed to the **developer**.
+- 2026-11-23 developer: built it in `src/lib/places.ts` (leading "the" and accents ignored in
+  the country lookup, 20 new aliases) with 5 new tests in `places.test.ts`, including Home sweet
+  home for "The Netherlands" and "Nederland". Check output: `vitest run places badges setIn
+  continents`: 4 files, 74 tests passed (the 4 new tests on the change fail without it).
+  `pnpm exec tsc --noEmit`: no errors. `pnpm exec harness check`: tasks, decisions, engineers
+  and generated files all ✓. Nothing a user sees changes in layout, so handed to the **tester**.
