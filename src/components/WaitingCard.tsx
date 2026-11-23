@@ -34,6 +34,8 @@ interface Props {
   creatureDuplicate?: { species: SpeciesId; onChoose: () => void }
   /** her creature's newest level-up, not seen on this device yet (T-0029) */
   creatureLevelUp?: { text: string; onNice: () => void; onVisit: () => void }
+  /** what has happened in the garden since this device last looked (T-0066, D-0050 §11) */
+  garden?: { line: string; onVisit: () => void }
 }
 
 /**
@@ -55,6 +57,7 @@ export function WaitingCard({
   creatureEggs,
   creatureDuplicate,
   creatureLevelUp,
+  garden,
 }: Props) {
   const heading = useRef<HTMLHeadingElement>(null)
   return (
@@ -133,6 +136,25 @@ export function WaitingCard({
                   onClick={creatureDuplicate.onChoose}
                 >
                   Choose
+                </button>
+              </div>
+            </div>
+          </li>
+        </ul>
+      )}
+      {garden && (
+        <ul className="waiting-list">
+          <li>
+            <span className="badge-icon" aria-hidden>
+              🌱
+            </span>
+            <div className="waiting-info">
+              <p className="waiting-title">
+                <strong>{garden.line}</strong>
+              </p>
+              <div className="chips">
+                <button type="button" className="btn small primary" onClick={garden.onVisit}>
+                  Visit garden
                 </button>
               </div>
             </div>

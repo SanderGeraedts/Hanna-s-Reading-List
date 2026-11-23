@@ -66,7 +66,8 @@ export function GardenPage({ books, paused, onShowBook }: Props) {
   const [query, setQuery] = useState('')
   const [foundId, setFound] = useState<string | null>(null)
   // opening the tab is what counts as having looked: the block only reports it
-  const news = useSeen(garden, true)
+  const seen = useSeen(garden, true)
+  const news = seen.plants
   const shown = year !== null && garden.years.some((y) => y.year === year) ? year : startYear(garden)
   const current = yearOf(garden, shown)
   // the flat garden on a phone, and wherever 3D can't be drawn (D-0051 §4)

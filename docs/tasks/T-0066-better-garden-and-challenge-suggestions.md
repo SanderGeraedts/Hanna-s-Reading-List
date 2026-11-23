@@ -35,7 +35,9 @@ against advice.
 - the world, the seasonal and her own challenge cards show up to three books from her shelf
   with the reason each fits, or a line saying nothing fits;
 - tapping a letter the A–Z challenge has not got yet suggests a book from her pile, with
-  **Another one** when more than one counts.
+  **Another one** when more than one counts;
+- when plants have grown or an item has unlocked since this device last looked, "Waiting for
+  you" says so with **Visit garden**, and opening the garden clears it.
 
 # Notes
 
@@ -89,6 +91,11 @@ like is Hanna's to confirm on the live site.
 - 2026-11-23 developer: the A–Z card's "From your pile" list is gone; an empty letter is now
   tapped for a book from her pile, in the same panel a bingo square opens, which is what she
   asked for (D-0070).
+- 2026-11-23 developer: the garden now speaks in "Waiting for you" as D-0050 §11 said it
+  should, with new plants, growth and unlocks in one line and Visit garden; the device's note
+  of what it last saw gained the unlocked items, and an older note counts every unlock as
+  already seen so no old pond is announced. `pnpm test` 2442 passed, 22 skipped;
+  `pnpm run build` built in 910 ms.
   Remaining: Hanna confirms on the live site that Tidy and Undo do what she expects, that the
   cover signs and the re-matched plants look right, and that the suggestions under A–Z, the
   world, the seasonal and her own challenges are useful.
