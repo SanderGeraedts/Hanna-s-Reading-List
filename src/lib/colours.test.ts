@@ -148,6 +148,15 @@ describe('colour check: everything stays readable', () => {
     }
     cases.push([`the "?" on a hidden medal (${wallpaper})`, c('muted'), cards.map((card) => over(c('medal-hidden'), card)), 4.5])
   }
+  // a chosen medal (T-0043 F11): the cream ring inside the rim, against its dark gap
+  cases.push(['a chosen medal’s cream ring on its dark gap', c('text'), [c('surface-solid')], 3])
+  it('draws a chosen medal as a cream ring inside the rim with a dark gap, and no outer ring (T-0043 F11)', () => {
+    const bodies = css.split('\n.medal.chosen {').slice(1).map((s) => s.slice(0, s.indexOf('}')))
+    const shadow = bodies.map((b) => b.match(/box-shadow:([^;]+);/)?.[1]).find(Boolean)!
+    const rings = shadow.split(/,(?![^(]*\))/).map((r) => r.trim())
+    expect(rings).toEqual(['inset 0 0 0 2px var(--surface-solid)', 'inset 0 0 0 4px var(--text)'])
+    expect(rings.every((r) => r.startsWith('inset'))).toBe(true)
+  })
   it('reads the midnight wallpaper’s own colours', () => {
     expect(midStart).toBeGreaterThan(0)
     expect(mid('header-ink')).not.toEqual(c('header-ink'))

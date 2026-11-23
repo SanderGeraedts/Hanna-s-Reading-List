@@ -3458,9 +3458,12 @@ textarea.input {
 .medal.chosen {
   background: var(--surface-hover);
 }
-/* chosen: a cream ring outside the rim (never gold, so it can't pass for a gold rim) */
+/* chosen (T-0043 F11): a cream ring inside the rim, set off by a dark gap, so it reads as two
+   separate rings on every rim and can't pass for a thicker silver (or gold) rim */
 .medal.chosen {
-  box-shadow: 0 0 0 2px var(--text);
+  box-shadow:
+    inset 0 0 0 2px var(--surface-solid),
+    inset 0 0 0 4px var(--text);
 }
 .medal:focus-visible {
   outline: 2px solid var(--accent);
@@ -3503,6 +3506,39 @@ textarea.input {
 }
 .badges-total {
   margin: 0 0 var(--space-2);
+}
+/* the birthday row (T-0043, D-0039): a small setting under the medals, after a hairline */
+.birthday-row {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+}
+.birthday-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+.birthday-controls .input {
+  width: auto;
+}
+.birthday-date {
+  color: var(--text);
+}
+.birthday-error {
+  margin: 0;
+  color: var(--danger);
+}
+@media (pointer: coarse) {
+  .birthday-controls .input,
+  .birthday-controls .btn {
+    min-height: var(--tap);
+  }
+  .birthday-controls .btn {
+    min-width: var(--tap);
+  }
 }
 /* a block's title that folds it away (Badges) */
 .card-fold {

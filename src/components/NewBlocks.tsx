@@ -1,8 +1,9 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { KeyboardEvent } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import type { FormEvent, KeyboardEvent } from 'react'
 import type { Book } from '#/lib/library'
 import { badges } from '#/lib/badges'
 import type { Badge, Tier } from '#/lib/badges'
+import { birthdayOf, clearBirthday, daysInMonth, readBirthday, subscribeBirthday, writeBirthday } from '#/lib/birthday'
 import { rhythm, WEEKDAY_NAMES } from '#/lib/rhythm'
 import { sleepReadIds } from '#/lib/sleepSeries'
 import type { ShareSpec } from '#/lib/shareImage'
@@ -18,7 +19,8 @@ const dayText = (day: string) =>
  * hidden (a dark "?"). Tapping a medal opens one card under the grid.
  */
 export function BadgesCard({ books }: { books: Book[] }) {
-  const all = useMemo(() => badges(books), [books])
+  const birthday = useBirthday()
+  const all = useMemo(() => badges(books, undefined, { birthday }), [books, birthday])
   // like Steam: unlocked first (newest on top), then the locked ones closest to done;
   // secret badges stay hidden until unlocked: a "?" medal at the end, with a riddle when tapped
   const earned = all.filter((b) => b.earned).sort((a, b) => (b.on ?? '').localeCompare(a.on ?? ''))
@@ -75,7 +77,9 @@ export function BadgesCard({ books }: { books: Book[] }) {
     const cols = Math.max(1, tops.filter((t) => t === tops[0]).length)
     let to: number | null = null
     if (e.key === 'Enter' || e.key === ' ') {
-      // handled here (not by the button's own click) so Enter and Space act once, the same everywhere
+      // handled here (not by the button's own click), so holding Enter toggles once; Space's
+      // keyup is cancelled too (onKeyUp below), since some browsers (Firefox) click a button on
+      // Space's keyup, which would open the card and close it at once
       e.preventDefault()
       if (!e.repeat) setChosenId(chosenId === order[i].id ? null : order[i].id)
       return
@@ -134,7 +138,15 @@ export function BadgesCard({ books }: { books: Book[] }) {
         <span style={{ width: `${percent}%` }} />
       </div>
       <div id="badges-list" className="badges-body" hidden={folded}>
-        <ul className="medals" aria-label="Badges" ref={gridRef} onKeyDown={onGridKey}>
+        <ul
+          className="medals"
+          aria-label="Badges"
+          ref={gridRef}
+          onKeyDown={onGridKey}
+          onKeyUp={(e) => {
+            if (e.key === ' ') e.preventDefault()
+          }}
+        >
           {order.map((b) => {
             const state = b.earned ? 'earned' : b.secret ? 'hidden' : 'locked'
             const open = b.id === chosenId
@@ -171,7 +183,8 @@ export function BadgesCard({ books }: { books: Book[] }) {
           id="badges-card"
           ref={cardRef}
           className={`badges-card${chosen ? ' open bingo-suggest' : ''}`}
-          aria-labelledby="badges-card-title"
+          // labelled only while open: closed, it points at no heading (T-0043 F11)
+          aria-labelledby={chosen ? 'badges-card-title' : undefined}
         >
           <div className="badges-card-body" aria-live="polite" aria-atomic="true">
             {chosen && <MedalCardText b={chosen} />}
@@ -182,8 +195,169 @@ export function BadgesCard({ books }: { books: Book[] }) {
             </button>
           )}
         </section>
+        {/* remounted on folding, so unsaved picks are dropped */}
+        <BirthdayRow key={folded ? 'folded' : 'open'} />
       </div>
     </section>
+  )
+}
+
+/** This device's birthday (`MM-DD`, D-0039), kept up to date when it's set, changed or cleared. */
+export function useBirthday(): string | undefined {
+  return useSyncExternalStore(subscribeBirthday, readBirthday, () => undefined)
+}
+
+const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1)
+const DAYS = Array.from({ length: 31 }, (_, i) => i + 1)
+const birthdayText = (b: string) => `${Number(b.slice(3))} ${monthName(Number(b.slice(0, 2)))}`
+
+/**
+ * The birthday row at the end of the Badges block (T-0043, D-0039): day and month, kept on this
+ * device only. Empty: two selects and Save; set: "14 May" with Change and Clear. It never shows
+ * the secret badge's name or emoji, and never asks for a year.
+ */
+function BirthdayRow() {
+  const birthday = useBirthday()
+  const [editing, setEditing] = useState(false)
+  const [day, setDay] = useState('')
+  const [month, setMonth] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const changeRef = useRef<HTMLButtonElement>(null)
+  const dayRef = useRef<HTMLSelectElement>(null)
+  const focusNext = useRef<'change' | 'day' | null>(null)
+  const showForm = !birthday || editing
+
+  // focus moves on purpose after a state change, never lost
+  useEffect(() => {
+    const to = focusNext.current
+    focusNext.current = null
+    if (to === 'change') changeRef.current?.focus()
+    else if (to === 'day') dayRef.current?.focus()
+  })
+
+  const pick = (set: (v: string) => void) => (v: string) => {
+    set(v)
+    setError(null)
+  }
+  const startChange = () => {
+    setDay(birthday ? String(Number(birthday.slice(3))) : '')
+    setMonth(birthday ? birthday.slice(0, 2) : '')
+    setError(null)
+    setEditing(true)
+    focusNext.current = 'day'
+  }
+  const cancel = () => {
+    setEditing(false)
+    setError(null)
+    focusNext.current = 'change'
+  }
+  const save = (e: FormEvent) => {
+    e.preventDefault()
+    if (!day || !month) return setError('Pick a day and a month.')
+    const d = Number(day)
+    const m = Number(month)
+    if (d > daysInMonth(m)) return setError(`There is no ${d} ${monthName(m)}.`)
+    writeBirthday(birthdayOf(d, m))
+    setEditing(false)
+    setError(null)
+    focusNext.current = 'change'
+  }
+  const clear = () => {
+    clearBirthday()
+    setDay('')
+    setMonth('')
+    setEditing(false)
+    setError(null)
+    focusNext.current = 'day'
+  }
+
+  return (
+    <div className="birthday-row" role="group" aria-labelledby="birthday-label">
+      {showForm ? (
+        <form
+          className="birthday-controls"
+          onSubmit={save}
+          onKeyDown={(e) => {
+            // Escape in Change is Cancel, and stops here (an open medal card stays open)
+            if (e.key === 'Escape' && editing) {
+              e.preventDefault()
+              e.stopPropagation()
+              cancel()
+            }
+          }}
+        >
+          <span id="birthday-label" className="small-text muted">
+            Birthday
+          </span>
+          <select
+            ref={dayRef}
+            className="input"
+            aria-label="Day"
+            value={day}
+            onChange={(e) => pick(setDay)(e.target.value)}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? 'birthday-error' : undefined}
+          >
+            <option value="">Day</option>
+            {DAYS.map((d) => (
+              <option key={d} value={String(d)}>
+                {d}
+              </option>
+            ))}
+          </select>
+          <select
+            className="input"
+            aria-label="Month"
+            value={month}
+            onChange={(e) => pick(setMonth)(e.target.value)}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? 'birthday-error' : undefined}
+          >
+            <option value="">Month</option>
+            {MONTHS.map((m) => (
+              <option key={m} value={String(m).padStart(2, '0')}>
+                {monthName(m)}
+              </option>
+            ))}
+          </select>
+          <button type="submit" className="btn small">
+            Save
+          </button>
+          {editing && (
+            <button type="button" className="btn quiet small" onClick={cancel}>
+              Cancel
+            </button>
+          )}
+        </form>
+      ) : (
+        <div className="birthday-controls">
+          <span id="birthday-label" className="small-text muted">
+            Birthday
+          </span>
+          <span id="birthday-date" className="birthday-date small-text">
+            {birthdayText(birthday)}
+          </span>
+          <button
+            ref={changeRef}
+            type="button"
+            className="btn quiet small"
+            aria-label="Change birthday"
+            aria-describedby="birthday-date"
+            onClick={startChange}
+          >
+            Change
+          </button>
+          <button type="button" className="btn quiet small" aria-label="Clear birthday" onClick={clear}>
+            Clear
+          </button>
+        </div>
+      )}
+      {error && (
+        <p id="birthday-error" className="birthday-error small-text" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
   )
 }
 
@@ -280,7 +454,8 @@ const share = (b: Badge) => (b.progress ? b.progress.done / b.progress.goal : 0)
 export function BadgeToasts({ books, accountId, ready }: { books: Book[]; accountId: string | null; ready: boolean }) {
   const key = `hannas-reading-list:badges-shown:${accountId ?? 'local'}`
   const [queue, setQueue] = useState<Badge[]>([])
-  const earnedIds = useMemo(() => (ready ? badges(books).filter((b) => b.earned) : null), [books, ready])
+  const birthday = useBirthday()
+  const earnedIds = useMemo(() => (ready ? badges(books, undefined, { birthday }).filter((b) => b.earned) : null), [books, ready, birthday])
 
   useEffect(() => {
     if (!earnedIds) return
@@ -293,7 +468,8 @@ export function BadgeToasts({ books, accountId, ready }: { books: Book[]; accoun
     }
     const fresh = shown ? earnedIds.filter((b) => !shown!.includes(b.id)) : []
     try {
-      localStorage.setItem(key, JSON.stringify(earnedIds.map((b) => b.id)))
+      // shown badges stay shown, so clearing and setting the birthday again doesn't toast twice
+      localStorage.setItem(key, JSON.stringify([...new Set([...(shown ?? []), ...earnedIds.map((b) => b.id)])]))
     } catch {
       /* storage blocked: then no toasts, rather than the same ones every visit */
       return
