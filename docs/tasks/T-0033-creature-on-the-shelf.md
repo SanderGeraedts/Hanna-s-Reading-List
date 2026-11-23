@@ -107,3 +107,9 @@ visible promise for the tester.
 - 2026-11-23 developer: built the shelf pet (fixed top-right spot, idle life, cheer, streak
   sign, night book-pile), the Put/Take off buttons, the `shelf` log kind, in one branch
   `creatures-alive-and-shelf` with T-0032. tests 1582 pass, tsc + build + harness check green.
+- 2026-11-23 ux-designer: reviewed as part of the combined review in
+  `docs/tasks/T-0032-creatures-come-alive.md` (see "Review after building (2026-11-23)"
+  there). Shelf pet sits at the top-right of the top row without overlapping a book or
+  nook sign; `Put on the shelf ✨` button visible on each pet row; `useShelfPet.ts`,
+  `ShelfPet.tsx`, `shelfPet.ts` and the `'shelf-pet'` entry in `shelfLayout.ts` all
+  present. Pass; over to the tester to drive the live states.

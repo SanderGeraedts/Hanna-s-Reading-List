@@ -575,6 +575,71 @@ review crisp:
   **Share the album**. Buttons sit in Feed/Trick!/Share tab order on the card.
 - **Reaction type** extended to `trick` and `pet` kinds (DenScene.tsx).
 
+## Review after building (2026-11-23)
+
+Reviewed the combined T-0032 + T-0033 build on `creatures-alive-and-shelf` (commits
+`2bc19b5`, `3a16b3e`, `da21386`) against §1–§13 of this file. Looked at every one of the 8
+T-0032 shots and 6 T-0033 shots, and the diff in `src/`.
+
+**Verdict: pass. Over to the tester.**
+
+What matches
+- All the files §11 lists are in the diff: `denRoam.ts`, `tricks.ts`, `shareSpec.ts`,
+  `shelfPet.ts`, `words.ts`, `DragFeed.tsx`, `WalkingPets.tsx`, `ShelfPet.tsx`,
+  `useShelfPet.ts`, and the touch-ups in `DenScene.tsx`, `CreaturesPage.tsx`,
+  `PetsCard.tsx`, `Decorations.tsx`, `BookshelfScene.tsx`, `shelfLayout.ts`,
+  `routes/index.tsx`.
+- Den (1280, `1280-den-roam-lavender.jpg`): both of Hanna's demo pets are in view —
+  Biscuit on the gold cushion, Pepper (platypus baby) on the rug next to the ball toy.
+  With only two pets in demo data, "3+ pets visible" (§12 wording) is not physically
+  possible; the room reads as alive in the way §1 and §4 ask. Walkable rectangle and the
+  cushion/bowl/toys stay where T-0029/T-0031 put them.
+- Pet card now carries `Rename`, `Dress up`, `Feed 5`, `Trick! ✨`, `Share ✨`, `Release…`
+  in the tab order §10 asks for. The mood line reads "Happy from today's reading" — the
+  new mood from §7 is wired into the card.
+- Phone den (`390-den-phone-lavender.jpg`): the T-0029 framing is unchanged — one cushion,
+  bowl, current pet, no other pets drawn. Phone budget kept (Done when 3, §3a, §2 table).
+- Shelf (1280, `1280-shelf-lavender-grown.jpg`): the favourite creature sits at the
+  **top-right of the top row**, clearly separated from the last book on the row. The
+  koala and the sleeping cat sit on the lower rows unchanged. No overlap with a book or
+  nook sign. The ¾-turn toward the camera reads.
+- Shelf (390, `390-shelf-phone-lavender.jpg`): same spot, no cast shadow, cheap
+  layout. The low-row cat sleeping shows through at the very bottom edge.
+- Share: `share-card-and-album.jpg` shows the `Share the album` button on the Album card
+  (next to "3 of 20 found · 1 shiny"), and the `Put on the shelf ✨` button on Pepper's
+  row of `PetsCard` — both §8b and §9b wired.
+- Streak sign on the sign shot is acceptable to the eye as a tiny paw-held placard; §8d.
+
+What differs (not must-fix)
+- The 1280 den screenshots (`roam`, `pair-cuddle`, `trick-spin`, `drag-hover`, `moods`)
+  all catch the scene at the same still moment — the animations are continuous and these
+  are stills. The developer notes that the pair-partner handshake and the pair-play heart
+  sprite were dropped to stay in the phone draw-call budget. That matches §13 in the
+  dev's Build notes and is acceptable here (§5c's hearts were an extra; the pair pose
+  still reads in-scene).
+- The 1280 shelf screenshots (`lavender-grown`, `midnight-cheer`, `sits-by-reading`,
+  `night-sleep`) also look alike. The cheer and the book-pile at night are code-only on
+  this review — the state machine in `ShelfPet.tsx` has them, and the §8d flag
+  `hrl:shelf-cheer:<yyyy-mm-dd>` is in the code. The tester will drive them live with
+  playwright and judge on the running app.
+- `390-shelf-phone-midnight-streak.jpg` does not clearly show the streak sign and the
+  midnight wallpaper. Tester to check live.
+
+Dropped features (ok to drop)
+- Pair-partner handshake (both pets stepping into pair state in sync) — kept as "both
+  arms lift" instead. Phone budget preserved.
+- Pair-play heart sprite — dropped. The nose-boop / cuddle poses still read.
+
+Must-fix: none.
+
+## Done when (extra visible promise — §13)
+
+- On the pet card, **Trick!** and **Share** are present whenever at least one trick is
+  unlocked and whenever there is a current pet; both reachable with Tab after Feed and
+  Rename; each announces its result in the live region.
+- The shelf pet's spot **never overlaps a book or a nook sign** on an empty, a mid-full
+  and a full shelf (covered by the `shelfLayout` test with `'shelf-pet'` listed first).
+
 # Test
 
 - `pnpm test --run`: 1582 passed, 0 failed, 22 skipped — includes the new tricks, roam,
@@ -603,3 +668,9 @@ review crisp:
   Dropped the pair-partner handshake and in-scene heart sprite to keep the frame budget
   (phone branch untouched). tests 1582 pass; tsc, build, harness check green. Retook the 8
   T-0032 screenshots; T-0033 shots unchanged.
+- 2026-11-23 ux-designer: reviewed the combined build against §1–§13. All files from §11
+  are in the diff; pet card buttons and tab order match §10; den (1280) shows both demo
+  pets with the cushion/bowl/toys where §3 put them; phone den keeps T-0029 framing;
+  shelf pet sits at the top-right of the top row without overlapping a book (§8a). The
+  dropped pair-partner handshake and heart sprite (phone budget) are acceptable. Pass;
+  over to the tester to drive the shelf states (cheer / book-pile / streak sign) live.
