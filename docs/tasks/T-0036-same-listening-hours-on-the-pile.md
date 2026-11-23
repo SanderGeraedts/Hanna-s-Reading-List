@@ -2,12 +2,12 @@
 id: T-0036
 title: "Make the Want-to-read pile's grey line show the same listening hours as the 🎧 Audiobook line"
 description: "The grey “… pages · … to listen” line in the Want-to-read pile block counts every audiobook on the pile with the 🎧 line's rule (minutes, else pages × 2, else 560), so both show the same hours (D-0036); its pages stay the real page counts of the books she doesn't only listen to."
-status: Doing
+status: Done
 size: small
 depends_on: [T-0023, T-0024]
 decisions: [D-0008, D-0014, D-0030, D-0031, D-0036]
 raised_on: 2026-11-23
-done_on: ""
+done_on: 2026-11-23
 result: [https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/243]
 ---
 
@@ -186,6 +186,55 @@ Hanna.
 
 # Test
 
+**Verdict: passed.** (tester, 2026-11-23)
+
+**CI's run, read, not repeated** (`gh pr checks 243`, run 45085836779, attempt 1, no retries):
+`checks / checks` pass (Test Files 95 passed | 1 skipped), Netlify deploy preview ready; e2e and
+shards skipped as for every small PR.
+
+**Run here** (`pnpm install --frozen-lockfile`, exit 0):
+
+- `pnpm exec vitest run src/lib/insights.test.ts src/components/PileCard.test.tsx src/lib/pileHeight.test.ts`
+  → `Test Files 3 passed (3)`, `Tests 154 passed (154)`.
+- The two files three more times → `Tests 68 passed (68)` each time; no flakiness.
+- With `src/lib/insights.ts` put back to `main`'s: `Tests 13 failed | 55 passed (68)`: every new
+  T-0036 test (the developer's and mine) fails without the change, and every older test passes.
+- `pnpm exec tsc --noEmit` → exit 0.
+- `pnpm exec harness check` → tasks 29, index in step; decisions 37, index complete, 3 overrules
+  valid; engineers 2; generated files current.
+
+**Done when, checked:** the unit and component tests it lists are all there and pass (the eight
+one-book cases, the four other statuses, the mixed shelf 1,200 / 1,320, the pace shelf 3,900 /
+1,920 / 15 / 1.25 / 12, equality with `pileHeights(...).audioMinutes` and
+`kindPace(..., 'audio').waiting`, "1,200 pages · 22 h to listen" before and after 🎧, "9 h 20 min
+to listen", no grey line for a paperback without pages). The UX designer's review is in *Design*.
+
+**Trying to break it** (new tests, `the pile’s grey line: edge cases (tester, T-0036)` in
+`src/lib/insights.test.ts` and three `(tester)` tests in `src/components/PileCard.test.tsx`; each
+also checks that the grey line's minutes equal the 🎧 line's and the 🎧 pace line's):
+
+- **A Storytel book with no length:** 560 min (9 h 20 min), as on the 🎧 line; a length of 0
+  counts as no length too (`minutes: 0, pages: 0` → 560; `minutes: 0, pages: 200` → 400).
+- **Paper + Storytel:** its real pages and its minutes, both halves (also as a sleep read).
+- **Only listen-only books:** pages 0 (a Storytel book's copied `pages` doesn't sneak into the
+  pages half), hours the sum of `audioMinutes`; on screen "19 h 20 min to listen", no pages half.
+- **No audiobooks at all:** minutes 0 and the 🎧 total 0; on screen "500 pages", no "to listen" and
+  no Audiobook button.
+- **A sleep read on the pile** (`sleepRead`, `sleepSeries`): counts like any other want-to-read
+  book, in both halves; nothing in the pile treats sleep reads differently.
+- **A huge pile:** 3,000 books of eight kinds agree to the minute; on screen 600 books show
+  "70,000 pages · 3910 h to listen" and 🎧 Audiobook shows the same "3910 h".
+- **Every mix:** 9 format sets × 5 lengths × 5 statuses (225 books), as one shelf and one book at a
+  time: the grey line's minutes always equal `pileHeights(...).audioMinutes` and
+  `kindPace(..., 'audio').waiting`.
+- **With a pace:** the 🎧 pace line waits for exactly the grey line's minutes (1,160 → 12 months at
+  100 min a month).
+
+**Seen, not a fault of this task:** hours above 999 have no thousands comma ("3910 h") while the
+pages do ("70,000 pages"); that is how `formatDuration` has always written them, the same on the
+🎧 line, so the two still match. A pile with only audiobooks has no switch, so there is no 🎧 line
+to compare with on screen (T-0023's design).
+
 # Log
 
 - 2026-11-23 architect: wrote the task from Hanna's choice of 2026-11-22 (night mode, nothing
@@ -206,3 +255,8 @@ Hanna.
 - 2026-11-23 ux-designer: reviewed: matches *Done when* (grey line "1,200 pages · 22 h to listen",
   the same 22 h as 🎧 Audiobook, at 390 and 1280; pages and everything else unchanged). No
   must-fix. Handed to the **tester**.
+- 2026-11-23 tester: passed: CI green on the first attempt; the affected tests 154/154 here and
+  68/68 three times more; 13 of them fail without the change; `harness check` clean. Added edge-case
+  tests (no length, paper + Storytel, listen-only, no audiobooks, a sleep read, a huge pile, every
+  mix of formats, lengths and statuses, with a pace): the grey line always equals the 🎧 line and
+  the 🎧 pace line. Done; PR #243 marked ready.
