@@ -1,5 +1,5 @@
 ---
-id: D-0044
+id: D-0053
 title: "The wishlist is her own books with a wish flag, kept out of everything the shelf counts by one filter"
 description: "A wish is a normal Book with wish: true, so it rides along with the shelf and syncs with no change to how a shelf is saved or merged; the page filters the library once into shelf books and wishes, and everything that counts (the shelf, the pile, stats, suggestions, the map, challenges, badges, creatures and the garden) is given the shelf books only; I bought it clears the flag and re-dates the book to today."
 status: Accepted

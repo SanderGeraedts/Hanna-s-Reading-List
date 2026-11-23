@@ -1,14 +1,14 @@
 ---
 id: T-0072
 title: "A wishlist of books she wants to buy, kept off the shelf and out of every count"
-description: "Books she wants get their own list — a Wishlist dashboard block and Add to wishlist in + Add — each with a cover, title, price and a link to buy it; a wish is a Book with a wish flag (D-0044) that syncs with her shelf but is counted nowhere, and I bought it › moves it to the shelf and asks how she has it and what it cost."
+description: "Books she wants get their own list — a Wishlist dashboard block and Add to wishlist in + Add — each with a cover, title, price and a link to buy it; a wish is a Book with a wish flag (D-0053) that syncs with her shelf but is counted nowhere, and I bought it › moves it to the shelf and asks how she has it and what it cost."
 status: Doing
 size: full
 depends_on: [T-0070]
-decisions: [D-0002, D-0009, D-0013, D-0014, D-0017, D-0018, D-0020, D-0024, D-0044]
+decisions: [D-0002, D-0009, D-0013, D-0014, D-0017, D-0018, D-0020, D-0024, D-0053]
 raised_on: 2026-11-23
 done_on: ""
-result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/PRNUM"]
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/265"]
 ---
 
 # Goal
@@ -26,7 +26,7 @@ Backlog item AD3, agreed 22 November 2026:
 - **I bought it ›** moves it to the shelf and asks how she has it and the price.
 - Stored with her books and synced.
 
-How it is stored is **D-0044**: a wish is a `Book` with `wish: true`, and the page splits the
+How it is stored is **D-0053**: a wish is a `Book` with `wish: true`, and the page splits the
 library once into `books` and `wishes`, so everything that counts is given the shelf books
 only. **This needs no change to how a shelf is saved, merged or synced** — no new collection,
 no migration, nothing in `src/lib/shelfMerge.ts`, `src/server/shelf.ts`, `deploy/nas/`,
@@ -42,7 +42,7 @@ no migration, nothing in `src/lib/shelfMerge.ts`, `src/server/shelf.ts`, `deploy
    - `wishBooks` is the exact complement, and the two together are the whole library, in
      order, for a library of 0, 1 and 50 books;
    - `boughtPatch` clears the flag (`wish: undefined`) and sets `addedAt` to the given moment
-     (D-0044), and keeps the wish's `price`;
+     (D-0053), and keeps the wish's `price`;
    - `cleanBuyLink` accepts `https://` and `http://` with a host, and refuses `javascript:`,
      `data:`, `file:`, an empty string and a bare word; `buyHref` refuses the same on every
      render;
@@ -85,7 +85,7 @@ no migration, nothing in `src/lib/shelfMerge.ts`, `src/server/shelf.ts`, `deploy
    - a wish whose title and author already match a book on the shelf still moves, and the
      dashboard's existing merge suggestion is what offers to join them — the wishlist does not
      merge anything by itself;
-   - `mergeBooks` takes the **kept** copy's `wish` (D-0009, D-0044): merging a wish into a
+   - `mergeBooks` takes the **kept** copy's `wish` (D-0009, D-0053): merging a wish into a
      shelf book gives a shelf book, merging two wishes gives a wish, and `buyUrl` is the kept
      copy's, else the other's.
 8. Keyboard and screen reader: the block is a `section` with an `aria-labelledby` heading; each
@@ -119,7 +119,7 @@ no migration, nothing in `src/lib/shelfMerge.ts`, `src/server/shelf.ts`, `deploy
   https/http rule as #185 and D-0024's free-e-book link.
 - The price field is `PriceInput` from `PriceField.tsx` with D-0024's parsing. A wish's price
   **never** touches the buying jar while it is a wish, because the jar is worked out from
-  `books` (D-0044).
+  `books` (D-0053).
 - The Reading Garden (a sibling branch) and the bookcases and filters above the shelf (another
   sibling branch) both read `books`, so they exclude wishes with no work of their own. Say so
   in the pull request so neither branch adds a filter of its own.
@@ -131,7 +131,7 @@ no migration, nothing in `src/lib/shelfMerge.ts`, `src/server/shelf.ts`, `deploy
 
 Hanna was at work on 23 November 2026 and could not be asked. The big one — how a wish is
 stored — was the only route that both syncs and needs nothing from Sander, and it is also the
-cheapest to undo, so it was taken and recorded as **D-0044** rather than parked.
+cheapest to undo, so it was taken and recorded as **D-0053** rather than parked.
 
 1. **A wish is a `Book` with a `wish` flag, in the same shelf, synced by the code that was
    already there.** No new collection, no migration, nothing on the server at Sander's home,
@@ -389,7 +389,7 @@ wish left.
 | **The dashboard she arranged before the block existed** | `cleanLayout` puts **Wishlist** in Today in its default place, keeps her order, her hidden blocks, her folded sections and her favourites, and the block appears exactly once. It can be hidden, shown again and starred like any other (`dashboardLayout.test.ts`). |
 | **Closing the "I bought it" follow-up early** | A price that was valid is kept (`flush`), and focus goes back to the **Wishlist** heading — checked in real Chrome as well as in a test, after the UX review found it falling to `<body>`. |
 | **By hand with a bad link** | The form's own message, nothing added; fixing the link adds the wish with its price and link. (The field is `type="text"`, not `type="url"`, so the browser's own check cannot swallow our message.) |
-| **Nothing a server has to do** | `git diff --stat` touches nothing in `src/lib/shelfMerge.ts`, `src/server/shelf.ts`, `deploy/nas/`, `.github/` or `netlify/`. A wish is a `Book` in the same JSON shelf, so saving, merging and syncing are the code that was already there (D-0044). |
+| **Nothing a server has to do** | `git diff --stat` touches nothing in `src/lib/shelfMerge.ts`, `src/server/shelf.ts`, `deploy/nas/`, `.github/` or `netlify/`. A wish is a `Book` in the same JSON shelf, so saving, merging and syncing are the code that was already there (D-0053). |
 
 ## Known, and not a regression
 
@@ -402,7 +402,7 @@ in **By hand** has no key and searching for it again offers **Add to wishlist** 
 # Log
 
 - 2026-11-23 architect: wrote the task from backlog item AD3 (wishlist), size **full**,
-  numbered T-0072, and recorded **D-0044** for how a wish is stored and kept out of every
+  numbered T-0072, and recorded **D-0053** for how a wish is stored and kept out of every
   count. Checked the storage question the backlog raises: a flag on `Book` needs **no** server
   change, so this is guardrail group 1 and nothing waits for Sander. Choices made while Hanna
   was at work, all the reversible ones: a wish's row opens no book panel; **I bought it ›**
@@ -429,6 +429,6 @@ in **By hand** has no key and searching for it again offers **Add to wishlist** 
   bad buy link. Added `wishlist.break.test.ts`. Confirmed by `git diff --stat` that nothing in
   `shelfMerge.ts`, `src/server/shelf.ts`, `deploy/nas/`, `.github/` or `netlify/` is touched,
   so **nothing here waits for Sander**. **Passed.**
-  Remaining: Hanna reads *Choices made while Hanna was at work* above and confirms **D-0044**
+  Remaining: Hanna reads *Choices made while Hanna was at work* above and confirms **D-0053**
   (a wish is a book with a flag, kept out of every count by one filter) and that buying a wish
   dates the book today.

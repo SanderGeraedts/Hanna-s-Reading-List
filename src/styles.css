@@ -6917,7 +6917,7 @@ button.today-item:hover {
   }
 }
 
-/* ---- The wishlist (T-0072, D-0044) ----------------------------------- */
+/* ---- The wishlist (T-0072, D-0053) ----------------------------------- */
 .wish-row {
   display: grid;
   grid-template-columns: 40px 1fr auto;

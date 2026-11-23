@@ -29,7 +29,7 @@ import { BarcodeScanner } from './BarcodeScanner'
 import { PriceInput } from './PriceField'
 
 interface Props {
-  /** the whole library: shelf books and wishes, so neither is added twice (D-0044) */
+  /** the whole library: shelf books and wishes, so neither is added twice (D-0053) */
   existing: Book[]
   onAdd: (book: NewBook) => void
   /** an ISBN Open Library doesn't know: the Manual tab, with the number filled in */

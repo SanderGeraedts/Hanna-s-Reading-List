@@ -112,7 +112,7 @@ interface DashboardProps extends Props {
   onOpenCreatures?: (step?: 'choose' | 'hatch' | 'duplicate') => void
   /** "Open ›" on the Garden block: the Garden tab (T-0065) */
   onOpenGarden?: () => void
-  /** her wishlist (D-0044): only the Wishlist block sees these, never anything that counts */
+  /** her wishlist (D-0053): only the Wishlist block sees these, never anything that counts */
   wishes?: Book[]
   /** "I bought it ›": the wish joins the shelf today and the follow-up opens */
   onBought?: (id: string) => void
@@ -390,7 +390,7 @@ export function Dashboard({
     authors: <AuthorsCard books={books} />,
     wrapped: <WrappedCard books={books} onShowBook={onShowBook} />,
     recent: <RecentCard books={books} onShowBook={onShowBook} />,
-    // the wishlist is not on the shelf and is counted nowhere (D-0044): this is the one
+    // the wishlist is not on the shelf and is counted nowhere (D-0053): this is the one
     // block that is given the wishes instead of her books
     wishlist: <WishlistCard wishes={wishes} onBought={onBought ?? (() => {})} onRemove={onRemoveWish ?? (() => {})} />,
     alphabet: <AlphabetCard books={books} onShowBook={onShowBook} onUpdate={onUpdate} compact onOpen={open('alphabet')} />,

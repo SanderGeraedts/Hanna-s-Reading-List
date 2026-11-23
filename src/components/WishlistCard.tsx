@@ -3,7 +3,7 @@ import { buyHref, wishCountText, wishOrder } from '#/lib/wishlist'
 import { coverAtSize } from '#/lib/cover'
 
 /**
- * The **Wishlist** block (T-0072, D-0044): the books Hanna wants to buy, newest
+ * The **Wishlist** block (T-0072, D-0053): the books Hanna wants to buy, newest
  * first, with their price and where to buy them. They are not on the shelf and
  * are counted nowhere — this block is given the wishes, everything else is
  * given her shelf.

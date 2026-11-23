@@ -39,7 +39,7 @@ export function mergeBooks(keep: Book, other: Book): Book {
     year: keep.year ?? other.year,
     // what she paid: the kept copy's price, else the other's (T-0016)
     price: keep.price ?? other.price,
-    // the wishlist flag is the kept copy's, full stop (D-0044): merging a wish into a
+    // the wishlist flag is the kept copy's, full stop (D-0053): merging a wish into a
     // shelf book gives a shelf book, merging two wishes stays a wish
     wish: keep.wish,
     buyUrl: keep.buyUrl ?? other.buyUrl,

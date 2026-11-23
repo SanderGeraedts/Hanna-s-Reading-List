@@ -3,7 +3,7 @@ import { cleanEbookLink, ebookHref } from './ebookLink'
 import { priceCents } from './price'
 
 /**
- * The wishlist (T-0072, D-0044): books Hanna wants to buy. A wish is an
+ * The wishlist (T-0072, D-0053): books Hanna wants to buy. A wish is an
  * ordinary `Book` with `wish: true`, so it is saved, merged and synced by
  * exactly the code her shelf already uses — no new collection, no migration,
  * nothing on the server at Sander's home.
@@ -57,7 +57,7 @@ export function wishCountText(wishes: Book[]): string {
 /**
  * "I bought it ›": the book leaves the wishlist and joins the shelf **today**,
  * so Newly added, the pile's fourteen-day wait and the buying jar all count
- * from the day it arrived and not from the day she wished for it (D-0044). Its
+ * from the day it arrived and not from the day she wished for it (D-0053). Its
  * price is kept, for the follow-up's price field.
  */
 export const boughtPatch = (at: number = Date.now()): Partial<Book> => ({ wish: undefined, addedAt: at })

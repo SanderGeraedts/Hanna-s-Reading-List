@@ -94,7 +94,7 @@ describe('the batch-scan list (T-0071)', () => {
     expect(addableRows(rows)).toEqual([])
   })
 
-  it('marks a book that is already on her wishlist (D-0044), and leaves it out too', () => {
+  it('marks a book that is already on her wishlist (D-0053), and leaves it out too', () => {
     const { rows, event } = addScan([], WISHED, library)
     expect(rows[0]).toMatchObject({ kind: 'on-wishlist' })
     expect(rows[0].have?.title).toBe('Babel')

@@ -5,10 +5,10 @@ description: "The barcode scanner stays open and drops each book it reads into a
 status: Doing
 size: full
 depends_on: [T-0070]
-decisions: [D-0002, D-0013, D-0014, D-0017, D-0018, D-0020, D-0024, D-0044]
+decisions: [D-0002, D-0013, D-0014, D-0017, D-0018, D-0020, D-0024, D-0053]
 raised_on: 2026-11-23
 done_on: ""
-result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/PRNUM"]
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/265"]
 ---
 
 # Goal
@@ -85,7 +85,7 @@ Backlog item AD2, agreed 22 November 2026:
 - The duplicate rules all exist: `sameIsbn` in `src/lib/isbn.ts` and
   `isbnFromBarcode` in the same file. Use them; don't compare strings.
 - "Already on her shelf" is checked against the **whole** library (shelf books *and* wishes,
-  D-0044), so she is never told a book is new when it is sitting on her wishlist. The add
+  D-0053), so she is never told a book is new when it is sitting on her wishlist. The add
   dialog already receives the whole library as `existing`.
 - The price rules are D-0024's and are already in `src/lib/price.ts` (`ownsCopy`,
   `asksPrice`, `parsePrice`, `priceField`, `PRICE_ERRORS`). Reuse `PriceInput` from

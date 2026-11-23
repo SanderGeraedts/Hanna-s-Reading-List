@@ -13,7 +13,7 @@ import type { PriceProblem } from './price'
  *
  * The rules that are easy to get wrong, and are therefore all in here, pure
  * and tested: the same book scanned twice is one row, a book already on her
- * shelf *or* on her wishlist (D-0044) is marked and not added again, an ISBN
+ * shelf *or* on her wishlist (D-0053) is marked and not added again, an ISBN
  * Open Library doesn't know keeps its number so she can type it by hand, and a
  * lookup that fails can be tried again. Nothing is ever silently dropped: at
  * the cap a further scan is refused out loud instead of pushing the oldest

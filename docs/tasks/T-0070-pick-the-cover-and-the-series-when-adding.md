@@ -8,7 +8,7 @@ depends_on: []
 decisions: [D-0002, D-0013, D-0014, D-0017, D-0018, D-0020, D-0024]
 raised_on: 2026-11-23
 done_on: ""
-result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/PRNUM"]
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/265"]
 ---
 
 # Goal
@@ -384,7 +384,7 @@ re-exported from there) and `recommend.test.ts` all pass unchanged.
 - 2026-11-23 architect: wrote the task from backlog item AD1 (covers & series), size **full**;
   numbered T-0070 because T-0001–T-0048 and T-0050 are taken and the Reading Garden and
   bookcases branches are taking numbers in the 0049–0059 range at the same time. Records
-  D-0044 only for the wishlist (T-0072); this task needs no new decision — it follows D-0017
+  D-0053 only for the wishlist (T-0072); this task needs no new decision — it follows D-0017
   (no AI) and D-0018 (no Google Books) as they stand. Handed to the UX designer.
 - 2026-11-23 ux-designer: designed the cover step and the series step (390 and 1280, both
   wallpapers, keyboard and screen reader, exact wording, eight screenshots). Handed to the

@@ -19,7 +19,7 @@ import { seriesGuesses } from './seriesGuess'
 
 /**
  * **The point of T-0072.** A wish must be counted nowhere. The page splits the
- * library once (D-0044), so the way to prove it is to show that every counter,
+ * library once (D-0053), so the way to prove it is to show that every counter,
  * given `shelfBooks(library)`, gives exactly what it gives for the shelf books
  * on their own — however many wishes sit in the library beside them.
  *
@@ -113,7 +113,7 @@ const wishes: Book[] = [
 const library = [...shelf.slice(0, 5), wishes[0], ...shelf.slice(5), wishes[1], wishes[2]]
 const filtered = shelfBooks(library)
 
-describe('a wish is counted nowhere (T-0072, D-0044)', () => {
+describe('a wish is counted nowhere (T-0072, D-0053)', () => {
   it('the filter really does give back the shelf, in order', () => {
     expect(filtered.map((b) => b.id)).toEqual(shelf.map((b) => b.id))
   })

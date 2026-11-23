@@ -40,12 +40,12 @@ export interface Book {
    */
   price?: number
   /**
-   * on her wishlist, not on the shelf (D-0044): a book she wants to buy. It is
+   * on her wishlist, not on the shelf (D-0053): a book she wants to buy. It is
    * saved and synced with her books, and counted nowhere — the page splits the
    * library once with shelfBooks()/wishBooks(); see wishlist.ts
    */
   wish?: boolean
-  /** where to buy a wish, an https:// or http:// link (D-0044); see wishlist.ts */
+  /** where to buy a wish, an https:// or http:// link (D-0053); see wishlist.ts */
   buyUrl?: string
   /** ids of the copies merged into this book, so they don't come back */
   mergedIds?: string[]

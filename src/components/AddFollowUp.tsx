@@ -45,7 +45,7 @@ export function AddFollowUp({
   seriesGuesses?: SeriesGuess[]
   /** whether the "Part of a series?" step is asked at all */
   askSeries?: boolean
-  /** a price already known, e.g. what she wished this book would cost (D-0044) */
+  /** a price already known, e.g. what she wished this book would cost (D-0053) */
   initialPrice?: number
 }) {
   const [step, setStep] = useState<Step>('have')

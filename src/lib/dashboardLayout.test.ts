@@ -231,7 +231,7 @@ describe('the Creatures block (T-0029)', () => {
   })
 })
 
-describe('the Wishlist block (T-0072, D-0044)', () => {
+describe('the Wishlist block (T-0072, D-0053)', () => {
   it('joins Today on a dashboard arranged before it existed, keeping her order, hidden blocks and favourites', () => {
     expect(BLOCKS.wishlist).toBe('Wishlist')
     expect(DEFAULT_LAYOUT.sections.today[1].at(-1)).toBe('wishlist')

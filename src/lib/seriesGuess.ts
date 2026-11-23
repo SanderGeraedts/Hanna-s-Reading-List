@@ -86,7 +86,7 @@ export function shelfSeries(shelf: Book[]): Array<{ name: string; authors: Set<s
 /**
  * The series this new book might be part of, best first. `book` is the book as
  * it is about to be (or has just been) added; `shelf` is her shelf **without**
- * the wishlist (D-0044).
+ * the wishlist (D-0053).
  */
 export function seriesGuesses(
   book: Pick<Book, 'title' | 'authors'> & { series?: string },

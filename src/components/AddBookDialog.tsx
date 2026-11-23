@@ -54,7 +54,7 @@ export function AddBookDialog({
   const [manualIsbn, setManualIsbn] = useState<string | undefined>()
   /** the book just added, while the follow-up asks how she has it (T-0016) */
   const [followUp, setFollowUp] = useState<{ book: Book; from: Tab } | null>(null)
-  /** her shelf without the wishlist, for the series guess (D-0044) */
+  /** her shelf without the wishlist, for the series guess (D-0053) */
   const shelf = useMemo(() => shelfBooks(existing), [existing])
   const followUpHandle = useRef<FollowUpHandle>(null)
   const tabsArea = useRef<HTMLDivElement>(null)
@@ -197,7 +197,7 @@ export function AddBookDialog({
   )
 }
 
-/** Whether a search result is already in her library, and on which list (D-0044). */
+/** Whether a search result is already in her library, and on which list (D-0053). */
 function alreadyThere(existing: Book[]): Map<string, 'shelf' | 'wish'> {
   const out = new Map<string, 'shelf' | 'wish'>()
   for (const b of existing) if (b.workKey) out.set(b.workKey, b.wish ? 'wish' : 'shelf')
