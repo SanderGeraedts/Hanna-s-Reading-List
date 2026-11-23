@@ -43,7 +43,10 @@ import { SearchBox } from '#/components/SearchBox'
 import { genreSuggestions } from '#/lib/genres'
 import { useBookDetails } from '#/lib/useBookDetails'
 import type { Book } from '#/lib/library'
-import { NO_GENRE, filterByGenre, genreOptions as shelfGenres, reorderShown } from '#/lib/genreFilter'
+import { NO_GENRE, reorderShown } from '#/lib/genreFilter'
+import { START_VIEW, applyView, cleanFilters, filterOptions, isFiltered, viewSummary } from '#/lib/shelfFilter'
+import type { ShelfView } from '#/lib/shelfFilter'
+import { ShelfBar } from '#/components/ShelfBar'
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -250,15 +253,24 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   const genreOptions = useMemo(() => genreSuggestions(books.flatMap((b) => b.genres ?? [])), [books])
   useBookDetails(allBooks, loaded, updateBook)
 
-  // show only one genre (#41); a genre no book has any more falls back to all books
-  const [genre, setGenre] = useState<string | null>(null)
-  const genreChoices = useMemo(() => shelfGenres(books), [books])
-  const activeGenre = genre && genreChoices.some((g) => g.value === genre) ? genre : null
-  const shown = useMemo(() => filterByGenre(books, activeGenre), [books, activeGenre])
-  const reorderShelf = useCallback(
-    (ids: string[]) => reorder(activeGenre ? reorderShown(books.map((b) => b.id), ids) : ids),
-    [reorder, books, activeGenre],
+  // the bookcase and the filters above the shelf (D-0046). Never saved: a reload starts at
+  // All with nothing set, like the genre filter did before it moved into the bar.
+  const [rawShelfView, setShelfView] = useState<ShelfView>(START_VIEW)
+  const filterChoices = useMemo(() => filterOptions(books), [books])
+  // a filter whose value has left the shelf counts as "any" (D-0046 §9)
+  const shelfView = useMemo<ShelfView>(
+    () => ({ bookcase: rawShelfView.bookcase, filters: cleanFilters(rawShelfView.filters, filterChoices) }),
+    [rawShelfView, filterChoices],
   )
+  const narrowed = shelfView.bookcase !== 'all' || isFiltered(shelfView.filters)
+  const shown = useMemo(() => applyView(books, shelfView), [books, shelfView])
+  const summary = useMemo(() => viewSummary(shelfView, filterChoices), [shelfView, filterChoices])
+  const reorderShelf = useCallback(
+    (ids: string[]) => reorder(narrowed ? reorderShown(books.map((b) => b.id), ids) : ids),
+    [reorder, books, narrowed],
+  )
+  // Make a wish starts from a picked genre, as it did when genre lived in the header
+  const activeGenre = shelfView.filters.genre
 
   // what she could read next (#58): Make a wish grants from these; a genre picked at the top starts the wish
   const wishChoices = useMemo(() => readNextChoices(books), [books])
@@ -388,24 +400,6 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
       ))}
     </select>
   )
-  const genreSelect = (done?: () => void) => (
-    <select
-      className="input"
-      value={activeGenre ?? ''}
-      onChange={(e) => {
-        setGenre(e.target.value || null)
-        done?.()
-      }}
-      aria-label="Show only one genre"
-    >
-      <option value="">All genres</option>
-      {genreChoices.map((g) => (
-        <option key={g.value} value={g.value}>
-          {g.label} ({g.count})
-        </option>
-      ))}
-    </select>
-  )
 
   return (
     <CreaturesProvider value={creatures}>
@@ -423,12 +417,6 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
                       <span className="muted">Arrange by</span>
                       {sortSelect(close)}
                     </label>
-                    {genreChoices.length > 0 && (
-                      <label className="menu-field">
-                        <span className="muted">Genre</span>
-                        {genreSelect(close)}
-                      </label>
-                    )}
                     <button
                       disabled={wishChoices.length === 0}
                       onClick={() => {
@@ -447,8 +435,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           <p className="muted">
             {books.length === 0
               ? 'An empty shelf, waiting for stories'
-              : activeGenre
-                ? `${shown.length} of ${books.length} books · ${genreChoices.find((g) => g.value === activeGenre)!.label}`
+              : summary.length
+                ? `${shown.length} of ${books.length} books · ${summary.join(' · ')}`
                 : `${books.length} book${books.length === 1 ? '' : 's'} · ` +
                 (['reading', 'paused', 'want', 'read', 'dnf'] as const)
                   .filter((s) => counts[s])
@@ -467,12 +455,6 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
                 <span className="muted">Arrange by</span>
                 {sortSelect()}
               </label>
-              {genreChoices.length > 0 && (
-                <label className={`sort genre-filter desktop-only${activeGenre ? ' active' : ''}`}>
-                  <span className="muted">Genre</span>
-                  {genreSelect()}
-                </label>
-              )}
               <button
                 className="btn read-next desktop-only"
                 aria-label="What to read next"
@@ -505,6 +487,9 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             <AccountMenu account={account} sync={offline && sync === 'loading' ? 'offline' : sync} onSignOut={onSignOut} />
           )}
         </div>
+        {/* the bookcase switch and the filter row (D-0046): the header's own bottom row, so the
+            header's measured height keeps the top shelf clear of the bar */}
+        {!offShelf && books.length > 0 && <ShelfBar view={shelfView} options={filterChoices} onView={setShelfView} empty={shown.length === 0} />}
       </header>
 
       <main className="stage">
@@ -542,7 +527,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             <button className="btn" aria-label="Show the whole bookcase" title="Show the whole bookcase" disabled={zoom <= 1} onClick={() => setZoom(1)}>
               ⤢
             </button>
-            <button className="btn" aria-label="Your room" title="Your room: wood, wallpaper, books, decorations" aria-expanded={roomOpen} onClick={() => setRoomOpen(!roomOpen)}>
+            <button className="btn" aria-label="Your room" title="Your room: wood, wallpaper, books, room, decorations" aria-expanded={roomOpen} onClick={() => setRoomOpen(!roomOpen)}>
               🎨
             </button>
           </div>

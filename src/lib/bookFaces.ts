@@ -14,11 +14,14 @@
  *
  * Until then a face shows the book's plain colour.
  */
-export function facesToPaint(o: { coverUrl?: string; coverFailed: boolean; takenOut: boolean }) {
+export function facesToPaint(o: { coverUrl?: string; coverFailed: boolean; takenOut: boolean; faceOut?: boolean }) {
+  // a face-out book shows its cover while it stands on the shelf (D-0044 §6), so it needs the
+  // cover picture, or the painted fallback when it has none; it never needs its back
+  const needsCover = o.takenOut || !!o.faceOut
   return {
     back: o.takenOut,
-    cover: o.takenOut && !!o.coverUrl,
-    fallback: o.takenOut && (!o.coverUrl || o.coverFailed),
+    cover: needsCover && !!o.coverUrl,
+    fallback: needsCover && (!o.coverUrl || o.coverFailed),
   }
 }
 

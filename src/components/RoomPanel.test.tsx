@@ -28,7 +28,8 @@ describe('the Detailed books switch in the room panel (T-0034, D-0035)', () => {
     // the first checkbox in the panel, before the decorations' ones
     expect(boxes[0]).toBe('Detailed books')
     const groups = screen.getAllByRole('group').map((g) => g.getAttribute('aria-label'))
-    expect(groups).toEqual(['Wood', 'Wallpaper', 'Books'])
+    // "Your room" holds the cosy extras, between Books and the decorations (T-0053, D-0045)
+    expect(groups).toEqual(['Wood', 'Wallpaper', 'Books', 'Your room'])
   })
 
   it('switches it off, leaving the rest of the room as it was', () => {
