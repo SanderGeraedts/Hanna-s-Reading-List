@@ -8,7 +8,7 @@ depends_on: [T-0029]
 decisions: [D-0013, D-0014, D-0020, D-0022, D-0033, D-0034]
 raised_on: 2026-11-22
 done_on: ""
-result: []
+result: [https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/252]
 ---
 
 # Goal
@@ -711,4 +711,4 @@ option and list it here for the UX review and the tester.
   files current; 35 screenshots for the 15 sets (port 3162, server stopped afterwards). Red List
   re-checked 2026-11-23: no update since 9 July 2026, so no change since T-0027. Remaining: UX
   review; tester; Hanna's six morning questions (Design); Done when 4 (Hanna confirms the album on
-  the live site).
+  the live site). Draft PR #252.
