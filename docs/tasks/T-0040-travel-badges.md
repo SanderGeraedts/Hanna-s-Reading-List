@@ -187,6 +187,37 @@ No design before the build (small task). The UX designer reviews the block after
   block is taller than the screen and the app scrolls inside itself, so the script makes the
   window as tall as the page before each shot; the width, and with it the layout, stays the same.
 
+## Review after building (2026-11-23)
+
+Looked at the four screenshots (`badges-390-lavender`, `badges-390-midnight`,
+`badges-1280-lavender`, `badges-390-lavender-home`) and compared them with *Done when* and the
+table. **Verdict: passes, nothing must be fixed.**
+
+- **Names and "how" text:** all 14 match the table word for word, and they read in the block's
+  voice ("Finish books set in 10 countries", next to "Finish books in 2 languages"). British
+  spelling (World traveller) matches the rest of the app (colours). No name clashes.
+- **Icons:** each tile shows its emoji, earned in full colour, locked in the block's grey, the
+  same as the other badges, in lavender and midnight. 🛂, 🦒, 🗽, 🦜, 🏯 and 🦄 read clearly at
+  390 px. Small note, not a fix: 🗼 is officially Tokyo Tower, though it looks like the Eiffel
+  Tower on most phones; it can be revisited in the "better badges" task.
+- **Riddle:** "No passport needed: a story set among the tulips, windmills and canals." is a
+  hint, not the answer, never says "home" or "Netherlands", and fits on three lines in the open
+  tile at both widths. Home sweet home is a "???" tile among the 12 hidden ones until earned; in
+  the Amsterdam shot it shows earned with "secret · Unlocked 21 Nov 2026", and the count drops to
+  11 hidden.
+- **Order:** the block sorts earned tiles by day (newest first) and locked ones by progress, so
+  the source order only breaks ties; that is how every badge already behaves. Passport stamped
+  sits right after 5 books on the same day, the postcards fall between them by day, and the
+  locked travel tiles mix in with the others by how close they are (World tour 5 / 6 near the
+  top, Postcard from Oceania with the 0 % tiles). Fine.
+- **Progress:** step badges show "7 / 10", "5 / 6", "2 / 3" with their bars; one-off postcards
+  show none, as other one-off badges do.
+- **Layout:** at 1280 the longest name, "Postcard from North America", wraps to two lines in its
+  half-width tile without clipping; at 390 everything fits on one line. The header reads
+  "8 of 60 unlocked (13%)" (46 + 14).
+- **Undated books:** following D-0037 (Unlocked, no day) is consistent with the other badges;
+  accepted.
+
 # Test
 
 To be written by the tester.
@@ -214,3 +245,6 @@ To be written by the tester.
   postcards, World tour 5 / 6, Frequent flyer 7 / 10 and Dreamwalker 2 / 3. Home sweet home is
   a hidden tile showing its riddle, and earned in the Amsterdam shot. The world map block was
   not touched. Draft PR #246. Handed to the **UX designer** for the block review.
+- 2026-11-23 ux-designer: reviewed: passes. Names, icons, riddle and order match the table in
+  all four screenshots (lavender, midnight, 390 and 1280); one note for later (🗼 is Tokyo
+  Tower), nothing must be fixed. Handed to the **tester**.
