@@ -8,7 +8,7 @@ depends_on: [T-0027]
 decisions: [D-0002, D-0003, D-0008, D-0013, D-0014, D-0020, D-0022, D-0025, D-0030, D-0033, D-0034]
 raised_on: 2026-11-22
 done_on: ""
-result: []
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/250"]
 ---
 
 # Goal
@@ -724,4 +724,4 @@ Developer's own checks (2026-11-23, night); the tester's independent run goes he
   took main's (Done); `docs/tasks/index.md` was regenerated with `harness tasks-index`. The
   decision index merged cleanly with every entry. Set `CREATURES_START` to **2026-11-23**, the
   expected merge day; if the merge slips, the tester moves it to the actual day before marking the
-  PR ready. Opened the draft PR (see `result`).
+  PR ready. Opened draft PR #250.
