@@ -1,6 +1,6 @@
-arrange-30-hidden-390-lavender.jpg: bar 148 px at top 224 (sticky), header bottom 143, sideways scroll false, console errors 0
-arrange-30-hidden-390-midnight.jpg: bar 148 px at top 224 (sticky), header bottom 143, sideways scroll false, console errors 0
-arrange-30-hidden-1280-lavender.jpg: bar 117 px at top 214 (sticky), header bottom 129, sideways scroll false, console errors 0
+arrange-30-hidden-390-lavender.jpg: bar 173 px at top 224 (sticky), header bottom 143, sideways scroll false, console errors 0
+arrange-30-hidden-390-midnight.jpg: bar 173 px at top 224 (sticky), header bottom 143, sideways scroll false, console errors 0
+arrange-30-hidden-1280-lavender.jpg: bar 137 px at top 214 (sticky), header bottom 129, sideways scroll false, console errors 0
 arrange-6-hidden-844x390-lavender.jpg: bar 148 px at top -988 (static), header bottom 121, focused bingo square 171–353, sideways scroll false, console errors 0
 arrange-6-hidden-844x390-midnight.jpg: bar 148 px at top -988 (static), header bottom 121, focused bingo square 171–353, sideways scroll false, console errors 0
 arrange-challenges-844x390-lavender.jpg: bar 62 px at top 234 (static), header bottom 121, sideways scroll false, console errors 0

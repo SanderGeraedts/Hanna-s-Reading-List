@@ -77,7 +77,8 @@ describe('the Arrange bar stays small (T-0038)', () => {
   it('the Hidden chips scroll inside an area of capped height', () => {
     const chips = rule('.hidden-blocks')
     expect(prop(chips, 'max-height')).toBeDefined()
-    expect(prop(chips, 'max-height')).toContain('var(--chip-row)')
+    // two and a half rows: the third row peeks out, the only sign that more chips are hidden
+    expect(prop(chips, 'max-height')).toContain('2.5 * var(--chip-row)')
     expect(prop(chips, 'overflow-y')).toBe('auto')
   })
 

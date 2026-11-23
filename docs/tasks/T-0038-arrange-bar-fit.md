@@ -213,3 +213,10 @@ Verdict: one must-fix, a single CSS value; applied by the developer step below a
 - 2026-11-23 ux-designer: reviewed: one must-fix, the chip area's `max-height` becomes 2½ rows
   (`calc(2.5 * var(--chip-row) + 2 * var(--chip-gap) + 2 * var(--space-1))`) so the third row
   peeks out as the only sign more chips are hidden; everything else matches *Done when*.
+- 2026-11-23 developer: applied the UX must-fix (that one `max-height` in `src/styles.css`;
+  `src/styles.test.ts` now checks `2.5 * var(--chip-row)`, 8 passed). Focus script rerun on a
+  no-backend dev server (`focus-after-ux-fix.txt`): total **0** under the header or the bar in all
+  30 runs; bar with 30 hidden **173 px (20.5 %)** at 390 × 844, **173 px (21.6 %)** at 360 × 800,
+  **137 px (17.1 %)** at 1280 × 800; real clicks 30 of 30 Hide buttons and 30 of 30 chips; Tab 30 of
+  30 chips fully visible; no console errors, no sideways scroll. Screenshots retaken
+  (`screens-branch.txt`): the top half of the third chip row now shows at 390 and 1280.
