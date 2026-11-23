@@ -473,6 +473,94 @@ Those in *Done when*, plus three:
 | `controls-390-lavender` (new) | zoom 1: the strip with `−` and `⤢` dimmed |
 | `lands-focus-390-lavender` (new) | the bigger land covers, one focused with the gold ring |
 
+## Review after building (2026-11-23)
+
+**Verdict: matches the design. Nothing must be fixed before the tester.** Looked at
+`git diff origin/main...HEAD -- src`, all 13 screenshots (the chosen and focused marks also
+enlarged, since the UK and the Netherlands are only a few pixels at zoom 1),
+`screens-output.txt` (88 ok, 0 FAIL) and the component tests.
+
+**What matches, state by state**
+
+- **Map frame and strip:** the ocean-tinted frame holds the map and, under it, the strip with
+  `+ − ⤢` right-aligned, 44 × 44, the shelf's light buttons (the strip's class added to the
+  `.zoom-controls .btn` rules, not copied). At zoom 1 `−` and `⤢` are dimmed
+  (`controls-390-lavender`); zoomed in all three are enabled (`zoomed-*`). Labels, hover text and
+  the `Zoom` group as designed. Nothing on the map is hidden by the buttons.
+- **Zoom:** ×2 a press, the maximum (8×) in three presses, the buttons glide 150 ms and jump with
+  reduced motion; pinch and Ctrl+scroll follow the fingers / pointer and keep the point under them;
+  pan is clamped; the frame never changes size. Plain borders 0.3 px and the gold outlines stay thin
+  at 8× (`zoomed-390-*`, `zoomed-1280-lavender`: covers big in the countries, lines thin).
+- **Touch and mouse:** at zoom 1 a one-finger swipe and a plain wheel scroll the page; a pinch
+  zooms without zooming the page; zoomed in a drag pans and doesn't scroll; no drag or pinch ever
+  opens a card; 6 px threshold; `grab` / `grabbing` cursors; the hover lightening is plain
+  countries only, under `(hover: hover)`.
+- **Card:** inline right under the frame, the bingo card's own rules reused; serif heading,
+  × top right and last in Tab order; 48 × 72 covers in tile order, five a line at 390 (seven books
+  wrap onto a second line, `card-lit-390-*`), one line with room for eight at 1280
+  (`card-lit-1280-*`); the missing cover is a spine-colour chip of the same size. A plain country
+  shows only its name and "No books set here yet." (`card-plain-390-lavender`). No title text,
+  no count, nothing else.
+- **Marks:** the chosen country has the solid gold over the dark edge (enlarged: the UK and, in
+  `tiny-390-lavender`, the Netherlands read as a gold shape with a dark rim); Brazil also has the
+  gold wash; the Tab-focused UK in `focus-1280-lavender` shows the dashed mark. Identical on
+  lavender and midnight.
+- **Names and lands:** the names are buttons that still read as names, the chosen one gold and
+  600, 44 px rows on touch, `aria-expanded`. The land covers are 48 × 72 buttons named by title,
+  with the gold focus ring (`lands-focus-390-lavender`).
+- **Keyboard and screen reader:** Tab order map (zoomed only), lit countries alphabetically,
+  zoom buttons, card, names, land covers, as designed and as the 1280 run lists it. Enter/Space,
+  `+`/`−`, arrows only when zoomed, Escape from anywhere in the block; focus to the card's heading
+  on open and back to the country or name on close, to the block title after a plain-country tap.
+  Map `role="group"` with the unchanged label, images inside buttons `alt=""`, zones and marks
+  `aria-hidden`.
+- **No numbers:** none in text, labels or titles with a card open (lit, plain) or zoomed in.
+
+**The developer's deviations**
+
+1. **A tap zone doesn't take a tap that lands on another lit country's own shape** (tapping in the
+   UK no longer opens the Netherlands). **Accepted, and it becomes part of the design.** It is
+   what the zones were for: a country's own shape is always its target, and a zone only lends a
+   tiny country the sea and the plain land around it. The Netherlands still opens from about 15 px
+   off its edge over the sea (`tiny-390-lavender`), and a lit country next to it (the UK, Germany)
+   opens where the finger actually is. The cost: at zoom 1 a tiny lit country walled in by lit
+   neighbours has less to tap; she zooms in (as for Belgium), uses its name, or Tabs to it. Covered
+   by a component test; the 390 and 1280 runs tap the UK at zoom 1 and get the UK.
+2. **The Playwright script checks the scroll on `.dashboard` (`scrollTop`) as well as `scrollY`.**
+   Accepted: the dashboard is the page's scroller, so that is what "the page scrolls" means for
+   her. No visible difference.
+3. **Two console messages are filtered out** (Open Library cover 404s, where the spine colour shows
+   as T-0018 designed, and the dev server's missing `favicon.ico`). Accepted: neither comes from
+   this block's behaviour.
+4. **T-0018's tests now find the map as a `group` and the land covers as buttons named by title.**
+   Accepted: that is what this design asked for; what they check is otherwise unchanged.
+
+**Small differences, not to be fixed now**
+
+- Closing a card by tapping the same *plain* country again leaves focus on the page, not the block
+  title. The design only promised a focus target for ×, Escape and Enter; a mouse or finger user
+  doesn't see focus.
+- `controls-390-lavender` was taken before the covers loaded, so the countries show their spine
+  colours. That is the designed loading state, just an earlier moment than the other shots.
+- At zoom 1 the chosen UK or Netherlands is almost all gold mark and its covers can't be seen;
+  expected for a country a few pixels wide, and zooming in shows them.
+
+**Design checks** (from *Done when*)
+
+- [x] zoom buttons 44 × 44, in a strip under the map inside its frame, `+ − ⤢`, labelled
+  `Zoom in`, `Zoom out`, `Show the whole map`; ×2 a press, maximum in three presses
+- [x] at zoom 1 on 390, a tap about 15 px off the Netherlands (on the sea) opens its card
+- [x] chosen country: 2.5 px gold over 5 px, both wallpapers; plain one with the gold wash;
+  Tab-focused lit country dashed
+- [x] opening moves focus to the heading; × and Escape put it back on the country or name; names
+  have `aria-expanded`
+- [x] covers in the card and the lands at least 44 px wide (48), each a button named by its title
+  only
+- [x] plain borders and gold outlines as thin at 8× as at zoom 1
+
+Questions 2 and 3 for Hanna (strip placement, bigger land covers) stay open for the morning; the
+build doesn't change them. Handed to the **tester**.
+
 # Build notes
 
 - **Zoom maths:** `src/lib/mapZoom.ts` (`zoomAround`, `panView`, `clampView`, `between`,
@@ -549,3 +637,8 @@ To be written by the tester.
   (no backend): "all checks passed" (88 ok, 0 FAIL, at 390 with CDP touch and at 1280,
   lavender and midnight). All 14 screenshots are in `docs/tasks/T-0039-screens/`. Handed to the
   **UX designer** for review.
+- 2026-11-23 ux-designer: reviewed: matches the design, nothing to fix. Deviations 1–4 accepted
+  (a tap zone yields to another lit country's own shape, now part of the design; scroll checked on
+  `.dashboard`; two console messages filtered; T-0018 tests find the map as a group and covers as
+  buttons). Three small differences noted, not to fix. Design checks ticked. Handed to the
+  **tester**.
