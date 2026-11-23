@@ -2,13 +2,13 @@
 id: T-0037
 title: "Polish the open book on the shelf: room under the header, calm reduced motion, sideways phones, parallax after a touch, ridges that respect the medal"
 description: "Five follow-ups from T-0026 and T-0034: on the phone the details sheet stops where an open book still has room (no more ~4 m step back) and a book's paper clip stays below the header; with reduced motion the camera jumps back only once a put-back book is home; on a phone held sideways the open book stands in the free space left of the panel and under the toolbar; on touch screens the parallax eases back to centre after a touch; a read-before did-not-finish book loses its bottom ridges like every book with a medal."
-status: Open
+status: Doing
 size: small
 depends_on: [T-0026, T-0034]
 decisions: [D-0014, D-0020, D-0022, D-0032, D-0035]
 raised_on: 2026-11-23
 done_on: ""
-result: []
+result: [https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/245]
 ---
 
 # Goal
@@ -242,6 +242,63 @@ Hanna wasn't asked anything (night mode). The architect took these:
 
 No design before the build (small task). The UX designer reviews the screenshots after.
 
+# Build notes
+
+- **F1, the cap:** `sheetCap(header) = min(SHEET_MAX, 1 − header − MIN_BOOK_SPACE)` with
+  `MIN_BOOK_SPACE` = 0.25, in `inspectPlacement.ts`. `SHEET_MAX` and `SHEET_MIN_PX` moved there
+  (`BookPanel` re-exports them), with `clampSheetPx`, `openingSheetPx` and `headerShareOf`
+  (measured `headerPx / height`, `HEADER_SHARE` until known). `BookPanel` gets `headerPx` from
+  `src/routes/index.tsx`; its drag clamp and its opening height use the cap, and the opening runs
+  again on a resize or a header change. The CSS `max-height: 88vh` stays as the outer limit.
+- **F1, what is remembered:** a saved height above the cap opens at the cap and the clamped share is
+  saved, **once, when the panel opens** (it is keyed per book). On a resize or header change the cap
+  is only applied, not saved: in the click-through, turning the phone 390 × 844 → 844 × 390 → back
+  first came back at 0.333 instead of 0.558, because a cap worked out from an in-between size was
+  saved as her preference. Fixed before the commit; the rotation now returns at 0.558.
+- **F1, the clip:** `portraitInspect(frame, sheet, aspect, header, clip)`, `clip` = `CLIP_OUT / h`
+  for a book she is reading or has paused (`hasClip`, exported from `BookMesh` with `CLIP_OUT`),
+  else 0. `fill = min(0.6, 0.85 × free, free / (1 + clip), byWidth)`; a book without a clip is
+  framed exactly as before (tested). **Deviation:** the task says "the cover stays centred in the
+  space as now"; I centre the book *and its clip* together, so the cover of a clipped book sits half
+  a clip lower (about 1.4 % of the screen, 12 px at 390 × 844). With the cover itself centred, the
+  clip needs room above *and* the same room below, so the book must shrink to
+  `free / (1 + 2 × clip)`, and at the cap the tallest clipped book's camera steps back 0.55 m (zoom
+  1, 390 × 844), against the *Done when*'s ≤ 0.45. Centred together, a clipped book keeps the same
+  `fill` as one without (0.2125 at the cap), so the step back is the same 0.38 m.
+- **F2:** `reducedMotionCamera({ reduced, open, flyingHome, held })` → `back | hold | zoom | ease`.
+  `BookMesh` adds its id to a shared `flyingHome` set while `!selected && progress ≥ 0.001` (the
+  same threshold as its `out` state) and removes it after; the rig also counts "a book was open in
+  the last frame" as flying, since the meshes' frame may run after the rig's. `hold` keeps
+  `camera.z = placement.cameraZ` (the placement is kept after closing). Probed on the dev server
+  (zoom 3, 390 × 844): z held at 2.074 until 1.29 s after ×, at her zoom 0.936 at 1.55 s.
+- **F3:** `landscapeInspect(frame, { width, height, top, right, bottom }, clip)` with `xShift` (share
+  of the view's width) added to the frame; `BookMesh` puts the book at `cameraBase.x + viewWidth ×
+  xShift`. The free rectangle is below the header's measured bottom, left of `panelLeft(width) =
+  width − 20 − min(340, width − 40)` (the CSS numbers as constants shared with the test), 12 px
+  margins. On screens of 720 px wide or less (`SHEET_QUERY`), where the panel is the sheet at the
+  bottom, `right` is the screen's width and `bottom` the sheet's top: 667 × 375 is such a screen
+  in real life, so it is tested both ways (with the panel, as *Done when* says, and with the sheet).
+  **Deviation, the trigger:** the default `{ 0.6, 0, 0 }` is kept whenever the centred book (widest
+  cover) is clear of the panel and the sheet; the header is not part of that test. The header at
+  1280 × 800 measured 184 px on the dev server (two rows: tabs and toolbar), so the centred book's
+  top (160 px) already reaches the header's band on main, and with a clip so does 1440 × 900 and
+  1920 × 1080 (header 129 px). Counting the header would change every computer screen, against
+  "the computer at 1280 × 800 and larger looks as today" and the exact-default checks. The panel
+  test alone picks exactly the screens the task names: 844 × 390, 800 × 360, 667 × 375 and 1024 ×
+  768 get the free rectangle, 1280 × 800 and up stay exactly as on main (pixel comparison: 5 pixels
+  differ). Once moved, the book is framed below the header as the task says.
+- **F4:** `parallaxTarget(pointer, { kind, touching }, on)` in `cameraAim.ts`; `usePointerInput` in
+  the scene keeps the last `pointerType` and the touches that are down (window listeners, capture
+  phase). Touch with no finger down → 0, eased by `aimCamera`'s damping (3/s): within 0.001 after
+  2 s, 0.057 of 0.06 after one frame.
+- **F5:** `ridgesFor(book, dims) = ridgeLayout(dims, hasMedal(book))`, called by `BookMesh`.
+- **Found, not fixed (for the architect):** at 844 × 390 the header is 193 px of 390 (half the
+  screen), so the sideways book is small (fill about 0.39); and the ‹ › buttons sit under the header
+  there (playwright's tap is intercepted by the toolbar; I clicked them through the DOM). At
+  667 × 375 the header is 43 % of the screen, so the sheet's cap is 0.318, below its default 0.45:
+  the sheet opens lower than on an upright phone there. At 800 × 360 the panel covers the Calendar
+  tab. All as on main except the sheet cap.
+
 # Test
 
 # Log
@@ -254,3 +311,36 @@ No design before the build (small task). The UX designer reviews the screenshots
   left for the book ≤ 2.9 m). Night mode: choices under *Choices made by the team*, two questions
   for the morning. No new decision. Size: **small**. Handed to the **developer**; the UX designer
   reviews after the build.
+- 2026-11-23 developer: built F1–F5 in draft PR #245 (night mode, nothing asked; see *Build
+  notes*, two deviations: the clipped book and its clip are centred together, and the sideways
+  framing is triggered by the panel or sheet, not the header). **Fails before the fix:** the new
+  tests run against a copy with the old numbers (cap = `SHEET_MAX` 0.88, clip not counted,
+  landscape = `DEFAULT_INSPECT`): `Tests 32 failed | 52 passed (84)`. Red were, for 390 × 844 and
+  360 × 640 at every header share, the cap check, "between the header and the sheet" (e.g. `390×844,
+  header 0.17, sheet 0.880, zoom 1, book 0.280: fill 0.1275, camera 3.917 (zoom 1 at 2.507): expected
+  0.8375 to be less than or equal to 0.66`) and "≤ + 0.45" (`expected 3.9166 to be less than or equal
+  to 2.9566`), and all 8 sideways cases, e.g. 844 × 390 (book top `0.6` against `≤ 0.0103` under the
+  header; its right edge at NDC 0.227, past the panel at 0.147). **With the fix:**
+  `inspectPlacement.test.ts` 84 passed; `BookMesh.test.ts` + `cameraAim.test.ts` 21 passed;
+  `pnpm test`: `Test Files 95 passed | 1 skipped (96)`, `Tests 1011 passed | 9 skipped (1020)`;
+  `pnpm exec tsc --noEmit` clean; `pnpm run build` `✓ built`; `pnpm exec harness check` passed
+  (below); `src/routeTree.gen.ts` not committed. **Clicked through** on `vite dev` port 3150, no
+  backend, 70 books seeded (Title 28, the tallest, being read; Title 3 a read-before DNF; Title 4
+  read; Title 5 a never-read DNF; for the sideways shots Title 30–55 being read too, because at
+  844 × 390 the top row sits under the toolbar), playwright-core with Chrome, touch emulated on the
+  phone. (1) the sheet dragged to the top stops at 373 px (share 0.558 = 1 − 162/844 − 0.25), the
+  saved share becomes 0.558, Title 28 whole with its clip below the header buttons (lavender and
+  midnight). (2) zoom 3 panned to the left end, Title 1 (clip) open, the sheet opens at the cap and
+  won't go higher; clip below the buttons. (3) reduced motion, zoom 3: shots at 116, 308 and 1809 ms
+  after ×; in 1 and 2 the shelf is still at its stepped-back size and the book no larger than open,
+  in 3 back at zoom 3 and the same pan (shot 3 is at 1.8 s, not 1.5 s: the book reaches home at
+  about 1.55 s, and a shot at 1.52 s still showed the stepped-back view). (4) 844 × 390 zoom 1 and 3,
+  800 × 360: the book left of the panel (panel at 484 / 440 px) and under the toolbar (193 / 191 px),
+  room dimmed. (5) 1280 × 800, Title 28 open at zoom 1: pixel comparison with main, 5 pixels differ
+  (1280 × 800 PNGs). (6) zoom 3, a swipe up and back that ends where it started: before/after differ
+  in 48 pixels (0.015 %, the moving decorations); on main 40 577 (12.3 %). (7) zoom 2.74 at the left
+  end, phone and computer: Title 3's medal with no ridges across it, Title 5 (never read) with its 4.
+  Also: rotating 390 × 844 → 844 × 390 → back with a book open keeps it open and whole, in the free
+  space at each step (found and fixed the saved-share bug, see *Build notes*); dragging the sheet
+  follows the finger up to the cap; no console errors; no horizontal scroll at any size. Handed to
+  the **UX designer** for the review after the build.
