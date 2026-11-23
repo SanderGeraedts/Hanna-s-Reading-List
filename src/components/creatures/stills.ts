@@ -19,7 +19,7 @@ const TURN = -0.55
 /** rendered at twice the size, then scaled down, for smooth edges */
 const RENDER = STILL_SIZE * 2
 
-function stage3d(): { renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.PerspectiveCamera } {
+export function stage3d(): { renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.PerspectiveCamera } {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true })
   renderer.setSize(RENDER, RENDER, false)
   renderer.setClearColor(0x000000, 0)
@@ -40,13 +40,19 @@ function stage3d(): { renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera:
   return { renderer, scene, camera }
 }
 
-function toWebp(gl: HTMLCanvasElement, extra?: (g: CanvasRenderingContext2D) => void, under?: (g: CanvasRenderingContext2D) => void): string {
+export function toWebp(
+  gl: HTMLCanvasElement,
+  extra?: (g: CanvasRenderingContext2D) => void,
+  under?: (g: CanvasRenderingContext2D) => void,
+  size: { w: number; h: number } = { w: STILL_SIZE, h: STILL_SIZE },
+): string {
   const c = document.createElement('canvas')
-  c.width = c.height = STILL_SIZE
+  c.width = size.w
+  c.height = size.h
   const g = c.getContext('2d')!
   g.imageSmoothingQuality = 'high'
   under?.(g)
-  g.drawImage(gl, 0, 0, STILL_SIZE, STILL_SIZE)
+  g.drawImage(gl, 0, 0, size.w, size.h)
   extra?.(g)
   return c.toDataURL('image/webp', 0.9)
 }

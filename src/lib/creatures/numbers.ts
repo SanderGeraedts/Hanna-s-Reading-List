@@ -161,3 +161,64 @@ export const POWER_UP_LEVELS = 3
 export const CURRENT_SAVE_MS = 1000
 /** The hold of the hold button (Design §5). */
 export const HOLD_MS = 2000
+
+// ---- the shop (T-0031 Design §1–§2) ------------------------------------------------------
+
+/**
+ * Every price in the shop in 🍪, by item id (the still's file name too). Food 5–25, outfits
+ * 20–60, home 30–80, toys 25–50, habitats 80–150, room decorations 60–120, eggs per D-0033 §6.
+ * A price changed here never changes what she paid: a `buy` keeps the price it was bought at.
+ */
+export const SHOP: Record<string, number> = {
+  // food (bought again and again)
+  'berry-snack': 5,
+  'honey-cake': 12,
+  'picnic-feast': 25,
+  // outfits & accessories
+  'big-bow': 20,
+  'bobble-hat': 30,
+  'flower-crown': 40,
+  'little-crown': 60,
+  'reading-glasses': 25,
+  'heart-glasses': 35,
+  'star-glasses': 40,
+  'bow-tie': 20,
+  'striped-scarf': 25,
+  'bell-collar': 30,
+  'little-backpack': 45,
+  'star-cape': 55,
+  // home
+  'cloud-cushion': 40,
+  'basket-bed': 60,
+  'star-rug': 35,
+  'fairy-lights': 45,
+  'weather-window': 80,
+  'potted-plant': 30,
+  'mini-bookcase': 70,
+  'book-tower': 30,
+  'reading-lamp': 50,
+  // eggs (bought again and again)
+  'egg-common': EGG_PRICE.common,
+  'egg-uncommon': EGG_PRICE.uncommon,
+  'egg-rare': EGG_PRICE.rare,
+  'egg-very-rare': EGG_PRICE['very rare'],
+  'egg-epic': EGG_PRICE.epic,
+  'egg-legendary': EGG_PRICE.legendary,
+  // toys
+  ball: 25,
+  yarn: 30,
+  slide: 50,
+  // habitats (the Cosy den is free and always hers)
+  forest: 80,
+  beach: 100,
+  ice: 120,
+  'castle-library': 150,
+  // reading room decorations
+  'dragon-plush': 60,
+  pennant: 70,
+  'egg-display': 80,
+  'snow-globe': 100,
+}
+
+/** Growth a food gives the pet it is given to: more per cookie than Feed (5 🍪 = 5 growth). */
+export const FOOD_GROWTH: Record<string, number> = { 'berry-snack': 6, 'honey-cake': 15, 'picnic-feast': 35 }

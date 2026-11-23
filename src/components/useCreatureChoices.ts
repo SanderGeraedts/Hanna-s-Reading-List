@@ -3,6 +3,7 @@ import { MAX_PER_CALL, cleanLog, mergeLogs, newEventId } from '#/lib/creatures/c
 import type { ChoiceEvent, FeedEvent, NameEvent } from '#/lib/creatures/choices'
 import { FEED_COMBINE_MS, WELCOME_EGG } from '#/lib/creatures/numbers'
 import type { SpeciesId } from '#/lib/creatures/species'
+import { deriveShop, repeatable, shopItem } from '#/lib/creatures/shop'
 import { loadCreatures, saveCreatures } from '#/server/creatures'
 
 /** Her creature choices on this device, for this account (D-0034). */
@@ -46,8 +47,13 @@ export interface CreatureChoices {
   feed: (pet: string, amount: number) => void
   /** saves the hatch of a milestone egg, at once (T-0030 Design §3) */
   hatchEgg: (egg: string) => void
-  /** saves another choice (a duplicate choice, a release, the current pet), already checked by the caller */
-  record: (event: { kind: 'choose' | 'release' | 'current' } & Record<string, string | number | undefined>) => void
+  /** saves another choice (a duplicate choice, a release, the current pet, an outfit, a den spot, a habitat), already checked by the caller */
+  record: (event: { kind: 'choose' | 'release' | 'current' | 'wear' | 'place' | 'habitat' } & Record<string, string | number | undefined>) => void
+  /**
+   * saves a purchase (T-0031), already checked by the caller; answers false (and saves nothing)
+   * when this browser's log already has a once-only item, so two quick taps never buy it twice
+   */
+  buy: (event: { kind: 'buy'; item: string; price: number; pet?: string }) => boolean
 }
 
 /**
@@ -195,7 +201,18 @@ export function useCreatureChoices(accountId: string | null, storage?: Storage, 
     [add, now],
   )
 
-  return { log, hatch, rename, feed, hatchEgg, record }
+  const buy = useCallback<CreatureChoices['buy']>(
+    (body) => {
+      const it = shopItem(body.item)
+      // the stored log, not the rendered one: a second tap before the re-render still sees the first
+      if (!(it && repeatable(it)) && deriveShop(readLog(st, key)).owned.has(body.item)) return false
+      record(body as unknown as Parameters<CreatureChoices['record']>[0])
+      return true
+    },
+    [key, record, st],
+  )
+
+  return { log, hatch, rename, feed, hatchEgg, record, buy }
 }
 
 /** The newest level she has seen a level-up of, per pet, on this device (Design §11). */

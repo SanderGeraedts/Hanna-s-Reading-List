@@ -10,6 +10,10 @@ export const STAGES: readonly Stage[] = ['baby', 'young', 'grown']
 export const creatureStill = (species: SpeciesId, stage: Stage, shiny = false) => `/creatures/${species}-${stage}${shiny ? '-shiny' : ''}.webp`
 export const eggStill = (tier: Tier) => `/creatures/egg-${tier.replace(' ', '-')}.webp`
 
+/** A shop item's picture (T-0031 Design §10): 192 × 192, transparent; a habitat's 320 × 200, opaque. Eggs reuse egg-<tier>.webp. */
+export const shopStill = (id: string) => `/creatures/shop/${id}.webp`
+export const HABITAT_STILL = { w: 320, h: 200 }
+
 /** Every picture's file name (without the folder), in a fixed order: 120 creatures and 6 eggs. */
 export function stillNames(): string[] {
   const out: string[] = []

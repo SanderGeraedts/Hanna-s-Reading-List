@@ -4,6 +4,8 @@ import { useFrame } from '@react-three/fiber'
 import type { DecorKind, DecorSlot } from '#/lib/shelfLayout'
 import { SHELF } from '#/lib/shelfLayout'
 import { toTexture } from './textures'
+import { buildRoomDecor } from './creatures/shopModels'
+import type { RoomDecorId } from '#/lib/creatures/shop'
 
 /** On a phone the decorations sit still (no flicker, steam, breathing or twinkling): less work every frame. */
 export const StillDecorations = createContext(false)
@@ -35,6 +37,11 @@ const PLACEMENT: Record<DecorKind, { z: number; rotY: number }> = {
   mug: { z: FRONT_Z + 0.01, rotY: -0.6 },
   // near the front edge, so the vines can hang over it
   ivy: { z: SHELF.depth / 2 - 0.07, rotY: 0 },
+  // bought in the creature shop (T-0031)
+  'dragon-plush': { z: FRONT_Z, rotY: -0.3 },
+  pennant: { z: BACK_Z + 0.02, rotY: 0 },
+  'egg-display': { z: FRONT_Z - 0.01, rotY: -0.15 },
+  'snow-globe': { z: FRONT_Z, rotY: 0.2 },
 }
 
 /** Eases decorations to a new spot when books push them along. */
@@ -58,8 +65,15 @@ function Placed({ slot }: { slot: DecorSlot }) {
       {slot.kind === 'cat' && <SleepingCat />}
       {slot.kind === 'mug' && <TeaMug />}
       {slot.kind === 'ivy' && <TrailingIvy />}
+      {(slot.kind === 'dragon-plush' || slot.kind === 'pennant' || slot.kind === 'egg-display' || slot.kind === 'snow-globe') && <ShopDecor id={slot.kind} />}
     </group>
   )
+}
+
+/** A decoration bought in the creature shop (T-0031 §11): plain three.js, built once per shelf. */
+function ShopDecor({ id }: { id: RoomDecorId }) {
+  const g = useMemo(() => buildRoomDecor(id), [id])
+  return <primitive object={g} />
 }
 
 /** A mesh that casts and receives shadows. */

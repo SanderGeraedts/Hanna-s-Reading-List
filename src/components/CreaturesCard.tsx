@@ -42,7 +42,11 @@ export function CreaturesCard({ c, onFeed, onOpen, onHatch, onHatchMilestone }: 
             <SceneBoundary onFail={() => setGl(false)}>
               <CreatureStill
                 phone={phone}
-                shows={pet ? { kind: 'creature', species: pet.species, shiny: pet.shiny, stage: pet.stage, mood: pet.mood } : { kind: 'egg' }}
+                shows={
+                  pet
+                    ? { kind: 'creature', species: pet.species, shiny: pet.shiny, stage: pet.stage, mood: pet.mood, dress: c.shop.worn.get(pet.id) }
+                    : { kind: 'egg' }
+                }
               />
             </SceneBoundary>
           )}

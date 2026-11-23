@@ -5,6 +5,8 @@ import type { Mood, Stage } from '#/lib/creatures/creature'
 import type { SpeciesId } from '#/lib/creatures/species'
 import { StillEgg } from './DenScene'
 import { creatureFor, poseStill, rigOf } from './pose'
+import type { OutfitSlot } from '#/lib/creatures/shop'
+import { dressCreature } from './shopModels'
 
 /**
  * The dashboard block's small still picture (T-0029 Design §8): the creature
@@ -13,7 +15,9 @@ import { creatureFor, poseStill, rigOf } from './pose'
  * when the creature, stage, mood or palette changes: it never moves.
  */
 
-export type StillShows = { kind: 'egg' } | { kind: 'creature'; species: SpeciesId; shiny: boolean; stage: Stage; mood: Mood | null }
+export type StillShows =
+  | { kind: 'egg' }
+  | { kind: 'creature'; species: SpeciesId; shiny: boolean; stage: Stage; mood: Mood | null; dress?: Partial<Record<OutfitSlot, string>> }
 
 const FOV = 24
 const TURN = -0.55
@@ -40,7 +44,7 @@ export function CreatureStill({ shows, phone }: { shows: StillShows; phone: bool
           <StillEgg phone={phone} />
         </group>
       ) : (
-        <Still species={shows.species} shiny={shows.shiny} stage={shows.stage} mood={shows.mood} phone={phone} />
+        <Still species={shows.species} shiny={shows.shiny} stage={shows.stage} mood={shows.mood} phone={phone} dress={shows.dress} />
       )}
     </Canvas>
   )
@@ -55,13 +59,34 @@ function Frame() {
   return null
 }
 
-function Still({ species, shiny, stage, mood, phone }: { species: SpeciesId; shiny: boolean; stage: Stage; mood: Mood | null; phone: boolean }) {
+function Still({
+  species,
+  shiny,
+  stage,
+  mood,
+  phone,
+  dress,
+}: {
+  species: SpeciesId
+  shiny: boolean
+  stage: Stage
+  mood: Mood | null
+  phone: boolean
+  dress?: Partial<Record<OutfitSlot, string>>
+}) {
   const rig = useMemo(() => rigOf(creatureFor(species, stage, shiny, phone ? 'low' : 'high')), [species, stage, shiny, phone])
   const { invalidate } = useThree()
   useLayoutEffect(() => {
     poseStill(rig, mood)
     invalidate()
   }, [rig, mood, invalidate])
+  // her pet's outfits (T-0031 §7): rendered again when one changes
+  const dressKey = JSON.stringify(dress ?? {})
+  useLayoutEffect(() => {
+    dressCreature(rig.root, dress ?? {}, phone ? 'low' : 'high')
+    invalidate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rig, dressKey, phone, invalidate])
   // about 1 unit tall whatever the stage, so every stage fills the tile
   const scale = 1.0 / rig.height
   return (

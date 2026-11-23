@@ -2,7 +2,7 @@
 id: T-0031
 title: "Open the creature shop: food, outfits, home upgrades, eggs, toys, habitats and reading-room decorations for cookies"
 description: "CR3 of the book creatures (D-0033): a Shop in the Creatures tab where cookies buy food, outfits and accessories her pets wear, home upgrades and habitats for the den, toys, eggs of every rarity at D-0033's prices, and extra decorations that join the 3D reading room's room panel; purchases are choices saved with her account (D-0034)."
-status: Open
+status: Doing
 size: full
 depends_on: [T-0030]
 decisions: [D-0013, D-0014, D-0020, D-0022, D-0033, D-0034]
@@ -531,6 +531,94 @@ I took the recommended option for each tonight; each is easy to change.
 
 See items 5 to 10 under *Done when*.
 
+## Build notes (developer, 2026-11-23)
+
+Built at night, nothing asked; where the task left a choice I took the recommended or simplest
+option and list it here for the UX review and the tester.
+
+**Where things are**
+
+- Lib: `src/lib/creatures/shop.ts` (the 41 items and the Cosy den, categories, what `buy`, `wear`,
+  `place` and `habitat` add up to in `deriveShop`, and `buyEvent` / `wearEvent` / `placeEvent` /
+  `habitatEvent` that refuse before anything is saved), `numbers.ts` (`SHOP` prices, `FOOD_GROWTH`),
+  `weather.ts` (sky by the clock, weather by the month), `creature.ts` (spent = feeds + purchases,
+  food growth, bought eggs with the milestone eggs), `eggs.ts` (egg kind `shop`), `words.ts` (all
+  T-0031 wording, the den's longer description), `room.ts` / `shelfLayout.ts` (the four bought
+  decorations: in the room only when owned).
+- UI: `creatures/Shop.tsx` (the Den | Shop switch, the shop card with chips, the item cards in four
+  states with the inline confirm, the Dress row and both strips), `CreaturesPage.tsx` (the two
+  views, Dress up and Arrange, the den's shop actions and live region), `CreaturesContext.tsx` (`buy`,
+  `wear`, `place`, `setHabitat`; `useCreaturesValue` so the route can read her purchases),
+  `useCreatureChoices.ts` (`buy` refuses a once-only item the stored log already has),
+  `routes/index.tsx` (`&shop=<category>`, the room gets her owned decorations), `RoomPanel.tsx`
+  (`useRoom(owned)`), `Decorations.tsx` (the four new decorations on the shelf), `CreaturesCard.tsx` /
+  `CreatureStill.tsx` (the block's picture dressed), `styles.css` (the shop section at the end).
+- 3D: `creatures/shopModels.ts`: every shop item as plain three.js (colours baked into vertex colours,
+  merged per material, built once and cloned), the outfits on the anchors (`dressCreature`), the six
+  spots, the four habitats and the Cosy den, the window with its sky and weather, the bowl, food (for
+  the pictures only), the four room decorations, the den's camera, and `drawCost` for the budget test.
+  `DenScene.tsx` now draws its room, cushion, rug and bowl from these builders too.
+- Pictures: `public/creatures/shop/` (35 items + the Cosy den, 192 × 192 transparent; habitats and the
+  Cosy den 320 × 200 opaque; 127 KB), made by `pnpm run render:creatures -- --shop` with T-0030's
+  script and lights (`creatures/shopStills.ts`). Eggs reuse `egg-<tier>.webp`. The contact sheet of
+  §15.7 comes from `pnpm run render:creatures -- --outfit-sheet <file.png>`.
+
+**Choices taken (and deviations from *Design*)**
+
+1. **Camera and spots (§8):** pulled back the full 10 % the design allows, and the look point lowered
+   from 0.62 to 0.55 so the bed's front edge stays in view; the bowl nudged in from (0.72, −0.32) to
+   (0.66, −0.36). Spots: bed (0, 0, 0), rug (0, 0, 0.05), wall (−1.7, 0, −1.58) with the window's sill at
+   0.9, left corner (−1.5, 0, −0.75), right corner (0.25, 0, −1.35), toy (−0.62, 0, 0.4). A unit test
+   projects every item of every spot with the den's camera at 334 × 300, 334 × 180 and 16:10: all
+   fully in view. **Deviation:** the rug spot. The plum rug (T-0029) and the star rug (outer radius
+   0.98) are wider than the phone's den, as the plum rug always was; only their middle shows at 390.
+2. **Outfit sizes (the `hat` anchor):** the `hat` anchor's size is the free width between the ears
+   (T-0027 §5: 0.18 for the foxes to 0.4 for the axolotl), not the head's, so hats are kept between
+   0.26 and 0.36 wide (`outfitScale`). Neck pieces sit at 1.45 × the neck ring's radius (at 1 × they
+   vanished inside the fur, seen on the first contact sheet). Every model turns its `back` anchor by π,
+   so back pieces are built facing +z. Accepted as the design says: the book dragon's backpack sits
+   under its wings, the unicorn's hat behind its horn (both on the contact sheet).
+3. **Pet ids with colons:** a `wear` key's slot is after the last colon (`splitWearKey`); tested with
+   `m:books-5:head` and `shop:<purchase id>:back`.
+4. **No double buy:** the confirm's Buy ignores a second tap until the card re-renders; the hook also
+   refuses a once-only item its stored log already has; and the derivation counts a once-only item
+   once even if two devices both bought it (paid once). Food and eggs count every time.
+5. **A bought egg's tier** comes from its purchase (`shop:<purchase id>`, `tierOf` in
+   `deriveCreatures`); its hatch is then the same seeded species and shiny as a milestone egg's.
+   Bought eggs wait with the milestone eggs, oldest first ("From the shop").
+6. **Food** goes to the current pet (the den shows it in Food), with T-0029's feed reaction and its
+   level-up words after "Biscuit ate the honey cake. 70 cookies left."
+7. **Motion:** a new outfit pops (0.8 → 1, 200 ms); a placed item grows in from 90 % in 200 ms (my
+   reading of "fades in"); a new habitat fades in from a soft veil in 300 ms (CSS); none of these
+   with reduce motion. **Deviation:** the Dress row switches the den's pet at once, without the 200 ms
+   cross-fade. Weather falls and fairy lights twinkle only on a computer without reduce motion.
+8. **Room decorations:** the route now holds the creatures state (`useCreaturesValue`) and passes it
+   to `CreaturesProvider`, so `useRoom(owned)` sees her purchases on every device. A decoration seen
+   for the first time joins the end switched on; Reset switches owned ones on again. **Observation for
+   the architect / UX:** the shelf keeps at most one decoration per shelf (as before), so on a short
+   shelf the 9th or 10th decoration (where a bought one joins) has no shelf until she moves it up
+   with ↑ or hides another. The 3D screenshots move the two bought ones up.
+9. **Same-millisecond settings:** two setting choices of one key in the same millisecond are decided
+   by the larger id (D-0034's rule); only tests can tap that fast, so they step the clock.
+10. **T-0028 merged meanwhile:** its route accepts `buy`, `wear`, `place` and `habitat` and never
+    drops a `buy`, so purchases sync as they are. Nothing in `deploy/nas/`, `src/server/shelf.ts`,
+    `src/lib/shelfMerge.ts` or any other CODEOWNERS path is changed.
+
+**Checks**
+
+- Budget (unit test, `denBudget.test.ts`, the costliest habitat, item per spot, species and piece per
+  slot, a shiny grown-up with its 8 sparkles, a full bowl): **low 38 draw calls, 4,879 triangles**;
+  **high 59 draw calls, 16,445 triangles** (shadow casters counted twice). Every outfit 1 draw call
+  and ≤ 300 triangles on low; every home item and toy ≤ 3 and ≤ 800; every habitat ≤ 6 and ≤ 3,000.
+- In the browser (390 × 844, dev server, software WebGL), the fullest den (castle library, all six
+  spots, Biscuit in four pieces, not shiny): **28 draw calls and about 3,890 triangles per frame**
+  (WebGL draw calls counted over 30 frames on the den's canvas).
+- Screenshots: all 36 files of §15 in `docs/tasks/T-0031-screens/`, from the no-backend dev server on
+  port 3165 with demo data (Biscuit the house cat current, Hazel the red squirrel, Frost the polar
+  bear, a few things owned; balances set with a feed where a shot needs one). In
+  `room-panel-1280-lav` the shelf behind the panel hadn't finished drawing under headless software
+  WebGL (it also happens without any purchase); the panel's list is the subject.
+
 # Test
 
 # Log
@@ -543,3 +631,20 @@ See items 5 to 10 under *Done when*.
   purchase and shown per device, stills only with one live den at ≤ 60 draw calls / 20,000
   triangles on a phone, keyboard and screen reader, wording, screenshots); Done when 5–10 added.
   Hanna not asked (night): 7 questions for the morning under *Design*. Hand-over to the developer.
+- 2026-11-23 developer: built CR3 on branch `t-0031-creature-shop`: the Den | Shop switch with the
+  category in the URL (`&shop=`, chips replace, the switch pushes), the shop card with seven
+  categories and the 41 items with prices in `SHOP`, the four card states with "N 🍪 more", the inline
+  buy confirm (Escape cancels, a double tap buys once), food given on the tap, dressing any pet on the
+  T-0027 anchors (the Dress row, one per slot, shown in the den and on the dashboard block), the six
+  den spots for home items and a toy, four habitats and the Cosy den, the window's sky and weather from
+  the clock and month, bought eggs hatching like milestone eggs, four room decorations that join the 🎨
+  panel and the 3D shelf on every device and show or hide per device, keyboard and screen reader
+  labels and the live region's words; 36 pre-rendered shop pictures from the same models. Purchases
+  are `buy` / `wear` / `place` / `habitat` choices in the existing log (D-0034). Choices and
+  deviations under *Build notes* (nothing asked). Checks: `tsc --noEmit` no output; `pnpm test`
+  1553 passed, 9 skipped (119 files), of which new: `shop.test.ts` 26, `CreaturesShop.test.tsx` 20,
+  `denBudget.test.ts` 12, `CreaturesBlockDress.test.tsx` 1, `stills.test.ts` +1; den budget low 38
+  calls / 4,879 triangles, high 59 / 16,445; browser at 390: 28 calls, ~3,890 triangles a frame;
+  `pnpm run build` ✓; `harness check` ✓ (tasks, decisions, engineers, generated files). Dev server on
+  3165 stopped, port free. Remaining: the UX review, the tester, and Hanna's look at the shop on the
+  live site.
