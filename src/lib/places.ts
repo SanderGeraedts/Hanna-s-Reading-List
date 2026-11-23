@@ -208,7 +208,8 @@ export interface WorldMap {
   placed: number
 }
 
-const finished = (b: Book) => b.status === 'read' || timesRead(b) > 0
+/** A book the map counts: marked read, or read at least once (the travel badges count the same books, D-0037). */
+export const finished = (b: Book) => b.status === 'read' || timesRead(b) > 0
 
 /** Tile order (T-0018): most recently finished first, books without a finish date last, ties by title. */
 export const tileOrder = (a: Book, b: Book): number => {

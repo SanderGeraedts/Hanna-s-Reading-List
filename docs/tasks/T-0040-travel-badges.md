@@ -2,7 +2,7 @@
 id: T-0040
 title: "Add travel badges: countries 5/10/25/50, a postcard per continent and a World tour, imaginary lands 3/10, and a secret Home sweet home for a book set in the Netherlands"
 description: "src/lib/badges.ts gets travel badges counted from the places of her finished books exactly as the world map counts them (D-0037): Passport stamped, Frequent flyer, World traveller and Around the world for 5/10/25/50 countries, a Postcard from each of six continents plus World tour for all six, Dreamwalker and Realm hopper for 3/10 imaginary lands, and the secret Home sweet home with a riddle; each dated by the first finish of the book that earned it."
-status: Open
+status: Doing
 size: small
 depends_on: [T-0015, T-0018]
 decisions: [D-0014, D-0023, D-0026, D-0037]
@@ -160,6 +160,33 @@ Hanna wasn't asked anything (night mode). The architect took these:
 
 No design before the build (small task). The UX designer reviews the block after.
 
+## Build notes (developer)
+
+- `src/lib/continents.ts`: `Continent`, `CONTINENTS` (the six, in table order) and
+  `continentsOf(country)`. One list per continent; Russia, Turkey and Kazakhstan are in both
+  Europe and Asia, Egypt in Asia and Africa, Fr. S. Antarctic Lands in none. An unknown name
+  gives `[]`.
+- `src/lib/places.ts`: `worldMap`'s `finished` rule is now exported (no change to it), so
+  the badges count exactly the books the map counts.
+- `src/lib/badges.ts`: after Bilingual and Polyglot, the travel block builds one *trip* per
+  finished book with `places` known: its first finish day, its countries
+  (`placesOf(places, MAP_COUNTRY_SET)`), their continents and its lands by `landKey`. Then
+  `firstsOf` + `reachedOn` for countries 5/10/25/50, World tour (6) and lands 3/10. `once` for
+  each postcard and for the secret `home-sweet-home`, which comes after Rainbow, with its riddle
+  in `RIDDLES`. `BadgesCard` didn't change.
+- **Undated books:** the Notes say "undated books as today", but D-0037 says a badge such a
+  book completes "has no day, as other badges do today". I followed the decision: an undated
+  book's day stays empty, and the existing helpers sort it first, as they do for every other
+  badge. So a badge it completes shows "Unlocked" with no day and never counts as new. For the
+  architect, in case "as today" meant something else.
+- Screenshots: `docs/tasks/T-0040-screens/screens.mjs` puts a demo shelf in localStorage on a
+  dev server with no backend (port 3154): books in France, Japan, Kenya, Brazil, Russia + Peru
+  and Canada, plus Narnia and Hogwarts. It shoots the whole block with Home sweet home's riddle
+  open: `badges-390-lavender`, `badges-390-midnight`, `badges-1280-lavender`. A fourth shot,
+  `badges-390-lavender-home`, adds a book set in Amsterdam, and the secret shows as earned. The
+  block is taller than the screen and the app scrolls inside itself, so the script makes the
+  window as tall as the page before each shot; the width, and with it the layout, stays the same.
+
 # Test
 
 To be written by the tester.
@@ -171,3 +198,19 @@ To be written by the tester.
   map, first-finish day, the continent list). Follows D-0014, D-0023, D-0026, D-0037. Night mode:
   five choices under *Choices made by the team*, three questions for the morning. Size: **small**.
   Handed to the **developer**; the UX designer reviews the badges block after.
+- 2026-11-23 developer: built the 14 travel badges (D-0037) in `src/lib/badges.ts`: Passport
+  stamped / Frequent flyer / World traveller / Around the world, a Postcard for each of the six
+  continents, World tour, Dreamwalker, Realm hopper, and the secret Home sweet home with its
+  riddle. Also the new `src/lib/continents.ts` and `worldMap`'s `finished` rule exported from
+  `places.ts`. Tests: `continents.test.ts` (new); `badges.test.ts` gets the unique-name and
+  unique-id test, the table, the order, the counting rules, the continents, the lands and the
+  secret, and the secret count goes from 11 to 12. One open point for the architect: undated
+  books follow D-0037 (no day), not "as today"; see *Build notes*. Check output:
+  `vitest run badges continents places`: 3 files, 31 tests passed. `pnpm test`: 97 files passed,
+  1 skipped; 1032 tests passed, 9 skipped. `pnpm exec tsc --noEmit`: no errors.
+  `pnpm run build`: built. `pnpm exec harness check`: tasks, decisions, engineers and generated
+  files all ✓. Four screenshots, no page errors, each with the expected tiles. Passport stamped
+  is unlocked on the Moscow book's day (Russia and Peru were countries 5 and 6), with five
+  postcards, World tour 5 / 6, Frequent flyer 7 / 10 and Dreamwalker 2 / 3. Home sweet home is
+  a hidden tile showing its riddle, and earned in the Amsterdam shot. The world map block was
+  not touched. Handed to the **UX designer** for the block review.
