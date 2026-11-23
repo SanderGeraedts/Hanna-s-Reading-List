@@ -2161,6 +2161,121 @@ textarea.input {
   font-size: var(--fs-body);
   margin: 0 0 0.4rem;
 }
+/* Fix a past day (T-0045): the Change editor and + Add a book controls that
+   appear inside the Calendar block's day panel and the Calendar page's day aside. */
+.day-change {
+  margin-left: 0.4rem;
+  white-space: nowrap;
+}
+.day-add-btn {
+  display: block;
+  margin: 0.75rem 0 0;
+  width: 100%;
+}
+.day-editor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.6rem;
+  align-items: center;
+  margin-top: 0.25rem;
+}
+.day-amount {
+  display: inline-flex;
+  gap: 0.3rem;
+  align-items: center;
+  flex: 1 1 10em;
+}
+.day-amount input {
+  min-width: 6em;
+  max-width: 10em;
+  padding: 0.25rem 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--text);
+}
+.day-editor-actions {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.day-editor .hint {
+  flex-basis: 100%;
+  margin: 0.1rem 0 0;
+  min-height: 1.2em;
+}
+.day-add {
+  margin-top: 0.75rem;
+  padding: 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card-soft, var(--card));
+}
+.day-add-head {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.day-add-search {
+  flex: 1;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--text);
+}
+.day-add-group {
+  margin-bottom: 0.5rem;
+}
+.day-add-group h4 {
+  margin: 0 0 0.25rem;
+  font-size: var(--fs-small);
+  font-weight: normal;
+}
+.day-add-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.day-add-pick {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.3rem 0.4rem;
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  text-align: left;
+  cursor: pointer;
+}
+.day-add-pick:hover,
+.day-add-pick:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.day-add-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.day-add-text strong {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.day-add-picked {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
 /* the book panel's finish dates */
 .finished-day {
   display: flex;

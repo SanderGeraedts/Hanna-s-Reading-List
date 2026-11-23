@@ -40,6 +40,7 @@ import { monthWeeks, periodStats, readingYears } from '#/lib/stats'
 import { amountText, amountUnit, finishedIn, monthEntries, startedIn } from '#/lib/readingLog'
 import type { DayEntry } from '#/lib/readingLog'
 import { percentText } from '#/lib/progress'
+import { AddBookForDay, ChangeButton, DayChangeEditor } from './DayEditor'
 import {
   BLOCKS,
   SECTIONS,
@@ -340,7 +341,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
     newforyou: <NewForYouCard books={books} accountId={accountId} onAdd={onAdd ?? (() => {})} />,
     reading: <CurrentlyReadingCard books={books} onShowBook={onShowBook} />,
     series: <SeriesCard books={books} onShowBook={onShowBook} />,
-    calendar: <Calendar books={books} onShowBook={onShowBook} onOpen={onOpenCalendar} />,
+    calendar: <Calendar books={books} onShowBook={onShowBook} onOpen={onOpenCalendar} onUpdate={onUpdate} />,
     breakdown: <BreakdownCard books={books} period={period} label={periodLabel(pick)} />,
     records: <RecordsCard books={books} period={period} label={periodLabel(pick)} onShowBook={onShowBook} />,
     pile: <PileCard books={books} />,
@@ -1033,7 +1034,15 @@ export function dayPile(entries: DayEntry[], day: number, shuffle: number) {
   return order.slice(-PILE)
 }
 
-function Calendar({ books, onShowBook, onOpen }: Props & { onOpen?: (month: string) => void }) {
+function Calendar({
+  books,
+  onShowBook,
+  onOpen,
+  onUpdate,
+}: Props & {
+  onOpen?: (month: string) => void
+  onUpdate?: (id: string, patch: Partial<Book> | ((book: Book) => Partial<Book>)) => void
+}) {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
@@ -1152,9 +1161,12 @@ function Calendar({ books, onShowBook, onOpen }: Props & { onOpen?: (month: stri
       </table>
       {picked !== null ? (
         <DayDetails
+          books={books}
+          day={`${year}-${String(month).padStart(2, '0')}-${String(picked).padStart(2, '0')}`}
           entries={byDay.get(picked) ?? []}
           label={`${picked} ${name}`}
           onShowBook={onShowBook}
+          onUpdate={onUpdate}
           onClose={() => setPicked(null)}
         />
       ) : (
@@ -1215,16 +1227,25 @@ function MonthList({
 
 /** What happened on one day (#89): how much she read of each book, and what she started or finished. */
 function DayDetails({
+  books,
+  day,
   entries,
   label,
   onShowBook,
+  onUpdate,
   onClose,
 }: {
+  books: Book[]
+  day: string
   entries: DayEntry[]
   label: string
   onShowBook: (id: string) => void
+  onUpdate?: (id: string, patch: Partial<Book> | ((book: Book) => Partial<Book>)) => void
   onClose: () => void
 }) {
+  const [editing, setEditing] = useState<string | null>(null)
+  const canEdit = !!onUpdate
+  const update = onUpdate ?? (() => {})
   return (
     <div className="day-log" role="group" aria-labelledby="day-log-title">
       <div className="dash-card-head">
@@ -1239,21 +1260,54 @@ function DayDetails({
         <ul className="book-list">
           {entries.map((e) => (
             <BookLine key={e.book.id} book={e.book} onShowBook={onShowBook}>
-              <span className="day-facts small-text">
-                {e.started && <span className="day-tag">Started on this day</span>}
-                {e.finished && <span className="day-tag">Finished on this day</span>}
-                {e.amount !== undefined && (
-                  <span>
-                    Read {amountText(e.book, e.amount)}
-                    {amountUnit(e.book) !== 'percent' && (
-                      <span className="muted"> · {percentText(e.amount)}% of the book</span>
+              {editing === e.book.id ? (
+                <DayChangeEditor
+                  book={e.book}
+                  day={day}
+                  entry={e}
+                  onUpdate={update}
+                  onClose={() => setEditing(null)}
+                />
+              ) : (
+                <>
+                  <span className="day-facts small-text">
+                    {e.started && <span className="day-tag">Started on this day</span>}
+                    {e.finished && <span className="day-tag">Finished on this day</span>}
+                    {e.amount !== undefined && (
+                      <span>
+                        Read {amountText(e.book, e.amount)}
+                        {amountUnit(e.book) !== 'percent' && (
+                          <span className="muted"> · {percentText(e.amount)}% of the book</span>
+                        )}
+                      </span>
                     )}
                   </span>
-                )}
-              </span>
+                  {canEdit && <ChangeButton book={e.book} open={false} onOpen={() => setEditing(e.book.id)} />}
+                </>
+              )}
             </BookLine>
           ))}
         </ul>
+      )}
+      {canEdit && (
+        editing === '__add' ? (
+          <AddBookForDay
+            books={books}
+            day={day}
+            entries={entries}
+            onUpdate={update}
+            onClose={() => setEditing(null)}
+          />
+        ) : (
+          <button
+            type="button"
+            className="btn small day-add-btn"
+            onClick={() => setEditing('__add')}
+            aria-expanded={false}
+          >
+            + Add a book
+          </button>
+        )
       )}
     </div>
   )
