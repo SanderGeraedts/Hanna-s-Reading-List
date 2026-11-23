@@ -32,8 +32,37 @@ export interface Badge {
   progress?: { done: number; goal: number }
   /** a secret badge: hidden until earned, a surprise */
   secret?: boolean
-  /** a secret badge's riddle, shown on its locked tile when tapped (the name stays secret) */
+  /** a secret badge's riddle, shown on its locked medal's card when tapped (the name stays secret) */
   riddle?: string
+  /** the rim of its medal once earned, by its step in its family (D-0038) */
+  tier: Tier
+}
+
+export type Tier = 'bronze' | 'silver' | 'gold'
+
+/**
+ * Bronze, silver or gold by a badge's step in its family (D-0038): a family is the badges
+ * whose ids are the same up to a final `-<number>` (books-1 … books-250), secret ones
+ * included. In a family of two or more the lowest step is bronze, the highest gold and the
+ * rest silver; a badge on its own is gold.
+ */
+function withTiers(list: Array<Omit<Badge, 'tier'>>): Badge[] {
+  const step = (id: string) => {
+    const m = id.match(/^(.*)-(\d+)$/)
+    return m ? { family: m[1], n: Number(m[2]) } : { family: id, n: 0 }
+  }
+  const families = new Map<string, number[]>()
+  for (const b of list) {
+    const { family, n } = step(b.id)
+    families.set(family, [...(families.get(family) ?? []), n])
+  }
+  return list.map((b) => {
+    const { family, n } = step(b.id)
+    const steps = families.get(family)!
+    const tier: Tier =
+      steps.length < 2 || n === Math.max(...steps) ? 'gold' : n === Math.min(...steps) ? 'bronze' : 'silver'
+    return { ...b, tier }
+  })
 }
 
 type Reached = { earned: boolean; on?: string; total?: number }
@@ -108,7 +137,7 @@ export const RIDDLES: Record<string, string> = {
 
 /** The travel badges for each continent (T-0040). */
 const POSTCARDS: Record<Continent, { id: string; icon: string }> = {
-  Europe: { id: 'continent-europe', icon: '🗼' },
+  Europe: { id: 'continent-europe', icon: '🏰' },
   Asia: { id: 'continent-asia', icon: '🏯' },
   Africa: { id: 'continent-africa', icon: '🦒' },
   'North America': { id: 'continent-north-america', icon: '🗽' },
@@ -118,7 +147,7 @@ const POSTCARDS: Record<Continent, { id: string; icon: string }> = {
 
 export function badges(books: Book[], today = localDay()): Badge[] {
   const finishes = allFinishes(books)
-  const out: Badge[] = []
+  const out: Array<Omit<Badge, 'tier'>> = []
   const add = (id: string, icon: string, name: string, how: string, r: Reached, goal?: number, secret?: boolean) =>
     out.push({
       id,
@@ -360,7 +389,7 @@ export function badges(books: Book[], today = localDay()): Badge[] {
   // a story set at home
   secret('home-sweet-home', '🌷', 'Home sweet home', 'Finish a book set in the Netherlands', once(trips.filter((t) => t.countries.includes('Netherlands')).map((t) => t.day)))
 
-  return out
+  return withTiers(out)
 }
 
 /** Badges earned in the last 7 days (with a known day): shown under "Waiting for you". */
