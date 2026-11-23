@@ -112,6 +112,34 @@ Hanna wasn't asked anything (night mode). The architect took these:
 
 No design before the build (small task). The UX designer reviews the screenshots after.
 
+## Review after building (2026-11-23)
+
+Looked at `git diff main...HEAD -- src` and the six screenshots, against *Done when*.
+
+- **Matches.** `arrange-30-hidden-1280-lavender`: two chip rows, bar 117 px, same look as
+  before. `arrange-6-hidden-844x390-*`: the bar scrolled away with the page, the bingo squares
+  sit fully under the header in both wallpapers. `arrange-challenges-844x390-lavender`: Reset and
+  Done in place, nothing under anything. Tokens only (D-0020), both wallpapers fine (D-0022), no
+  hint text (D-0014), Reset/Done/chip look unchanged.
+- **Differs, must fix: the third chip row must peek out.** In `arrange-30-hidden-390-*` the
+  area ends exactly in the gap after row two, and the bar's bottom padding then looks like a
+  finished bar: 3 chips visible of 30, and on a phone (no scroll bar) nothing says the other 27
+  exist. That reads as "only three blocks are hidden", the opposite of what the bar is for.
+  A partly cut chip is the usual, text-free sign that a list scrolls (fits D-0014). Exact value:
+
+  ```css
+  max-height: calc(2.5 * var(--chip-row) + 2 * var(--chip-gap) + 2 * var(--space-1));
+  ```
+
+  That shows the top half of row three (about 18 px of a 36 px chip on a phone, 13 px of 26 px on
+  the computer): clearly a chip, clearly cut. The bar grows by about half a row plus a gap
+  (≈ 24 px on a phone, ≈ 19 px on the computer), still far under the 35 % cap. With two rows
+  or fewer nothing changes.
+- **Accepted:** the "Hidden:" label scrolls with the chips (task says fine); the Challenges
+  bar stays centred (T-0020 look, unchanged).
+
+Verdict: one must-fix, a single CSS value; applied by the developer step below and re-checked.
+
 # Build notes
 
 - **CSS only** (`src/styles.css`); no change to `Dashboard.tsx`, `ChallengesPage.tsx` or
@@ -182,3 +210,6 @@ No design before the build (small task). The UX designer reviews the screenshots
   lavender`. `pnpm test` 95 files, 952 passed, 9 skipped; `tsc --noEmit` exit 0; `pnpm run build`
   ✓ built. Handed to the **UX designer** for the screenshot review (see *Build notes*: a third row
   that peeks out?).
+- 2026-11-23 ux-designer: reviewed: one must-fix, the chip area's `max-height` becomes 2½ rows
+  (`calc(2.5 * var(--chip-row) + 2 * var(--chip-gap) + 2 * var(--space-1))`) so the third row
+  peeks out as the only sign more chips are hidden; everything else matches *Done when*.
