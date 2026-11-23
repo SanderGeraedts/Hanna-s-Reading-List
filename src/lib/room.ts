@@ -50,7 +50,22 @@ export interface Room {
   decor: Array<{ kind: DecorKind; on: boolean }>
   /** the books as hardcovers (on) or as simple blocks (off), on this device (D-0035) */
   detailedBooks: boolean
+  /** the cosy room extras (D-0045), each on this device, all on by default */
+  readingCorner: boolean
+  dayNight: boolean
+  plant: boolean
+  seasonal: boolean
 }
+
+/** The cosy room extras, in the order they stand in the 🎨 panel (D-0045 §1). */
+export const ROOM_EXTRAS: Array<{ key: RoomExtra; label: string }> = [
+  { key: 'readingCorner', label: 'Reading corner' },
+  { key: 'dayNight', label: 'Day & night' },
+  { key: 'plant', label: 'Growing plant' },
+  { key: 'seasonal', label: 'Seasonal decorations' },
+]
+
+export type RoomExtra = 'readingCorner' | 'dayNight' | 'plant' | 'seasonal'
 
 export const DEFAULT_ROOM: Room = {
   wood: 'walnut',
@@ -58,6 +73,10 @@ export const DEFAULT_ROOM: Room = {
   // 'shelf-pet' is driven by her shelf choice (T-0033), not by Make-the-room-yours
   decor: DECOR.filter((d) => d.kind !== 'shelf-pet').map((d) => ({ kind: d.kind, on: true })),
   detailedBooks: true,
+  readingCorner: true,
+  dayNight: true,
+  plant: true,
+  seasonal: true,
 }
 
 const isKey = <T extends string>(o: Record<T, string>, v: unknown): v is T => typeof v === 'string' && Object.hasOwn(o, v)
@@ -92,6 +111,11 @@ export function cleanRoom(raw: unknown, owned: readonly ShopDecorKind[] = []): R
     decor,
     // only a saved false turns them off: a room saved before the switch counts as on
     detailedBooks: r.detailedBooks !== false,
+    // the same rule for every cosy extra (D-0045 §1): an older saved room has them all on
+    readingCorner: r.readingCorner !== false,
+    dayNight: r.dayNight !== false,
+    plant: r.plant !== false,
+    seasonal: r.seasonal !== false,
   }
 }
 

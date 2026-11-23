@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { DECOR_NAMES, DEFAULT_ROOM, WALLPAPERS, WOODS, cleanRoom, moveDecor, toggleDecor } from '#/lib/room'
+import { DECOR_NAMES, DEFAULT_ROOM, ROOM_EXTRAS, WALLPAPERS, WOODS, cleanRoom, moveDecor, toggleDecor } from '#/lib/room'
 import type { Room, Wallpaper, Wood } from '#/lib/room'
 import type { ShopDecorKind } from '#/lib/shelfLayout'
 
@@ -94,6 +94,17 @@ export function RoomPanel({ room, onRoom, onClose }: { room: Room; onRoom: (room
           <input type="checkbox" checked={room.detailedBooks} onChange={() => onRoom({ ...room, detailedBooks: !room.detailedBooks })} />
           <span>Detailed books</span>
         </label>
+      </div>
+
+      {/* the cosy room extras (D-0045): one group, so the decorations below stay reachable on a phone */}
+      <div className="room-row" role="group" aria-label="Your room">
+        <span className="muted small-text">Your room</span>
+        {ROOM_EXTRAS.map(({ key, label }) => (
+          <label key={key} className="room-toggle">
+            <input type="checkbox" checked={room[key]} onChange={() => onRoom({ ...room, [key]: !room[key] })} />
+            <span>{label}</span>
+          </label>
+        ))}
       </div>
 
       <div className="room-row">

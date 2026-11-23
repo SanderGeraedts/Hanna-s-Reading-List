@@ -18,6 +18,7 @@ import {
 } from '#/lib/progress'
 import { LANGUAGE_CHOICES, languageName } from '#/lib/languages'
 import { tidyTitle } from '#/lib/titles'
+import { POSES, poseOf, posePatch } from '#/lib/pose'
 import type { SeriesInfo } from '#/lib/series'
 import type { SeriesChoice } from '#/lib/sleepSeries'
 import { StarRating } from './StarRating'
@@ -1052,6 +1053,24 @@ export function BookPanel({
 
       {tab === 'looks' && (
       <div className="tab-panel panel-tab" role="tabpanel" id="book-tab-looks" aria-labelledby="book-tab-looks-tab" tabIndex={0}>
+      {/* how the book stands on the shelf (D-0044): first on Looks, above the side picker */}
+      <div className="room-row" role="group" aria-label="How it stands">
+        <span className="muted small-text">How it stands</span>
+        <div className="segmented pose-pick">
+          {POSES.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              className={poseOf(book) === id ? 'active' : undefined}
+              aria-pressed={poseOf(book) === id}
+              onClick={() => poseOf(book) !== id && onUpdate(posePatch(id))}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="side-pick" role="group" aria-label="Show side">
         <button onClick={() => onFace('front')}>Front</button>
         <button onClick={() => onFace('spine')}>Spine</button>

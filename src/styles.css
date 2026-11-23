@@ -1426,9 +1426,107 @@ textarea.input {
 }
 
 /* ---- genre filter (#41) --------------------------------------------- */
-.genre-filter.active .input {
+.genre-filter.active .input,
+.shelf-filter.active .input {
   border-color: var(--accent, #c8963e);
   box-shadow: 0 0 0 1px var(--accent, #c8963e);
+}
+
+/* ---- the bar above the shelf: bookcases and filters (T-0051, D-0046) ----
+   It is the header's own bottom row (flex-basis 100%), so the header's measured
+   height keeps the top shelf clear of it and the camera needs no change. */
+.shelf-bar {
+  flex: 1 0 100%;
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  pointer-events: auto;
+  min-width: 0;
+}
+/* the switch sits on the header's haze over the shelf, so it gets the header's own light
+   styling (as .topbar .input does), not the dark-card styling .segmented has on a card */
+.shelf-cases {
+  justify-self: start;
+  max-width: 100%;
+  flex-wrap: wrap;
+  row-gap: 3px;
+  background: rgba(255, 255, 255, 0.75);
+  border-color: rgba(40, 50, 90, 0.2);
+}
+.topbar .shelf-cases button {
+  color: var(--pill-ink);
+  opacity: 0.72;
+}
+.topbar .shelf-cases button.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+  opacity: 1;
+}
+.shelf-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+  min-width: 0;
+}
+.shelf-filters > * {
+  flex: 0 0 auto;
+}
+.shelf-filters .muted {
+  white-space: nowrap;
+}
+/* the bar's bottom row sits where the header's haze has almost faded out, so the text that
+   stands straight on the room (the filter names, the empty line) gets a soft light halo and
+   stays readable over dark wood as well as over the wallpaper */
+.shelf-filters .muted,
+.shelf-none {
+  text-shadow:
+    0 1px 2px rgba(255, 255, 255, 0.9),
+    0 0 6px rgba(255, 255, 255, 0.7);
+}
+.shelf-filters .input {
+  max-width: 11rem;
+}
+.shelf-none {
+  margin: 0;
+  color: var(--header-muted);
+  font-size: var(--fs-small);
+}
+/* Clear sits on the haze over the shelf, so it gets the header's light button styling */
+.topbar .btn.shelf-clear {
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--pill-ink);
+  border-color: rgba(40, 50, 90, 0.2);
+}
+.topbar .btn.shelf-clear:hover {
+  background: #fff;
+}
+/* a phone: one sideways-scrolling row instead of four stacked lines eating the shelf */
+@media (max-width: 700px) {
+  .shelf-filters {
+    /* the grid lays its items out at their own width, so say "the whole row" before it can scroll */
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-right: 1rem;
+    scrollbar-width: none;
+  }
+  .shelf-filters::-webkit-scrollbar {
+    display: none;
+  }
+  .shelf-filters > * {
+    flex: 0 0 auto;
+  }
+  .shelf-filters .input {
+    max-width: 9rem;
+  }
+  /* the header hides a .sort label on a phone ("Arrange by"), but each filter needs its own
+     name: it is the only way to tell the six selects apart */
+  .shelf-filter > span {
+    display: inline;
+  }
 }
 
 /* ---- ISBN and publication date (#43, #44) --------------------------- */
@@ -1591,6 +1689,12 @@ textarea.input {
   .topbar .page-tab {
     pointer-events: auto;
     flex-shrink: 0;
+  }
+  /* the bar above the shelf (T-0051): a full-width row of its own under the page tabs,
+     so the bookcase switch fits on one line and the filter row has the whole width to scroll in */
+  .topbar .shelf-bar {
+    grid-column: 1 / -1;
+    grid-row: 4;
   }
 }
 
@@ -5016,6 +5120,13 @@ textarea.input {
 /* Detailed books (T-0034): the whole 44 px row toggles it */
 .room-row > .room-toggle {
   display: flex;
+}
+/* How it stands: the pose picker on the book panel's Looks tab (T-0052, D-0044) */
+.pose-pick {
+  justify-self: start;
+  max-width: 100%;
+  flex-wrap: wrap;
+  row-gap: 3px;
 }
 .room-move {
   display: inline-flex;

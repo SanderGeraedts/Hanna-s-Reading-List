@@ -13,6 +13,7 @@ import { cleanEdges } from '#/lib/edges'
 import { inspectDistance } from './inspectPlacement'
 import type { InspectFrame } from './inspectPlacement'
 import { coverSize, facesToPaint } from '#/lib/bookFaces'
+import type { BookPose } from '#/lib/pose'
 
 export interface InspectTarget {
   rotY: number
@@ -59,6 +60,8 @@ export interface BookMeshProps {
 }
 
 const SPINE_OUT = Math.PI / 2
+/** the small tilt a dragged book gets, round the book's own cover axis */
+const TILT_AXIS = new THREE.Vector3(0, 0, 1)
 const TAU = Math.PI * 2
 const damp = THREE.MathUtils.damp
 const smooth = THREE.MathUtils.smoothstep
@@ -170,8 +173,10 @@ export function BookMesh(props: BookMeshProps) {
   const [out, setOut] = useState(selected)
   if (selected && !out) setOut(true)
   const look = bookLook({ detailed, takenOut: out })
-  const { tex: cover, failed: coverFailed } = useCoverTexture(takenOut ? book.coverUrl : undefined, dims.w / dims.h)
-  const paint = facesToPaint({ coverUrl: book.coverUrl, coverFailed, takenOut })
+  // face-out (D-0044): the cover is wanted while the book is on the shelf, not only when out
+  const faceOut = slot.pose === 'faceout'
+  const { tex: cover, failed: coverFailed } = useCoverTexture(takenOut || faceOut ? book.coverUrl : undefined, dims.w / dims.h)
+  const paint = facesToPaint({ coverUrl: book.coverUrl, coverFailed, takenOut, faceOut })
   // repaint only when something visible changes
   const looks = [book.title, book.authors.join(), book.color, book.status, book.readCount, book.language, book.description, book.isbn, book.pages, book.minutes, book.formats, book.format, dims.w, dims.h, dims.t]
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -267,6 +272,9 @@ export function BookMesh(props: BookMeshProps) {
     [parts],
   )
   const hc = parts.hardcover
+  // the face-out cover plane, the size of the front board
+  const coverPlane = useMemo(() => (faceOut ? new THREE.PlaneGeometry(dims.w, dims.h) : null), [faceOut, dims.w, dims.h])
+  useEffect(() => () => coverPlane?.dispose(), [coverPlane])
 
   // the gilded ridges: this book's matrices in the shelf's one instanced mesh
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -287,6 +295,9 @@ export function BookMesh(props: BookMeshProps) {
     wasSelected: false,
   })
   const tmp = useMemo(() => ({ base: new THREE.Vector3(), target: new THREE.Vector3() }), [])
+  // the pose's resting turn, and scratch for blending it with the take-out turn
+  const rest = useMemo(() => poseQuaternion(slot.pose), [slot.pose])
+  const turn = useMemo(() => ({ euler: new THREE.Euler(), inspect: new THREE.Quaternion(), tilt: new THREE.Quaternion() }), [])
   // a book removed or re-keyed mid-flight is no longer on its way home
   useEffect(() => () => void flyingHome?.delete(book.id), [flyingHome, book.id])
 
@@ -334,11 +345,20 @@ export function BookMesh(props: BookMeshProps) {
     }
     g.position.lerpVectors(tmp.base, tmp.target, fly)
 
-    g.rotation.set(
-      a.rotX * fly,
-      THREE.MathUtils.lerp(SPINE_OUT, a.rotY, fly),
-      -0.12 * a.dragAmt,
-    )
+    if (slot.pose === 'standing') {
+      g.rotation.set(
+        a.rotX * fly,
+        THREE.MathUtils.lerp(SPINE_OUT, a.rotY, fly),
+        -0.12 * a.dragAmt,
+      )
+    } else {
+      // posed: rest in the pose, and turn into exactly the standing book's inspect
+      // orientation as it flies out, so the take-out and the landing have no jump
+      turn.euler.set(a.rotX * fly, THREE.MathUtils.lerp(SPINE_OUT, a.rotY, fly), 0, 'XYZ')
+      turn.inspect.setFromEuler(turn.euler)
+      turn.tilt.setFromAxisAngle(TILT_AXIS, -0.12 * a.dragAmt)
+      g.quaternion.copy(rest).multiply(turn.tilt).slerp(turn.inspect, fly)
+    }
 
     // fade from lit to evenly lit as the book flies out (and back as it returns);
     // a search match glows, the other books dim
@@ -396,7 +416,7 @@ export function BookMesh(props: BookMeshProps) {
   }
 
   return (
-    <group ref={group} position={[slot.x, slot.y, slot.z]} rotation={[0, SPINE_OUT, 0]}>
+    <group ref={group} position={[slot.x, slot.y, slot.z]} quaternion={[rest.x, rest.y, rest.z, rest.w]}>
       {/* on the shelf two draws (paper and spine) instead of six or more; out, every side with its picture */}
       {parts.block && <mesh {...part} material={materials.block} geometry={parts.block} />}
       {parts.shelfBlock && <mesh {...part} material={materials.shelf} geometry={parts.shelfBlock} />}
@@ -409,6 +429,9 @@ export function BookMesh(props: BookMeshProps) {
           <mesh {...part} material={materials.spine} geometry={hc.spine} position={[-dims.w / 2 + hc.board / 2, 0, 0]} />
         </>
       )}
+      {/* face-out on the shelf (D-0044 §6): the cover as one thin plane over the front board,
+          so the book keeps its light merged piece and costs one extra draw, not five */}
+      {faceOut && !out && coverPlane && <mesh {...part} geometry={coverPlane} material={materials.front[4]} position={[0, 0, dims.t / 2 + 0.0008]} />}
       {hasClip(book) && (
         <Bookmark dims={dims} progress={book.progress ?? 0} color={props.clipColor ?? RAINBOW[0]} />
       )}
@@ -417,6 +440,26 @@ export function BookMesh(props: BookMeshProps) {
     </group>
   )
 }
+
+/**
+ * How a book is turned on the shelf in each pose (D-0044 §4). The local frame is
+ * front cover +z, spine −x, fore-edge +x, with the spine's lettering running
+ * from +y down (English convention, see paintSpine).
+ *
+ * - **standing:** the spine faces her, the book is `t` wide along the shelf;
+ * - **face-out:** the cover faces her, `w` wide along the shelf;
+ * - **lying flat:** the spine faces her with its lettering reading left to right
+ *   along the shelf (`h` wide) and the front cover upwards.
+ */
+export function poseBasis(pose: BookPose): THREE.Matrix4 {
+  const m = new THREE.Matrix4()
+  if (pose === 'faceout') return m
+  if (pose === 'flat') return m.makeBasis(new THREE.Vector3(0, 0, -1), new THREE.Vector3(-1, 0, 0), new THREE.Vector3(0, 1, 0))
+  return m.makeBasis(new THREE.Vector3(0, 0, -1), new THREE.Vector3(0, 1, 0), new THREE.Vector3(1, 0, 0))
+}
+
+/** The resting turn of a book in a pose, as a quaternion. */
+export const poseQuaternion = (pose: BookPose): THREE.Quaternion => new THREE.Quaternion().setFromRotationMatrix(poseBasis(pose))
 
 export type BookLook = 'shelf-hardcover' | 'hardcover' | 'shelf-block' | 'block'
 
