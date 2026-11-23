@@ -1482,6 +1482,15 @@ textarea.input {
   color: var(--header-muted);
   font-size: var(--fs-small);
 }
+/* Clear sits on the haze over the shelf, so it gets the header's light button styling */
+.topbar .btn.shelf-clear {
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--pill-ink);
+  border-color: rgba(40, 50, 90, 0.2);
+}
+.topbar .btn.shelf-clear:hover {
+  background: #fff;
+}
 /* a phone: one sideways-scrolling row instead of four stacked lines eating the shelf */
 @media (max-width: 700px) {
   .shelf-filters {

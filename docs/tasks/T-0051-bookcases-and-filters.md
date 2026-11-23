@@ -322,3 +322,41 @@ Local dev server, no backend, the same seeded books in every shot. Names
   alone. Wrote the exact option words ("★4 and up", not "★4+"), the count line's shape and the
   two empty-result lines. Seven screenshot rows. Added the design's checks to *Done when*. No new
   questions for Hanna beyond the architect's three. Handed to the **developer**.
+- 2026-11-23 developer: built, with T-0052 and T-0053 on `shelf-and-room`, one pull request.
+  **The module:** `src/lib/shelfFilter.ts` owns the four bookcases, the six filters, their
+  options, the "a value that left the shelf counts as any" rule, Clear and the count line's
+  words; `filterByGenre` stays and is called from it, so nothing that used it broke.
+  **The bar:** `src/components/ShelfBar.tsx`, rendered as the header's own bottom row rather
+  than a band above the stage, because the header's one measured height (`useHeaderHeight` →
+  `--header-h` → `topInset`) is what keeps the top shelf clear of it.
+  **Two camera fixes the bar forced** (both strictly better, both no-ops with a short header):
+  (1) `frameCase` now takes the header's share of the view and steps the camera back for it,
+  and the `fitsH` look-at keeps that share above the case — with a short header the formula
+  reduces exactly to `FRAME.vertical` and the old look height, which the camera tests still
+  pin; without it the bar covered the whole top shelf on a computer. (2) `topGap` now gets the
+  real header height on a computer too, not only on a phone, so a computer **zoomed in**
+  (which scrolls) keeps the top row clear of the header as well.
+  **Styling:** the switch and Clear take the header's light styling (`--pill-ink` on a white
+  pill), because `.segmented`'s card styling is near-invisible on the haze over the shelf; on a
+  phone the bar is a full-width row of the header's grid, and each filter keeps its visible
+  label, which the header otherwise hides for a `.sort` label ("Arrange by").
+  **Checks:** `pnpm test` 1783 passed, 22 skipped (142 files); `tsc --noEmit` clean;
+  `pnpm run build` passes; `pnpm exec harness check` all four green. New tests:
+  `src/lib/shelfFilter.test.ts` (24) and `src/components/ShelfBar.test.tsx` (7).
+  **Measured** (`pnpm run measure:shelf`, built app on port 3173, no `POCKETBASE_URL`, no
+  `.netlify` link, headless Chrome with SwiftShader, 150/400 demo books, 3 s at rest):
+
+  | At rest, Detailed on | 390 × 844, 150 | 390 × 844, 400 | 1280 × 800, 150 | 1280 × 800, 400 |
+  |---|---|---|---|---|
+  | Draw calls per frame, this branch | 90 | 84 | 941 | 2,209 |
+  | Draw calls per frame, T-0034's numbers | 95 | 95 | 926 | 2,199 |
+  | Picture MB | 22.59 | 21.96 | 123.66 | 251.03 |
+  | Geometry MB | 0.798 | 0.830 | 5.010 | 12.685 |
+  | Draw calls behind the Dashboard | 0 | 0 | 0 | 0 |
+
+  The phone's draw calls **fell** by 5 % (95 → 90) and its picture bytes by 2.6 %: the bar
+  takes 218 px of header, so two or three fewer books are in view. The computer's +15 draws a
+  frame are T-0053's room extras, not this task (extras off: 926, exactly T-0034's number). So
+  this task moves nothing of its own; it only shows a little less shelf.
+  Screenshots: all seven rows of the design's list in `T-0051-screens/` (16 files).
+  Handed to the **UX designer** for review.

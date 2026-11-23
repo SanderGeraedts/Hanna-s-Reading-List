@@ -301,3 +301,63 @@ Clock pinned per shot.
   warm dim evening in which 150 spines stay readable, with no animation on the turn-over. Eight
   screenshot rows with the clock pinned. Added the design's checks to *Done when*. Handed to the
   **developer**.
+- 2026-11-23 developer: built, with T-0051 and T-0052 on `shelf-and-room`, one pull request.
+  **The settings:** four booleans on `Room` (`readingCorner`, `dayNight`, `plant`, `seasonal`),
+  each read with the same `!== false` rule as `detailedBooks`, so every room saved before them
+  loads with all four on; `ROOM_EXTRAS` holds their order and words, and the panel renders them
+  as four of its own `.room-toggle` checkboxes in one group. They are **not** in `room.decor`,
+  so no decoration loses a shelf.
+  **The clock:** `src/lib/roomExtras.ts` owns `isNight` (19:00–07:00, midnight stays night),
+  `plantStage` (five steps from this year's finish days), `seasonOf` (four bands covering every
+  month), `roomLight` (how far the day's light comes down) and `lampLightOn` (the one extra
+  light, never on a phone). `useRoomClock` in the scene re-reads it every minute and only while
+  an extra that needs it is on; nothing in the 3D decides for itself whether it is night.
+  **The scenery:** `src/components/RoomExtras.tsx` builds each prop as **one merged geometry
+  per material** (a chair, a blanket, a lamp pole, a lamp shade, a pot, its foliage, its blooms,
+  a season's body and its trim), with the room's existing plain materials and **no new
+  textures**. The lamp shade and the fairy lights glow by emissive, which costs no light.
+  **Where they stand — the one place this differs from the design.** The design put the
+  season's pieces "on the floor in front of the bookcase's feet, low enough to be under the
+  bottom shelf's books". There is no room under the bottom shelf: it is 3 cm above the floor.
+  And the camera frames the whole case with only a hand's width of floor beyond each side (at
+  1280 the case fills 80 % of the width), so a 56 cm chair cannot stand beside it and be seen.
+  What is built instead: the **corner is tucked against the case's left shoulder**, turned
+  towards it, with the floor lamp where it can be seen and the chair's near arm, back and
+  blanket coming into the frame beside it; the **plant** stands at the right-hand foot; the
+  **season's pieces** stand on the strip of floor in **front of** the right-hand foot, and each
+  one is short enough (the tree was brought down to 43 cm, the sunflowers to 29 cm) to stay on
+  that strip and never cover a spine. The screenshots show it; the UX designer decides.
+  **Checks:** `pnpm test` 1783 passed, 22 skipped; `tsc --noEmit` clean; `pnpm run build`
+  passes; `harness check` green. New tests: `src/lib/roomExtras.test.ts` (10) and
+  `src/components/RoomExtras.test.tsx` (9); `RoomPanel.test.tsx`'s group list gained "Your
+  room"; `colours.test.ts` and `styles.test.ts` unchanged and passing.
+  **Measured** (`pnpm run measure:shelf`, built app on port 3173, no `POCKETBASE_URL`, no
+  `.netlify` link, 150 and 400 demo books, 3 s at rest, the browser's clock pinned to 13:00 and
+  to 21:00):
+
+  | 390 × 844, at rest | all four on | all four off | Budget | Result |
+  |---|---|---|---|---|
+  | Draw calls per frame, 150 books, 13:00 | 90 | 90 | at most +10 | **+0** ✓ |
+  | Draw calls per frame, 150 books, 21:00 | 90 | 90 | at most +10 | **+0** ✓ |
+  | Draw calls per frame, 400 books, 13:00 | 84 | 84 | at most +10 | **+0** ✓ |
+  | Geometry MB, 150 books | 0.798 | 0.798 | at most +0.5 MB | **+0.000** ✓ |
+  | Picture MB, 150 books | 22.59 | 22.59 | within 5 % | **0 %** ✓ |
+  | Extra lights on a phone, day and night | 0 | 0 | 0 | ✓ |
+  | Draw calls behind the Dashboard | 0 | 0 | 0 | ✓ |
+  | Contexts lost, 400 books | 0 | 0 | 0 | ✓ |
+  | Detailed books off, 150, 21:00 | 89 | 89 | — | ✓ |
+
+  **Every budget met, nothing simplified or dropped for performance.** On a phone the extras
+  cost **nothing at all**: the camera frames the case itself, so they fall outside the view and
+  are never drawn or uploaded. The real cost shows on a computer, which draws the whole room
+  (recorded, not budgeted): **+15 draw calls a frame** (941 vs 926 at 150 books, 2,209 vs 2,199
+  at 400) — that is seven or eight meshes over the colour and shadow passes — and **+0.042 MB**
+  of geometry, with the picture bytes unchanged to the byte, at 13:00 and at 21:00 alike. Day
+  and night cost the same: the evening is a change of light intensity, and the one lamp light a
+  computer adds is not a draw call.
+  Also measured, not budgeted: each of the five plant steps and each of the four seasons once at
+  390 — none of them moves a single number, for the same reason.
+  Screenshots: all eight rows of the design's list in `T-0053-screens/` (20 files), the clock
+  pinned per shot. At 360 × 800 the *Your room* group opens with its first three toggles in
+  view and the fourth a short scroll away, as the design allows.
+  Handed to the **UX designer** for review.

@@ -811,8 +811,9 @@ function useCameraRig(
     s.min = s.max = caseHeight - viewH * (0.5 - topShareFor(headerShare))
   } else {
     s.min = viewH * 0.42 // bottom: a strip of floor below the case
-    // top: clear of the header (on a phone, of its real height: #181)
-    s.max = caseHeight - viewH * 0.5 + topGap(viewH, s.worldPerPx, opts.portrait ? opts.topInset : 0)
+    // top: clear of the header's real height on every screen (#181). A computer zoomed in scrolls
+    // too, and the bar above the shelf (T-0051) makes the header tall enough there as well.
+    s.max = caseHeight - viewH * 0.5 + topGap(viewH, s.worldPerPx, opts.topInset)
   }
   // when the phone turns with a book out, snap the shelf behind back to the top row she opened
   // the book at (T-0044, F8): the landscape in between could have left `s.y` at the middle

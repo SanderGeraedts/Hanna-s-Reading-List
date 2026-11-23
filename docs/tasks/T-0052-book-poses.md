@@ -320,3 +320,66 @@ shows the pose she chose, because that is what the book is — not what this scr
   alternating shift, 4 mm under the shelf above, never split at a shelf's end, all books front-up)
   and a "must not happen" list. Seven screenshot rows. Added the design's checks to *Done when*.
   Handed to the **developer**.
+- 2026-11-23 developer: built, with T-0051 and T-0053 on `shelf-and-room`, one pull request.
+  **The field:** `pose?: 'faceout' | 'flat'` on `Book`, with `src/lib/pose.ts` owning `poseOf`
+  (anything unknown is standing), `posePatch` (Standing clears the field, never writes
+  `'standing'`) and the three words. No change to `shelfMerge.ts`, `server/shelf.ts` or
+  `deploy/nas/`: the field rides along with the shelf exactly as D-0042 established.
+  **The layout:** `computeLayout` now packs by **footprint** instead of thickness.
+  `footprint(dims, pose)` gives `along`/`up`/`deep` per D-0044 §4; each book's `Slot` carries
+  the pose the shelf actually drew it in. Books are grouped into items first — one book, or a
+  run of neighbouring flat books — so a stack is packed as one item; a separator (a nook or a
+  series divider) starts a new item, so a marker is never swallowed by a stack. A stack fills
+  to `stackRoom()` (the row less its board and the shelf gap) and then starts a new stack
+  beside it; every book but the bottom one is nudged `STACK_SHIFT` (2 mm) alternately. Each
+  pose's `z` puts its **front face on the shelf's front line**, so the shelf's front edge stays
+  straight whichever way a book is turned.
+  **The fallback** uses the **most cramped empty shelf of the case** (the inner width less the
+  widest decoration's spot), not the shelf a book happens to land on: a book's pose then never
+  depends on its neighbours, and the same book is drawn the same way wherever it ends up.
+  **The turn:** `poseBasis` / `poseQuaternion` give each pose as a basis, and the tests check
+  the **drawn book's world bounding box and which face points at the camera**, not Euler
+  angles. A standing book keeps byte-for-byte the old `rotation.set(...)` path; a posed book
+  rests in its pose and **slerps into exactly the standing book's inspect orientation** as it
+  flies out, so take-out and landing have no jump. Lying flat reads spine-out with the
+  lettering left to right, which follows from `paintSpine` running the title from the spine's
+  top downwards.
+  **Face-out without the full parts:** rather than giving a face-out book the five-mesh
+  hardcover, it keeps the merged shelf piece (two draws, D-0035) and gets **one thin plane**
+  carrying the cover over its front board. That is the one extra draw the budget allows; the
+  five-part path would have cost four.
+  **Checks:** `pnpm test` 1783 passed, 22 skipped; `tsc --noEmit` clean; `pnpm run build`
+  passes; `harness check` green. New tests: `src/lib/pose.test.ts` (5),
+  `src/lib/shelfLayout.poses.test.ts` (16), `src/components/BookMesh.poses.test.ts` (12),
+  `src/components/BookPanel.pose.test.tsx` (7).
+  **Measured** (as T-0034 requires; every 10th demo book posed):
+
+  | At rest, Detailed on | no poses | 10 % flat | 10 % face-out | Budget | Result |
+  |---|---|---|---|---|---|
+  | 390 × 844, 150 books, draws/frame | 90 | 74 | 71 | flat ≤ none + 5 %; face-out ≤ +1 draw per book in view | ✓ both **lower** |
+  | 390 × 844, 400 books, draws/frame | 84 | 67 | 69 | | ✓ |
+  | 390 × 844, 150, picture MB | 22.59 | 18.69 | 18.66 | none/flat within 5 % of T-0034's 23.20 | 22.59 is −2.6 % ✓; flat lower ✓ |
+  | 390 × 844, 150, geometry MB | 0.798 | 0.717 | 0.694 | ≤ 2 MB | ✓ |
+  | 1280 × 800, 150, draws/frame | 926 | 949 | 979 | | +23 for 15 flat, +53 for 15 face-out |
+  | 1280 × 800, 150, picture MB | 123.66 | 123.66 | 160.91 | face-out reported per book | **+2.48 MB per face-out book** |
+  | Draw calls behind the Dashboard | 0 | 0 | 0 | 0 | ✓ |
+  | Contexts lost, 400 books | 0 | 0 | 0 | 0 | ✓ |
+
+  Reading the numbers: on the **phone** a posed shelf draws **less**, because a face-out or
+  flat book takes more room so fewer books are in view; the budget's intent (never heavier) is
+  met with room to spare. The **computer** shows the real per-book cost, because it draws the
+  whole case: +53 draws for 15 face-out books over two passes (colour and shadow) is **+1 draw
+  per face-out book**, exactly the budget. The one number to watch is the picture memory: a
+  face-out book costs **about 2.5 MB** for its cover. These demo books have no cover, so that
+  is the painted fallback at full size; a real cover is capped at 512 px (`COVER_MAX_PX`) and
+  costs about 1.4 MB with its mipmaps. Twenty face-out books on a phone would be roughly 30 MB
+  of picture memory on top of 23 MB — worth knowing, well inside what T-0003 measured, and it
+  is what D-0044 §6 allows. **Deviation:** the phone's no-poses draw calls are 5.3 % below
+  T-0034's 95 rather than within 5 %, because T-0051's bar takes 218 px of header and two or
+  three fewer books are in view. It is lower, not higher.
+  Screenshots: `T-0052-screens/` (11 files). Row 4 shows a face-out book with the **painted**
+  fallback cover on midnight; a real cover picture needs a book with a `coverUrl`, which the
+  demo shelf has none of (no network in the shot run, G-0019), so that pair is for Hanna's own
+  shelf to confirm. The zoom shot (row 2) is at 1.96× and is scrolled where zooming left it,
+  not at the top row.
+  Handed to the **UX designer** for review.

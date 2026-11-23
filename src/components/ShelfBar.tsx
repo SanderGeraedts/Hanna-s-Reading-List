@@ -4,9 +4,10 @@ import type { BookcaseId, FilterOptions, ShelfFilters, ShelfView } from '#/lib/s
 /**
  * The bar above the shelf (D-0043): the bookcase switch and the filter row.
  *
- * It is rendered as the header's own bottom row, so the header's measured
- * height keeps the top shelf clear of it (the bug T-0003 and T-0035 fixed) and
- * the camera needs no change at all.
+ * It is rendered as the header's own bottom row, so the header's one measured
+ * height keeps the top shelf clear of it on every screen (the bug T-0003 and
+ * T-0035 fixed): the phone's scrolling case through `topGap`, the computer's
+ * whole-case framing through `frameCase`'s header share.
  */
 
 type FilterKey = keyof ShelfFilters
