@@ -19,26 +19,7 @@ How to use it:
 
 ## The queue
 
-### 1. Fix a past day
-
-*Agreed 22 November 2026.*
-
-- From the calendar (the dashboard's Calendar block day details, and a day on the
-  Calendar page): each book in the day card gets **Change**, and there is
-  **+ Add a book** for that day.
-- She fills in **how much she read that day**: pages; minutes for a book she only
-  listens to; a percentage for a book without pages.
-- Only that day's entry in the reading log changes (`book.readingLog[day]`,
-  `src/lib/readingLog.ts`), **not** the book's progress. The streak, the calendar and the
-  stats follow from it (and, now that the creatures exist, the cookies too).
-- Team defaults she approved:
-  - an amount of 0, or **Remove**, takes the book off that day;
-  - **+ Add a book** is a search box, with the books she is reading and recently
-    finished first;
-  - days in the future stay disabled;
-  - started and finished dates are not edited here (that stays in the book panel).
-
-### 2. Book panel tabs
+### 1. Book panel tabs
 
 *Agreed 22 November 2026.*
 
@@ -54,7 +35,7 @@ Tabs under the title in the book panel (`src/components/BookPanel.tsx`). The pan
 
 Tropes and characters appear in the Notes tab once item 3 adds them.
 
-### 3. Tropes & characters
+### 2. Tropes & characters
 
 *Agreed 22 November 2026.*
 
@@ -74,7 +55,7 @@ Tropes and characters appear in the Notes tab once item 3 adds them.
   - an own-challenge rule **A trope**.
 - Bingo squares stay as they are.
 
-### 4. Bookcases & filters (S2)
+### 3. Bookcases & filters (S2)
 
 *Agreed 22 November 2026.*
 
@@ -85,7 +66,7 @@ Tropes and characters appear in the Notes tab once item 3 adds them.
 - Sorting and the room stay as they are.
 - Not doing: her own named bookcases; rooms side by side.
 
-### 5. Book poses: standing, face-out, lying flat (S3)
+### 4. Book poses: standing, face-out, lying flat (S3)
 
 *Agreed 22 November 2026.*
 
@@ -94,7 +75,7 @@ Tropes and characters appear in the Notes tab once item 3 adds them.
 - Neighbouring books lying flat form a small stack.
 - A face-out book shows its cover and takes more width on the shelf.
 
-### 6. Cosy room extras (S4)
+### 5. Cosy room extras (S4)
 
 *Agreed 22 November 2026.*
 
@@ -107,7 +88,7 @@ performance in mind.
 - Seasonal decorations: pumpkins in October, a tree with lights in December, flowers in
   spring.
 
-### 7. Stats tab with year compare (ST1)
+### 6. Stats tab with year compare (ST1)
 
 *Agreed 22 November 2026.*
 
@@ -124,7 +105,7 @@ performance in mind.
 - Check the dashboard layout migration (`dashboardLayout`): saved layouts and favourites
   that refer to removed blocks must keep working.
 
-### 8. Year wrap-up story (ST2)
+### 7. Year wrap-up story (ST2)
 
 *Agreed 22 November 2026.*
 
@@ -137,7 +118,7 @@ performance in mind.
 - It opens only when she taps it (fits D-0013, no pop-ups).
 - The monthly wrap-up stays as it is.
 
-### 9. Better adding: covers & series (AD1)
+### 8. Better adding: covers & series (AD1)
 
 *Agreed 22 November 2026.* (Files: `AddBookDialog.tsx`, `AddFollowUp.tsx`,
 `CoverPicker.tsx`.)
@@ -149,7 +130,7 @@ performance in mind.
   confirm, or she types it.
 - Not doing (for all of better adding): importing from Goodreads or StoryGraph.
 
-### 10. Batch scan (AD2)
+### 9. Batch scan (AD2)
 
 *Agreed 22 November 2026.* (Files: `BarcodeScanner.tsx`, `AddBookDialog.tsx`.)
 
@@ -159,7 +140,7 @@ performance in mind.
   and **Add all**.
 - The same book scanned twice is added once; a book already on the shelf is marked.
 
-### 11. Wishlist (AD3)
+### 10. Wishlist (AD3)
 
 *Agreed 22 November 2026.*
 
@@ -171,7 +152,7 @@ performance in mind.
 - Stored with her books and synced (an optional field or flag, D-0002), unless that needs a
   server change: then flag it for Sander, or pick another way.
 
-### 12. Better challenges (CH1–CH4)
+### 11. Better challenges (CH1–CH4)
 
 *Agreed 22 November 2026.* Several tasks. (Files: `ChallengesPage.tsx`, `ownChallenges.ts`,
 `bingo.ts`.)

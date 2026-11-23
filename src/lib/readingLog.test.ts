@@ -11,6 +11,7 @@ const {
   finishedIn,
   monthEntries,
   progressPatch,
+  setDayAmountPatch,
   startedIn,
 } = await import('./readingLog')
 
@@ -95,6 +96,45 @@ describe('reading log (#76)', () => {
       ['a', 2025, 0.1, undefined],
       ['b', 2024, undefined, true],
     ])
+  })
+
+  describe('fix a past day (T-0045)', () => {
+    it('sets the day’s share without moving the progress or the status', () => {
+      const b = book('a', { progress: 0.5, pages: 200, status: 'reading', readingLog: { '2026-11-01': 0.2 } })
+      const patch = setDayAmountPatch(b, '2026-11-08', 0.15)
+      expect(patch).toEqual({ readingLog: { '2026-11-01': 0.2, '2026-11-08': 0.15 } })
+      // progress and status are not in the patch
+      expect('progress' in patch).toBe(false)
+      expect('status' in patch).toBe(false)
+    })
+
+    it('a share of 0 (or less) takes the book off that day', () => {
+      const b = book('a', { readingLog: { '2026-11-01': 0.1, '2026-11-08': 0.2 } })
+      const patch = setDayAmountPatch(b, '2026-11-08', 0)
+      expect(patch.readingLog).toEqual({ '2026-11-01': 0.1 })
+      const also = setDayAmountPatch(b, '2026-11-08', -0.4)
+      expect(also.readingLog).toEqual({ '2026-11-01': 0.1 })
+    })
+
+    it('drops readingLog when the last day is removed', () => {
+      const b = book('a', { readingLog: { '2026-11-08': 0.2 } })
+      const patch = setDayAmountPatch(b, '2026-11-08', 0)
+      expect(patch.readingLog).toBeUndefined()
+    })
+
+    it('clamps a huge share to 1', () => {
+      const b = book('a', { pages: 200 })
+      const patch = setDayAmountPatch(b, '2026-11-08', 42)
+      expect(patch.readingLog).toEqual({ '2026-11-08': 1 })
+    })
+
+    it('the day’s share is independent of the book’s progress', () => {
+      const b = book('a', { progress: 0.1, pages: 200 })
+      const patch = setDayAmountPatch(b, '2026-11-08', 0.5)
+      expect(patch.readingLog!['2026-11-08']).toBe(0.5)
+      // if the share were tied to progress, "book.progress" would show up
+      expect(Object.keys(patch)).toEqual(['readingLog'])
+    })
   })
 
   it('keeps both copies’ days when books are merged', () => {

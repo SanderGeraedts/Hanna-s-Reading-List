@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Book } from '#/lib/library'
 import { localDay } from '#/lib/library'
 import { finishedIn, monthEntries } from '#/lib/readingLog'
@@ -11,6 +11,7 @@ import { WrapUpCard } from './WrapUpCard'
 import { dayStory } from './DashboardExtras'
 import { JournalNote } from './JournalNote'
 import { hasNote } from '#/lib/journal'
+import { AddBookForDay, ChangeButton, DayChangeEditor } from './DayEditor'
 
 interface Props {
   books: Book[]
@@ -240,53 +241,138 @@ function MonthView({
             ))}
           </tbody>
         </table>
-        <aside className="calendar-day" aria-live="polite">
-          {picked === null ? (
-            <p className="muted small-text">Tap a day to see what happened.</p>
-          ) : pickedEntries.length === 0 && pickedReleases.length === 0 ? (
-            <p className="muted small-text">
-              Nothing on {picked} {name}.
-            </p>
-          ) : (
-            <>
-              <h3 className="waiting-subtitle">
-                {picked} {name}
-              </h3>
-              <ul className="waiting-list">
-                {pickedEntries.map((e) => (
-                  <li key={e.book.id}>
-                    <button className="cover-btn" aria-label={`Open ${e.book.title}`} onClick={() => onShowBook(e.book.id)}>
-                      <Cover book={e.book} small />
-                    </button>
-                    <div className="waiting-info">
-                      <p className="waiting-title">
-                        <strong>{e.book.title}</strong>
-                        {sleep.has(e.book.id) && <span aria-label="sleep read"> 🌙</span>}
-                      </p>
-                      <p className="muted small-text">You {dayStory(e)}</p>
-                      <JournalNote book={e.book} day={dayKey(picked)} onUpdate={onUpdate} />
-                    </div>
-                  </li>
-                ))}
-                {pickedReleases.map((b) => (
-                  <li key={`out-${b.id}`}>
-                    <button className="cover-btn" aria-label={`Open ${b.title}`} onClick={() => onShowBook(b.id)}>
-                      <Cover book={b} small />
-                    </button>
-                    <div className="waiting-info">
-                      <p className="waiting-title">
-                        <strong>{b.title}</strong>
-                      </p>
-                      <p className="muted small-text">Comes out</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </aside>
+        <CalendarDayAside
+          books={books}
+          picked={picked}
+          name={name}
+          dayKey={dayKey}
+          pickedEntries={pickedEntries}
+          pickedReleases={pickedReleases}
+          sleep={sleep}
+          onShowBook={onShowBook}
+          onUpdate={onUpdate}
+          isFuture={(d) => new Date(year, month - 1, d) > new Date()}
+        />
       </div>
     </>
+  )
+}
+
+function CalendarDayAside({
+  books,
+  picked,
+  name,
+  dayKey,
+  pickedEntries,
+  pickedReleases,
+  sleep,
+  onShowBook,
+  onUpdate,
+  isFuture,
+}: {
+  books: Book[]
+  picked: number | null
+  name: string
+  dayKey: (d: number) => string
+  pickedEntries: DayEntry[]
+  pickedReleases: Book[]
+  sleep: Set<string>
+  onShowBook: (id: string) => void
+  onUpdate: (id: string, patch: Partial<Book>) => void
+  isFuture: (d: number) => boolean
+}) {
+  const [editing, setEditing] = useState<string | null>(null)
+  // close any open editor when the day changes
+  useEffect(() => {
+    setEditing(null)
+  }, [picked])
+  const future = picked !== null && isFuture(picked)
+  if (picked === null) {
+    return (
+      <aside className="calendar-day" aria-live="polite">
+        <p className="muted small-text">Tap a day to see what happened.</p>
+      </aside>
+    )
+  }
+  const day = dayKey(picked)
+  return (
+    <aside className="calendar-day" aria-live="polite">
+      <h3 className="waiting-subtitle">
+        {picked} {name}
+      </h3>
+      {pickedEntries.length === 0 && pickedReleases.length === 0 && !future && (
+        <p className="muted small-text">Nothing on {picked} {name} yet.</p>
+      )}
+      {pickedEntries.length > 0 && (
+        <ul className="waiting-list">
+          {pickedEntries.map((e) => (
+            <li key={e.book.id}>
+              <button className="cover-btn" aria-label={`Open ${e.book.title}`} onClick={() => onShowBook(e.book.id)}>
+                <Cover book={e.book} small />
+              </button>
+              <div className="waiting-info">
+                <p className="waiting-title">
+                  <strong>{e.book.title}</strong>
+                  {sleep.has(e.book.id) && <span aria-label="sleep read"> 🌙</span>}
+                </p>
+                {editing === e.book.id ? (
+                  <DayChangeEditor
+                    book={e.book}
+                    day={day}
+                    entry={e}
+                    onUpdate={onUpdate}
+                    onClose={() => setEditing(null)}
+                  />
+                ) : (
+                  <>
+                    <p className="muted small-text">You {dayStory(e)}</p>
+                    {!future && <ChangeButton book={e.book} open={false} onOpen={() => setEditing(e.book.id)} />}
+                  </>
+                )}
+                <JournalNote book={e.book} day={day} onUpdate={onUpdate} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {pickedReleases.length > 0 && (
+        <ul className="waiting-list">
+          {pickedReleases.map((b) => (
+            <li key={`out-${b.id}`}>
+              <button className="cover-btn" aria-label={`Open ${b.title}`} onClick={() => onShowBook(b.id)}>
+                <Cover book={b} small />
+              </button>
+              <div className="waiting-info">
+                <p className="waiting-title">
+                  <strong>{b.title}</strong>
+                </p>
+                <p className="muted small-text">Comes out</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {!future && (
+        editing === '__add' ? (
+          <AddBookForDay
+            books={books}
+            day={day}
+            entries={pickedEntries}
+            onUpdate={onUpdate}
+            onClose={() => setEditing(null)}
+          />
+        ) : (
+          <button
+            type="button"
+            className="btn small day-add-btn"
+            onClick={() => setEditing('__add')}
+            aria-expanded={false}
+          >
+            + Add a book
+          </button>
+        )
+      )}
+    </aside>
   )
 }
 
