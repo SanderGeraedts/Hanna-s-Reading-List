@@ -1,21 +1,32 @@
 import { guessLanguage } from '#/lib/languages'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { getWorkDetails, lookupIsbn, searchBooks } from '#/server/openLibrary'
 import type { SearchResult } from '#/server/openLibrary'
 import type { Book, NewBook } from '#/lib/library'
-import { analyzeCover, colorFromString, coverUrlForId, coverUrlForIsbn } from '#/lib/cover'
+import { colorFromString, coverUrlForId } from '#/lib/cover'
+import { buildBook, bookWithCover } from '#/lib/buildBook'
+import type { PickedCover } from '#/lib/buildBook'
 import { forgetStorytelLogin, importStorytelLibrary, storytelLoginStatus } from '#/server/storytel'
 import type { StorytelLogin } from '#/lib/useStorytelSync'
 import { importStorytelBooks } from '#/lib/storytelImport'
 import type { ImportSummary } from '#/lib/storytelImport'
-import { sameIsbn } from '#/lib/isbn'
 import { normalizeIsbn, parsePublished, publishedYear } from '#/lib/bookFacts'
-import { BarcodeScanner } from './BarcodeScanner'
-import { AddFollowUp } from './AddFollowUp'
+import { seriesGuesses } from '#/lib/seriesGuess'
+import { cleanBuyLink, shelfBooks } from '#/lib/wishlist'
+import { parsePrice } from '#/lib/price'
+import { BatchScan } from './BatchScan'
+import { CoverStep } from './CoverStep'
+import { AddFollowUp, WishFollowUp } from './AddFollowUp'
 import type { FollowUpHandle } from './AddFollowUp'
+import { PriceInput } from './PriceField'
 
-export type Tab = 'search' | 'scan' | 'isbn' | 'manual' | 'storytel'
+export type Tab = 'search' | 'scan' | 'isbn' | 'manual' | 'storytel' | 'wish'
+
+/** The tabs that ask "Part of a series?" after adding (T-0070); a batch and an import don't. */
+const ASKS_SERIES: Tab[] = ['search', 'isbn', 'manual']
+
+export { buildBook }
 
 interface Props {
   existing: Book[]
@@ -27,34 +38,6 @@ interface Props {
   storytelLogin: StorytelLogin
   onStorytelLogin: (login: StorytelLogin) => void
   initialTab?: Tab
-}
-
-/** Turns an Open Library result into a book, sampling the cover for spine colour + shape. */
-export async function buildBook(
-  r: SearchResult & { published?: string },
-  details: { description?: string; genres?: string[] } = {},
-): Promise<NewBook> {
-  const coverUrl = r.coverId
-    ? coverUrlForId(r.coverId)
-    : r.isbn
-      ? coverUrlForIsbn(r.isbn)
-      : undefined
-  const analysis = coverUrl ? await analyzeCover(coverUrl) : null
-  return {
-    title: r.title,
-    authors: r.authors,
-    year: r.year,
-    ...(r.published && { published: r.published }),
-    pages: r.pages,
-    isbn: r.isbn,
-    workKey: r.workKey || undefined,
-    description: details.description,
-    genres: details.genres,
-    language: r.language ?? guessLanguage(r.title),
-    coverUrl: analysis ? coverUrl : undefined,
-    coverAspect: analysis?.aspect,
-    color: analysis?.color ?? colorFromString(r.title),
-  }
 }
 
 export function AddBookDialog({
@@ -71,6 +54,8 @@ export function AddBookDialog({
   const [manualIsbn, setManualIsbn] = useState<string | undefined>()
   /** the book just added, while the follow-up asks how she has it (T-0016) */
   const [followUp, setFollowUp] = useState<{ book: Book; from: Tab } | null>(null)
+  /** her shelf without the wishlist, for the series guess (D-0053) */
+  const shelf = useMemo(() => shelfBooks(existing), [existing])
   const followUpHandle = useRef<FollowUpHandle>(null)
   const tabsArea = useRef<HTMLDivElement>(null)
   /** after the follow-up, focus goes back into the tab she was on */
@@ -120,19 +105,36 @@ export function AddBookDialog({
             ×
           </button>
         </header>
-        {followUp && followUpBook && (
-          <AddFollowUp
-            key={followUp.book.id}
-            book={followUpBook}
-            from={followUp.from}
-            onUpdate={onUpdate}
-            handle={followUpHandle}
-            onDone={() => {
-              refocus.current = true
-              setFollowUp(null)
-            }}
-          />
-        )}
+        {followUp &&
+          followUpBook &&
+          (followUp.from === 'wish' ? (
+            <WishFollowUp
+              key={followUp.book.id}
+              book={followUpBook}
+              onUpdate={onUpdate}
+              handle={followUpHandle}
+              onDone={() => {
+                refocus.current = true
+                setFollowUp(null)
+              }}
+            />
+          ) : (
+            <AddFollowUp
+              key={followUp.book.id}
+              book={followUpBook}
+              from={followUp.from}
+              onUpdate={onUpdate}
+              handle={followUpHandle}
+              askSeries={
+                ASKS_SERIES.includes(followUp.from) && !followUpBook.series?.trim() && !followUpBook.seriesAsked
+              }
+              seriesGuesses={seriesGuesses(followUpBook, shelf.filter((b) => b.id !== followUpBook.id))}
+              onDone={() => {
+                refocus.current = true
+                setFollowUp(null)
+              }}
+            />
+          ))}
         {/* the tabs stay as she left them (her search, the scanner) while the follow-up shows */}
         <div className="add-tabs" ref={tabsArea} hidden={!!followUp}>
         <div className="tabs" role="tablist">
@@ -143,6 +145,7 @@ export function AddBookDialog({
               ['isbn', 'ISBN'],
               ['manual', 'Manual'],
               ['storytel', 'Storytel'],
+              ['wish', 'Wishlist'],
             ] as const
           ).map(([key, label]) => (
             <button
@@ -158,9 +161,10 @@ export function AddBookDialog({
         </div>
         {tab === 'search' && <SearchTab existing={existing} onAdd={addFrom('search')} />}
         {tab === 'scan' && (
-          <ScanTab
+          <BatchScan
             existing={existing}
-            onAdd={addFrom('scan')}
+            onAdd={onAdd}
+            onClose={() => dialog.current?.close()}
             paused={!!followUp}
             onManual={(isbn) => {
               setManualIsbn(isbn)
@@ -170,6 +174,7 @@ export function AddBookDialog({
         )}
         {tab === 'isbn' && <IsbnTab onAdd={addFrom('isbn')} />}
         {tab === 'manual' && <ManualTab onAdd={addFrom('manual')} isbn={manualIsbn} />}
+        {tab === 'wish' && <WishTab existing={existing} onAdd={addFrom('wish')} />}
         {tab === 'storytel' && (
           <StorytelTab
             existing={existing}
@@ -192,13 +197,35 @@ export function AddBookDialog({
   )
 }
 
-function SearchTab({ existing, onAdd }: { existing: Book[]; onAdd: (b: NewBook) => void }) {
+/** Whether a search result is already in her library, and on which list (D-0053). */
+function alreadyThere(existing: Book[]): Map<string, 'shelf' | 'wish'> {
+  const out = new Map<string, 'shelf' | 'wish'>()
+  for (const b of existing) if (b.workKey) out.set(b.workKey, b.wish ? 'wish' : 'shelf')
+  return out
+}
+
+/**
+ * Search Open Library, then **pick the cover before the book is added**
+ * (T-0070). `mode: 'wish'` adds to the wishlist instead of the shelf (T-0072);
+ * everything else about the search is the same, so there is one search to fix
+ * and one to test.
+ */
+function SearchTab({
+  existing,
+  onAdd,
+  mode = 'shelf',
+}: {
+  existing: Book[]
+  onAdd: (b: NewBook) => void
+  mode?: 'shelf' | 'wish'
+}) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [adding, setAdding] = useState<string | null>(null)
   const [added, setAdded] = useState<Set<string>>(new Set())
+  /** the result she tapped, while the cover step is open; nothing is added yet */
+  const [choosing, setChoosing] = useState<SearchResult | null>(null)
 
   useEffect(() => {
     const q = query.trim()
@@ -226,17 +253,24 @@ function SearchTab({ existing, onAdd }: { existing: Book[]; onAdd: (b: NewBook) 
     }
   }, [query])
 
-  const onShelf = new Set(existing.map((b) => b.workKey).filter(Boolean))
+  const there = alreadyThere(existing)
 
-  async function add(r: SearchResult) {
-    setAdding(r.workKey)
-    try {
-      const details = await getWorkDetails({ data: { workKey: r.workKey } }).catch(() => undefined)
-      onAdd(await buildBook(r, details))
-      setAdded((s) => new Set(s).add(r.workKey))
-    } finally {
-      setAdding(null)
-    }
+  async function add(r: SearchResult, cover: PickedCover) {
+    const details = await getWorkDetails({ data: { workKey: r.workKey } }).catch(() => undefined)
+    onAdd({ ...bookWithCover(r, details, cover), ...(mode === 'wish' && { wish: true as const }) })
+    setAdded((s) => new Set(s).add(r.workKey))
+    setChoosing(null)
+  }
+
+  if (choosing) {
+    return (
+      <CoverStep
+        result={choosing}
+        addLabel={mode === 'wish' ? 'Add to wishlist' : 'Add this one'}
+        onAdd={(cover) => add(choosing, cover)}
+        onBack={() => setChoosing(null)}
+      />
+    )
   }
 
   return (
@@ -256,7 +290,8 @@ function SearchTab({ existing, onAdd }: { existing: Book[]; onAdd: (b: NewBook) 
       )}
       <ul className="results">
         {results.map((r) => {
-          const isAdded = added.has(r.workKey) || onShelf.has(r.workKey)
+          const where = added.has(r.workKey) ? (mode === 'wish' ? 'wish' : 'shelf') : there.get(r.workKey)
+          const label = where === 'wish' ? 'On your wishlist' : where === 'shelf' ? 'On shelf' : mode === 'wish' ? 'Add to wishlist' : 'Add'
           return (
             <li key={r.workKey} className="result">
               <div className="thumb">
@@ -273,12 +308,8 @@ function SearchTab({ existing, onAdd }: { existing: Book[]; onAdd: (b: NewBook) 
                   {[r.year, r.pages && `${r.pages} pages`].filter(Boolean).join(' · ')}
                 </span>
               </div>
-              <button
-                className="btn small"
-                disabled={isAdded || adding === r.workKey}
-                onClick={() => add(r)}
-              >
-                {isAdded ? 'On shelf' : adding === r.workKey ? 'Adding…' : 'Add'}
+              <button className="btn small" disabled={!!where} onClick={() => setChoosing(r)}>
+                {label}
               </button>
             </li>
           )
@@ -288,103 +319,81 @@ function SearchTab({ existing, onAdd }: { existing: Book[]; onAdd: (b: NewBook) 
   )
 }
 
-type ScanFind =
-  | { kind: 'looking'; isbn: string }
-  | { kind: 'found'; isbn: string; result: SearchResult & { description?: string; genres?: string[] } }
-  | { kind: 'unknown'; isbn: string }
-  | { kind: 'on-shelf'; isbn: string; book: Book }
-  | { kind: 'error'; isbn: string; message: string }
-
 /**
- * Scan the barcode on the back of a book (#19): look it up, show it, and add
- * it as a paperback with one tap. The camera keeps going, so a pile of books
- * (or a bookshop shelf) can be added one after another.
+ * **Add to wishlist** (T-0072): the same search, adding a wish instead of a
+ * shelf book, with a small *By hand* form under it for a book Open Library
+ * doesn't have (a pre-order, a small press).
  */
-function ScanTab({
-  existing,
-  onAdd,
-  onManual,
-  paused = false,
-}: {
-  existing: Book[]
-  onAdd: (b: NewBook) => void
-  onManual: (isbn: string) => void
-  /** the follow-up shows over the tab: the camera waits */
-  paused?: boolean
-}) {
-  const [find, setFind] = useState<ScanFind | null>(null)
-  const [adding, setAdding] = useState(false)
-  const [added, setAdded] = useState<string[]>([])
-  const lookups = useRef(0)
-
-  async function scanned(isbn: string) {
-    const onShelf = existing.find((b) => sameIsbn(b.isbn, isbn))
-    if (onShelf) return setFind({ kind: 'on-shelf', isbn, book: onShelf })
-    const n = ++lookups.current
-    setFind({ kind: 'looking', isbn })
-    try {
-      const result = await lookupIsbn({ data: { isbn } })
-      if (n !== lookups.current) return
-      setFind(result ? { kind: 'found', isbn, result } : { kind: 'unknown', isbn })
-    } catch (err) {
-      if (n === lookups.current) {
-        setFind({ kind: 'error', isbn, message: err instanceof Error ? err.message : 'Lookup failed' })
-      }
-    }
+function WishTab({ existing, onAdd }: { existing: Book[]; onAdd: (b: NewBook) => void }) {
+  const empty = { title: '', author: '', price: '', buy: '' }
+  const [form, setForm] = useState(empty)
+  const [problem, setProblem] = useState<string | null>(null)
+  const set = (k: keyof typeof form) => (e: ChangeEvent<HTMLInputElement>) => {
+    setForm((f) => ({ ...f, [k]: e.target.value }))
+    setProblem(null)
   }
 
-  async function add(result: SearchResult & { description?: string; genres?: string[] }) {
-    setAdding(true)
-    try {
-      const book = await buildBook(result, result)
-      onAdd({ ...book, formats: ['paperback'] })
-      setAdded((a) => [result.title, ...a])
-      setFind(null)
-    } finally {
-      setAdding(false)
-    }
+  function submit(e: FormEvent) {
+    e.preventDefault()
+    const title = form.title.trim()
+    if (!title) return
+    const price = parsePrice(form.price)
+    if (!price.ok) return setProblem('Try 12.50 or 12,50.')
+    const typedBuy = form.buy.trim()
+    const buyUrl = typedBuy ? cleanBuyLink(typedBuy) : undefined
+    if (typedBuy && !buyUrl) return setProblem('Only links that start with https:// or http:// can be opened here.')
+    onAdd({
+      title,
+      authors: form.author
+        .split(/,|&/)
+        .map((a) => a.trim())
+        .filter(Boolean),
+      language: guessLanguage(title),
+      color: colorFromString(title),
+      wish: true,
+      ...(price.price !== undefined && { price: price.price }),
+      ...(buyUrl && { buyUrl }),
+    })
+    setForm(empty)
   }
 
   return (
-    <div className="tab-panel scan-tab">
-      <BarcodeScanner onIsbn={scanned} paused={paused || find?.kind === 'found' || adding} />
-      {find?.kind === 'looking' && <p className="muted">Looking up {find.isbn}…</p>}
-      {find?.kind === 'found' && (
-        <div className="scan-card">
-          <div>
-            <strong>{find.result.title}</strong>
-            <span className="muted">{find.result.authors.join(', ')}</span>
-          </div>
-          <div className="merge-actions">
-            <button className="btn primary" disabled={adding} onClick={() => add(find.result)}>
-              {adding ? 'Adding…' : 'Add as paperback'}
-            </button>
-            <button className="btn" disabled={adding} onClick={() => setFind(null)}>
-              Skip
-            </button>
-          </div>
-        </div>
-      )}
-      {find?.kind === 'on-shelf' && (
-        <p className="muted">
-          <strong>{find.book.title}</strong> is already on your shelf.
-        </p>
-      )}
-      {find?.kind === 'unknown' && (
-        <div className="scan-card">
-          <span>Open Library doesn't know ISBN {find.isbn}.</span>
-          <button className="btn" onClick={() => onManual(find.isbn)}>
-            Add it by hand
+    <>
+      <SearchTab existing={existing} onAdd={onAdd} mode="wish" />
+      <details className="tab-panel wish-by-hand">
+        <summary>By hand</summary>
+        <form onSubmit={submit}>
+          <label className="field">
+            <span>Title *</span>
+            <input className="input" required value={form.title} onChange={set('title')} />
+          </label>
+          <label className="field">
+            <span>Author(s)</span>
+            <input className="input" placeholder="Separate with commas" value={form.author} onChange={set('author')} />
+          </label>
+          <PriceInput
+            label={
+              <>
+                What will it cost?<span className="visually-hidden"> (euros)</span>
+              </>
+            }
+            problem={null}
+            value={form.price}
+            onChange={set('price')}
+          />
+          <label className="field">
+            <span>Where to buy it</span>
+            {/* not type="url": the browser's own check would stop the form before our own
+                message about https:// and http:// could be shown */}
+            <input className="input" type="text" inputMode="url" placeholder="https://…" value={form.buy} onChange={set('buy')} />
+          </label>
+          {problem && <p className="error">{problem}</p>}
+          <button className="btn" disabled={!form.title.trim()}>
+            Add to wishlist
           </button>
-        </div>
-      )}
-      {find?.kind === 'error' && <p className="error">{find.message}</p>}
-      {added.length > 0 && (
-        <p className="success">
-          Added {added.length === 1 ? `“${added[0]}”` : `${added.length} books`}. Scan the next one.
-        </p>
-      )}
-    </div>
+        </form>
+      </details>
+    </>
   )
 }
 

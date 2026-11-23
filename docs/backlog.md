@@ -23,48 +23,14 @@ How to use it:
   shelf polish, the country spellings, the book panel tabs (T-0047), tropes &
   characters (T-0048), the reading garden (T-0060 … T-0065, agreed 23 November 2026 and never
   part of this queue), the bookcases & filters, book poses and cosy room extras
-  (T-0051, T-0052, T-0053), and the Stats tab with year compare and the year wrap-up story
-  (T-0080 and T-0081, taken off this queue on 23 November 2026 and built together on one
-  branch, because the wrap-up's entry point sits on the Stats page).
+  (T-0051, T-0052, T-0053), all of better adding — covers & series (T-0070), batch scan
+  (T-0071) and the wishlist (T-0072) — and the Stats tab with year compare and the year
+  wrap-up story (T-0080 and T-0081, taken off this queue on 23 November 2026 and built
+  together on one branch, because the wrap-up's entry point sits on the Stats page).
 
 ## The queue
 
-### 1. Better adding: covers & series (AD1)
-
-*Agreed 22 November 2026.* (Files: `AddBookDialog.tsx`, `AddFollowUp.tsx`,
-`CoverPicker.tsx`.)
-
-- After she taps a search result: a row of covers from all its editions (best first), plus
-  **📷 Take a photo** of her own copy. She picks one before adding.
-- A follow-up step **Part of a series?** with a rule-based guess (no AI, D-0017): the title
-  matches one of her series on the shelf, or there are numbers in the title. One tap to
-  confirm, or she types it.
-- Not doing (for all of better adding): importing from Goodreads or StoryGraph.
-
-### 2. Batch scan (AD2)
-
-*Agreed 22 November 2026.* (Files: `BarcodeScanner.tsx`, `AddBookDialog.tsx`.)
-
-- The barcode scanner stays open; each scanned book goes into a list with its cover.
-- At the end: one **How I have it** for all of them (changeable per book), a price field per
-  book (empty = no price; D-0024's rules: a price only for paperback, hardcover or e-book),
-  and **Add all**.
-- The same book scanned twice is added once; a book already on the shelf is marked.
-
-### 3. Wishlist (AD3)
-
-*Agreed 22 November 2026.*
-
-- Its own list, **not on the shelf**.
-- A dashboard block **Wishlist**, and **Add to wishlist** in + Add.
-- Each wish has a cover, title, price and a link to buy it.
-- Wishes are not in the TBR pile, the stats, suggestions, the map and so on.
-- **I bought it ›** moves it to the shelf and asks how she has it and the price.
-- Stored with her books and synced (an optional field or flag, D-0002), unless that needs a
-  server change: then flag it for Sander, or pick another way.
-
-### 4. Better challenges (CH1–CH4)
-
+### 1. Better challenges (CH1–CH4)
 *Agreed 22 November 2026.* Several tasks. (Files: `ChallengesPage.tsx`, `ownChallenges.ts`,
 `bingo.ts`.)
 

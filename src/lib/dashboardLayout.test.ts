@@ -11,6 +11,7 @@ import {
   showBlock,
   singleColumn,
   toggleFold,
+  toggleFavourite,
 } from './dashboardLayout'
 import type { BlockId, DashboardLayout } from './dashboardLayout'
 
@@ -311,5 +312,44 @@ describe('the blocks that moved to the Stats page (T-0080, D-0060)', async () =>
     const l = cleanLayout(savedBefore({ favourites: ['wrapped'] }))
     expect(l.favourites).toEqual(['wrapped'])
     expect(placeOf(l, 'wrapped')?.section).toBe('fun')
+  })
+})
+
+describe('the Wishlist block (T-0072, D-0053)', () => {
+  it('joins Today on a dashboard arranged before it existed, keeping her order, hidden blocks and favourites', () => {
+    expect(BLOCKS.wishlist).toBe('Wishlist')
+    expect(DEFAULT_LAYOUT.sections.today[1].at(-1)).toBe('wishlist')
+    // a layout she saved before the block existed, with her own order and a hidden block
+    const before = structuredClone(DEFAULT_LAYOUT)
+    before.sections.today[1] = ['recent', 'challenge', 'next']
+    // hidden means out of its section too, as hideBlock leaves it (T-0080)
+    before.sections.fun = before.sections.fun.map((col) => col.filter((id) => id !== 'fact')) as typeof before.sections.fun
+    before.hidden = ['fact']
+    before.favourites = ['myyear', 'pile']
+    before.folded = ['fun']
+    const loaded = cleanLayout(JSON.parse(JSON.stringify(before)))
+    expect(loaded.sections.today[1]).toContain('wishlist')
+    // her order is kept, and nothing she had moved around has shifted section
+    expect(loaded.sections.today[1].filter((id) => ['recent', 'challenge', 'next'].includes(id))).toEqual([
+      'recent',
+      'challenge',
+      'next',
+    ])
+    expect(loaded.hidden).toEqual(['fact'])
+    expect(loaded.favourites).toEqual(['myyear', 'pile'])
+    expect(loaded.folded).toEqual(['fun'])
+    // the block appears exactly once, wherever it lands
+    const all = SECTION_IDS.flatMap((s) => loaded.sections[s].flat())
+    expect(all.filter((id) => id === 'wishlist')).toHaveLength(1)
+  })
+
+  it('can be hidden, shown again and starred like every other block', () => {
+    const hidden = hideBlock(structuredClone(DEFAULT_LAYOUT), 'wishlist')
+    expect(hidden.hidden).toContain('wishlist')
+    expect(SECTION_IDS.flatMap((s) => hidden.sections[s].flat())).not.toContain('wishlist')
+    const shown = showBlock(hidden, 'wishlist')
+    expect(shown.hidden).not.toContain('wishlist')
+    expect(shown.sections.today.flat()).toContain('wishlist')
+    expect(toggleFavourite(shown, 'wishlist').favourites).toEqual(['wishlist'])
   })
 })

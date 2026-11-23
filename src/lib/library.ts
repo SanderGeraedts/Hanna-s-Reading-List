@@ -39,6 +39,14 @@ export interface Book {
    * most two decimals (T-0016); the buying jar spends €5 a coin (D-0024); see price.ts
    */
   price?: number
+  /**
+   * on her wishlist, not on the shelf (D-0053): a book she wants to buy. It is
+   * saved and synced with her books, and counted nowhere — the page splits the
+   * library once with shelfBooks()/wishBooks(); see wishlist.ts
+   */
+  wish?: boolean
+  /** where to buy a wish, an https:// or http:// link (D-0053); see wishlist.ts */
+  buyUrl?: string
   /** ids of the copies merged into this book, so they don't come back */
   mergedIds?: string[]
   /** books Hanna said are not the same book, so they aren't suggested for merging */
