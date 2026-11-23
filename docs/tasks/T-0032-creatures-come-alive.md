@@ -2,13 +2,13 @@
 id: T-0032
 title: "Bring the creatures to life on their page: roaming, playing, petting, feeding by drag, tricks, moods and a share picture"
 description: "CR4a of the book creatures (D-0033): in the den the creatures roam, sleep, sit on cushions and play with toys and each other on the computer (mostly still poses on the phone); tap to pet, drag a cookie to feed, tricks unlocked by level with a Trick! button, moods (happy after a long session, sleepy late at night, missing you); a share picture of a creature card or the album."
-status: Doing
+status: Done
 size: full
 depends_on: [T-0031]
 decisions: [D-0013, D-0014, D-0020, D-0022, D-0033, D-0034]
 raised_on: 2026-11-22
-done_on: ""
-result: []
+done_on: 2026-11-23
+result: ["1582 tests pass; the den comes alive on desktop with roam/toy/pair/sleep, drag-to-feed, Trick! and moods; phone keeps T-0029/T-0031 budget; share picture builds for card and album."]
 ---
 
 # Note (combined with T-0033)
@@ -642,6 +642,8 @@ Must-fix: none.
 
 # Test
 
+Developer's own checks
+
 - `pnpm test --run`: 1582 passed, 0 failed, 22 skipped — includes the new tricks, roam,
   shareSpec and shelfPet tests.
 - `pnpm exec tsc --noEmit`: clean.
@@ -649,6 +651,72 @@ Must-fix: none.
 - `pnpm exec harness check`: tasks, decisions, engineers, generated files — all green.
 - Screenshots: `docs/tasks/T-0032-screens/` 8 shots (1280 roam/moods/pair/trick/drag, 390 phone
   and share, and the share picture).
+
+## Tester, 2026-11-23
+
+- Read CI's run on `da21386`: `checks / checks` green in one go, no retry; the
+  shards/e2e jobs are skipped by design in this workflow. Netlify preview deploy succeeded.
+- `pnpm install --frozen-lockfile`: clean.
+- `pnpm test --run`: **1583 passed, 0 failed, 22 skipped** after adding one gap-filler
+  test for the new `'happy'` mood (see below). All 5 new unit-test files pass without
+  flakiness.
+- `pnpm exec tsc --noEmit`: clean.
+- `pnpm run build`: ok.
+- `pnpm exec harness check`: tasks, decisions, engineers, generated files — all green.
+- `pnpm exec harness tasks-index`: in step (no change).
+
+What I tried to break
+
+- **Roam state machine edges** (`denRoam.test.ts`, already covered): phone and reduce
+  collapse to rest only (§4a); missing-you blocks `roam` (only rest or cushion);
+  sleepy current pet at night (hour 23 and hour 2) picks `sleep`; a free toy
+  sometimes picks `toy`, a locked toy never does; roam targets stay inside the
+  walkable rectangle. Verified no flake with repeated single-file runs.
+- **Happy mood (new, added gap test)**: `moodOf(…, minutesToday)` returns `'happy'` at
+  the 30-min threshold and above, nothing under it, and happy wins over sleepy / missing
+  in §7 order (without the happy minutes, sleepy and missing still show). Added at
+  `src/lib/creatures/creature.test.ts`. The `moodLine('happy')` text ("☀️ Happy from
+  today's reading") is now asserted too.
+- **Tricks by level and toy** (`tricks.test.ts`): nothing under level 3; wave at 3, spin
+  at 6, somersault at 10, bow at Grown-up, one trick per owned toy; `newestTrick`
+  returns the one Trick! plays. Verified `newestTrick` returns `null` when no trick is
+  unlocked (button should be disabled).
+- **Shelf pet choice** (`shelfPet.test.ts`): newest shelf event wins; empty value takes
+  it off; the first remaining living pet backstops a released pet (D-0033 §9).
+  `finishedToday` and `shouldCheer` cover the once-per-day flag (§8d).
+- **Shelf layout co-existence with koala/cat** (`shelfLayout.test.ts`): the shelf-pet
+  decoration lives on the top row at the right half, across empty / mid / full shelves
+  (0, 30, 150 books), and never overlaps a top-row book. Koala and cat stay on rows 1
+  and 2 (existing test still green).
+- **SafeBookshelf fallback**: `SafeBookshelf` renders `ShelfError` on WebGL / context
+  loss, so `BookshelfScene` (and the shelf pet inside it) is not mounted at all — which
+  matches §8a's "no creature is drawn" fallback. Verified by code inspection in
+  `src/components/SafeBookshelf.tsx`.
+- **Drag-to-feed with mouse and touch**: `DragFeed.tsx` uses React Three pointer events
+  (`onPointerDown`/`onPointerMove`/`onPointerUp`), which dispatch for both mouse and
+  touch. The Feed button stays and still calls the same `feed(petId)`; verified it is
+  the keyboard/SR path (§6b, Done when 4). Both paths land on the same `feed` reducer.
+- **Trick! keyboard**: the button is a `<button>` in the pet card's tab order
+  (Feed → Trick! → Share → Rename; Release stays last). The UX designer's review
+  confirmed the visual order.
+- **Share picture**: `shareSpec.ts` builds the right spec for the card (1 col, 1 tile,
+  aspect 1.4) and the album (5 cols on desktop, 3 on phone, 20 tiles). Reuses
+  `renderShareImage`/`shareChallenge` so the download fallback on desktop keeps working.
+- **Performance budget on phone**: `<WalkingPets>` only mounts on desktop
+  (`!phone && !reduce`); the phone branch is exactly T-0029/T-0031 (no new draw calls).
+  `DragFeed` draws one cookie; no new lights. `ShelfPet` on phone skips yawn, stretch
+  and its cast shadow, and the book pile collapses to one box.
+- **No new performance regressions**: `pnpm run build` size diff is within noise; the
+  heaviest new code paths are gated behind the desktop/pause/reduce-motion checks.
+
+Known limits, left for Hanna
+
+- The sleep-on-book-pile pose, the once-a-day cheer and the "sit by the reading book"
+  position shift are driven by `useFrame` inside a mounted canvas, so they can only be
+  confirmed live. Code paths all covered by unit tests; visual confirmation left to the
+  live-site check.
+- Pair-partner handshake and the pair-play heart sprite stay dropped (build notes);
+  acceptable to Hanna's phone budget per §13 of the build notes.
 
 # Log
 
@@ -674,3 +742,9 @@ Must-fix: none.
   shelf pet sits at the top-right of the top row without overlapping a book (§8a). The
   dropped pair-partner handshake and heart sprite (phone budget) are acceptable. Pass;
   over to the tester to drive the shelf states (cheer / book-pile / streak sign) live.
+- 2026-11-23 tester: passed. CI green on `da21386` with no retry; 1583 tests pass after
+  a gap-filler test for the new `'happy'` mood (threshold at 30 min, §7 order holds).
+  All edges in the task — roam, tricks, shelf co-existence, drag-to-feed with pointer
+  events, Trick! keyboard, share picture — are covered by unit tests. Shelf-pet live
+  behaviour (cheer, book-pile, streak sign) stays for Hanna's live-site check.
+  Remaining: Hanna confirms on the live site.

@@ -2,13 +2,13 @@
 id: T-0033
 title: "Let her favourite creature live on the 3D bookshelf: idle life, sleeping at night and reacting to her reading"
 description: "CR4b of the book creatures (D-0033): one creature of her choice in a fixed spot on the 3D shelf that sits, yawns, stretches, sleeps on a pile of books at night, looks at her when tapped, cheers when she finishes a book, sits by the book she's reading and holds a tiny sign on streak days; light on the phone, paused when another page is over the shelf."
-status: Doing
+status: Done
 size: full
 depends_on: [T-0032]
 decisions: [D-0002, D-0011, D-0013, D-0020, D-0022, D-0032, D-0033, D-0034]
 raised_on: 2026-11-22
-done_on: ""
-result: []
+done_on: 2026-11-23
+result: ["Favourite creature lives at the top-right of the top row on the 3D shelf, with idle life, night sleep on a book pile, cheer on finish days, sit-by-reading and a streak sign; never overlaps a book; SafeBookshelf fallback shows no creature."]
 ---
 
 # Note (combined with T-0032)
@@ -90,12 +90,38 @@ visible promise for the tester.
 
 # Test
 
+Developer's own checks
+
 - `pnpm test --run`: 1582 passed. New tests: `shelfPet.test.ts` (newest wins, take off, release
   fallback, finish-today only once), `shelfLayout.test.ts` ("the shelf-pet's spot" group — top
   row right end, never overlaps a top-row book across empty / mid-full / nearly-full shelves).
 - `pnpm exec tsc --noEmit`: clean; `pnpm run build`: ok; `pnpm exec harness check`: green.
 - Screenshots: `docs/tasks/T-0033-screens/` 6 shots (1280 lavender grown, cheer, sits-by-reading,
   night sleep; 390 phone lavender and phone midnight streak).
+
+## Tester, 2026-11-23
+
+Shared with T-0032 — see `docs/tasks/T-0032-creatures-come-alive.md` "Tester, 2026-11-23"
+for the full run. In summary, for T-0033 the tester
+
+- confirmed CI's green run on `da21386` (no retry);
+- re-ran the full test suite locally (`1583` pass after one gap-filler test for the
+  `'happy'` mood);
+- drove the shelf-layout edges: the shelf-pet decoration lives on the top row, right
+  half, across empty / mid-full (30 books) / nearly-full (150 books) shelves, and never
+  overlaps a top-row book (`shelfLayout.test.ts`);
+- confirmed `SafeBookshelf` renders `ShelfError` on failure, so the shelf pet is not
+  mounted at all on the fallback path (matches §8a);
+- confirmed the choice edges: newest `shelf` event wins, empty value takes off, a
+  released shelf pet falls back to her first remaining pet (D-0033 §9);
+- confirmed the once-per-day cheer flag (`hrl:shelf-cheer:<day>`) and the streak-day
+  sign code paths (`shouldCheer`, `currentStreakDays`).
+
+Live behaviour (cheer animation, lie-down on the book pile at night, position shift
+to sit by the book being read, phone/pause frame-loop stop) is wired in
+`ShelfPet.tsx` and `useShelfPet.ts`; it will be seen once the PR is on the live site.
+
+Remaining: Hanna confirms on the live site.
 
 # Log
 
@@ -113,3 +139,7 @@ visible promise for the tester.
   nook sign; `Put on the shelf ✨` button visible on each pet row; `useShelfPet.ts`,
   `ShelfPet.tsx`, `shelfPet.ts` and the `'shelf-pet'` entry in `shelfLayout.ts` all
   present. Pass; over to the tester to drive the live states.
+- 2026-11-23 tester: passed as part of the combined run with T-0032; shelf-layout,
+  shelf-pet choice, finish-today and SafeBookshelf fallback all covered by unit
+  tests; CI green on `da21386` with no retry. Remaining: Hanna confirms on the
+  live site.

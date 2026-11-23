@@ -244,7 +244,23 @@ describe('moods', () => {
     expect(moodLine('Biscuit', 'missing')).toBe('💤 Biscuit misses you')
     expect(moodLine('Biscuit', 'sleepy')).toBe('🌙 Biscuit is sleepy')
     expect(moodLine('Biscuit', 'back')).toBe("💛 Biscuit is so happy you're back!")
+    expect(moodLine('Biscuit', 'happy')).toBe("☀️ Happy from today's reading")
     expect(moodLine('Biscuit', null)).toBeNull()
+  })
+
+  it('is happy from today\'s reading once she has read ≥ 30 minutes today (T-0032 §7)', () => {
+    const days = [day(1), day(2)]
+    // under 30 min today: content, no mood
+    expect(moodOf(days, hatchDay, at(day(2), '12:00'), 29)).toBeNull()
+    // at the threshold: happy
+    expect(moodOf(days, hatchDay, at(day(2), '12:00'), 30)).toBe('happy')
+    expect(moodOf(days, hatchDay, at(day(2), '12:00'), 90)).toBe('happy')
+    // happy wins over missing and sleepy (§7 "Happy > Missing > Sleepy > Content")
+    expect(moodOf([day(1)], hatchDay, at(day(5), '12:00'), 60)).toBe('happy')
+    expect(moodOf(days, hatchDay, at(day(2), '23:00'), 60)).toBe('happy')
+    // without the happy minutes, sleepy still shows at night and missing still shows after 3 days
+    expect(moodOf([day(1)], hatchDay, at(day(5), '12:00'), 5)).toBe('missing')
+    expect(moodOf(days, hatchDay, at(day(2), '23:00'), 5)).toBe('sleepy')
   })
 })
 
