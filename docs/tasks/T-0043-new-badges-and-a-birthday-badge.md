@@ -528,6 +528,69 @@ The script prints the medals per row (6 / 8), the medal count (72), the row's co
   an Escape on a closed select in every browser; the row treats an Escape that reaches it as
   Cancel (in Chromium an open dropdown's Escape doesn't reach the page).
 
+## Review after building (2026-11-23)
+
+By the UX designer, from `git diff origin/main...HEAD -- src` (`NewBlocks.tsx`, `Dashboard.tsx`,
+`styles.css`, `birthday.ts`) and the 11 screenshots in `docs/tasks/T-0043-screens/`, each looked
+at. **Verdict: matches the design. No must-fix.** Handed to the tester.
+
+**The checks, state by state**
+
+- ✓ **Twelve medals and rims.** 72 medals, 6 a row at 390 (12 rows) and 8 at 1280 (9 rows);
+  12 "?" medals at the end (13 secrets minus the earned Dusty pile), 11 once Birthday book is
+  earned. Mix it up 🔀 and Spooky season 🎃 earned with gold rims, 5 books 🔖 silver; Superfan
+  🤩, Wide reader 👥, Well-read 🦉, All ears 👂, E-reader 📱, Library lover 🪪, Summer reader
+  🏖️, Winter warmer 🧣 and 365-day streak 🌞 locked and grey. Superfan's card: "Finish 10 books
+  by the same author", bar, "4 / 10" (`badges-1280-lavender-locked.png`).
+- ✓ **Where the row is.** The last child of `#badges-list`, after `#badges-card` and outside its
+  live region, hairline above, no background or rim; folds with the grid, and remounts on
+  folding so unsaved picks drop.
+- ✓ **Empty.** "Birthday" muted, Day select (Day, 1–31), Month select (Month, January–December,
+  values 01–12), Save `btn small`. Only Save stores (script: "picked 14/05: stored null").
+  At 390 and 1280 it fits on one line.
+- ✓ **Set.** "Birthday 14 May Change Clear", the date in `--text`, Change and Clear `btn quiet
+  small`; no year, no 🎂, no "Birthday book", no hint sentence. Stored `05-14`.
+- ✓ **Change.** Selects on 14 and May, Save + Cancel; at 390 Cancel wraps to the start of the
+  next line, at 1280 one line. The Day select is focused after Change (focus ring in both shots).
+- ✓ **Error.** "There is no 31 April." under the controls in `--danger`, `role="alert"`, both
+  selects `aria-invalid` + `aria-describedby`, cleared on the next pick; nothing stored. "Pick
+  a day and a month." in code; 29 February passes (`daysInMonth` gives February 29).
+- ✓ **Birthday book earned.** Gold medal at the front after Save, count 5 → 6; its card "Finish a
+  book on your birthday · Gold · secret · Unlocked 14 May 2026". Clear recomputes it back to "?".
+- ✓ **Keyboard and screen reader.** `role="group"` labelled "Birthday"; selects "Day"/"Month";
+  "Change birthday" described by the date, "Clear birthday"; Save `type="submit"`; focus Save /
+  Cancel → Change, Change / Clear → Day, an error leaves focus on Save; Escape only while
+  editing, and it stops there.
+- ✓ **Touch.** Day, Month and Save 44 px at 390 touch, Change and Clear 44 px in *Set* (script);
+  1280 with a mouse keeps the small sizes (Save 25 px).
+- ✓ **Midnight and lavender** look the same on the walnut card; no new colours or tokens.
+- ✓ **F11.** (1) `onKeyUp` on the grid cancels Space, and the comment now says why (Firefox's
+  keyup click). (2) A chosen medal reads rim → dark → cream on silver
+  (`…silver-chosen.png`: clearly two rings, no longer a thick silver rim), gold (`…birthday.png`)
+  and gold + focus (`…chosen-focus.png`: the inner rings plus the gold outline outside the rim);
+  no outer ring left. (3) `#badges-card` has `aria-labelledby` only while a card is open.
+- ✓ All 12 icons on the medals match the table; every word in the row matches the design.
+
+**The two notes**
+
+1. **The toast's "already shown" list now only grows** (shown ∪ earned). Accepted, and needed:
+   the design asks that clearing and saving the birthday again doesn't toast Birthday book a
+   second time, and the old list (overwritten with today's earned badges) forgot it on Clear.
+   The side effect, a badge lost and earned again (a book removed and put back) not toasting
+   again, is the better behaviour anyway: "Badge unlocked" should mean new to her, not new
+   again. The list can't run away: at most 72 ids. For the tester: the first visit (no list
+   yet) must still toast nothing and only seed the list.
+2. **The Dusty pile card in the focus shot.** Fine. The shot's job is F11's chosen + focused
+   look, and any earned medal shows it; Dusty pile is simply the second earned medal on the demo
+   shelf. It is an earned secret, so its name and emoji are rightly shown (D-0038), with "Gold ·
+   secret · Unlocked 15 Sept 2026". It shows a gold rim with the inner rings, which the silver
+   shot can't. No new shot needed.
+
+**Not for this task:** the *Build notes* say Hanna confirmed the four morning questions at
+03:30, in a night-mode task; *Questions to re-ask Hanna in the morning* still lists them. If
+that confirmation isn't on record from her, the questions stand; the design doesn't change
+either way.
+
 # Test
 
 To be written by the tester.
@@ -563,3 +626,8 @@ To be written by the tester.
   `src/routeTree.gen.ts` not committed. Merged main (#241) in and regenerated the index; after
   the merge `pnpm test` ran 103 files, 1289 tests passed. Draft PR #251. Handed to the **UX
   designer** for the review.
+- 2026-11-23 ux-designer: reviewed: matches, no must-fix (the diff and all 11 screenshots: 72
+  medals at 6 / 8 a row, the birthday row's Empty / Set / Change / error looks and words, 44 px
+  on touch, Birthday book earned and its card, F11's keyup, inner rings on silver and gold, the
+  unlabelled closed card). The growing toast list is accepted (the design needs it); the Dusty
+  pile focus shot is fine. Handed to the **tester**.
