@@ -73,9 +73,10 @@ a flag, not moving data out of a collection.
   (D-0002).
 - A new block, feature or page added after this gets `books` and therefore excludes wishes by
   default. A feature that *wants* the wishes must ask for them.
-- Merging two copies of a book (`merge.ts`, D-0009) keeps the kept copy's `wish` and
-  `buyUrl`, else the other's — so merging a wish into a shelf book does not drag the flag
-  back on. That is covered by a test.
+- Merging two copies of a book (`merge.ts`, D-0009) takes **the kept copy's `wish`**, full
+  stop — not "else the other's" — so merging a wish into a shelf book never drags the flag
+  back on, while merging two wishes stays a wish. `buyUrl` is ordinary information and is
+  the kept copy's, else the other's. Both are covered by a test.
 - A wish counts towards the 5.5 MB sync limit like any book, so an uploaded wish cover is as
   expensive as an uploaded book cover.
 - If the wishlist ever has to hold something a `Book` cannot (several shops per wish, a price

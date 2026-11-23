@@ -85,8 +85,9 @@ no migration, nothing in `src/lib/shelfMerge.ts`, `src/server/shelf.ts`, `deploy
    - a wish whose title and author already match a book on the shelf still moves, and the
      dashboard's existing merge suggestion is what offers to join them — the wishlist does not
      merge anything by itself;
-   - `mergeBooks` on a wish and a shelf book keeps the kept copy's `wish` and `buyUrl`
-     (D-0009, D-0044), so merging never drags a wish flag onto a shelf book.
+   - `mergeBooks` takes the **kept** copy's `wish` (D-0009, D-0044): merging a wish into a
+     shelf book gives a shelf book, merging two wishes gives a wish, and `buyUrl` is the kept
+     copy's, else the other's.
 8. Keyboard and screen reader: the block is a `section` with an `aria-labelledby` heading; each
    wish is an `<li>` whose **I bought it ›** and **Buy ›** are named by the book; the Wishlist
    tab is part of the dialog's existing `tablist`. A test asserts the roles and the accessible

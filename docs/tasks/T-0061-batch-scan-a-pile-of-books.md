@@ -45,8 +45,9 @@ Backlog item AD2, agreed 22 November 2026:
      rest of the list is untouched;
    - removing a row removes it, and scanning the same book again after removing it adds it
      back;
-   - **20 rows** are held in order, newest first, and the list is capped at 40 with the
-     oldest rows kept (a test asserts the cap and that nothing is silently dropped below it).
+   - **20 rows** are held in order, newest first, and the list is capped at 40: at the cap a
+     further scan is **not** added and says so, rather than silently pushing the oldest book
+     off the list (a test asserts that nothing is ever dropped).
 4. New tests in `src/components/BatchScan.test.tsx`, with `BarcodeDetector` and
    `getUserMedia` **faked** (never real hardware), show:
    - scanning three books leaves the camera running and shows three rows;
