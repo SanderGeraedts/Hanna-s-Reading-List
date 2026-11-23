@@ -675,6 +675,16 @@ slowed CPU.
 - **Send-back, focus at the zoom limits:** a press that takes the view to 8× moves focus from + to
   −. One that takes it to 1× moves focus from −, ⤢ or the map itself (which stops being a Tab stop)
   to +. The buttons stay truly `disabled`, as the design says.
+- **Second send-back (F2), focus after enabling:** the focus move now happens in a `useLayoutEffect`
+  on `[zoomed, atMax]`, after the render that enables the other button and before Chrome moves focus
+  off the disabled one. Before, ⤢ at 8× called `focus()` on + while + was still disabled, and the
+  browser ignored it. A key or button press records at press time which button should take focus.
+  A Ctrl+scroll or pinch to a limit moves focus when − or ⤢ (or + at 8×) has it, or just lost it to
+  the page when it became disabled.
+- **Found while checking F2 in real Chrome:** a touch screen moves a tap's `click` to a nearby target
+  (Chrome's touch adjustment: the finger at 200, 448, the click at 193, 457). So the coast rule measured
+  from the wrong point, and 15 px north of the Netherlands opened the UK. The rule now measures from
+  where the finger went down (`pressAt`, from `pointerdown`). A component test covers it.
 - **Send-back, the one/two-column width:** the dashboard puts the block in a different column, so
   React remounts it. The open card is handed from the old block to the new one within the same
   commit (a module variable, cleared in a microtask). A later visit still starts closed. The zoom
@@ -870,3 +880,14 @@ for it; CI green on attempt 1.
   real-touch taps follow the new rule; the one other is the accepted island case) and the
   column resize pass; `screens.mjs` rerun after the merge of main: 101 ok, 0 FAIL; CI attempt 1
   green. #248 stays a draft. Handed back to the **developer**.
+- 2026-11-23 developer: second send-back fixed (F2). Focus moves to the other zoom button in a layout
+  effect after the render that enables it, so ⤢ at 8× leaves focus on + with the ring. Ctrl+scroll or a
+  pinch to a limit while −, ⤢ or + has focus is covered by the same effect. Checking it in real Chrome
+  turned up another bug: Chrome's touch adjustment moves a tap's click a few px, so the coast rule now
+  measures from where the finger went down (15 px north of the Netherlands had opened the UK). New
+  component tests: ⤢ at 8× leaves focus on +, Ctrl+scroll to 1× and to 8× moves focus, the coast rule
+  uses the press position. `vitest run BooksWorldMap Dashboard mapZoom`: 49 passed (49). `pnpm test`:
+  108 files passed, 1381 tests passed, 9 skipped. `pnpm exec tsc --noEmit` clean, `harness check` ✓.
+  `screens.mjs` in Chrome on 3155: "all checks passed" (104 ok, 0 FAIL), including "Enter on ⤢ at 8×:
+  focus moves to +, with the ring (F2)" and "Ctrl+scroll back to zoom one while − has focus: focus
+  moves to +". Handed to the **tester**.

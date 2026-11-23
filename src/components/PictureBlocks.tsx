@@ -1,5 +1,5 @@
-import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
-import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from 'react'
+import { Fragment, useCallback, useEffect, useId, useMemo, useLayoutEffect, useRef, useState } from 'react'
+import type { FocusEvent as ReactFocusEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from 'react'
 import type { Book } from '#/lib/library'
 import { genrePetals, petalLength } from '#/lib/genreFlower'
 import { monthlyAmounts, niceMax } from '#/lib/monthlyPages'
@@ -391,13 +391,48 @@ export function BooksWorldMapCard({ books, onShowBook }: { books: Book[]; onShow
   const zoomInRef = useRef<HTMLButtonElement>(null)
   const zoomOutRef = useRef<HTMLButtonElement>(null)
   const wholeRef = useRef<HTMLButtonElement>(null)
-  /** a press that reaches a limit disables what has focus (+ at 8×; −, ⤢ and the map itself at 1×): focus moves to the other button */
+  /**
+   * Reaching a limit disables what has focus (+ at 8×; −, ⤢ and the map itself at 1×): focus moves to
+   * the other zoom button, right after the render that enables it, before the browser moves focus off
+   * the disabled one (a browser ignores focus() on a disabled button: ⤢ at 8× would otherwise lose
+   * focus to the page, F2). This also covers Ctrl+scroll and a pinch to a limit while a zoom button
+   * has focus.
+   */
+  const zoomFocus = useRef<{ el: Element | null; lostAt: number }>({ el: null, lostAt: -Infinity })
+  useLayoutEffect(() => {
+    const active = document.activeElement
+    const { el, lostAt } = zoomFocus.current
+    // focus was on el and fell to the page just now, when el became disabled
+    const fell = (!active || active === document.body) && performance.now() - lostAt < 1000
+    const had = (x: Element | null) => !!x && (active === x || (fell && el === x))
+    const pressed = focusAtLimit.current
+    if (atMax && (pressed === 'out' || had(zoomInRef.current))) {
+      focusAtLimit.current = null
+      zoomOutRef.current?.focus()
+    } else if (!zoomed && (pressed === 'in' || had(zoomOutRef.current) || had(wholeRef.current) || had(svgEl))) {
+      focusAtLimit.current = null
+      zoomInRef.current?.focus()
+    }
+  }, [zoomed, atMax]) // eslint-disable-line react-hooks/exhaustive-deps
+  const zoomFocusIn = (e: ReactFocusEvent) => {
+    zoomFocus.current = { el: e.target, lostAt: -Infinity }
+  }
+  const zoomFocusOut = (e: ReactFocusEvent) => {
+    // focus that goes somewhere else is no longer ours to put back; focus that falls to the page may be
+    zoomFocus.current = e.relatedTarget ? { el: null, lostAt: -Infinity } : { el: e.target, lostAt: performance.now() }
+  }
+  /** a press from the keyboard or a button: which zoom button takes focus once the view reaches the limit */
+  const focusAtLimit = useRef<'in' | 'out' | null>(null)
   const zoomTo = (v: MapView) => {
     const active = document.activeElement
-    glide(v)
     const z = zoomOf(v, MAP_W)
-    if (z >= MAP_ZOOM_MAX - 1e-6 && active === zoomInRef.current) zoomOutRef.current?.focus()
-    else if (z <= 1 + 1e-6 && active && (active === zoomOutRef.current || active === wholeRef.current || active === svgEl)) zoomInRef.current?.focus()
+    focusAtLimit.current =
+      z >= MAP_ZOOM_MAX - 1e-6 && active === zoomInRef.current
+        ? 'out'
+        : z <= 1 + 1e-6 && !!active && (active === zoomOutRef.current || active === wholeRef.current || active === svgEl)
+          ? 'in'
+          : null
+    glide(v)
   }
   const zoomBy = (factor: number) => zoomTo(zoomAround(target.current, factor, 0.5, 0.5, MAP_W, MAP_H))
 
@@ -440,6 +475,8 @@ export function BooksWorldMapCard({ books, onShowBook }: { books: Book[]; onShow
   const [focused, setFocused] = useState<string | null>(null)
   /** a drag or a pinch just happened: the click that may follow it isn't a tap */
   const notATap = useRef(false)
+  /** where the last press went down (screen px), for the coast rule: Chrome moves a touch's click to a nearby target */
+  const pressAt = useRef<{ x: number; y: number; t: number } | null>(null)
   const openCard = (name: string, from: Element | null) => {
     setChosen(name)
     opener.current = from
@@ -490,6 +527,7 @@ export function BooksWorldMapCard({ books, onShowBook }: { books: Book[]; onShow
       points.set(e.pointerId, { x: e.clientX, y: e.clientY })
       if (points.size === 1) {
         notATap.current = false
+        pressAt.current = { x: e.clientX, y: e.clientY, t: performance.now() }
         press = { id: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, drag: false, mouse: e.pointerType === 'mouse' }
       } else if (points.size === 2) {
         // a second finger turns the press into a pinch: no tap, no card
@@ -572,10 +610,14 @@ export function BooksWorldMapCard({ books, onShowBook }: { books: Book[]; onShow
     // where zones overlap, within 8 px of a lit coast the nearest country wins (France, not the Netherlands),
     // and further out at sea the topmost zone, the smallest country (the Netherlands from 15 px north)
     if (e.target instanceof Element && e.target.classList.contains('world-zone') && typeof document.elementsFromPoint === 'function') {
-      const hits = document.elementsFromPoint(e.clientX, e.clientY)
+      // where the finger went down: a touch screen may move the click itself to a nearby target
+      const down = pressAt.current
+      const at = down && performance.now() - down.t < 2000 ? down : { x: e.clientX, y: e.clientY }
+      pressAt.current = null
+      const hits = document.elementsFromPoint(at.x, at.y)
       const own = hits.find((el) => el.matches('path.world-country.lit'))
       const zonesHere = hits.filter((el): el is SVGPathElement => el.matches('path.world-zone'))
-      name = own?.getAttribute('data-country') ?? (svgEl && nearestCoast(svgEl, zonesHere, e.clientX, e.clientY)) ?? name
+      name = own?.getAttribute('data-country') ?? (svgEl && nearestCoast(svgEl, zonesHere, at.x, at.y)) ?? name
     }
     toggle(name, map.countries.has(name) ? litPath(name) : null, false)
   }
@@ -672,10 +714,14 @@ export function BooksWorldMapCard({ books, onShowBook }: { books: Book[]; onShow
               onClick={onMapClick}
               onKeyDown={onMapKey}
               onFocus={(e) => {
+                zoomFocusIn(e)
                 const name = e.target.getAttribute('data-country')
                 setFocused(name && e.target.getAttribute('role') === 'button' && isFocusVisible(e.target) ? name : null)
               }}
-              onBlur={() => setFocused(null)}
+              onBlur={(e) => {
+                zoomFocusOut(e)
+                setFocused(null)
+              }}
             >
               {defs}
               {plain}
@@ -726,7 +772,7 @@ export function BooksWorldMapCard({ books, onShowBook }: { books: Book[]; onShow
                 )}
               </g>
             </svg>
-            <div className="world-zoom" role="group" aria-label="Zoom" onKeyDown={zoomKeys}>
+            <div className="world-zoom" role="group" aria-label="Zoom" onKeyDown={zoomKeys} onFocus={zoomFocusIn} onBlur={zoomFocusOut}>
               <button ref={zoomInRef} type="button" className="btn" aria-label="Zoom in" title="Zoom in (Ctrl + scroll)" disabled={atMax} onClick={() => zoomBy(MAP_ZOOM_STEP)}>
                 +
               </button>

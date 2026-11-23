@@ -115,8 +115,16 @@ async function gotoDashboard(page) {
 }
 /** the map in the middle of the screen, clear of the header */
 const centreMap = async (page) => {
-  await page.evaluate(() => document.querySelector('svg.world-map').scrollIntoView({ block: 'center' }))
-  await wait(page, 400)
+  // blocks above the map (the creature block, covers) can still change height: centre it again until it
+  // stays put for 400 ms, so a point measured now is still the same point when it is tapped
+  let last = ''
+  for (let i = 0; i < 12; i++) {
+    await page.evaluate(() => document.querySelector('svg.world-map').scrollIntoView({ block: 'center' }))
+    await wait(page, 400)
+    const now = JSON.stringify(await page.locator('svg.world-map').boundingBox())
+    if (now === last) break
+    last = now
+  }
 }
 const card = (page) => page.locator('section.world-card')
 const viewBox = (page) => page.evaluate(() => document.querySelector('svg.world-map').getAttribute('viewBox').split(' ').map(Number))
@@ -537,6 +545,29 @@ async function run(width) {
     await page.keyboard.press('-')
     await wait(page, 250)
     check((await focusedLabel()) === 'Zoom in', '- on the zoomed map back to zoom one: focus moves to +', `${await focusedLabel()}`)
+    // send-back F2: Enter on ⤢ at 8× (+ is still disabled when ⤢ is pressed) leaves focus on +, with the ring
+    await page.getByRole('button', { name: 'Zoom in' }).focus()
+    for (let i = 0; i < 3; i++) {
+      await page.keyboard.press('Enter')
+      await wait(page, 250)
+    }
+    await page.keyboard.press('Tab')
+    check((await focusedLabel()) === 'Show the whole map', 'at 8×, Tab from − reaches ⤢', `${await focusedLabel()}`)
+    await page.keyboard.press('Enter')
+    await wait(page, 400)
+    const ring = await page.evaluate(() => document.activeElement?.matches(':focus-visible') && getComputedStyle(document.activeElement).outlineStyle)
+    check((await focusedLabel()) === 'Zoom in' && ring === 'solid', 'Enter on ⤢ at 8×: focus moves to +, with the ring (F2)', `${await focusedLabel()} ${ring}`)
+    // − has focus at 2×, then a Ctrl+scroll over the map back to zoom one: focus moves to +
+    await page.keyboard.press('Enter')
+    await wait(page, 300)
+    await page.getByRole('button', { name: 'Zoom out' }).focus()
+    const mb = await page.locator('svg.world-map').boundingBox()
+    await page.mouse.move(mb.x + mb.width / 2, mb.y + mb.height / 2)
+    await page.keyboard.down('Control')
+    for (let i = 0; i < 4; i++) await page.mouse.wheel(0, 120)
+    await page.keyboard.up('Control')
+    await wait(page, 400)
+    check((await viewBox(page))[2] === 360 && (await focusedLabel()) === 'Zoom in', 'Ctrl+scroll back to zoom one while − has focus: focus moves to +', `${await focusedLabel()}`)
     // send-back: crossing the one/two-column width keeps the card
     await centreMap(page)
     const p = await pointIn(page, 'France')

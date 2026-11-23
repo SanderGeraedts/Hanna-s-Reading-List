@@ -383,6 +383,22 @@ describe('Where your books are set: tap a country, zoom the map (T-0039)', () =>
     }
   })
 
+  it('the zone rule looks where the finger went down, not where a touch screen moved the click', async () => {
+    const { svg, card, country } = await setup()
+    const zone = svg.querySelector('.world-zone[data-country="France"]')!
+    const real = document.elementsFromPoint
+    // where the finger went down: only France's zone; where Chrome moved the click: the UK's own shape
+    document.elementsFromPoint = (x: number, y: number) => (x === 5 && y === 5 ? [zone, svg] : [zone, country('United Kingdom'), svg])
+    try {
+      fireEvent.pointerDown(zone, { pointerId: 3, pointerType: 'touch', clientX: 5, clientY: 5 })
+      fireEvent.pointerUp(zone, { pointerId: 3, pointerType: 'touch', clientX: 5, clientY: 5 })
+      fireEvent.click(zone, { clientX: 40, clientY: 40 })
+      expect(within(card()!).getByRole('heading').textContent).toBe('France')
+    } finally {
+      document.elementsFromPoint = real
+    }
+  })
+
   it('a drag never opens a card; a press that stays put does', async () => {
     const { country, card } = await setup()
     const fr = country('France')
@@ -681,6 +697,35 @@ describe('Where your books are set: tap a country, zoom the map (T-0039)', () =>
     fireEvent.keyDown(svg, { key: '-' })
     expect(svg.getAttribute('tabindex')).toBeNull()
     expect(document.activeElement).toBe(zoomIn)
+  })
+
+  it('⤢ at 8× leaves keyboard focus on + (F2), and so does a Ctrl+scroll back to zoom one from −', async () => {
+    const { svg, zoomButtons } = await setup()
+    const [zoomIn, zoomOut, whole] = zoomButtons()
+    for (let i = 0; i < 3; i++) fireEvent.click(zoomIn)
+    expect(zoomIn.disabled).toBe(true)
+    act(() => whole.focus())
+    fireEvent.click(whole)
+    expect(whole.disabled).toBe(true)
+    expect(zoomIn.disabled).toBe(false)
+    expect(document.activeElement).toBe(zoomIn)
+    // − has focus at 2×; a Ctrl+scroll (or a pinch) zooms back to one: focus moves to +
+    fireEvent.click(zoomIn)
+    act(() => zoomOut.focus())
+    const ctrl = new WheelEvent('wheel', { deltaY: 1000, bubbles: true, cancelable: true })
+    Object.defineProperty(ctrl, 'ctrlKey', { value: true })
+    act(() => void svg.dispatchEvent(ctrl))
+    expect(zoomOut.disabled).toBe(true)
+    expect(document.activeElement).toBe(zoomIn)
+    // + has focus at 4×; a Ctrl+scroll to 8×: focus moves to −
+    fireEvent.click(zoomIn)
+    fireEvent.click(zoomIn)
+    act(() => zoomIn.focus())
+    const deep = new WheelEvent('wheel', { deltaY: -1000, bubbles: true, cancelable: true })
+    Object.defineProperty(deep, 'ctrlKey', { value: true })
+    act(() => void svg.dispatchEvent(deep))
+    expect(zoomIn.disabled).toBe(true)
+    expect(document.activeElement).toBe(zoomOut)
   })
 
   it('the open card survives the block moving to another column (a remount), but a later visit starts closed', async () => {
