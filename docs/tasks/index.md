@@ -6,7 +6,8 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 
 ## Open
 
-None.
+- [T-0070 Add a Stats page with a year picker and a compare year, and leave one compact My year block on the dashboard](T-0070-stats-tab-with-year-compare.md): A sixth page tab, Stats, with a year picker (the years with data plus All time) and a compare-with year; the heatmap, books and pages per month, the genre flower, When I read most, What I read and Records move there with the other year's value beside each number, and the dashboard's Books read, Reading goal and those charts become one compact My year block with Open ›.
+- [T-0071 Make the year wrap-up a full-screen story she can play any time, ending in a shareable picture](T-0071-year-wrap-up-story.md): Year in review becomes a ▶ Play block on the dashboard and the Stats page that opens a full-screen tap-through story for the chosen year — books, top book, top author, top genre, longest book, busiest month, pages, hours listened, new authors and her map — ending in a summary slide she can share as a picture.
 
 ## Doing
 

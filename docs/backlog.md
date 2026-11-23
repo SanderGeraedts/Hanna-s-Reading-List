@@ -22,42 +22,14 @@ How to use it:
   badges, the hardcovers on phones, the header, the listening hours, the Arrange bar, the
   shelf polish, the country spellings, the book panel tabs (T-0047), tropes &
   characters (T-0048), the reading garden (T-0060 … T-0065, agreed 23 November 2026 and never
-  part of this queue), and the bookcases & filters, book poses and cosy room extras
-  (T-0051, T-0052, T-0053).
+  part of this queue), the bookcases & filters, book poses and cosy room extras
+  (T-0051, T-0052, T-0053), and the Stats tab with year compare and the year wrap-up story
+  (T-0070 and T-0071, taken off this queue on 23 November 2026 and built together on one
+  branch, because the wrap-up's entry point sits on the Stats page).
 
 ## The queue
 
-### 1. Stats tab with year compare (ST1)
-
-*Agreed 22 November 2026.*
-
-- A new **Stats** tab, the fifth page tab next to Bookshelf, Dashboard, Challenges and
-  Calendar.
-- A year picker (every year with data, plus **All time**) and **compare with** another
-  year: every number and chart is for the chosen year, with the other year's value next to
-  it (for example "48 books ↑ 12 vs 2025").
-- The big charts move here from the dashboard: the heatmap ("A year of reading"), pages per
-  month, the genre flower, when I read most (rhythm), what I read (breakdown), and records.
-- The dashboard gets one compact **My year** block (books, pages, hours, goal ring) with
-  **Open ›** to Stats. "Books read" and "Reading goal" become part of it.
-- Blocks she starred stay in Favourites.
-- Check the dashboard layout migration (`dashboardLayout`): saved layouts and favourites
-  that refer to removed blocks must keep working.
-
-### 2. Year wrap-up story (ST2)
-
-*Agreed 22 November 2026.*
-
-- A year wrap-up she can play **any time**: "this year so far" or a past year.
-- Full-screen slides she taps through: top book, author, genre, longest book, busiest
-  month, pages, hours listened, new authors, the map, and so on.
-- It ends in a summary picture she can share (reuse `shareImage`).
-- Entry: the **Year in review** block becomes **▶ Play**, on the dashboard and on the
-  Stats page.
-- It opens only when she taps it (fits D-0013, no pop-ups).
-- The monthly wrap-up stays as it is.
-
-### 3. Better adding: covers & series (AD1)
+### 1. Better adding: covers & series (AD1)
 
 *Agreed 22 November 2026.* (Files: `AddBookDialog.tsx`, `AddFollowUp.tsx`,
 `CoverPicker.tsx`.)
@@ -69,7 +41,7 @@ How to use it:
   confirm, or she types it.
 - Not doing (for all of better adding): importing from Goodreads or StoryGraph.
 
-### 4. Batch scan (AD2)
+### 2. Batch scan (AD2)
 
 *Agreed 22 November 2026.* (Files: `BarcodeScanner.tsx`, `AddBookDialog.tsx`.)
 
@@ -79,7 +51,7 @@ How to use it:
   and **Add all**.
 - The same book scanned twice is added once; a book already on the shelf is marked.
 
-### 5. Wishlist (AD3)
+### 3. Wishlist (AD3)
 
 *Agreed 22 November 2026.*
 
@@ -91,7 +63,7 @@ How to use it:
 - Stored with her books and synced (an optional field or flag, D-0002), unless that needs a
   server change: then flag it for Sander, or pick another way.
 
-### 6. Better challenges (CH1–CH4)
+### 4. Better challenges (CH1–CH4)
 
 *Agreed 22 November 2026.* Several tasks. (Files: `ChallengesPage.tsx`, `ownChallenges.ts`,
 `bingo.ts`.)
