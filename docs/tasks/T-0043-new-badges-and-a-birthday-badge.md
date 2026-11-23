@@ -2,7 +2,7 @@
 id: T-0043
 title: "Add twelve badges: a 365-day streak, seasons, authors, formats and a secret Birthday book with the birthday entered once per device"
 description: "src/lib/badges.ts gets 365-day streak, Spooky season, Summer reader, Winter warmer, Superfan, Wide reader, Well-read, Mix it up, Library lover, E-reader, All ears and the secret Birthday book; the birthday (day and month) is entered once per device in the Badges block and kept only in this browser (D-0039)."
-status: Open
+status: Doing
 size: full
 depends_on: [T-0042]
 decisions: [D-0013, D-0014, D-0020, D-0022, D-0038, D-0039]
@@ -439,6 +439,95 @@ The script prints the medals per row (6 / 8), the medal count (72), the row's co
 8. **Space (F11):** keep the key handler and also cancel Space's keyup, rather than going back
    to the button's own click, so the tests and the hold-to-repeat guard stay.
 
+## Build notes (developer)
+
+- **Hanna confirmed at 03:30** the four morning questions as the team had them: the names in
+  the table, Mix it up = paper + e-book + audiobook, no visible Loyal reader, and no "only on
+  this device" line. Built exactly that.
+- `src/lib/badges.ts`: `badges(books, today, { birthday })` (new `BadgeOptions`). The twelve
+  badges are added where *The badges* says, with the existing helpers: `streak-365` in the
+  streak loop; `author-10` (`reachedOn` over each author's books on their first finish, the
+  earliest 10th; progress the most by one author), `authors-25/50` (`firstsOf` the first author,
+  trimmed, lower case) after Polyglot; `kinds-3` (`firstsOf` over `bookKinds`), `library-10`,
+  `ebooks-10`, `audiobooks-10` (different finished books by `formatsOf`, audio = `AUDIO_FORMATS`,
+  so Storytel counts) after the listening badges; `spooky-season`, `summer-10` (per year, the
+  10th summer finish of the first summer that reaches 10; progress the best summer),
+  `winter-warmer` after Twelve months; the secret `birthday` (a finish whose day ends in
+  `-MM-DD`, the earliest; no or malformed birthday → not earned) after Home sweet home, with its
+  riddle. The old `author-5` code now shares the `byAuthor` map with Superfan (same rule, moved
+  up). Rims come from T-0042's family rule: `streak-100` silver, `author-5` bronze, `authors-25`
+  bronze, the rest gold.
+- `src/lib/birthday.ts` (new): `readBirthday`, `writeBirthday`, `clearBirthday`, `isBirthday`
+  (`02-29` yes, `02-30` / `13-40` / `abc` / `` no), `daysInMonth`, `birthdayOf`, and
+  `subscribeBirthday` (the components' listeners, plus the browser's `storage` event for other
+  tabs). Every storage call is in a `try`, so blocked storage (or a `localStorage` that throws
+  on access) reads as no birthday and nothing throws.
+- **All three places pass this device's birthday** through one hook, `useBirthday()` in
+  `NewBlocks.tsx` (`useSyncExternalStore` on `subscribeBirthday` / `readBirthday`):
+  `BadgesCard`, `BadgeToasts` and "Waiting for you" in `Dashboard.tsx`. Saving or clearing
+  updates all three at once, without a reload.
+- **The toast's shown-list now only grows** (shown ∪ earned) instead of being overwritten with
+  today's earned list, so that, as the design says, clearing and saving the birthday again
+  doesn't toast Birthday book twice. Side effect: a badge lost and earned again (e.g. a book
+  taken off and put back) no longer toasts a second time either.
+- **The birthday row** (`BirthdayRow` in `NewBlocks.tsx`): the last child of `#badges-list`,
+  after `#badges-card`; `role="group" aria-labelledby="birthday-label"`. *Empty* and *Change*
+  are a `<form>` (Day select 1–31, Month select January–December with values `01`–`12`, Save
+  `type="submit"`, Cancel in *Change*); *Set* shows "14 May" with Change / Clear (`aria-label`
+  "Change birthday" / "Clear birthday", Change `aria-describedby` the date). Only Save stores.
+  Errors "Pick a day and a month." and "There is no 31 April." in a `role="alert"` line under
+  the controls, with `aria-invalid` and `aria-describedby` on both selects, gone on the next
+  change. Focus moves as designed (Save / Cancel → Change, Change / Clear → Day). Escape in
+  *Change* cancels and `stopPropagation`s, so an open medal card stays open. The row is
+  remounted on folding (`key`), which drops unsaved picks. No 🎂, no "Birthday book", no year,
+  no hint text.
+- `src/styles.css`: `.birthday-row` (hairline `border-top`, `padding-top: var(--space-3)`),
+  `.birthday-controls` (wrapping flex row, `gap: var(--space-2)`, selects `width: auto`),
+  `.birthday-error` (`--danger`), and 44 px selects and buttons under `@media (pointer: coarse)`.
+- **F11:** (1) the grid's `<ul>` cancels Space on `keyup`, and the comment says why (Firefox
+  clicks a button on Space's keyup); (2) `.medal.chosen` is now `box-shadow: inset 0 0 0 2px
+  var(--surface-solid), inset 0 0 0 4px var(--text)`, the outer ring is gone; (3)
+  `#badges-card` has `aria-labelledby="badges-card-title"` only while a card is open.
+- **Tests:** `badges.test.ts` (12 new cases: the table, 72 / 13, the order, each badge's rules
+  from *Done when*, Birthday book with and without a birthday, "Waiting for you", the rims);
+  `birthday.test.ts` (new: set / read / clear, invalid values, blocked storage and storage that
+  throws on access, subscribers, and **the "nowhere else" search as a test**: no `birthday` in
+  `src/server`, `src/routes`, `deploy`, `shelfMerge.ts`, `library.ts` or `shareImage.ts`);
+  `BadgesCard.test.tsx` (the row's states, errors, focus, Escape, Clear, folding, earning
+  Birthday book on Save; F11's Space keyup and the card's label); `colours.test.ts` (`--text` on
+  `--surface-solid` at 3 : 1, and the chosen rule is the two inset rings and nothing else); new
+  `BirthdayBadge.waiting.test.tsx` (the Dashboard lists "New badge: Birthday book!" once a
+  birthday is stored, straight away; the toast queues it once, not again after Clear + Save).
+  Existing tests moved with the count: 60 → 72 medals, 11 → 12 hidden on the demo shelf, 5 % →
+  4 %, the last hidden medal's riddle is now Birthday book's, Home sweet home is second to last,
+  Polyglot → Wide reader before the travel badges, `streak-100` / `author-5` no longer gold. The
+  tester's break tests (`BadgesCard.break.test.tsx`) now count 72 (12 full rows of 6), add four
+  badges at 8 a row to keep a short last row, and try 87 instead of 75; its `badges` mock passes
+  the birthday option through.
+- **Screenshots:** `docs/tasks/T-0043-screens/screens.mjs` (after T-0042's), on `vite dev
+  --port 3159` with no `POCKETBASE_URL` and no Netlify link, a demo shelf in localStorage. It
+  also earns Dusty pile (added 1 Sept 2025, finished 15 Sept 2026), which the chosen-focus shot
+  happens to open. Output, shortened:
+
+  ```
+  badges-390-lavender-empty.png | 72 medals, 6 a row | Birthday Day Month Save (1 line) | heights: Day 44, Month 44, Save 44 | stored null; picked 14/05: stored null; after Save: stored 05-14, row "Birthday 14 May Change Clear", medal "Birthday book, gold, unlocked, secret badge"
+  badges-1280-midnight-empty.png | 72 medals, 8 a row | (1 line) | heights: Day 39, Month 39, Save 25 | stored null
+  badges-390-midnight-set.png | 72 medals, 6 a row | Birthday 14 May Change Clear | heights: 44, 44 | stored 05-14
+  badges-1280-lavender-set.png | 72 medals, 8 a row | Birthday 14 May Change Clear | stored 05-14
+  badges-390-lavender-change.png | 6 a row | Day Month Save Cancel (2 lines) | heights: 44, 44, 44, 44 | stored 05-14
+  badges-1280-midnight-change.png | 8 a row | Day Month Save Cancel (1 line) | stored 05-14
+  badges-390-midnight-error.png | "There is no 31 April." | picked 31/04: stored null; after Save: stored null
+  badges-390-lavender-birthday.png | card: 🎂 Birthday book · Gold · secret · Unlocked 14 May 2026 | chosen ring: rgb(38,29,23) 2px inset, rgb(244,234,217) 4px inset
+  badges-1280-lavender-locked.png | card: 🤩 Superfan · Finish 10 books by the same author · 4 / 10
+  badges-390-midnight-silver-chosen.png | card: 🔖 5 books · Silver · Unlocked 14 May 2026 | the same two inset rings
+  badges-1280-lavender-chosen-focus.png | focus: Dusty pile, gold, unlocked, secret badge (focus-visible true) | the same two inset rings
+  ```
+
+  All 11 with 0 page errors.
+- **For the architect, not fixed here:** a native dropdown's own Escape can't be told apart from
+  an Escape on a closed select in every browser; the row treats an Escape that reaches it as
+  Cancel (in Chromium an open dropdown's Escape doesn't reach the page).
+
 # Test
 
 To be written by the tester.
@@ -459,3 +548,16 @@ To be written by the tester.
   Space keyup cancelled, an inner cream ring with a dark gap for a chosen medal, the closed card
   unlabelled; 11 screenshots). Night mode: eight picks under *Choices made by the UX designer*,
   question 4 added to the morning list. Handed to the **developer**.
+- 2026-11-23 developer: Hanna confirmed at 03:30 the names, Mix it up = paper + e-book +
+  audiobook, no visible Loyal reader and no "only on this device" line. Built the twelve badges
+  in `badges.ts` (`badges(books, today, { birthday })`), `birthday.ts` (MM-DD on this device,
+  never throws), the birthday row (Empty / Set / Change, both errors, focus, Escape, 44 px on
+  touch), the birthday passed by `BadgesCard`, `BadgeToasts` and "Waiting for you" through one
+  `useBirthday()` hook, and F11 (Space keyup cancelled, inner cream ring with a dark gap, the
+  closed card unlabelled); see *Build notes*. Checks: `git grep -n -i birthday -- src/server
+  src/routes deploy src/lib/shelfMerge.ts src/lib/library.ts` printed nothing (exit 1), and the
+  same search runs as a test in `birthday.test.ts`; `pnpm test` 100 files passed, 1 skipped,
+  1117 tests passed, 9 skipped; `pnpm exec tsc --noEmit` clean; `pnpm run build` built;
+  `pnpm exec harness check` all ✓; 11 screenshots in `docs/tasks/T-0043-screens/` (72 medals,
+  6 a row at 390, 8 at 1280, row controls 44 px at 390 touch, 0 page errors);
+  `src/routeTree.gen.ts` not committed. Handed to the **UX designer** for the review.

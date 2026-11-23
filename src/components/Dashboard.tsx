@@ -61,7 +61,7 @@ import type { ArrowKey, BlockId, SectionId } from '#/lib/dashboardLayout'
 import { TodayStrip } from './TodayStrip'
 import { useDashboardLayout } from './useDashboardLayout'
 import { useArrangeBarHeight } from './useArrangeBarHeight'
-import { BadgesCard, CoverWallCard, RhythmCard } from './NewBlocks'
+import { BadgesCard, CoverWallCard, RhythmCard, useBirthday } from './NewBlocks'
 import { badges, newBadges } from '#/lib/badges'
 
 const BADGES_SEEN = 'hannas-reading-list:badges-seen'
@@ -177,7 +177,12 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
       return []
     }
   })
-  const freshBadges = useMemo(() => newBadges(badges(books)).filter((b) => !seenBadges.includes(b.id)), [books, seenBadges])
+  // this device's birthday counts here too (D-0039), so the Birthday book can wait for you
+  const birthday = useBirthday()
+  const freshBadges = useMemo(
+    () => newBadges(badges(books, undefined, { birthday })).filter((b) => !seenBadges.includes(b.id)),
+    [books, seenBadges, birthday],
+  )
   const seeBadge = (id: string) => {
     const next = [...seenBadges, id]
     setSeenBadges(next)

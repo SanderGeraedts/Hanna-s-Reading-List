@@ -32,7 +32,7 @@ describe('the Badges block can be folded', () => {
 })
 
 // T-0042: a demo shelf with an earned secret (Dusty pile, 1 May), Explorer (5 genres, 20 Mar),
-// First book (3 Jan), and 5 books locked at 4 of 5; the other 11 secrets are hidden
+// First book (3 Jan), and 5 books locked at 4 of 5; the other 12 secrets are hidden
 const read = (id: string, day: string, extra: Partial<Book> = {}): Book => ({
   id,
   title: `Book ${id}`,
@@ -61,7 +61,7 @@ describe('the medal grid (T-0042)', () => {
     const all = badges(shelf)
     const m = medals()
     expect(m).toHaveLength(all.length)
-    expect(screen.getByText(`3 of ${all.length} unlocked (5%)`)).toBeTruthy()
+    expect(screen.getByText(`3 of ${all.length} unlocked (4%)`)).toBeTruthy()
     const names = m.map((b) => b.getAttribute('aria-label'))
     expect(names.slice(0, 4)).toEqual([
       'Dusty pile, gold, unlocked, secret badge',
@@ -70,7 +70,7 @@ describe('the medal grid (T-0042)', () => {
       '5 books, locked, 4 of 5',
     ])
     const hiddenCount = all.filter((b) => b.secret && !b.earned).length
-    expect(hiddenCount).toBe(11)
+    expect(hiddenCount).toBe(12)
     expect(names.slice(-hiddenCount)).toEqual(Array(hiddenCount).fill('Hidden badge'))
     expect(names.slice(0, -hiddenCount)).not.toContain('Hidden badge')
     // a locked one-off says just "locked"
@@ -127,8 +127,9 @@ describe('the medal grid (T-0042)', () => {
     const hidden = medals().at(-1)!
     fireEvent.click(hidden)
     expect(live.textContent).toContain('Hidden badge')
-    expect(live.textContent).toContain('No passport needed')
-    expect(live.textContent).not.toMatch(/Home sweet home|🌷|Netherlands/)
+    // the last hidden medal is now the Birthday book (T-0043): its riddle, never its name or 🎂
+    expect(live.textContent).toContain('the candles are all for you')
+    expect(live.textContent).not.toMatch(/Birthday book|🎂/)
 
     fireEvent.click(hidden)
     expect(hidden.getAttribute('aria-expanded')).toBe('false')
@@ -201,7 +202,7 @@ describe('the medal grid (T-0042)', () => {
     expect(bar.getAttribute('aria-valuenow')).toBe('3')
     expect(bar.getAttribute('aria-valuemax')).toBe(String(total))
     fireEvent.click(screen.getByRole('button', { name: /^Badges/ }))
-    expect(screen.getByText(`3 of ${total} unlocked (5%)`)).toBeTruthy()
+    expect(screen.getByText(`3 of ${total} unlocked (4%)`)).toBeTruthy()
     expect(screen.getByRole('progressbar', { name: 'Badges unlocked' })).toBeTruthy()
   })
 
@@ -213,5 +214,183 @@ describe('the medal grid (T-0042)', () => {
     expect(earned.getAttribute('aria-expanded')).toBe('true')
     expect(medals()[0]).toBe(earned)
     expect(card().textContent).toContain('Silver · Unlocked 1 Jun 2026')
+  })
+})
+
+// T-0043, D-0039: the birthday row at the end of the block, kept on this device only
+const KEY = 'hannas-reading-list:birthday'
+const row = () => screen.getByRole('group', { name: 'Birthday' })
+const daySelect = () => within(row()).getByRole('combobox', { name: 'Day' }) as HTMLSelectElement
+const monthSelect = () => within(row()).getByRole('combobox', { name: 'Month' }) as HTMLSelectElement
+const pickDay = (day: string, month: string) => {
+  fireEvent.change(daySelect(), { target: { value: day } })
+  fireEvent.change(monthSelect(), { target: { value: month } })
+}
+const press = (name: string) => fireEvent.click(within(row()).getByRole('button', { name }))
+const birthdayMedal = () => within(grid()).getAllByRole('button').find((b) => b.dataset.id === 'birthday')!
+
+describe('the birthday row (T-0043)', () => {
+  it('is the last thing in the folding body, after the card, and folds away with the grid', () => {
+    render(<BadgesCard books={shelf} />)
+    const body = document.getElementById('badges-list')!
+    expect(body.lastElementChild).toBe(row())
+    expect(row().previousElementSibling).toBe(card())
+    expect(card().contains(row())).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: /^Badges/ }))
+    expect(body.hidden).toBe(true)
+  })
+
+  it('offers Day, Month and Save while unset; picking without Save stores nothing', () => {
+    render(<BadgesCard books={shelf} />)
+    expect(within(row()).getByText('Birthday')).toBeTruthy()
+    const days = [...daySelect().options].map((o) => o.text)
+    expect(days[0]).toBe('Day')
+    expect(days.slice(1)).toEqual(Array.from({ length: 31 }, (_, i) => String(i + 1)))
+    const months = [...monthSelect().options]
+    expect(months[0].text).toBe('Month')
+    expect(months[1]).toMatchObject({ text: 'January', value: '01' })
+    expect(months[12]).toMatchObject({ text: 'December', value: '12' })
+    expect(within(row()).getByRole('button', { name: 'Save' })).toBeTruthy()
+    pickDay('14', '05')
+    expect(localStorage.getItem(KEY)).toBeNull()
+    // nowhere in the row: the secret's emoji or name, a year, or a hint sentence
+    const words = row().cloneNode(true) as HTMLElement
+    words.querySelectorAll('select').forEach((s) => s.remove())
+    expect(words.textContent).toBe('BirthdaySave')
+    expect(row().textContent).not.toMatch(/🎂|Birthday book/)
+    expect(row().querySelectorAll('select')).toHaveLength(2)
+  })
+
+  it('saves MM-DD on Save, shows "14 May" with Change and Clear, focuses Change, and remembers it', () => {
+    render(<BadgesCard books={shelf} />)
+    pickDay('14', '05')
+    press('Save')
+    expect(localStorage.getItem(KEY)).toBe('05-14')
+    expect(row().textContent).toContain('Birthday14 May')
+    const change = within(row()).getByRole('button', { name: 'Change birthday' })
+    expect(change.textContent).toBe('Change')
+    expect(document.getElementById(change.getAttribute('aria-describedby')!)!.textContent).toBe('14 May')
+    expect(within(row()).getByRole('button', { name: 'Clear birthday' }).textContent).toBe('Clear')
+    expect(document.activeElement).toBe(change)
+    expect(within(row()).queryByRole('combobox')).toBeNull()
+    expect(row().textContent).not.toMatch(/🎂|Birthday book|20\d\d/)
+    cleanup()
+    render(<BadgesCard books={shelf} />)
+    expect(row().textContent).toContain('14 May')
+  })
+
+  it('says how to fix a missing or impossible day, stores nothing, and lets 29 February through', () => {
+    render(<BadgesCard books={shelf} />)
+    fireEvent.change(daySelect(), { target: { value: '14' } })
+    const save = within(row()).getByRole('button', { name: 'Save' })
+    save.focus()
+    fireEvent.click(save)
+    const alert = within(row()).getByRole('alert')
+    expect(alert.textContent).toBe('Pick a day and a month.')
+    expect(daySelect().getAttribute('aria-invalid')).toBe('true')
+    expect(monthSelect().getAttribute('aria-describedby')).toBe(alert.id)
+    expect(document.activeElement).toBe(save)
+    expect(localStorage.getItem(KEY)).toBeNull()
+    // the next change of either select takes it away
+    fireEvent.change(daySelect(), { target: { value: '31' } })
+    expect(within(row()).queryByRole('alert')).toBeNull()
+    expect(daySelect().getAttribute('aria-invalid')).toBeNull()
+    fireEvent.change(monthSelect(), { target: { value: '04' } })
+    press('Save')
+    expect(within(row()).getByRole('alert').textContent).toBe('There is no 31 April.')
+    expect(localStorage.getItem(KEY)).toBeNull()
+    pickDay('29', '02')
+    press('Save')
+    expect(localStorage.getItem(KEY)).toBe('02-29')
+    expect(row().textContent).toContain('29 February')
+  })
+
+  it('changes it: the selects on the saved day, Save stores the new one; Cancel and Escape keep the old', () => {
+    localStorage.setItem(KEY, '05-14')
+    render(<BadgesCard books={shelf} />)
+    press('Change birthday')
+    expect(daySelect().value).toBe('14')
+    expect(monthSelect().value).toBe('05')
+    expect(document.activeElement).toBe(daySelect())
+    pickDay('2', '09')
+    press('Cancel')
+    expect(localStorage.getItem(KEY)).toBe('05-14')
+    expect(row().textContent).toContain('14 May')
+    expect(document.activeElement).toBe(within(row()).getByRole('button', { name: 'Change birthday' }))
+
+    press('Change birthday')
+    pickDay('2', '09')
+    fireEvent.keyDown(daySelect(), { key: 'Escape' })
+    expect(localStorage.getItem(KEY)).toBe('05-14')
+    expect(document.activeElement).toBe(within(row()).getByRole('button', { name: 'Change birthday' }))
+
+    press('Change birthday')
+    pickDay('2', '09')
+    press('Save')
+    expect(localStorage.getItem(KEY)).toBe('09-02')
+    expect(row().textContent).toContain('2 September')
+    expect(document.activeElement).toBe(within(row()).getByRole('button', { name: 'Change birthday' }))
+  })
+
+  it('Escape in the row does not close an open medal card', () => {
+    localStorage.setItem(KEY, '05-14')
+    render(<BadgesCard books={shelf} />)
+    fireEvent.click(medal('First book, bronze, unlocked'))
+    press('Change birthday')
+    fireEvent.keyDown(daySelect(), { key: 'Escape' })
+    expect(card().textContent).toContain('First book')
+    expect(medal('First book, bronze, unlocked').getAttribute('aria-expanded')).toBe('true')
+  })
+
+  it('earns the Birthday book straight after saving, and Clear takes it back to a "?" and focuses Day', () => {
+    render(<BadgesCard books={[...shelf, read('bd', '2025-05-14')]} />)
+    expect(birthdayMedal().getAttribute('aria-label')).toBe('Hidden badge')
+    pickDay('14', '05')
+    press('Save')
+    const earned = birthdayMedal()
+    expect(earned.getAttribute('aria-label')).toBe('Birthday book, gold, unlocked, secret badge')
+    expect(earned.textContent).toBe('🎂')
+    press('Clear birthday')
+    expect(localStorage.getItem(KEY)).toBeNull()
+    expect(birthdayMedal().getAttribute('aria-label')).toBe('Hidden badge')
+    expect(birthdayMedal().textContent).toBe('?')
+    expect(document.activeElement).toBe(daySelect())
+    expect(daySelect().value).toBe('')
+  })
+
+  it('folding while changing drops the unsaved picks', () => {
+    localStorage.setItem(KEY, '05-14')
+    render(<BadgesCard books={shelf} />)
+    press('Change birthday')
+    pickDay('2', '09')
+    const fold = screen.getByRole('button', { name: /^Badges/ })
+    fireEvent.click(fold)
+    fireEvent.click(fold)
+    expect(row().textContent).toContain('14 May')
+    expect(within(row()).queryByRole('combobox')).toBeNull()
+  })
+})
+
+describe('T-0042 follow-ups (T-0043 F11)', () => {
+  it('cancels Space’s keyup on a medal, so keyDown + keyUp Space leaves exactly one card open', () => {
+    render(<BadgesCard books={shelf} />)
+    const first = medal('First book, bronze, unlocked')
+    first.focus()
+    fireEvent.keyDown(first, { key: ' ' })
+    const up = fireEvent.keyUp(first, { key: ' ' })
+    expect(up).toBe(false) // defaultPrevented
+    expect(medals().filter((b) => b.getAttribute('aria-expanded') === 'true')).toEqual([first])
+    expect(card().textContent).toContain('First book')
+  })
+
+  it('labels the card only while it is open', () => {
+    render(<BadgesCard books={shelf} />)
+    expect(card().hasAttribute('aria-labelledby')).toBe(false)
+    expect(card().querySelector('[aria-live="polite"]')).toBeTruthy()
+    fireEvent.click(medal('First book, bronze, unlocked'))
+    expect(card().getAttribute('aria-labelledby')).toBe('badges-card-title')
+    expect(document.getElementById('badges-card-title')).toBeTruthy()
+    fireEvent.click(medal('First book, bronze, unlocked'))
+    expect(card().hasAttribute('aria-labelledby')).toBe(false)
   })
 })
