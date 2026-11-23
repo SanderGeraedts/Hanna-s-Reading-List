@@ -191,20 +191,23 @@ describe('the challenge card', () => {
     expect(screen.getByText('Fantasy books you rated 4+')).toBeTruthy()
   })
 
-  it('counts in its unit', () => {
+  const countLine = () => document.querySelector('.own-challenge-count')!.parentElement!.textContent!.replace(/\s+/g, ' ').trim()
+
+  it('counts in its unit, as a big number beside a quiet rest', () => {
     render(card({ rule: 'any', unit: 'pages', target: 2000 }))
-    expect(screen.getByText('1,200 of 2,000 pages')).toBeTruthy()
+    expect(document.querySelector('.own-challenge-count')!.textContent).toBe('1,200')
+    expect(countLine()).toBe('1,200 of 2,000 pages')
     cleanup()
     render(card({ rule: 'any', unit: 'hours', target: 20 }))
-    expect(screen.getByText('10 of 20 hours')).toBeTruthy()
+    expect(countLine()).toBe('10 of 20 hours')
     cleanup()
     render(card({ rule: 'genre', value: 'Fantasy', target: 5 }))
-    expect(screen.getByText('2 of 5')).toBeTruthy()
+    expect(countLine()).toBe('2 of 5')
   })
 
   it('shows an AND that nothing matches as empty, with no extra sentence', () => {
     render(card({ rule: 'genre', value: 'Fantasy', and: 'language', andValue: 'nl', target: 5 }))
-    expect(screen.getByText('0 of 5')).toBeTruthy()
+    expect(countLine()).toBe('0 of 5')
     expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('0')
     expect(screen.queryByRole('list')).toBeNull()
   })

@@ -8,7 +8,7 @@ depends_on: []
 decisions: [D-0013, D-0014, D-0017, D-0020, D-0038, D-0064]
 raised_on: 2026-11-23
 done_on: 2026-11-23
-result: []
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/267"]
 ---
 
 # Goal
@@ -351,6 +351,36 @@ visit quiet). A line went into `docs/lessons.md`.
 | `confetti()` with no layer mounted | nothing, no throw |
 | the badge grid | 78 medals (was 75), the three new ones in their family's tiers, grid navigation still lands on the last medal |
 | `badges(books)` with **no** challenges option | the family is there, unearned, no crash |
+
+## After main landed the Stats page
+
+`main` gained the Stats page and the year wrap-up (#266) while this was being built, so it
+was merged in here and everything was run again on the merge:
+
+```
+$ pnpm exec tsc --noEmit
+(no output: clean)
+
+$ pnpm test
+ Test Files  190 passed | 2 skipped (192)
+      Tests  2378 passed | 22 skipped (2400)
+
+$ pnpm run build
+✓ built in 828ms
+
+$ pnpm exec harness check
+✓ tasks: 67 tasks, index in step
+✓ decisions: 59 records, index complete, 3 overrules valid
+✓ engineers: 2 listed
+✓ generated files: current
+```
+
+The conflicts were `docs/backlog.md` (both items taken off the queue), `docs/decisions/index.md`,
+`docs/lessons.md`, `docs/tasks/index.md` (regenerated) and `src/styles.css`. The stylesheet's
+two blocks both ended inside an unclosed `@media`, which is the trap T-0080's own lesson
+records: the resolved file was counted brace by brace (`depth at end: 0`, lowest depth 0) and
+the Challenges page was looked at again in the browser at 390 px and 1280 px. **The page tab
+row was not touched** — Stats is their tab and it is there.
 
 ## Verdict
 

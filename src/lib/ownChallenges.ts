@@ -353,9 +353,19 @@ export function ruleText(c: OwnChallenge, books: Book[]): string {
   return `${onePhrase(a)} · and ${lowerFirst(onePhrase(b))}`
 }
 
+const asNumber = (x: number) => x.toLocaleString('en')
+
+/**
+ * The count line in two halves, so the card can draw the big number and the
+ * rest quietly beside it: `3` + `of 5`, `1,250` + `of 2,000 pages`.
+ */
+export function doneParts(c: OwnChallenge, done: number): { done: string; rest: string } {
+  const unit = unitOf(c)
+  return { done: asNumber(done), rest: `of ${asNumber(c.target)}${unit === 'books' ? '' : ` ${unit}`}` }
+}
+
 /** "3 of 5", "1,250 of 2,000 pages", "9 of 20 hours". */
 export function doneText(c: OwnChallenge, done: number): string {
-  const n = (x: number) => x.toLocaleString('en')
-  const unit = unitOf(c)
-  return `${n(done)} of ${n(c.target)}${unit === 'books' ? '' : ` ${unit}`}`
+  const parts = doneParts(c, done)
+  return `${parts.done} ${parts.rest}`
 }

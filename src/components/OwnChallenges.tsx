@@ -10,7 +10,7 @@ import {
   challengeBooks,
   challengeDone,
   cleanChallenges,
-  doneText,
+  doneParts,
   maxTarget,
   needsValue,
   newChallengeId,
@@ -365,7 +365,7 @@ export function OwnChallengeCard({
       </div>
       <p className="muted small-text">{ruleText(c, books)}</p>
       <p>
-        <span className="own-challenge-count">{doneText(c, done)}</span>
+        <span className="own-challenge-count">{doneParts(c, done).done}</span> <span className="muted">{doneParts(c, done).rest}</span>
         {done >= c.target && <span> · Done! 🎉</span>}
       </p>
       <div className="progress-bar" role="progressbar" aria-valuemin={0} aria-valuemax={c.target} aria-valuenow={Math.min(done, c.target)}>
