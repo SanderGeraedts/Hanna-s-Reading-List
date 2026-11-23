@@ -9,7 +9,7 @@ let extra: Badge[] = []
 vi.mock('#/server/shelf', () => ({ loadShelf: async () => null, saveShelf: async () => ({ updated: 't' }) }))
 vi.mock('#/lib/badges', async (importOriginal) => {
   const real = await importOriginal<typeof import('#/lib/badges')>()
-  return { ...real, badges: (books: Book[]) => [...real.badges(books), ...extra] }
+  return { ...real, badges: (...args: Parameters<typeof real.badges>) => [...real.badges(...args), ...extra] }
 })
 const { BadgesCard } = await import('./NewBlocks')
 const { badges } = await import('#/lib/badges')
@@ -58,7 +58,7 @@ describe('the medal grid, trying to break it (T-0042 tester)', () => {
     layOut(6)
     render(<BadgesCard books={shelf} />)
     const m = medals()
-    expect(m).toHaveLength(60)
+    expect(m).toHaveLength(72)
     m[2].focus()
     fireEvent.keyDown(m[2], { key: 'ArrowDown' })
     expect(document.activeElement).toBe(m[8])
@@ -66,33 +66,35 @@ describe('the medal grid, trying to break it (T-0042 tester)', () => {
     expect(document.activeElement).toBe(m[2])
     fireEvent.keyDown(m[2], { key: 'ArrowUp' })
     expect(document.activeElement).toBe(m[2])
-    // 60 = 10 full rows of 6: ↓ in the last row stays
-    m[57].focus()
-    fireEvent.keyDown(m[57], { key: 'ArrowDown' })
-    expect(document.activeElement).toBe(m[57])
-    fireEvent.keyDown(m[57], { key: 'ArrowUp' })
-    expect(document.activeElement).toBe(m[51])
+    // 72 = 12 full rows of 6 (T-0043): ↓ in the last row stays
+    m[69].focus()
+    fireEvent.keyDown(m[69], { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(m[69])
+    fireEvent.keyDown(m[69], { key: 'ArrowUp' })
+    expect(document.activeElement).toBe(m[63])
   })
 
   it('steps ↑ ↓ by 8 a row (1280 px), and ↓ above a shorter last row goes to the last medal', () => {
+    // 72 badges fill 9 rows of 8 exactly (T-0043): 4 more make a shorter last row
+    extra = [1, 2, 3, 4].map((n): Badge => ({ id: `row-${n}`, icon: '🧪', name: `Row ${n}`, how: 'Test', earned: false, tier: 'gold' }))
     layOut(8)
     render(<BadgesCard books={shelf} />)
     const m = medals()
-    // 60 = 7 rows of 8 + 4: the last row is 56–59
-    m[50].focus()
-    fireEvent.keyDown(m[50], { key: 'ArrowDown' })
-    expect(document.activeElement).toBe(m[58])
-    m[55].focus()
-    fireEvent.keyDown(m[55], { key: 'ArrowDown' })
-    expect(document.activeElement).toBe(m[59])
-    fireEvent.keyDown(m[59], { key: 'ArrowDown' })
-    expect(document.activeElement).toBe(m[59])
-    fireEvent.keyDown(m[59], { key: 'ArrowUp' })
-    expect(document.activeElement).toBe(m[51])
+    // 76 = 9 rows of 8 + 4: the last row is 72–75
+    m[66].focus()
+    fireEvent.keyDown(m[66], { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(m[74])
+    m[71].focus()
+    fireEvent.keyDown(m[71], { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(m[75])
+    fireEvent.keyDown(m[75], { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(m[75])
+    fireEvent.keyDown(m[75], { key: 'ArrowUp' })
+    expect(document.activeElement).toBe(m[67])
   })
 
-  it('takes a grid of 75 badges: all counted, in order, End and ↓ reach the last, hidden ones stay hidden', () => {
-    // 15 more than today, like T-0043's 12 and then some: steps of a new family and new secrets
+  it('takes a grid of 87 badges: all counted, in order, End and ↓ reach the last, hidden ones stay hidden', () => {
+    // 15 more than the 72 of T-0043: steps of a new family and new secrets
     extra = [
       ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((n): Badge => ({
         id: `extra-${n}`,
@@ -118,28 +120,28 @@ describe('the medal grid, trying to break it (T-0042 tester)', () => {
     layOut(6)
     render(<BadgesCard books={shelf} />)
     const all = badges(shelf)
-    expect(all).toHaveLength(75)
+    expect(all).toHaveLength(87)
     const m = medals()
-    expect(m).toHaveLength(75)
+    expect(m).toHaveLength(87)
     const earnedCount = all.filter((b) => b.earned).length
-    expect(screen.getByText(`${earnedCount} of 75 unlocked (${Math.round((earnedCount / 75) * 100)}%)`)).toBeTruthy()
-    // the newest earned badge comes first, the hidden ones (11 of today's + 4 new) last
+    expect(screen.getByText(`${earnedCount} of 87 unlocked (${Math.round((earnedCount / 87) * 100)}%)`)).toBeTruthy()
+    // the newest earned badge comes first, the hidden ones (12 of today's + 4 new) last
     expect(m[0].getAttribute('aria-label')).toBe('Extra 1, bronze, unlocked')
     const hiddenCount = all.filter((b) => b.secret && !b.earned).length
-    expect(hiddenCount).toBe(15)
+    expect(hiddenCount).toBe(16)
     expect(m.slice(-hiddenCount).every((b) => b.getAttribute('aria-label') === 'Hidden badge')).toBe(true)
-    expect(m[75 - hiddenCount - 1].getAttribute('aria-label')).not.toBe('Hidden badge')
+    expect(m[87 - hiddenCount - 1].getAttribute('aria-label')).not.toBe('Hidden badge')
     expect(grid().textContent).not.toContain('🎂')
-    // one Tab stop, End, and ↓ from the row above the short last row (75 = 12 × 6 + 3)
+    // one Tab stop, End, and ↓ from the row above the short last row (87 = 14 × 6 + 3)
     expect(m.filter((b) => b.tabIndex === 0)).toHaveLength(1)
     m[0].focus()
     fireEvent.keyDown(m[0], { key: 'End' })
-    expect(document.activeElement).toBe(m[74])
-    m[71].focus()
-    fireEvent.keyDown(m[71], { key: 'ArrowDown' })
-    expect(document.activeElement).toBe(m[74])
+    expect(document.activeElement).toBe(m[86])
+    m[83].focus()
+    fireEvent.keyDown(m[83], { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(m[86])
     // the last hidden medal's card: its riddle, never its name or emoji
-    fireEvent.keyDown(m[74], { key: 'Enter' })
+    fireEvent.keyDown(m[86], { key: 'Enter' })
     expect(card().textContent).toContain('Riddle 4')
     expect(card().textContent).not.toContain('Secret extra')
     expect(card().textContent).not.toContain('🎂')
