@@ -587,6 +587,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           }}
           onClose={() => select(null)}
           onSheet={onSheet}
+          headerPx={headerPx}
         />
       )}
 
