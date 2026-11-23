@@ -303,6 +303,19 @@ export function CreaturesPage({ books, startChoose, onChooseOpened, startStep, o
         dress={hatching ? undefined : dressOf(denPet)}
         den={den}
         now={now}
+        pets={c.pets}
+        currentPetId={pet?.id ?? null}
+        dressOf={(id) => c.shop.worn.get(id) ?? {}}
+        onFeed={(id) => {
+          const r = feed(id)
+          if (!r) return
+          say(r.say)
+          setReaction((prev) => ({ kind: r.levelUp ? 'levelup' : 'feed', n: (prev?.n ?? 0) + 1 }))
+        }}
+        onTap={(p) => {
+          say(`${p.name} ${p.species === 'cat' ? 'purrs' : p.species.includes('penguin') ? 'chirps' : p.species === 'library-owl' ? 'hoots' : p.species === 'book-dragon' ? 'rumbles' : 'wiggles'}.`)
+          setReaction((prev) => ({ kind: 'pet', n: (prev?.n ?? 0) + 1 }))
+        }}
         onCrackDone={() => {
           if (reveal?.phase === 'crack') {
             focusNext.current = 'reveal'

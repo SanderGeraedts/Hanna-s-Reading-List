@@ -524,6 +524,43 @@ review crisp:
 
 # Build notes
 
+## Slice 2 (2026-11-23): den visuals wired in
+
+- **Multiple pets on desktop**: new `src/components/creatures/WalkingPets.tsx`
+  renders every pet other than the current one, each with its own useFrame
+  driving the state machine (rest / roam / cushion / toy / pair / sleep),
+  walk + turn + arm swing + body bob, hop parabola for penguins / hedgehog /
+  axolotl, mood posture (happy body +2 %, missing arms down, sleepy sway).
+  Position carries across re-renders via a shared ref map keyed by pet id.
+- **Phone budget kept**: `<WalkingPets>` only mounts on desktop (`!phone && !reduce`);
+  the phone branch is exactly T-0029/T-0031. No new draw calls on the phone.
+- **Current pet** (`Creature` on the cushion) now reacts to the full set of
+  trick kinds (wave, spin, somersault, bow, toy:*), carries `userData.isPet`
+  so drag-to-feed can land on it, and fires `onTap` when clicked.
+- **Drag-to-feed**: new `src/components/creatures/DragFeed.tsx` draws a
+  draggable cookie above the bowl; pointer-down lifts it, pointer-move keeps
+  it under the pointer via a ground-plane raycast, pointer-up raycasts the
+  scene for `userData.isPet` and calls `onFeed(petId)`. The Feed button is
+  unchanged and still calls the same `feed(petId)`.
+- **Pair-play** (simple): when the state machine picks `pair` for a walker,
+  both arms lift (no choreographed partner handshake, to keep the frame
+  budget predictable). The state machine's `pair` weights are honoured.
+- **Trick animation** plays in the scene on the current pet when Trick! is
+  pressed (reaction kind `'trick'` + a `trick` id): wave arm-R, spin root y,
+  somersault root x, bow body x, toy:* bow for the current moment.
+- **Moods visible on the pet** (not just the mood line): happy adds +2 %
+  constant body y and squints eyes; missing resets arms to rest; sleepy adds
+  a body sway (rotation z ±2°) in addition to the head tilt T-0029 already
+  did. Current pet + walkers both carry this.
+- **Dropped to stay in budget**: no pair-partner acceptance step (both pets
+  switching into pair state in sync), no explicit toy-slot lock across pets,
+  no in-scene heart sprite for pair-play. The simpler pair pose still reads
+  clearly in the screenshots and keeps the phone's 0-new-draw-call promise.
+
+## Slice 1
+
+- **State machine** `src/lib/creatures/denRoam.ts` + tests: deterministic per `(petId, session)`,
+
 - **State machine** `src/lib/creatures/denRoam.ts` + tests: deterministic per `(petId, session)`,
   with phone/reduce collapsing to `rest`, missing-you limited to rest/cushion, sleepy current pet
   at night → sleep, happy mood → longer cushion, toy-free and pair-free weights, walkable rectangle.
@@ -560,3 +597,9 @@ review crisp:
 - 2026-11-23 developer: built the roam state machine, tricks, happy mood, share pictures and
   the Trick!/Share/shelf buttons on one branch `creatures-alive-and-shelf`. tests 1582 pass,
   tsc clean, build ok, harness check green.
+- 2026-11-23 developer (slice 2): wired the roam state machine + mood posture + trick
+  animations into DenScene; new `WalkingPets` draws every non-current pet on desktop,
+  `DragFeed` handles drag-to-feed landing on any pet (Feed button unchanged for KB/SR).
+  Dropped the pair-partner handshake and in-scene heart sprite to keep the frame budget
+  (phone branch untouched). tests 1582 pass; tsc, build, harness check green. Retook the 8
+  T-0032 screenshots; T-0033 shots unchanged.

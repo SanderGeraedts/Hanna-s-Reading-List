@@ -1,9 +1,11 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import type { Mood, Stage } from '#/lib/creatures/creature'
+import type { Mood, Pet, Stage } from '#/lib/creatures/creature'
 import type { SpeciesId, Tier } from '#/lib/creatures/species'
 import type { DenSlot, HabitatId, OutfitSlot } from '#/lib/creatures/shop'
+import { WalkingPets } from './WalkingPets'
+import { DragFeed } from './DragFeed'
 import { skyAt, weatherAt } from '#/lib/creatures/weather'
 import { creatureFor, eyeOpen, headTilt, rigOf, usePageVisible } from './pose'
 import { SPARKLE_SPOTS, glowTex, makeEgg, sparkleTexture } from './eggModel'
@@ -76,6 +78,16 @@ interface Props {
   den?: DenSetup
   /** the device clock, for the window's sky and weather (a test clock in a test) */
   now?: Date
+  /** every pet she has — for the desktop den's roaming extras (T-0032 §4) */
+  pets?: readonly Pet[]
+  /** the current pet (shown on the cushion) — the others roam the floor */
+  currentPetId?: string | null
+  /** what each pet wears (T-0031 §7), keyed by pet id */
+  dressOf?: (petId: string) => Partial<Record<OutfitSlot, string>>
+  /** drag-to-feed landing on a pet — same call as the Feed button (T-0032 §6b) */
+  onFeed?: (petId: string) => void
+  /** tap on a pet — pet reaction (T-0032 §6a) */
+  onTap?: (pet: Pet) => void
 }
 
 /** Share of the canvas height a creature fills, per stage (Design §5), before the 10 % pull-back of T-0031. */
@@ -89,7 +101,7 @@ const NO_DEN: DenSetup = { habitat: 'cosy', placed: {} }
 // shopModels.ts. The gold cushion is 0.18, the cloud cushion 0.22, the basket bed 0.14
 // (review 2026-11-23; closes backlog F14).
 
-export function DenScene({ shows, cookies, phone, reduce, paused, reaction, onCrackDone, dress, den = NO_DEN, now }: Props) {
+export function DenScene({ shows, cookies, phone, reduce, paused, reaction, onCrackDone, dress, den = NO_DEN, now, pets, currentPetId, dressOf, onFeed, onTap }: Props) {
   const visible = usePageVisible()
   const q: CreatureQuality = phone ? 'low' : 'high'
   const wall = HABITAT_BACK[den.habitat]
@@ -156,8 +168,22 @@ export function DenScene({ shows, cookies, phone, reduce, paused, reaction, onCr
           reaction={reaction ?? null}
           dress={dress}
           seat={seatYOf(den.placed.bed)}
+          petId={currentPetId ?? null}
+          onTap={() => currentPetId && pets && onTap?.(pets.find((p) => p.id === currentPetId)!)}
         />
       )}
+      {/* roaming secondary pets on desktop only (T-0032 §4) */}
+      {!phone && !reduce && pets && pets.length > 1 && dressOf && (
+        <WalkingPets
+          pets={pets.filter((p) => p.id !== currentPetId)}
+          dressOf={dressOf}
+          session={Math.floor((now?.getTime() ?? Date.now()) / 60000)}
+          onTap={onTap}
+          onFeed={(p) => onFeed?.(p.id)}
+        />
+      )}
+      {/* drag-to-feed: a cookie lifts from the bowl and follows the pointer */}
+      {onFeed && <DragFeed cookies={cookies} onFeed={onFeed} disabled={phone && (!pets || pets.length === 0)} />}
       {(phone || reduce) && !stopped && <Idle on={!reduce} />}
     </Canvas>
   )
@@ -501,6 +527,8 @@ function Creature({
   reaction,
   dress,
   seat,
+  petId,
+  onTap,
 }: {
   species: SpeciesId
   shiny: boolean
@@ -511,6 +539,8 @@ function Creature({
   reaction: Reaction | null
   dress?: Partial<Record<OutfitSlot, string>>
   seat: number
+  petId?: string | null
+  onTap?: () => void
 }) {
   const q: CreatureQuality = phone ? 'low' : 'high'
   const rig = useMemo<Rig>(() => rigOf(creatureFor(species, stage, shiny, q)), [species, stage, shiny, q])
@@ -547,24 +577,66 @@ function Creature({
     const t = clock.elapsedTime
     const tilt = headTilt(mood)
     const idle = !reduce
-    // breathing
+    // breathing (+2 % y when happy, T-0032 Design §7)
     if (rig.body) {
       const period = mood ? 6 : 4
       const b = idle ? 1 + 0.015 * Math.sin((t / period) * Math.PI * 2) : 1
-      rig.body.scale.set(rig.base.body.x, rig.base.body.y * b, rig.base.body.z)
+      const happy = mood === 'happy' ? 1.02 : 1
+      rig.body.scale.set(rig.base.body.x, rig.base.body.y * b * happy, rig.base.body.z)
+      // sleepy: small body sway; otherwise reset rotation.z
+      rig.body.rotation.z = mood === 'sleepy' ? Math.sin((t / 2.5) * Math.PI * 2) * 0.035 : 0
+    }
+    // missing-you: arms down along the sides (T-0032 §7); other moods: natural rest
+    if (mood === 'missing') {
+      const armL = rig.root.getObjectByName('part:armL')
+      const armR = rig.root.getObjectByName('part:armR')
+      if (armL) armL.rotation.set(0, 0, 0)
+      if (armR) armR.rotation.set(0, 0, 0)
     }
     // eyes: the mood's opening, a blink now and then, a happy squint after a feed
     let open = eyeOpen(mood)
+    if (mood === 'happy') open = Math.min(open, 0.75)
     if (idle && t >= blink.current.next) {
       if (t < blink.current.next + 0.15) open = Math.min(open, 0.1)
       else blink.current.next = t + 4 + Math.random() * 3
     }
     let bob = 0
+    // trick animations (T-0032 §5b): wave, spin, somersault, bow, toy
     const r = react.current
     if (r) {
       if (r.at === null) r.at = t
       const k = t - r.at
-      if (k < HAPPY) {
+      const tr = (r as { trick?: string }).trick ?? ''
+      if (r.kind === 'trick' && !reduce) {
+        if (tr === 'wave' && k < 1.0) {
+          const armR = rig.root.getObjectByName('part:armR')
+          if (armR) {
+            armR.rotation.x = -1.2
+            armR.rotation.z = Math.sin((k / 1.0) * Math.PI * 4) * 0.6
+          }
+          invalidate()
+        } else if (tr === 'spin' && k < 0.9) {
+          if (holder.current) holder.current.rotation.y = (k / 0.9) * Math.PI * 2
+          bob = Math.sin((k / 0.9) * Math.PI) * 0.06
+          invalidate()
+        } else if (tr === 'somersault' && k < 1.0) {
+          if (holder.current) holder.current.rotation.x = (k / 1.0) * Math.PI * 2
+          bob = Math.sin((k / 1.0) * Math.PI) * 0.09
+          invalidate()
+        } else if ((tr === 'bow' || tr.startsWith('toy:')) && k < 0.7) {
+          if (rig.body) rig.body.rotation.x = Math.sin((k / 0.7) * Math.PI) * 0.5
+          invalidate()
+        } else if (k >= 1.1) {
+          if (holder.current) {
+            holder.current.rotation.y = 0
+            holder.current.rotation.x = 0
+          }
+          if (rig.body) rig.body.rotation.x = 0
+          react.current = null
+        } else {
+          invalidate()
+        }
+      } else if (k < HAPPY) {
         open = Math.min(open, 0.35)
         // a bob (a bigger one for a level-up); none with reduce motion
         if (!reduce && k < 0.5) bob = Math.sin((k / 0.5) * Math.PI) * (r.kind === 'levelup' ? 0.12 : 0.06)
@@ -591,7 +663,16 @@ function Creature({
   })
 
   return (
-    <group ref={holder} position={[0, seat, 0]} scale={scale}>
+    <group
+      ref={holder}
+      position={[0, seat, 0]}
+      scale={scale}
+      userData={{ isPet: !!petId, petId: petId ?? undefined }}
+      onPointerDown={(e) => {
+        e.stopPropagation()
+        onTap?.()
+      }}
+    >
       <primitive object={rig.root} />
       {shiny && <Sparkles height={rig.height} twinkle={!phone && !reduce} />}
     </group>
