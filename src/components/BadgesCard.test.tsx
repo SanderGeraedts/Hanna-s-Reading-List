@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import type { Book } from '#/lib/library'
 
 vi.mock('#/server/shelf', () => ({ loadShelf: async () => null, saveShelf: async () => ({ updated: 't' }) }))
@@ -392,5 +392,75 @@ describe('T-0042 follow-ups (T-0043 F11)', () => {
     expect(document.getElementById('badges-card-title')).toBeTruthy()
     fireEvent.click(medal('First book, bronze, unlocked'))
     expect(card().hasAttribute('aria-labelledby')).toBe(false)
+  })
+})
+
+describe('the birthday row, trying to break it (T-0043 tester)', () => {
+  it('blocked storage: Save neither throws nor pretends; the row stays empty and the secret stays hidden', () => {
+    // a storage that refuses the birthday's key only (the fold state still works)
+    const kept = new Map<string, string>()
+    const guard = (k: string) => {
+      if (k === KEY) throw new Error('blocked')
+    }
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => (guard(k), kept.get(k) ?? null),
+      setItem: (k: string, v: string) => (guard(k), kept.set(k, v), undefined),
+      removeItem: (k: string) => (guard(k), kept.delete(k), undefined),
+      clear: () => kept.clear(),
+    })
+    try {
+      render(<BadgesCard books={[...shelf, read('bd', '2025-05-14')]} />)
+      pickDay('14', '05')
+      expect(() => press('Save')).not.toThrow()
+      expect(within(row()).getByRole('button', { name: 'Save' })).toBeTruthy()
+      expect(within(row()).queryByRole('button', { name: 'Change birthday' })).toBeNull()
+      expect(birthdayMedal().getAttribute('aria-label')).toBe('Hidden badge')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('another tab clearing or setting it updates the row and the medal at once', () => {
+    localStorage.setItem(KEY, '05-14')
+    render(<BadgesCard books={[...shelf, read('bd', '2025-05-14')]} />)
+    expect(birthdayMedal().getAttribute('aria-label')).toBe('Birthday book, gold, unlocked, secret badge')
+    act(() => {
+      localStorage.removeItem(KEY)
+      window.dispatchEvent(new StorageEvent('storage', { key: KEY }))
+    })
+    expect(birthdayMedal().getAttribute('aria-label')).toBe('Hidden badge')
+    expect(within(row()).getByRole('button', { name: 'Save' })).toBeTruthy()
+    // localStorage.clear() in another tab sends key null
+    act(() => {
+      localStorage.setItem(KEY, '05-14')
+      window.dispatchEvent(new StorageEvent('storage', { key: null }))
+    })
+    expect(row().textContent).toContain('14 May')
+    // a junk value written elsewhere reads as no birthday
+    act(() => {
+      localStorage.setItem(KEY, '02-30')
+      window.dispatchEvent(new StorageEvent('storage', { key: KEY }))
+    })
+    expect(birthdayMedal().getAttribute('aria-label')).toBe('Hidden badge')
+  })
+
+  it('31 in a 30-day month, and 29 February, and saving twice in a row', () => {
+    render(<BadgesCard books={shelf} />)
+    for (const [month, name] of [['04', 'April'], ['06', 'June'], ['09', 'September'], ['11', 'November']]) {
+      pickDay('31', month)
+      press('Save')
+      expect(within(row()).getByRole('alert').textContent).toBe(`There is no 31 ${name}.`)
+    }
+    pickDay('30', '02')
+    press('Save')
+    expect(within(row()).getByRole('alert').textContent).toBe('There is no 30 February.')
+    expect(localStorage.getItem(KEY)).toBeNull()
+    pickDay('29', '02')
+    press('Save')
+    expect(localStorage.getItem(KEY)).toBe('02-29')
+    expect(row().textContent).toContain('29 February')
+    press('Change birthday')
+    press('Save')
+    expect(localStorage.getItem(KEY)).toBe('02-29')
   })
 })

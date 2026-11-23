@@ -2,12 +2,12 @@
 id: T-0043
 title: "Add twelve badges: a 365-day streak, seasons, authors, formats and a secret Birthday book with the birthday entered once per device"
 description: "src/lib/badges.ts gets 365-day streak, Spooky season, Summer reader, Winter warmer, Superfan, Wide reader, Well-read, Mix it up, Library lover, E-reader, All ears and the secret Birthday book; the birthday (day and month) is entered once per device in the Badges block and kept only in this browser (D-0039)."
-status: Doing
+status: Done
 size: full
 depends_on: [T-0042]
 decisions: [D-0013, D-0014, D-0020, D-0022, D-0038, D-0039]
 raised_on: 2026-11-23
-done_on: ""
+done_on: 2026-11-23
 result: [https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/251]
 ---
 
@@ -593,7 +593,102 @@ either way.
 
 # Test
 
-To be written by the tester.
+By the tester on 2026-11-23 (night mode; Hanna not asked). **Verdict: passed.**
+
+**CI's run** (`gh run view 45101631136`, head `7f1cf63`, attempt 1, no retries): `checks / checks`
+green in 55 s: `harness check` all ✓, typecheck, `Test Files 103 passed | 1 skipped (104)`,
+`Tests 1289 passed | 9 skipped (1298)` (the 9 are the PocketBase-only `favourites.pocketbase`
+tests, skipped on every run), build ✓; Netlify preview ready. `shards` and `e2e` are skipped
+because this project has no e2e suite (the same on #249).
+
+**The task's checks, run here** (after `pnpm install --frozen-lockfile`):
+
+```
+$ git grep -n -i birthday -- src/server src/routes deploy src/lib/shelfMerge.ts src/lib/library.ts
+(nothing; exit 1)
+$ pnpm exec tsc --noEmit
+(exit 0)
+$ pnpm exec harness check
+✓ tasks: 42 tasks, index in step
+✓ decisions: 42 records, index complete, 3 overrules valid
+✓ engineers: 2 listed
+✓ generated files: current
+$ for i in 1..5: pnpm exec vitest run badges.test.ts birthday.test.ts BadgesCard.test.tsx \
+    BadgesCard.break.test.tsx BirthdayBadge.waiting.test.tsx colours.test.ts
+Test Files  6 passed (6)   Tests  130 passed (130)      (5 of 5 runs)
+```
+
+**Trying to break the twelve badges** (new `describe('… trying to break them (T-0043 tester)')`
+in `src/lib/badges.test.ts`, 9 tests, all passed first time, so no bug found):
+
+- *Spooky season:* 30 Sept and 1 Nov never count, 1 Oct does; October 2024 beats October 2026;
+  "Psychological Thrillers" counts; an October re-read of a book first read in March counts;
+  no genres, or a horror finish with no day: nothing, no throw.
+- *Winter warmer:* 23 and 27 Dec, 31 Dec, 1 Jan, 24 and 25 **January** and 26 November never
+  count; 24–26 Dec over three years gives the earliest (2024-12-25).
+- *Summer reader:* 27–31 Aug 2025 + 1–5 June 2026 stay apart (5 / 10, not 10); two summers that
+  both reach 10 give the first one's 10th day, a later bigger summer doesn't move it; finishes
+  with no day count for no summer.
+- *Authors and co-authors:* only the first author counts. 9 Pratchett + Good Omens with Gaiman
+  first stays 9 / 10; with Pratchett first it earns Superfan that day. 24 solo authors + one
+  book by two new co-authors = 25 first authors (Wide reader earned, Well-read 25 / 50), not 26.
+  An empty author list or a blank first author counts for nobody and doesn't throw.
+- *Mix it up:* library and borrowed count as paper, an old single `format: 'ebook'` and a
+  `storytelId` alone (Storytel) count; Other never does; a want-to-read audiobook doesn't.
+- *Library lover:* want-to-read and did-not-finish library books and a borrowed book don't count;
+  a library book read three times counts once (on its first finish); an old `format: 'library'`
+  counts.
+- *365-day streak:* a run from 1 June 2027 through 29 Feb 2028, split over two books with an
+  overlapping third (days counted once) and a 0-amount day elsewhere, earns it on day 365; a 0
+  amount inside the run is a gap (300 / 365); a 400-day run earns it on its 365th day.
+
+**Trying to break the birthday:**
+
+- *29 February:* finishes on 28 Feb and 1 March of 2025–2027 don't earn it; 29 Feb 2028 does
+  (team choice 8). In Chrome, Day 29 + February saves as `02-29` and reads "Birthday 29 February".
+- *Invalid dates:* "There is no 30 February." and "There is no 31 April / June / September /
+  November." with nothing stored, `aria-invalid` on the selects, gone on the next pick; month
+  only gives "Pick a day and a month."; a bad option passed to `badges()` (`''`, `13-40`, `abc`,
+  `5-14`, `05/14`, `2026-05-14`, `' 05-14'`) earns nothing and doesn't throw; `02-30` written by
+  another tab reads as none.
+- *Blocked storage* (the birthday key throwing on get / set / remove; in Chrome via
+  `Storage.prototype`, in a new jsdom test via a stubbed storage): the page loads with no
+  errors, Save doesn't throw, nothing is stored, the row stays *Empty* and Birthday book stays
+  hidden. (Nothing tells her it wasn't kept; the design has no state for it, and D-0039 asks
+  only that it reads as none and nothing throws.)
+- *Clearing removes the badge:* Clear (click, Enter or Space) → the stored value is gone and the
+  medal is "Hidden badge" again; another tab removing the key (or `clear()`, key `null`)
+  hides it at once without a reload and shows *Empty*; another tab setting it earns it at once;
+  removed by hand and reloaded: hidden. New jsdom test for the other-tab cases.
+- *Never leaves the device:* the grep above prints nothing, and the same search runs as a test
+  in `birthday.test.ts`; nothing in `src` walks every localStorage key (searched for
+  `Object.keys(localStorage)`, `localStorage.key(`, `.length`, `for … in`: none). In Chrome every
+  request during Save, Change and Clear was checked: none outside the dev server's own module
+  files carried "birthday", `05-14` or `02-29`.
+
+**F11 in Chrome with real keys** (`playwright-core`, Chrome headless, dev server with no backend
+on port 3161, no `POCKETBASE_URL`, no Netlify link; stopped afterwards): Space (key down + up) on
+a medal opens exactly one card, Space again closes it, Space doesn't scroll the page; Enter opens
+and closes; holding Enter (three keydowns, one keyup) and holding Space each toggle once; the
+open card has `aria-labelledby="badges-card-title"`, the closed one none; chosen + focused is
+`:focus-visible` with `rgb(38,29,23) 2px inset, rgb(244,234,217) 4px inset`. Birthday row by
+keyboard: typing "14", Tab, "May" into the closed selects stores nothing; Tab to Save, Enter
+stores `05-14`, focus on "Change birthday", Birthday book earned at once, row "Birthday 14 May
+Change Clear"; Space on Change → selects, focus on Day; Escape → *Set*, focus on Change; Tab to
+Clear, Space → cleared, focus on Day.
+
+**One thing seen, not reproduced:** in 4 of the first 8 runs of the Chrome script, in the
+dev server's first minutes, focus fell to the page after Save (or once after Clear): the row was
+right and the value stored, but the focus effect never called `focus()` (instrumented). It did not
+happen again in 40 more runs, among them 6× CPU throttling and four runs in parallel, and an
+instrumented build never showed a commit that used up the focus request without the target
+being there. Not a fail, since it can't be shown again. A follow-up for the developer: let the
+effect in `BirthdayRow` clear `focusNext` only once the element it names exists, so a commit in
+between can't use it up.
+
+**Record:** status, `result` (#251) and Log current; D-0038 and D-0039 exist; the UX designer's
+review is above (matches, no must-fix). Tests added: 9 in `badges.test.ts`, 3 in
+`BadgesCard.test.tsx`.
 
 # Log
 
@@ -631,3 +726,9 @@ To be written by the tester.
   on touch, Birthday book earned and its card, F11's keyup, inner rings on silver and gold, the
   unlabelled closed card). The growing toast list is accepted (the design needs it); the Dusty
   pile focus shot is fine. Handed to the **tester**.
+- 2026-11-23 tester: passed (CI green on attempt 1; the grep check empty, tsc, harness check;
+  130 new and affected tests 5 of 5 runs; the twelve badges' edges, 29 February, invalid dates,
+  blocked storage, clearing here and in another tab, no request carrying the birthday, and F11
+  with real Space and Enter in Chrome; 12 tests added). Seen once early, not reproduced: focus
+  falling to the page after Save; a hardening for the developer is under *Test*. Merged main in,
+  regenerated the index, marked #251 ready.
