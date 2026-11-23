@@ -6,7 +6,7 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 
 ## Open
 
-None.
+- [T-0043 Add twelve badges: a 365-day streak, seasons, authors, formats and a secret Birthday book with the birthday entered once per device](T-0043-new-badges-and-a-birthday-badge.md): src/lib/badges.ts gets 365-day streak, Spooky season, Summer reader, Winter warmer, Superfan, Wide reader, Well-read, Mix it up, Library lover, E-reader, All ears and the secret Birthday book; the birthday (day and month) is entered once per device in the Badges block and kept only in this browser (D-0039).
 
 ## Doing
 
