@@ -63,6 +63,8 @@ import { useDashboardLayout } from './useDashboardLayout'
 import { useArrangeBarHeight } from './useArrangeBarHeight'
 import { BadgesCard, CoverWallCard, RhythmCard, useBirthday } from './NewBlocks'
 import { badges, newBadges } from '#/lib/badges'
+import { CreaturesCard } from './CreaturesCard'
+import { useCreatures } from './creatures/CreaturesContext'
 
 const BADGES_SEEN = 'hannas-reading-list:badges-seen'
 /** the month whose wrap-up was opened or put away under Waiting for you (yyyy-mm) */
@@ -98,6 +100,8 @@ interface DashboardProps extends Props {
   onOpenCalendar?: (month: string) => void
   /** put a suggested book on the shelf ("New for you") */
   onAdd?: (book: NewBook) => void
+  /** the Creatures tab; `choose`: straight to choosing the first creature (a Hatch button) */
+  onOpenCreatures?: (choose?: boolean) => void
 }
 
 export interface PeriodPick {
@@ -149,7 +153,7 @@ type Drag = { id: BlockId; dx: number; dy: number } & (
   | { place: 'favourites'; drop: FavDrop | null }
 )
 
-export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChallenges, onOpenCalendar, onAdd }: DashboardProps) {
+export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChallenges, onOpenCalendar, onAdd, onOpenCreatures }: DashboardProps) {
   const open = (section: ChallengeSection) => (onOpenChallenges ? () => onOpenChallenges(section) : undefined)
   const now = new Date()
   // the period picked under "Books read"; the charts and records follow it
@@ -247,7 +251,29 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
   const dustOff = dustBook
     ? { book: dustBook, waited: waitedText(dustBook, today), onDismiss: () => keepDust(dustOffDismiss(dustState, dustBook, today)) }
     : undefined
-  const nothingWaiting = toRate.length === 0 && questions.length === 0 && freshBadges.length === 0 && !wrapUp && !dustOff
+  // her creature (T-0029): the welcome egg and the newest level-up wait here too, never in a pop-up
+  const creatures = useCreatures(books)
+  const hatchEgg = onOpenCreatures ? () => onOpenCreatures(true) : undefined
+  const creatureEgg = creatures.c.egg && hatchEgg ? { onHatch: hatchEgg } : undefined
+  const levelUp = creatures.levelUp
+  const creatureLevelUp = levelUp
+    ? {
+        text: levelUp.text,
+        onNice: () => creatures.api.see(levelUp.pet.id, levelUp.pet.level),
+        onVisit: () => {
+          creatures.api.see(levelUp.pet.id, levelUp.pet.level)
+          onOpenCreatures?.()
+        },
+      }
+    : undefined
+  const nothingWaiting =
+    toRate.length === 0 &&
+    questions.length === 0 &&
+    freshBadges.length === 0 &&
+    !wrapUp &&
+    !dustOff &&
+    !creatureEgg &&
+    !creatureLevelUp
 
   const blocks: Record<BlockId, React.ReactNode> = {
     waiting: (
@@ -260,6 +286,16 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
         onSeenBadge={seeBadge}
         wrapUp={wrapUp}
         dustOff={dustOff}
+        creatureEgg={creatureEgg}
+        creatureLevelUp={creatureLevelUp}
+      />
+    ),
+    creatures: (
+      <CreaturesCard
+        c={creatures.c}
+        onFeed={creatures.feed}
+        onOpen={onOpenCreatures ? () => onOpenCreatures() : undefined}
+        onHatch={hatchEgg}
       />
     ),
     badges: <BadgesCard books={books} />,
@@ -310,7 +346,8 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
   }
 
   /** a block that has nothing to say right now stays out of the way (still shown while arranging) */
-  const showing = (id: BlockId) => arranging || !(id === 'waiting' && nothingWaiting)
+  const showing = (id: BlockId) =>
+    arranging || !((id === 'waiting' && nothingWaiting) || (id === 'creatures' && !creatures.c.pet && !creatures.c.egg))
   const columnsOf = (section: SectionId): BlockId[][] =>
     narrow ? [singleColumn(layout.sections[section])] : layout.sections[section]
   const scroller = () => root.current
