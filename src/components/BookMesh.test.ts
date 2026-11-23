@@ -1,3 +1,5 @@
+import type { Book } from '#/lib/library'
+import { hasMedal } from '#/lib/library'
 import { describe, expect, it } from 'vitest'
 import { MATCH_DIM, MATCH_FORWARD, MATCH_GLOW, bookLight } from './BookMesh'
 
@@ -131,5 +133,23 @@ describe('which look a book gets (T-0034)', () => {
     expect(bookLook({ detailed: true, takenOut: true })).toBe('hardcover')
     expect(bookLook({ detailed: false, takenOut: false })).toBe('shelf-block')
     expect(bookLook({ detailed: false, takenOut: true })).toBe('block')
+  })
+})
+
+describe('the ridges follow the same "has a medal" rule as the medal (T-0037, F5)', () => {
+  const dims = { w: 0.19, h: 0.29, t: 0.034 }
+  const book = (status: string, readCount?: number) =>
+    ({ id: 'x', title: 'X', authors: [], color: '#000', status, addedAt: 0, ...(readCount ? { readCount } : {}) }) as unknown as Book
+
+  it('read: 2 (top only); did not finish, read before: 2; did not finish, never read: 4; reading: 4; want: 4', async () => {
+    const { ridgesFor } = await import('./BookMesh')
+    expect(ridgesFor(book('read'), dims).length).toBe(2)
+    expect(ridgesFor(book('dnf', 1), dims).length).toBe(2)
+    expect(ridgesFor(book('dnf'), dims).length).toBe(4)
+    expect(ridgesFor(book('reading'), dims).length).toBe(4)
+    expect(ridgesFor(book('want'), dims).length).toBe(4)
+    // a read-before DNF book has a medal, and its two ridges are both at the top, clear of it
+    expect(hasMedal(book('dnf', 1))).toBe(true)
+    expect(ridgesFor(book('dnf', 1), dims).every((r) => r.position[1] > 0)).toBe(true)
   })
 })
