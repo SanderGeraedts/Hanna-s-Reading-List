@@ -114,6 +114,32 @@ describe.each(['low', 'high'] as const)('the den on %s', (q) => {
     expect(total.calls).toBeLessThanOrEqual(BUDGET[q].calls)
     expect(total.triangles).toBeLessThanOrEqual(BUDGET[q].triangles)
   })
+
+  /**
+   * T-0046 / D-0040 §6: the current pet roams by moving the creature the den
+   * already draws — its group's position and rotation — so the den costs exactly
+   * what it cost before, wherever the pet happens to stand. Roaming may never add
+   * an object; if this fails, something was drawn to make a pet move.
+   */
+  it('a roaming current pet costs nothing: the same creature, moved, anywhere in the den', () => {
+    const creature = creatureFor('red-fox', 'grown', false, q)
+    const onCushion = new THREE.Group()
+    onCushion.add(creature)
+    onCushion.position.set(0, seatYOf(undefined), 0)
+    const before = cost(onCushion, q)
+    // the pet gets up, walks to the far corner of its patch, turns and stands on the floor
+    const spots: Array<[number, number, number]> = [
+      [0.6, 0.01, 0.5],
+      [-0.6, 0.01, -0.2],
+      [0.3, 0.01, 0.3],
+    ]
+    for (const spot of spots) {
+      onCushion.position.set(...spot)
+      onCushion.rotation.y = Math.PI / 3
+      expect(cost(onCushion, q)).toEqual(before)
+      expect(onCushion.children.length).toBe(1)
+    }
+  })
 })
 
 describe('the six spots', () => {

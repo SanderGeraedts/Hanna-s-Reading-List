@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { DEFAULT_LAYOUT, type BlockId } from '#/lib/dashboardLayout'
 
 // no server: the dashboard signed out, its server functions mocked like the other dashboard tests
