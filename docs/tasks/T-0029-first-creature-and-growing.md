@@ -2,13 +2,13 @@
 id: T-0029
 title: "Hatch her first book creature from a welcome egg, earn cookies by reading, and let it grow, with a Creatures tab and a dashboard block"
 description: "CR1 of the book creatures (D-0033): cookies worked out from the reading log, a welcome egg (no starting cookies) from which she chooses her first creature among the five commons, with a name, feeding and growing by itself on reading days, baby/young/grown-up stages, a missing-you look; a Creatures tab (home) and a dashboard block; hatches and level-ups in Waiting for you; her choices kept on the device and sent to the account once T-0028 is live (D-0034)."
-status: Open
+status: Doing
 size: full
 depends_on: [T-0027]
 decisions: [D-0002, D-0003, D-0008, D-0013, D-0014, D-0020, D-0022, D-0025, D-0030, D-0033, D-0034]
 raised_on: 2026-11-22
 done_on: ""
-result: []
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/250"]
 ---
 
 # Goal
@@ -66,6 +66,44 @@ this Hanna has one creature that grows as she reads.
 4. `pnpm run build` and `pnpm exec harness check` pass.
 5. **Hanna** confirms on the live site that her first creature hatched and grows when she reads.
 
+Added by the UX designer (Design below; the tester checks each on `pnpm run dev`, 390 × 844 and
+1280 × 800, lavender and midnight):
+
+6. **Welcome and hatch.** Before the hatch, Waiting for you shows "A welcome egg is waiting for
+   you!" with **Hatch**, and nothing in it opens by itself. Hatch goes to the Creatures tab at
+   *Choose your first creature*: five creatures, each a radio with its name, none picked at first,
+   **Hatch** disabled until one is picked; arrow keys move between them. Hatching shows the crack,
+   then *Say hello to your …!* with a suggested name in the field, **🎲 Another name** gives a
+   different name from the same species' list, an empty name shows "Give your creature a name."
+   and isn't saved. **Not yet** goes back to the egg without saving anything. After the hatch the
+   egg line is gone from Waiting for you on the next visit and the hatch can't be repeated.
+7. **The tab and the block agree.** The Creatures tab and the dashboard block show the same name,
+   level, stage word, growth bar and 🍪 balance, before and after a Feed, and after a reload.
+   **Feed** gives 5 🍪 (or what's left if fewer), its label says how many, and it is disabled at
+   0 or below; a negative balance shows as "🍪 −4". The block can be starred, moved and hidden like
+   every block, and a layout saved before this task still loads with the block added.
+8. **Earning shows.** The tab's *This week* list shows a line per reading day with its minutes,
+   🌙 for sleep-read minutes, 📗 per finished book and the day's cookies; the day lines add up
+   exactly to the week total, and a day with only a sleep read gives half what the same minutes give
+   otherwise.
+9. **Growing.** The stage word follows the level (Baby 1–3, Young 4–9, Grown-up 10 and up, ⭐ after
+   the name from 11); the 3D creature changes proportions at 4 and 10. A level-up shows one line in
+   Waiting for you ("Biscuit reached level 4!" or, at a new stage, "Biscuit is young now!" / "Biscuit
+   is all grown up!") with **Nice!** and **Visit**, only the newest one, gone on this device after
+   either button.
+10. **Moods.** With the last reading day 3 or more days ago the creature looks sad and sleepy (eyes
+    half shut, head down) and the tab and block say "Biscuit misses you"; on the day she reads again
+    it says "Biscuit is so happy you're back!" and looks normal. From 22:30 to 06:00 (device time) it
+    looks sleepy and says "Biscuit is sleepy". Nothing about a mood ever shows in Waiting for you.
+11. **Keyboard and screen reader.** Everything above is reachable with Tab, Enter, Space, arrows
+    and Escape, with a visible focus ring; every 3D canvas is hidden from the screen reader and has a
+    text description next to it; Feed, a level-up and the hatch are announced in a polite live region
+    with the wording in Design §10; focus lands where Design §10 says after each step.
+12. **Movement.** At 390 px the creature only breathes and blinks (and moves on a tap: the hatch,
+    a feed); with *reduce motion* on, it doesn't move at all and the crack is a quick fade. The
+    dashboard block's creature never moves. Rendering stops when the page is hidden, another tab is
+    open or the book panel is over it.
+
 # Notes
 
 - **Order:** after the harness v0.9.0 upgrade and T-0026; before the better world map. T-0028 may be
@@ -91,10 +129,640 @@ this Hanna has one creature that grows as she reads.
 
 # Design
 
-For the UX designer, before the build: the Creatures tab (home), the dashboard block, the Waiting
-for you lines and the hatch moment, phone and computer, both wallpapers.
+UX designer, 2026-11-23 (night; nothing asked, the recommended option taken, real questions at the
+end under *Questions for Hanna in the morning*). Built on T-0027's models and its Design §2 (stage
+factors), §4 (expressions by squashing `part:eyes`) and §9 (lights, den view). English, British
+spelling, as the rest of the app. The example creature below is a house cat called Biscuit.
+
+Scope: one creature, cookies, feeding, growing, moods, the tab, the block, two Waiting lines. Not
+here (leave room, but show **no** empty placeholders or "coming soon"): album, shop, more eggs,
+several pets, tricks, outfits, den life, the shelf creature.
+
+## 1. The numbers this design assumes
+
+They go in `src/lib/creatures/numbers.ts` (tunable without a new decision, D-0033 §6):
+
+| What | Value | Why |
+|---|---|---|
+| Cookies | D-0033 §2 exactly (1 🍪 / 5 min, +10 per finish, sleep reads half) | decided |
+| One feed | **5 🍪**, or what's left if fewer | a "bowl"; 2 taps a day at 45 min |
+| Growth per 🍪 fed | 1 | easy to read: "12 🍪 to go" is true |
+| Growth by itself | **+3 on each reading day** (from the hatch day on) | "a little", D-0033 §10 |
+| Level n → n+1 | **20 + 5 × (n − 1)**, at most 80 | early levels quick, later slower |
+| Stages | **Baby 1–3, Young 4–9, Grown-up 10+**; ⭐ by the name from 11 | D-0033 §11 |
+
+At 45 minutes a day (9 🍪 + 3) that is young after about 6 days and grown-up after about a month.
+Growth is worked out like cookies (never stored): fed cookies come from her `feed` choices, growth
+by itself from the reading log from the hatch day. Level 1 at the hatch, growth 0.
+
+## 2. The page tab
+
+A fifth tab after Calendar: icon **🐾**, label **Creatures**, `?view=creatures`. On a phone just
+the icon, like the others. The five tabs, the ☰ menu and the account button must fit on one line at
+360 px; if they don't, narrow the tab padding down to the 44 px tap size, never below.
+
+## 3. The welcome flow (in the tab, never a pop-up)
+
+**3a. The egg (before the hatch).** From `CREATURES_START` on, until she hatches it:
+
+- **Waiting for you**: a line with 🥚, **"A welcome egg is waiting for you!"** and one button
+  **Hatch** (primary). No "Later": it stays until hatched, like a book waiting for its rating. It
+  is the first line in the block (above the wrap-up).
+- **The tab**: the den (§5) with the egg sitting on the cushion instead of a creature, and under it
+  the heading **"A welcome egg"** and **Hatch** (primary). The cookie pill shows what she has earned
+  so far ("🍪 9"); no Feed button yet.
+- **The dashboard block**: the egg (still) with **"A welcome egg"** and **Hatch**.
+- **The egg's look** (3D, built here from primitives like T-0027 §3): a sphere scaled [1, 1.28, 1],
+  0.55 model units tall, paper cream `#f3e9d8`, matte, with 6 small gold `#d9a85b` spots (flattened
+  spheres) scattered on the upper half. It sits a little tilted (6°) on the cushion. On a computer
+  it rocks gently every ~6 s (±4°, 0.8 s); on a phone it holds still.
+
+Every Hatch button (Waiting line, block, tab) goes to the tab and opens step 3b.
+
+**3b. Choose your first creature.** Replaces the den card's content (same card, same place):
+
+- Heading **"Choose your first creature"** (`h2`, focus moves here).
+- **One** 3D canvas (not five: canvas limit, T-0027 §9) behind a grid of five tiles in species
+  order: House cat, Red fox, Capybara, Eurasian red squirrel, Adélie penguin, each the grown-up in
+  its normal palette, ¾ turned, with its name under it in normal text. 1280: one row of five tiles
+  (~150 px). 390: three on the first row, two centred on the second (~110 px).
+- The tiles are a **radio group** (label "Choose your first creature"); none picked at first. The
+  picked tile gets the gold outline and gold wash (`--accent-line`, `--accent-soft`) and its creature
+  turns slowly to face her (computer) or does one small hop (phone).
+- Under the grid: **"Hatch {name}"** (primary, e.g. "Hatch the house cat"; disabled with only
+  "Hatch" until one is picked) and **Not yet** (secondary: back to 3a, nothing saved).
+- Display names in the button use "the" + lower-case name: the house cat, the red fox, the capybara,
+  the red squirrel, the Adélie penguin.
+
+**3c. The crack** (on her tap only, also on a phone): the grid fades, the egg appears big in the
+den, wobbles three times (0.9 s), splits into two halves that tip away (0.4 s) and the baby pops up
+(scale 0.6 → 1, 0.3 s, a small overshoot). The `hatch` choice is saved **when she taps Hatch**,
+before the animation, so a reload mid-crack never loses it. If the egg id comes out shiny (D-0033
+§7), the baby is built with its shiny palette and the name step shows "✨ A shiny one!" (the gold
+sparkle is T-0030's). *Reduce motion*: no wobble or pop, a 200 ms cross-fade from egg to baby.
+
+**3d. Say hello.** Under the den, replacing the egg heading:
+
+- Heading **"Say hello to your {species}!"** (focus moves here), e.g. "Say hello to your house
+  cat!"; for a shiny a line under it: **"✨ A shiny one!"**.
+- A text field labelled **Name**, filled with the suggested name, all of it selected.
+- **🎲 Another name** (secondary): the next name from the species' list (§9), round and round.
+- **"That's the one!"** (primary): saves the name (a `name` choice only when it differs from the
+  first suggestion; the first suggestion is the default without a choice) and shows the home (§5).
+- Rules: trimmed, 1 to 20 characters (the field stops at 20). Empty → the field's error **"Give
+  your creature a name."**, nothing saved. Any letters and emoji are fine.
+- If she leaves here without tapping, the creature keeps the first suggested name.
+
+## 4. Cookies and how earning shows
+
+- **The cookie pill**: "🍪 23" in a gold-outlined pill (`--accent-line`, cream text, `--fs-large`),
+  in the tab's header next to the h1 and in the block's food bowl. Below zero after a fix to a past
+  day: "🍪 −4" (a real minus), same style, Feed disabled, no explanation (D-0014).
+- **Next to the pill**: "+9 today" in `--muted` / `--header-muted`, only when today earned
+  something. That is the only live sign of earning: no toasts, no counting-up animation.
+- **This week** (in the tab, §5): a `<details>` card, open on a computer, closed on a phone. Summary:
+  **"This week · +34 🍪"** (the last 7 days including today). Inside, one line per reading day,
+  newest first, days without reading left out:
+  - `Today` / `Yesterday` / `Mon 23 Nov`, then what was read: **"45 min"**, **"🌙 20 min"** for
+    sleep-read minutes (shown apart so half is visible without a hint), **"📗 The Hobbit"** per
+    finished book; then right-aligned **"+21 🍪"**.
+  - Minutes rounded to whole minutes, "1 h 05 min" from 60 on.
+  - The day's cookies are the difference of the running total (earned through that day minus
+    earned through the day before), so the lines add up exactly to the week total even though the
+    rounding is on the total (D-0033 §2).
+  - No reading this week: the summary says **"This week · nothing yet"** and the list is empty
+    (an empty-block message, allowed by D-0014).
+- Before the start day nothing earns and the tab shows nothing of it.
+
+## 5. The Creatures tab (home)
+
+Same page frame as Calendar and Challenges: the wallpaper, an `h1` **Creatures** on the wallpaper
+in `--header-ink` with the cookie pill and "+9 today" at its right (they wrap under the h1 at
+390). Below, cards on `--surface` (`dash-card` look), so the wallpaper only shows around them;
+both wallpapers need nothing else.
+
+**1280 × 800**: a grid with the den card left (about 62 %, canvas 16:10, ~700 × 440) and a right
+column with the **creature card** on top and **This week** below. Later tasks add cards (album,
+shop) under this grid; nothing reserved now.
+
+**390 × 844**: one column, 16 px side gutter: den card (canvas full card width × 300 px), creature
+card, This week (closed).
+
+**The den** (3D, inside the den card, its own background): a cosy corner seen about 10° from above
+and ¾ turned (T-0027 §9): a warm back wall `#3a2c24` fading into a wooden floor `#5a3f2c`, a round
+rug in muted plum `#6e4f8f`, a round floor cushion in gold `#d9a85b` (matte) where the creature
+sits, and a small wooden **food bowl** beside it holding a little pile of 3D cookies (`#c98a4b`
+discs): 0 cookies at a balance of 0 or less, then one cookie per 5 🍪 up to 5. Lights as T-0027 §9
+(warm hemisphere, ambient, warm key from the top left, soft back light). Size by stage (the stage
+factors of T-0027 §2 are built in by `makeCreature`): the grown-up fills about 60 % of the canvas
+height, young about 46 %, baby about 33 %, always standing on the cushion's centre. Phone: quality
+`low`, no shadow maps (a soft dark disc under the cushion fakes the shadow), dpr up to 1.5.
+Computer: `high`, shadows, dpr up to 2. The canvas is `aria-hidden`; a visually hidden line next to
+it describes it (§10).
+
+**The creature card**, top to bottom:
+
+1. **Name** in the serif heading size (`--fs-heading`), with ⭐ after it from level 11 and "✨"
+   after a shiny's name; long names wrap, never cut off in the tab. Beside it **Rename** (small
+   secondary button, ✏️ icon + word).
+2. **"Level 3 · Baby"** in `--fs-body`, then the species in `--muted`: "House cat".
+3. **The growth bar**: a 10 px pill bar, track `--surface-sunken`, fill `--accent`; under it at the
+   right "18 / 30" in `--fs-small` `--muted`. It fills smoothly (300 ms) after a feed; on a level-up
+   it fills, empties and goes on (no reduce-motion animation: it just jumps).
+4. **Next**: **"Next: level 4 · 12 🍪 to go"**; when the next level starts a stage: **"Next: young at
+   level 4 · 12 🍪 to go"** / **"Next: grown-up at level 10 · 40 🍪 to go"**. "🍪 to go" is the
+   growth still needed (1 🍪 = 1 growth).
+5. **The mood line** (§7), only when there is one, in `--fs-body` with its emoji.
+6. **The food bowl**: the cookie pill and **"Feed 5 🍪"** (primary; "Feed 3 🍪" when 3 are left;
+   disabled "Feed 5 🍪" at 0 or below).
+
+**Rename**: the name turns into the Name field (current name selected) with **Save** (primary) and
+**Cancel**; Enter saves, Escape cancels, the same empty-name error as §3d. After either, focus goes
+back to Rename. Saved as a `name` choice.
+
+**Feeding** (in scope in CR1: it is how she grows it). One tap = one feed of 5 🍪 (or the rest).
+On the tap: a 🍪 hops from the button toward the den and fades (CSS, 500 ms), one cookie disappears
+from the 3D bowl, the creature squashes its eyes happy (^ ^, `part:eyes` scale y 0.35, 0.8 s) and
+bobs once; the balance and the bar update at once. Fast taps each count; the developer may combine
+taps within 2 s into one `feed` event with the total, to keep the log small (D-0034). Feeding never
+asks a confirm. *Reduce motion*: no hop, no bob, the eyes still blink happy.
+
+**Empty, loading and error states**
+
+- Loading the 3D: the den card shows its own background colour (`#3a2c24`) at the canvas size, no
+  spinner; the creature card is there at once (it's all worked out from the books).
+- No WebGL or the canvas fails: the den card is left out; the creature card and This week stay.
+- Before `CREATURES_START` (only on a test or a wrong device clock): the tab shows the h1 and one
+  empty-state line **"Your creatures arrive soon."**; the block hides itself.
+- Offline, not signed in, or the server answers 404 for choices: no difference anywhere (D-0034);
+  no sync message of its own.
+
+## 6. Growing (stages and levels)
+
+- Stages are visible in the 3D only through the T-0027 §2 factors (big head, short limbs as a
+  baby). No new models, no other colours.
+- The level word and number change in the card, the block and Waiting for you. Beyond level 10 the
+  number keeps going ("Level 14 · Grown-up ⭐").
+- A level-up on her tap (Feed): the bar fills to the end, the creature does a slightly bigger happy
+  bob (both phone and computer: it's on a tap), and the live region announces it (§10). A level-up
+  from growth by itself happens while she isn't looking; she sees it in Waiting for you.
+- Several levels at once (a long reading day): the bar jumps to the right place, one announcement
+  with the new level.
+
+## 7. Moods
+
+Computed from her reading log and the device clock; a mood is never saved and never shows in
+Waiting for you (no guilt notifications). One mood at a time, first match wins:
+
+| Mood | When | Look | Line (tab and block) |
+|---|---|---|---|
+| **Missing you** | last reading day is 3 or more days before today (or no reading day since the hatch, 3+ days after it) | eyes half shut (`part:eyes` scale y 0.5), head tipped down 8°, breathing slower (6 s) | **"💤 Biscuit misses you"** |
+| **Sleepy** | 22:30 to 06:00 on the device | eyes almost shut (scale y 0.2), head tilted 6° sideways, breathing slower (6 s) | **"🌙 Biscuit is sleepy"** |
+| **Back** | today is a reading day and the reading day before it was 3 or more days earlier | normal look, one happy squint when the tab opens | **"💛 Biscuit is so happy you're back!"** |
+| (normal) | otherwise | normal | no line |
+
+"Missing you" wins over "Sleepy" at night (it already looks sleepy). Moods never change cookies,
+levels or anything she has.
+
+## 8. The dashboard block "Creatures"
+
+Block id `creatures`, title **Creatures**, with the usual block chrome (☆ star, drag, hide, and
+**Open ›** to `?view=creatures`). Default place: section **Today**, right column, right after
+**Monthly challenge**; saved layouts get it where it is by default, as every new block.
+
+Inside, a row: a small still picture of the creature on the left (96 × 96 at 390, 120 × 120 at 1280,
+framed to fill its tile whatever the stage, ¾ turned, on a `--surface-sunken` round tile; the den is
+not drawn here) and on the right:
+
+1. **Name** (bold, one line, ellipsis when long) and **"Level 3 · Baby"** under it.
+2. The **growth bar** (as in the tab, without the numbers).
+3. **Next**: "Next: level 4 · 12 🍪 to go" (§5.4). Until T-0030 this is always the next level.
+4. The mood line, when there is one.
+5. The **food bowl**: the cookie pill and **"Feed 5 🍪"** (as in the tab; feeding from here does
+   the same thing, minus the 3D reaction).
+
+Before the hatch: the egg instead of the creature, **"A welcome egg"** and **Hatch**. The block
+picture is rendered once (`frameloop="demand"`, one frame) and again only when the creature, stage,
+mood or palette changes: it never moves.
+
+## 9. Suggested names
+
+Per species, a short list in `numbers.ts` (or next to it); the first suggestion is picked by a seeded
+hash of the egg id over the list, so every device suggests the same name. 🎲 steps through the list
+from there.
+
+- House cat: Biscuit, Mochi, Pudding, Marmalade, Tofu, Whiskers
+- Red fox: Maple, Ember, Clementine, Rusty, Pumpkin, Ginger
+- Capybara: Pebble, Dumpling, Bean, Potato, Coco, Waffle
+- Eurasian red squirrel: Hazel, Nutmeg, Acorn, Conker, Cinnamon, Pip
+- Adélie penguin: Waddles, Pepper, Oreo, Puffin, Button, Domino
+
+## 10. Keyboard and screen reader
+
+- **Canvases** are always `aria-hidden="true"` and out of the tab order. Next to each, a visually
+  hidden text: tab **"Biscuit the house cat, a baby, sitting on its cushion in the den."** (+ " It
+  misses you." / " It is sleepy." with a mood); block **"Biscuit the house cat, level 3."**; egg
+  **"A welcome egg on a cushion."**
+- **Tab order** in the tab: h1 area (nothing focusable but links in the header) → den card controls
+  (Hatch / the radio group and its buttons) → Rename → Feed → This week summary.
+- **Choose step**: native radios (visually the tiles), one tab stop, arrow keys move and pick,
+  Space picks. Focus to the heading "Choose your first creature" on entering. **Hatch {name}** is a
+  normal button after the group; Not yet after it and returns focus to the tab's Hatch button.
+- **After Hatch**: focus moves to the heading "Say hello to your house cat!" once the crack is done
+  (immediately with reduce motion). After "That's the one!", focus goes to the creature's name
+  heading (`tabIndex=-1`).
+- **Live region** (one polite `role="status"` per page, visually hidden):
+  - hatch: **"Your house cat hatched!"** (+ " A shiny one!")
+  - feed: **"Biscuit ate 5 cookies. 18 cookies left."**
+  - level-up on a feed: **"Biscuit reached level 4 and is young now!"** or **"Biscuit reached level
+    5!"**
+  - rename: **"Renamed to Mochi."**
+- **Labels**: the cookie pill reads "23 cookies" (the 🍪 is `aria-hidden`, the number with a
+  visually hidden "cookies"); "−4 cookies" below zero. Feed: **"Feed Biscuit 5 cookies"**. Disabled
+  Feed stays focusable with `aria-disabled="true"` so its label is still read. The growth bar is a
+  `role="progressbar"` with `aria-valuetext="18 of 30 to level 4"`. 🎲: "Another name". Rename:
+  "Rename Biscuit".
+- Focus rings: the existing gold `:focus-visible` ring everywhere, including on the tiles.
+- Waiting for you lines: the same structure and buttons as the badge lines (§11), so the existing
+  focus handling (focus back to the block heading when a line goes) applies.
+
+## 11. Waiting for you (D-0013)
+
+Two new kinds of line, same layout as the badge lines (icon, bold line, chips):
+
+| Line | Icon | Text | Buttons | Goes away |
+|---|---|---|---|---|
+| Welcome egg | 🥚 | **"A welcome egg is waiting for you!"** | **Hatch** (primary) → the tab, step 3b | when hatched (everywhere) |
+| Level-up | ⭐ | **"Biscuit reached level 5!"**; at a new stage **"Biscuit is young now!"** / **"Biscuit is all grown up!"** | **Nice!** (primary), **Visit** → the tab | after either button, on this device (like badges); a newer level-up replaces it |
+
+- Only the newest level-up shows (one line). Seen levels are kept per device, like seen badges;
+  the first time a device opens after the hatch, level-ups from before the newest are not listed.
+- A level-up she caused herself with Feed while on the page counts as seen at once (she saw it).
+- Order in the block: welcome egg first, then level-up, then what is there today.
+- Nothing else from creatures goes here in CR1 (no moods, no "cookies earned").
+
+## 12. Phone performance and movement
+
+- **One canvas per page at most, plus the block's still one** on the dashboard (rendered once).
+- **Tab, phone (≤ 720 px or coarse pointer)**: idle is breathing (body scale y ±1.5 %, 4 s) and a
+  blink every 4–7 s; nothing else moves unless she taps (crack, feed, level-up). Run the frame loop
+  on `demand` and invalidate at most ~20 times a second for the idle, `low` quality, no shadow maps.
+- **Tab, computer**: breathing, blinking, a small head tilt or look to the side every ~8 s, the egg's
+  rocking; 60 fps is fine; `high` with shadows.
+- **Reduce motion** (`prefers-reduced-motion: reduce`): no idle at all, no hop, no bob; the crack is
+  a fade; bars jump.
+- **Stops** (`frameloop="never"`): page hidden (`visibilitychange`), another tab open (the tab's
+  canvas unmounts or stops), the book panel or any sheet over it. Same as `CreaturesPreview.tsx`.
+- Building a creature (`makeCreature`) happens once per species, stage and palette and is reused;
+  the den is built once.
+
+## 13. Wording, all in one place
+
+| Where | Text |
+|---|---|
+| Tab | Creatures (🐾) |
+| Page h1 | Creatures |
+| Cookie pill | 🍪 23 · 🍪 −4 · "+9 today" |
+| Egg heading | A welcome egg |
+| Buttons | Hatch · Hatch the house cat · Not yet · That's the one! · 🎲 Another name · Rename · Save · Cancel · Feed 5 🍪 · Nice! · Visit · Open › |
+| Choose heading | Choose your first creature |
+| Hello heading | Say hello to your house cat! |
+| Shiny | ✨ A shiny one! |
+| Name field | Name · error: Give your creature a name. |
+| Card | Level 3 · Baby · House cat · 18 / 30 · Next: level 4 · 12 🍪 to go · Next: young at level 4 · 12 🍪 to go |
+| Stages | Baby · Young · Grown-up |
+| Moods | 💤 Biscuit misses you · 🌙 Biscuit is sleepy · 💛 Biscuit is so happy you're back! |
+| This week | This week · +34 🍪 · This week · nothing yet · Today · Yesterday · Mon 23 Nov · 45 min · 🌙 20 min · 📗 The Hobbit · +21 🍪 |
+| Waiting | A welcome egg is waiting for you! · Biscuit reached level 5! · Biscuit is young now! · Biscuit is all grown up! |
+| Empty (tab before start) | Your creatures arrive soon. |
+| Block title | Creatures |
+
+## 14. Screenshots (in `docs/tasks/T-0029-screens/`)
+
+Demo data, the creature a house cat named Biscuit unless said otherwise. `390` = 390 × 844,
+`1280` = 1280 × 800; `lav` / `mid` = the wallpaper.
+
+1. `tabs-390-lav.jpg`: the header with five tabs on one line.
+2. `waiting-egg-390-lav.jpg`, `waiting-egg-1280-mid.jpg`: Waiting for you with the egg line, and the
+   block in its egg state.
+3. `tab-egg-390-lav.jpg`, `tab-egg-1280-mid.jpg`: the tab before the hatch.
+4. `choose-390-lav.jpg`, `choose-390-mid.jpg`, `choose-1280-lav.jpg`, `choose-1280-mid.jpg`: one
+   creature picked (the red fox on one pair, the capybara on the other).
+5. `hello-390-lav.jpg`, `hello-1280-mid.jpg`: the name step; `hello-empty-390-lav.jpg`: the empty-name
+   error.
+6. `tab-390-lav.jpg`, `tab-390-mid.jpg`, `tab-1280-lav.jpg`, `tab-1280-mid.jpg`: the home with a
+   balance, This week open on 1280 (a sleep-read day and a finished book in it).
+7. `stages-1280-lav-baby.jpg`, `-young.jpg`, `-grown.jpg`: the same creature at levels 2, 6, 11.
+8. `fed-1280-lav.jpg`: right after a feed (bar moved, one cookie fewer in the bowl).
+9. `rename-390-lav.jpg`: the rename field open.
+10. `block-390-lav.jpg`, `block-390-mid.jpg`, `block-1280-lav.jpg`, `block-1280-mid.jpg`: the dashboard
+    block.
+11. `waiting-levelup-390-lav.jpg`: a stage level-up line ("Biscuit is young now!").
+12. `missing-390-lav.jpg`, `sleepy-390-mid.jpg`, `back-1280-lav.jpg`: the three moods (a test clock or
+    demo data may set them).
+13. `negative-390-lav.jpg`: "🍪 −4" with Feed disabled.
+14. `shiny-hello-1280-mid.jpg`: a shiny hatch, if a dev-only seed can force one (otherwise note it
+    in *Log*).
+
+## Questions for Hanna in the morning
+
+Taken with the recommended option tonight; each is easy to change in `numbers.ts` or the wording.
+
+**Answered by Hanna on 2026-11-23 at 03:30 (relayed by the coordinator): she kept every pick, 1 to 5,
+as recommended.** Nothing changes.
+
+1. **How fast it grows.** Young after about 6 days and grown-up after about a month at 45 minutes
+   a day (Baby levels 1–3, Young 4–9, Grown-up from 10, levels go on after). *Recommended: as is.*
+   Faster or slower?
+2. **One Feed = 5 cookies.** A tap gives one bowl of 5 🍪; with 23 cookies she taps a few times.
+   *Recommended: as is* (a "Feed all" button would empty what she'll later want for eggs in the
+   shop). Or would she like a Feed all?
+3. **The names.** Six suggestions per creature (§9), Biscuit for the cat and so on. *Recommended:
+   as is.* Any names she'd like added?
+4. **Sleepy hours** 22:30 to 06:00 on the device. *Recommended: as is.* Another bedtime?
+5. **The tab's icon** 🐾 after Calendar, and the dashboard block right after Monthly challenge in
+   Today. *Recommended: as is.* Elsewhere?
+
+## Review after building (2026-11-23)
+
+UX designer, at night, nothing asked. I looked at the 35 screenshots in `T-0029-screens/`,
+`git diff origin/t-0027-book-creatures...HEAD -- src`, and sampled pixels from the den in
+`tab-1280-lav` and `tab-390-lav`.
+
+**Verdict: does not pass yet. Three must-fix items, all small.** Everything else matches the
+Design or is a change I accept. Back to the developer; after the fixes, new `tab-egg-*`, `tab-*`
+and `block-*` screenshots, then the re-review.
+
+### Must fix
+
+1. **The den is too dark: its corner reads as a black hole, not a cosy room** (§5 "a warm back
+   wall `#3a2c24`"). The material colour is right, but the light doesn't reach the walls. On screen
+   the back wall comes out `#241208` and the left wall `#0f0503`, almost black. On midnight, a dark
+   card around a dark den makes the creature float in the dark. The key light at x −2.5 sits
+   behind the left wall's plane (x −2.2), so that wall only gets ambient light, and ACES tone
+   mapping darkens what's left. **Wanted:** on screen the back wall about `#3a2c24` (each channel
+   within ±12) and the left wall a little darker but clearly warm brown (no channel below `#2a`,
+   red > green > blue). The floor, rug, cushion and creature stay as they are now (they look
+   right). How (light positions, a warm fill from the front right, no tone mapping on the walls) is
+   up to the developer. Check it the same way: sample both walls in a new `tab-1280-lav` and
+   `tab-390-mid`.
+2. **The egg's gold spots stick out like slits, and look like closed eyes and antennae**
+   (§3a "6 small gold spots (flattened spheres)"). See `tab-egg-390-lav`, `tab-egg-1280-mid` and
+   the block egg in `waiting-egg-1280-mid`. The spots should lie flat on the shell as round gold
+   dots, and none should stick out past its outline. Likely cause: `m.lookAt(x*2, y*2, z*2)` in
+   `EggHalf` takes a world point, but these are local coordinates inside the scaled `[1, 1.28, 1]`
+   group on the cushion, so each flattened disc ends up turned sideways. The egg must read as an
+   egg at 96 px in the block as well as in the den.
+3. **`CREATURES_START` must be the day it goes live, not 2026-11-23** (developer choice 6). With an
+   earlier start, Hanna's first visit already shows cookies earned before she could see the egg
+   (`🍪 135` in the screenshots). That breaks "a welcome egg and **no** cookies" (D-0033 §3, her own
+   answer) and makes the first *This week* list show days from before the feature existed. When
+   rebasing on `main` to open the PR, set it to the planned merge day. If the merge slips, the
+   tester moves it before marking the PR ready. A test already pins "balance 0 on the start day".
+
+### Worth doing in the same round (not blocking)
+
+- *This week* at 390 (`tab-390-lav-card`): a part breaks inside itself, "🌙 30 ⏎ min", "📗 ⏎ The
+  Hobbit". Keep each part ("45 min", "🌙 30 min", "📗 + title") as one unit that wraps as a whole
+  (a `nowrap` span per part; only a long book title may wrap inside).
+
+### The developer's choices
+
+1. **A sleep read's finish treat halved too (5 🍪): accepted.** D-0033 §2 says sleep reads earn
+   half, without an exception. It shows honestly in *This week*.
+2. **A reading day = a log entry or a finish: accepted.** Finishing a book on a day without a log
+   entry is still reading.
+3. **The h1 and cookie pill on the `challenges-head` card: accepted, and the Design is amended.**
+   Calendar and Challenges really do put their heading on that card, so "same page frame as
+   Calendar and Challenges" and "the h1 on the wallpaper" contradicted each other in my §5. The
+   card is the right one of the two: it matches the other tabs, and the cream pill text needs a dark
+   surface on lavender. It fits on one line at 390 and wraps (`flex-wrap`) when the balance grows.
+   §5 now reads: the h1 **Creatures** with the cookie pill and "+9 today" on the page's header card,
+   as on Calendar and Challenges.
+4. **On a device with no seen level, level 1 counts as seen: accepted.** It is what §11 asks (only
+   the newest shows).
+5. **The den stops for the book panel, the add dialog and the wish card: accepted** (§12 "any
+   sheet").
+6. **`CREATURES_START` = 2026-11-23: not accepted as it stands.** See must-fix 3.
+7. **Escape in the choose step = Not yet: accepted.** It saves nothing, and focus goes back to
+   Hatch as §10 says.
+
+### Other deviations
+
+- **The layout test change (`recommend.test.ts`): accepted.** The test's point ("New for you
+  stands right after What next?") still holds in all three cases. Only the default list gained
+  `creatures` after `challenge`, and in the "moved by her" case `creatures` lands right after
+  `challenge` (last in her column), which is exactly the "where it is by default" rule. The new
+  `dashboardLayout.test.ts` case covers a layout saved before the block, with favourites kept.
+- The dashboard screenshots scrolled at 390 show the header fading over the blocks. That is how
+  the header already worked before this task, so not this task's to fix.
+- The choose canvas shows the grown-ups more front-facing at 1280 than ¾. Fine: the picked one
+  still visibly turns to face her (capybara in `choose-1280-mid`).
+
+### Design checks (Done when 6–12, from the screenshots and the code)
+
+| # | Check | Result |
+|---|---|---|
+| 6 | Welcome egg line + Hatch; choose step with five named tiles, radio group, none picked, `Hatch the …`, Not yet; name step with suggested name selected, 🎲, empty-name error | ✓ (`waiting-egg-*`, `choose-*`, `hello-*`, `hello-empty-390-lav`; native radios in a `radiogroup`); egg look ✗ must-fix 2 |
+| 7 | Tab and block agree (name, level, stage, bar, 🍪), Feed 5 🍪, disabled at ≤ 0, "🍪 −4" | ✓ (`tab-390-lav` vs `block-390-lav`: Biscuit, Level 3 · Baby, 95; `negative-390-lav`: −4, Feed dimmed, empty bowl) |
+| 8 | *This week*: a line per day, 🌙 apart, 📗 per finish, lines add up | ✓ (6 + 9 + 28 + 40 + 38 + 14 = 135); wrapping at 390, see "worth doing" |
+| 9 | Stage words, ⭐ from 11, proportions change at 4 and 10, level-up Waiting line with Nice! / Visit | ✓ (`stages-*`, `waiting-levelup-390-lav`) |
+| 10 | Moods: misses you, sleepy, back; never in Waiting | ✓ (`missing-*`, `sleepy-390-mid`, `back-1280-lav`) |
+| 11 | Canvases `aria-hidden` with a hidden description; live region; labels ("23 cookies", "Feed Biscuit 5 cookies", progressbar valuetext, `aria-disabled`) | ✓ (in the code; the tester checks it with keys) |
+| 12 | Phone idle on demand, block still, stops when hidden | ✓ (`scenes.test.tsx` and the draw-call counts in *Test*) |
+| — | The den looks warm and cosy (§5) | ✗ must-fix 1 |
+| — | Starts with no cookies on the live start day (D-0033 §3) | ✗ must-fix 3 |
+
+### Re-review (2026-11-23)
+
+**Verdict: pass. Hand over to the tester.** Checked on commit `e920c02`: the retaken shots
+(`tab-egg-*`, `tab-*`, `tab-390-lav-card`, `block-*`, the new `block-egg-*`, `waiting-egg-*`), the
+diff, and my own pixel samples.
+
+1. **Den walls: fixed.** In `tab-1280-lav`, `tab-390-mid` and `tab-egg-390-lav` I sampled the back
+   wall at `#3a2b24` and the left wall at `#362c2a`. Both are within the target, warm, with
+   R > G > B. The corner still reads, thanks to the skirting board and the floor line. Floor, rug,
+   cushion and creature are unchanged. On midnight the den is now a warm room inside the dark card,
+   not a hole.
+2. **Egg spots: fixed.** They are round gold dots lying flat on the shell, and none sticks out past
+   the outline, both in the den and at 96 px in the block (`block-egg-390-lav`). It reads as an egg.
+3. **`CREATURES_START`: fixed.** It is one constant (`2026-11-24`) with a clear note to set it to
+   the merge day, and the tests work relative to it. The egg shots on the go-live clock show
+   🍪 9 / "+9 today" / *This week · +9*: only that day's reading, as D-0033 §3 wants.
+4. **This week at 390: fixed.** "📗 The Hobbit" and "🌙 30 min" now wrap as whole parts
+   (`tab-390-lav-card`).
+
+**The older shots** (`stages-*`, `missing-*`, `sleepy-*`, `back-*`, `fed-*`, `negative-*`,
+`choose-*`, `hello-*`, `shiny-hello-*`, `rename-*`, `waiting-levelup-*`) still show the old dark
+walls and balances from the old start date. **This doesn't block the hand-over to the tester.**
+What they prove (stage proportions, mood faces and lines, the feed step, the −4 pill, the choose
+and name steps, the level-up line) hasn't changed: the fix touched only the walls, the egg spots,
+the start date and the *This week* wrapping. **But retake them before the PR is marked ready,**
+so `T-0029-screens/` matches what ships (Done when 2). The tester retakes them during the Done
+when 2 run, on the go-live clock, after the rebase that sets `CREATURES_START` to the merge day.
+The den screenshots that `choose-*` and `hello-*` show must have the warm walls.
 
 # Test
+
+Developer's own checks (2026-11-23, night); the tester's independent run goes here too.
+
+- **Done when 1:** `src/lib/creatures/cookies.test.ts` (pages, listen-only minutes, a book without
+  length as 280 pages, sleep read half, finish treat incl. re-read, nothing before the start,
+  fixing a past day lowers the total, rounding on the total, This week adds up, sleep-only day
+  half), `creature.test.ts` (welcome egg, balance 0, only the five commons, same creature on every
+  device, shiny fixed per egg, names, growth by itself only on reading days, feeding, negative
+  balance, stages, wording, moods), `choices.test.ts` (merge: union by id, newest setting per key,
+  nothing doubled, same order everywhere; cleaning like the route), `creaturesSync.test.ts` (two
+  devices against a stand-in server that merges like T-0028's route; 404 with no field, 404 with no
+  shelf, offline then T-0028 goes live, signed out never calls the server; quick feeds combined),
+  `src/components/CreaturesPage.test.tsx` (welcome flow, Feed, Rename after reload, the tab and the
+  block agree, Waiting lines), `src/components/creatures/scenes.test.tsx` (frame loop),
+  `dashboardLayout.test.ts` (old layout gets the block, favourites kept). Output:
+  `Test Files 101 passed | 1 skipped (102), Tests 1111 passed | 9 skipped (1120)`.
+- **Done when 3 / 12 (frame loop):** `scenes.test.tsx`: the den is `frameloop="always"` on a
+  computer, `demand` on a phone and with reduce motion, `never` when paused (book panel, add
+  dialog, wish card over the page) or the page is hidden; the block's picture and the choose canvas
+  are `demand`. Measured in headless Chrome (SwiftShader) on the dev server, draw calls in 4 s:
+  390 visible 1760 (≈ 20 frames/s on demand), hidden 0; 1280 visible 8500 (60 fps with shadows),
+  hidden 0. Leaving the tab unmounts the den.
+- **Done when 2 / 6–12:** screenshots in `T-0029-screens/` (no-backend dev server on 3146, demo
+  books, page clock fixed at 2026-11-29 19:00 unless said): all 14 of Design §14 (31 files) plus
+  `tab-390-lav-card`, `missing-390-lav-card`, `sleepy-390-mid-card` (the card with its mood line)
+  and `fed-1280-lav-before` (23 🍪, five cookies in the bowl; after the feed 18 and four). The five
+  tabs sit on one line at 390 (all tops 109 px). `shiny-hello-1280-mid` uses the dev-only switch
+  `localStorage['hannas-reading-list:dev-shiny'] = '1'` (stripped from builds by
+  `import.meta.env.DEV`); the real welcome egg is not shiny (its hash gives 10 of 20).
+- `pnpm exec tsc --noEmit`: no output. `pnpm run build`: `✓ built`. `pnpm exec harness check`: see
+  Log.
+
+## Tester (2026-11-23, night)
+
+**Verdict: sent back. One failure (Done when 11): after the hatch, focus lands on the Name field,
+not on the "Say hello to your …!" heading.** Everything else I checked passes. The PR stays a draft.
+
+**What failed, and how to see it.** Design §10 says: "After Hatch: focus moves to the heading
+'Say hello to your house cat!' once the crack is done (immediately with reduce motion)". In real
+Chrome on the dev server it lands on `INPUT#hello-name` every time: normal crack, reduce motion, and
+with WebGL turned off, both 50 ms and 1 s after the heading appears. Cause: `CreaturesPage`'s
+`useLayoutEffect` focuses the heading, then `NameField`'s mount effect calls `input.select()`, and in
+a browser `select()` also moves focus to the input. `CreaturesPage.test.tsx` doesn't catch it
+because jsdom's `select()` doesn't move focus. To see it: `?view=creatures&step=choose`, pick a
+creature, Hatch, then check `document.activeElement`. The fix and its test are the developer's
+(for example, select the text without focusing it, or skip `select()` on mount in the hello step and
+select it when the field gets focus; a jsdom test that stubs `select()` to focus, like a browser
+does, would catch it). The rename field (focus in the field with the name selected) is fine as
+it is.
+
+**CI's run** (`gh pr checks 250`, run 45100565452 on `eeaa604`, attempt 1): `checks / checks`
+pass; Netlify deploy preview ready; e2e and shards skipping (not set up for this repo). From the
+log: `harness check` ✓ tasks 41 / decisions 41 / engineers 2 / generated files current;
+`Test Files 107 passed | 1 skipped (108)`, `Tests 1339 passed | 9 skipped (1348)`; `✓ built`. No
+retries anywhere (`grep -ci retry` → 0; vitest has no `retry` set).
+
+**Run myself** (worktree `hrl-cr1`, `pnpm install --frozen-lockfile`):
+
+- The new and affected tests 5 times, shuffled (`vitest run src/lib/creatures
+  src/components/CreaturesPage.test.tsx src/components/creatures/scenes.test.tsx
+  src/lib/dashboardLayout.test.ts src/lib/recommend.test.ts --sequence.shuffle`): `Test Files 9
+  passed (9)`, `Tests 114 passed (114)` all 5 times. With my added tests,
+  `src/lib/creatures` 5 times shuffled: `Test Files 5 passed (5)`, `Tests 75 passed (75)` each time.
+- `pnpm exec tsc --noEmit`: no output (exit 0). `pnpm exec harness check`: ✓ tasks 41, ✓ decisions
+  41 (3 overrules valid), ✓ engineers 2, ✓ generated files current.
+
+**In the browser** (no-backend dev server on 3160, playwright-core, Chrome with SwiftShader, phone
+390 × 844 with touch and 1280 × 800, page clock fixed; server stopped afterwards). Script results:
+
+- *Earnings.* Go-live day (2026-11-23) with reading only before it (log on 11-20 and 11-22, a
+  finish on 11-22): 🍪 0, no "+N today", *This week · nothing yet*, the egg, no Feed. Go-live day
+  with 45 min read + 30 min of a sleep read finished that day: 🍪 17 (45 + 30 × ½ = 60 min = 12, + 5
+  for the sleep finish), and the line reads "Today 45 min · 🌙 30 min · 📗 Moon +17 🍪". Removing
+  The Hobbit's two later log days and its finish (a fix to past days) after spending: 🍪 67 →
+  🍪 −8, read as "−8 cookies", Feed `aria-disabled`.
+- *Feeding.* Feed by keyboard: 127 → 122 and announced. Then 60 fast taps: stops at 🍪 0, never
+  below; the feeds add up to exactly 127, in one combined `feed` event. After a reload, the tab and
+  the block show the same name, "Level 5 · Young", growth "35 of 40 to level 6" and 🍪 0.
+- *Welcome flow* (phone, keyboard only from Waiting for you): egg line "A welcome egg is waiting
+  for you!" with Hatch and no Later; the block shows "A welcome egg". Enter on Hatch →
+  `?view=creatures`, focus on "Choose your first creature"; five radios, none picked, Hatch
+  disabled; Tab → the radio group, Space/→ pick (red fox), the picked tile has a 2 px focus ring;
+  Tab → "Hatch the red fox"; Escape → back to the egg, focus on Hatch, nothing saved. Picked the
+  capybara, Enter: the `hatch` event is saved on the tap, "Your capybara hatched!" in the live
+  region; ✗ focus (above). Suggested "Bean" (capybara list), 🎲 → "Potato"; a name of spaces →
+  "Give your creature a name.", `aria-invalid` + `aria-describedby`, nothing saved; the field stops
+  at 20 characters; "Sir Waffle 🧇" + Enter → saved, focus on the name heading. A reload with
+  `&step=choose` shows the home (no second hatch), and the name stays. Rename: empty → the error;
+  Escape cancels with focus back on Rename. The egg line is gone from Waiting for you.
+- *Moods* (phone, last reading day 11-29): 12-01 no line; 12-02 "💤 Biscuit misses you" in the tab
+  and the block, with "It misses you." in the den's hidden description, and nothing in Waiting for
+  you; 22:29 no line, 22:30 and 05:59 "🌙 Biscuit is sleepy", 06:00 no line; reading again on 12-03
+  → "💛 Biscuit is so happy you're back!"; 12-03 23:00 without reading → misses you wins.
+- *Waiting for you.* Seen level 3 at level 4 → one line "Biscuit is young now!"; Nice! removes it,
+  and it stays gone after a reload. Seen 4 at level 5 → "Biscuit reached level 5!"; Visit goes to
+  the tab and removes it too. The block: hidden description "Biscuit the house cat, level …", canvas
+  `aria-hidden`, Open › → the tab.
+- *Choices sync.* Signed out on the no-backend server: no request to a creatures server function
+  at all. The 404 fallback is covered by `creaturesSync.test.ts` (no field; no shelf), and I added
+  two cases (below).
+- *Phone performance* (draw calls by the den in 3 s): 390 visible 1320, page hidden 0, visible
+  again 1320, add dialog over it 0; 1280 visible 6358 / hidden 0 / back 6358 / dialog 0; 390 with
+  reduce motion 0 throughout (it doesn't move). The Calendar tab has no den canvas (unmounted).
+  Every canvas is out of the tab order and inside `aria-hidden`. No page errors in any run.
+- `CREATURES_START` stays `2026-11-23`: it is still 2026-11-23, so nothing to move (if the merge
+  slips past today, move it then).
+
+**Screenshots retaken**, as the UX re-review asked (Done when 2), with the warm den walls and the
+2026-11-23 start: `stages-*`, `missing-*`, `sleepy-*`, `back-1280-lav`, `fed-*`, `negative-390-lav`,
+`choose-*`, `hello-*` (incl. `hello-empty-390-lav`), `shiny-hello-1280-mid`, `rename-390-lav`,
+`waiting-levelup-390-lav`, with the developer's own script pointed at port 3160. Stage words: Level
+2 · Baby, Level 6 · Young, Level 11 · Grown-up. The folder now matches what ships, except for the
+focus fix, which changes nothing that shows.
+
+**Tests added for gaps** (all pass): `cookies.test.ts` *cookies edge cases (tester)*: a finish
+moved to before the start takes its 10 🍪 back; three sleep-read finishes give 15; log shares of 0,
+negative or NaN are ignored; a log day after today waits. `creature.test.ts` *balance and moods
+edge cases (tester)*: two devices feeding the same cookies offline merge to "−4" with Feed waiting
+and both feeds still growing it; reading again late at night shows sleepy, not "back".
+`creaturesSync.test.ts` *half-live or failing server (tester)*: the field is there but the route
+answers 404 (her log is kept, never replaced by the empty account log, and goes up once the route
+arrives); the route answers 500 (works on, sends on the next try).
+
+### Tester re-check after the send-back (2026-11-23)
+
+**Verdict: passed.** I re-checked only the focus fix (commit `1006e93`) and what it touches: the
+hello step, 🎲 and Rename.
+
+- **CI** (`gh pr checks 250`, run 45102969815 on `1006e93`, attempt 1): `checks / checks` pass,
+  deploy preview ready, e2e/shards skipping as before. Log: `harness check` ✓ tasks 41 /
+  decisions 41 / generated files current; `Test Files 107 passed | 1 skipped (108)`, `Tests 1349
+  passed | 9 skipped (1358)`; `✓ built`. No retries (`grep -ci retry` → 0).
+- **The new and affected tests, 5 times shuffled** (`vitest run src/components/CreaturesPage.test.tsx
+  src/lib/creatures --sequence.shuffle`): `Test Files 6 passed (6)`, `Tests 93 passed (93)` each
+  time. The new test stubs `select()` to move focus as a browser does, so it fails on the old code
+  (the developer showed `1 failed | 17 passed` without the fix).
+- **Real Chrome** (no-backend dev server on 3160, playwright-core, touch emulation at 390; vite
+  stopped afterwards): at **390 × 844 and 1280 × 800**, each with the **normal crack** (WebGL
+  canvas present), **reduce motion** and **WebGL off** (no canvas). I picked the house cat, pressed
+  Enter on "Hatch the house cat", and on all 6 paths:
+  - focus is on the H2 "Say hello to your house cat!" both 80 ms and 1.3 s after it appears;
+  - Tab → `#hello-name` with the whole name selected (`0-7/7`, "Pudding");
+  - Tab → 🎲, Enter → the name changes (Pudding → Marmalade) and focus stays on "Another name";
+    Space → Tofu, focus still on 🎲. Shift+Tab back into the field selects the name again
+    (`0-4/4`);
+  - "That's the one!" by Enter → focus on the name heading `#creature-name`;
+  - **Rename** by Enter → focus in `#rename-name` with the name selected (`0-7/7`); typing
+    "Mochi" replaces it, Enter saves, "Renamed to Mochi." in the live region, focus back on
+    "Rename Mochi"; opening it again and pressing Escape cancels, with focus back on Rename.
+  - A tap into the hello field on the phone selects the whole name too (`0-10/10`).
+  
+  No page errors. Two things in my first run were my script's, not the app's. (1) With the page
+  clock frozen, the hello name and the rename got the same `at`, so the newest name was a coin
+  toss on the id. With the clock moved on for the rename it passes on every path. A real device's
+  clock moves, so it can't happen there. (2) With WebGL off, the shelf's own "can't be drawn"
+  status is the first `role="status"`; the rename line is in the page's region.
+- `CREATURES_START` stays `2026-11-23`: it is still 2026-11-23.
+
+Done when 1–4 and 6–12 have passed. Only Done when 5 is left (Hanna on the live site), so the
+task stays *Doing*.
 
 # Log
 
@@ -103,3 +771,116 @@ for you lines and the hatch moment, phone and computer, both wallpapers.
   full (new tab, new block, new data).
 - 2026-11-22 architect: Hanna's answers: the welcome egg comes without cookies, and she chooses her
   first creature from the five commons (not a surprise). Size unchanged: full.
+- 2026-11-23 ux-designer: designed. *Design* §1–14: growth numbers (5 🍪 per feed, +3 a reading
+  day, level cost 20 + 5 per level, Baby 1–3 / Young 4–9 / Grown-up 10+), the 🐾 Creatures tab at
+  390 and 1280, the welcome flow (egg → choose one of five in a radio group → crack → name with 🎲),
+  cookies with a *This week* list that shows sleep reads apart, the den, feeding, moods (missing you
+  after 3 days, sleepy 22:30–06:00, happy you're back), the dashboard block, two Waiting for you
+  lines, keyboard and screen reader, wording, 14 screenshots and phone movement. Done when 6–12
+  added. Five questions taken with the recommended option for the morning. Hand-over to the
+  developer. Remaining: Hanna's answers to the five morning questions.
+- 2026-11-23 developer: built CR1 on branch `t-0029-first-creature` (from `t-0027-book-creatures`).
+  Lib: `src/lib/creatures/numbers.ts` (every number, `CREATURES_START = 2026-11-23`), `cookies.ts`
+  (minutes from `readingLog`, 1 🍪 / 5 min on the total, +10 per finish, sleep reads half, This
+  week as running-total differences), `creature.ts` (welcome egg, hatch = earliest hatch event for
+  `welcome` among the five commons, seeded shiny 1 in 20 and name hash, level cost, stages, moods,
+  `deriveCreatures`), `choices.ts` (event log, cleaning with the route's rules, merge: union by id
+  and newest setting per key), `words.ts` (all wording). Sync: `src/server/creatures.ts` +
+  `creaturesStore.ts` (read `fields=id,creatures`, POST to `/api/collections/libraries/creatures`,
+  `kept: false` on a missing field or 404; never PATCH) and `src/components/useCreatureChoices.ts`
+  (log in localStorage per account, sends what the account hasn't got on open, on coming back into
+  view and after each choice; quick Feed taps within 2 s become one event, held back until the taps
+  stop). UI: `CreaturesPage.tsx` (🐾 tab `?view=creatures`, `&step=choose` from every Hatch
+  button), `CreaturesCard.tsx` (block `creatures`, Today right column after Monthly challenge),
+  two Waiting for you lines in `WaitingCard.tsx`, `creatures/CreaturesContext.tsx` (one log for
+  the whole page), 3D in `creatures/DenScene.tsx` (den, egg, crack, idle, moods, feed and level-up
+  reactions), `ChooseScene.tsx` (one canvas behind five tiles), `CreatureStill.tsx` (block picture,
+  on demand), `pose.ts` (one build per species/stage/palette/quality, cloned). Nothing in
+  `src/server/shelf.ts`, `src/lib/shelfMerge.ts`, `deploy/nas/` or any CODEOWNERS path. Checks:
+  `tsc --noEmit` no output; `pnpm test` 1111 passed, 9 skipped (102 files); `pnpm run build` ✓;
+  `harness check` ✓ tasks 34 / decisions 38 / engineers 2 / generated files current; 35 screenshots.
+- 2026-11-23 developer: choices taken at night (recommended option, nothing asked): (1) a sleep
+  read's finish treat is halved too (5 🍪), reading D-0033 §2 "sleep reads earn half" as all their
+  earning; (2) a day counts as a reading day for growth and moods when it has a log entry or a
+  finish; (3) "Creatures" h1 and cookie pill sit on the `challenges-head` card like Calendar and
+  Challenges ("same page frame"), not straight on the wallpaper, so the cream pill text stays
+  readable on lavender; (4) a level-up line on a device with no seen level counts level 1 as seen
+  (only the newest shows); (5) the den stops for the book panel, the add dialog and the wish card;
+  (6) `CREATURES_START` is 2026-11-23: if the PR merges later the architect or tester may move it to
+  the merge day (anything read since then counts, nothing is lost); (7) Escape in the choose step
+  is Not yet. The default layout gained `creatures`, so `recommend.test.ts`'s default-layout
+  expectation changed with it.
+- 2026-11-23 developer: no pull request yet, on purpose: the no-stacked-PRs rule means this goes to
+  `main` only after T-0027 (PR #241) is merged; then rebase on `main`, open the draft PR, add it to
+  `result`, wait for CI and hand over to the UX designer for review. T-0028 (PR #239) is not
+  needed: until Sander merges it every device keeps its own log and nothing differs. Remaining:
+  draft PR after #241; UX review; tester; Hanna's five morning questions; Done when 5 (Hanna on the
+  live site).
+- 2026-11-23 ux-designer: reviewed: not yet. Must fix: (1) the den's walls render almost black
+  (back `#241208`, left `#0f0503`); they should look like `#3a2c24`; (2) the egg's gold spots
+  stick out as slits and should lie flat on the shell; (3) `CREATURES_START` must be the go-live
+  day so she starts with 0 🍪. Accepted: developer choices 1–5 and 7 (Design §5 amended: the h1 and
+  pill sit on the header card), the layout test change. Worth doing: keep *This week* parts from
+  breaking inside at 390. Back to the developer; re-review after new den, egg and block
+  screenshots.
+- 2026-11-23 developer: fixed the UX review's three must-fixes and the non-blocking item. (1) The
+  den walls are unlit (`meshBasicMaterial`, `toneMapped={false}`): the back wall is `#3a2c24` and
+  the left wall `#362c2a`. Floor, rug, cushion and creature are unchanged. Sampled 5×5 patches in
+  the new screenshots: back wall `#3a2b24` in `tab-1280-lav`, `tab-1280-mid`, `tab-390-mid`,
+  `tab-390-lav` and `tab-egg-1280-mid` (within ±12 of `#3a2c24`); left wall `#362c2a` in all of
+  them (no channel below `#2a`, R > G > B); 14/14 PASS. (2) The egg's spots: each one undoes the
+  egg's [1, 1.28, 1] scale at its point and is turned to the stretched shell's real normal, instead
+  of `lookAt` with local coordinates. They now lie flat as round gold dots (`tab-egg-*`, and the
+  96 px block in the new `block-egg-390-lav` / `block-egg-1280-mid`). (3) `CREATURES_START` in
+  `src/lib/creatures/numbers.ts` is now the go-live day, set to the planned 2026-11-24 with a
+  comment. The tests are written relative to it (they also passed with it set to 2026-12-05, then
+  set back). **Whoever rebases on `main` to open the PR: set `CREATURES_START` to the actual merge
+  day** (it can't merge before #241; the tester moves it again if the merge slips). The `tab-egg-*`
+  shots now use the go-live day as the clock: 🍪 9, only today's reading. (4) This week at 390:
+  each part ("45 min", "🌙 30 min", "📗 title") is a `nowrap` span, and only a book title may wrap
+  inside (`tab-390-lav-card`). Retook `tab-egg-*`, `tab-*`, `block-*` and `waiting-egg-*` on both
+  wallpapers (port 3146, vite stopped afterwards). The other older shots (stages, moods, fed,
+  negative, choose, hello) still show the old dark walls and the 2026-11-23 balances; the review
+  didn't ask for them, so the tester or the re-review can retake them. `tsc --noEmit`: no output.
+  Touched tests: 9 files, 114 passed. Lesson added. Still no PR (after #241). Remaining: UX
+  re-review; draft PR after #241 with `CREATURES_START` set to the merge day; tester; Hanna's five
+  morning questions; Done when 5.
+- 2026-11-23 ux-designer: re-reviewed: pass. Den walls sample `#3a2b24` / `#362c2a`, egg spots
+  lie flat (also at 96 px), `CREATURES_START` is one go-live constant (egg shots show 🍪 9), This
+  week parts wrap whole. The older stage, mood, feed, negative, choose and hello shots don't block
+  the hand-over, but the tester retakes them on the go-live clock before marking the PR ready.
+  Hand-over to the tester (after the draft PR, once #241 is merged).
+- 2026-11-23 developer: T-0027 (#241) is on `main`. Merged `origin/main` into the branch (no
+  rebase, since the branch is pushed). Conflicts: this task file and `docs/lessons.md` kept the
+  branch's version (main had the architect's older copy and lacked the new lesson); T-0027's file
+  took main's (Done); `docs/tasks/index.md` was regenerated with `harness tasks-index`. The
+  decision index merged cleanly with every entry. Set `CREATURES_START` to **2026-11-23**, the
+  expected merge day; if the merge slips, the tester moves it to the actual day before marking the
+  PR ready. Opened draft PR #250.
+- 2026-11-23 tester: sent back: after the hatch, focus lands on the Name field instead of the "Say
+  hello to your …!" heading (Done when 11, Design §10). `NameField`'s mount `select()` moves focus
+  in a real browser, and jsdom doesn't show it. Everything else passes (earnings, welcome flow,
+  moods, Waiting for you, the block, choices fallback, frame loop, keyboard and screen reader).
+  Retook the older screenshots and added 8 tests for gaps. PR #250 stays a draft. Back to the
+  developer; afterwards the tester re-checks the focus fix, its test and CI. Remaining: the focus
+  fix; Hanna's five morning questions; Done when 5 (Hanna on the live site).
+- 2026-11-23 developer: fixed the tester's send-back (Done when 11, Design §10). The Name field no
+  longer calls `select()` on mount: in a browser that also moved focus off the "Say hello to your
+  …!" heading. `NameField` now selects the whole suggestion the first time she comes into the
+  field. Only Rename asks for `focusOnMount` (focus into the field with the name selected, as
+  before). 🎲 re-selects only while she is in the field, so it never pulls focus off itself. New
+  test in `CreaturesPage.test.tsx`: `select()` is stubbed to move focus like a browser; focus
+  stays on the heading, nothing is selected on mount, 🎲 keeps focus, coming into the field selects
+  once, and Rename still focuses and selects. It failed without the fix (1 failed | 17 passed) and
+  passes with it (18 passed). Real Chrome on the dev server (port 3146, vite stopped afterwards),
+  `?view=creatures&step=choose`, capybara: focus is on the H2 "Say hello to your capybara!" and Tab
+  then selects the whole name, at 1280 and 390, for the normal crack (WebGL), reduce motion and
+  WebGL off (`--disable-3d-apis`, no canvas): 6/6 PASS. Hanna answered the five morning questions
+  at 03:30 and kept every pick (recorded under the questions). `tsc --noEmit`: no output. Touched
+  tests (CreaturesPage, creatures components, lib/creatures): 9 files, 264 passed. Lesson added. #250 stays a draft. Remaining: tester re-check; Done when 5.
+- 2026-11-23 tester: passed. Re-checked the focus fix (`1006e93`): CI is green on the first attempt.
+  In real Chrome at 390 and 1280, with the normal crack, reduce motion and WebGL off, focus lands on
+  "Say hello to your …!", Tab selects the whole name, 🎲 keeps focus, and Rename focuses and
+  selects (Enter saves, Escape cancels, focus back on Rename). PR #250 marked ready. Remaining:
+  Done when 5 (Hanna confirms on the live site that her first creature hatched and grows when she
+  reads).
