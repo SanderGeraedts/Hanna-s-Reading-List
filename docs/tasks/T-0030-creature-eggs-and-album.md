@@ -679,6 +679,93 @@ option and list it here for the UX review and the tester.
   page's `performance.now` at 8 % speed (only in the script, not in the app). Album: 5 a row at
   1280, 2 at 390.
 
+## Review after building (2026-11-23)
+
+UX designer, at night (Hanna not asked). I looked at `git diff origin/main...HEAD -- src`, all 35
+screenshots and the 126 still pictures. For the pictures I made contact sheets at the sizes the app
+shows them: album tiles at 160 px on a 2× screen (all 40 grown-ups, normal and shiny, and all 6
+eggs), pet rows at 48 px (all 120 creatures), and the eggs at 96 px, on a card over both wallpapers.
+I didn't need the dev server.
+
+**Verdict: matches the design. Nothing must be fixed before the tester.** Handed to the tester.
+
+**Design checks, state by state**
+
+- [x] §1 Still pictures: plain `<img>` with `alt=""`, lazy and fixed size, with a "?" fallback
+  (`Still`). The tab has one canvas, the den. All 126 files are there.
+- [x] §2 Waiting for you: "A rare egg is waiting for you!" with "For your 25th book" and Hatch;
+  "7 eggs are waiting for you!" with no reason line; the 🐣 "Your new red squirrel is waiting for
+  you to choose" with Choose. The order is right (egg, duplicate, then the other lines).
+- [x] §2 Eggs card: the 96 px egg on a round sunken tile, "A rare egg", the reason, Hatch, and
+  "Then:" as a list of 40 px eggs with hidden names (+N past five). Hatch hides while a hatch plays
+  (`crack-legendary`, `reveal-new`). With nothing waiting it shows only the next-egg line. It's top
+  right at 1280 and right after the den at 390.
+- [x] §2 Next egg: "Next egg: 3 more books" and "Next uncommon egg: 3 more days in a row" (tier
+  named), in the block and in the card.
+- [x] §2 Block: "🥚 2 eggs are waiting" and a secondary Hatch, with Feed still the primary.
+- [x] §2 Egg colours: six tiers you can tell apart, with the legendary egg's gold glow baked in.
+  The tier is always given in words.
+- [x] §3 Crack: the legendary glow and the ring of gold sparkles show in the frame grab. Reveal:
+  "It's a polar bear!", "◆◆◆ Rare", "New in your album!", then the name step (Blizzard, from §10's
+  list).
+- [x] §5 Duplicate: Keep (primary) / "Turn into 30 🍪" / "Power up Nutmeg (+3 levels)" as one
+  column of full-width buttons. "Which red squirrel?" is a radio group with Power up and Back.
+- [x] §5 Shiny safety: "✨ A shiny one!", then the warning box ("✨ This is a shiny!" / "Turning
+  it into cookies can't be undone.") with Keep it (primary) first and the danger-bordered "Hold to
+  turn into 30 🍪". The hold fill is half way in `shiny-hold`. Component tests cover holding by
+  mouse, touch and keys.
+- [x] §6 Album: "7 of 20 found", "✨ 3 shinies" and the gold bar, then six h3 groups with counts.
+  Cards show the name, ◆ tier, the label in words and the source ("Domestic animal / Not on the IUCN
+  Red List"; "IUCN Red List" when `species.ts` has no year). There are ×N pills, ✨ toggles (on in
+  `album-shiny`), and silhouettes with a dashed rim, a faint edge and only the tier line. The faint
+  edge reads on midnight too. 5 per row at 1280, 2 at 390. A legendary card has the gold line.
+- [x] §7 Release: "Release…" in danger text. The confirm replaces the bowl row in place:
+  "Release Hazel?", "This can't be undone.", Keep (primary) then Release. A shiny pet gets the
+  warning box (with the line only once) and "Hold to release". Release is dimmed with one pet. After
+  a release, Biscuit is current again.
+- [x] §8 Your pets: "Your pets · 3", rows in hatch order with a 48 px picture, name, "Level 2 ·
+  Baby · Eurasian red squirrel", and a gold wash and "Current" chip on the current one.
+- [x] §9 Layout at 1280 and 390, as designed.
+- [x] §13 Wording matches the table. Prices follow the tier (common 30).
+
+**The developer's night choices**
+
+1. **The den switches straight to the egg** (no fade-out of the current pet first). **Accepted.**
+   She has just tapped Hatch, so the egg turning up at once is the right feedback, and the wobble
+   that follows gives the moment its build-up. A fade first would only make her wait. With reduce
+   motion, the 200 ms cross-fade from egg to baby is still what counts. No change.
+2. **The block's Hatch wraps under Feed at 390.** **Accepted.** The cookie pill, "Feed 5 🍪" and
+   Hatch don't fit on one row in a ~300 px block. Wrapping keeps all three full size (44 px
+   targets) and in reading order. Hatch is secondary, so Feed stays the clear main action on the
+   first row. Making the buttons smaller to force one row would be worse. No change.
+3. **Still pictures' quality at their shown size, both wallpapers.** **Good.** At 160 px on a 2×
+   phone (a 192 px source shown at 320 device pixels) and 193 px at 1280, the creatures are clean,
+   with no jagged edges or halos, and the transparency sits well on the sunken tile. At 48 px in Your
+   pets every species is easy to recognise, and a shiny is easy to tell from a normal one. The
+   pictures always sit on the walnut card (88 % opaque), so they look the same on lavender and
+   midnight, as the album shots show. All 20 shiny palettes match T-0027 §7, and each has its
+   sparkle.
+4. The other choices (finalised hash, counting rules, rules enforced in the derivation, power-up
+   adding exactly 3 levels, the dev-only duplicate switch) don't change what she sees. No remarks.
+
+**Small differences, not to fix now** (nice to have, for a later polish task or Hanna's morning
+questions):
+
+- Under the warm den lights, the **rare egg** reads more grey-blue than the soft blue `#8fb3d9`, and
+  the **very rare** egg more mauve than lavender. All six are still easy to tell apart, and the tier
+  is always in words, so this belongs with Hanna's morning question 3 (egg colours) rather than
+  being a fix.
+- On a few shinies (library owl, emperor penguin, starlight unicorn) one of the 8 sparkle stars
+  sits over the face or belly instead of on the loose ring around the creature. You only notice it
+  at album size.
+- On a 3× phone the 160 px album tile scales a 192 px picture up about 2.5×, which is slightly soft.
+  If Hanna finds it soft on her phone, re-render at 384 px with the committed script (about double
+  the 0.8 MB).
+- When "Next uncommon egg: 3 more days in a row" wraps, its second line starts under the 🥚 instead
+  of under the text (no hanging indent).
+- `album-1280-lav-more.jpg` is the same view as `album-1280-lav.jpg`. The lower tiers at 1280 are
+  covered by `album-shiny-1280-lav` and the 390 bottom shots.
+
 # Test
 
 # Log
@@ -712,3 +799,7 @@ option and list it here for the UX review and the tester.
   re-checked 2026-11-23: no update since 9 July 2026, so no change since T-0027. Remaining: UX
   review; tester; Hanna's six morning questions (Design); Done when 4 (Hanna confirms the album on
   the live site). Draft PR #252.
+- 2026-11-23 ux-designer: reviewed: matches the design, nothing must be fixed (35 screenshots and
+  contact sheets of all 126 pictures at the sizes shown, both wallpapers; accepted the den switching
+  straight to the egg, Hatch wrapping under Feed at 390, and the picture quality; five small
+  nice-to-haves listed). Handed to the tester.
