@@ -6,7 +6,10 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 
 ## Open
 
-None.
+- [T-0090 Open the Challenges page with a ring per challenge, celebrate a finished one once, and give it a medal](T-0090-a-ring-per-challenge-confetti-and-a-challenge-medal.md): A row of small progress rings at the top of the Challenges page, one per challenge for the chosen year, each a button that scrolls to that challenge; the first visit after a challenge is complete draws one short confetti burst (no pop-up, D-0013) and completed challenges count towards a new challenges-1/5/10 badge family.
+- [T-0091 Add four ready-made challenges: around the world, seasonal, minutes a day and read the series](T-0091-four-new-ready-made-challenges.md): Four new cards on the Challenges page — 12 countries this year from the map's places, a cosy/beach/spooky target per calendar season judged by genre and trope, a month grid of days that reached 20 minutes (a paper page is 1.5 minutes, a book she only listens to its real minutes), and the series she picks to finish this year with a bar each, kept as own challenges so nothing new is saved.
+- [T-0092 Let her own challenges count pages or hours, go by author, decade, trope or 4+ stars, and combine two rules with AND](T-0092-more-rules-for-her-own-challenges.md): The New challenge form gains a unit next to the number (books, pages or hours), the rule list gains By author, By decade, Rated 4+ (next to the existing A trope) and an 'and also' row that adds a second rule both of which must hold; everything is encoded in optional fields that cleanChallenges keeps, so src/server/shelf.ts is untouched and challenges saved before this read unchanged.
+- [T-0093 Let her swap a bingo square for another one, while nothing on the card is ticked](T-0093-swap-a-bingo-square.md): On the card being played, as long as no square is ticked, tapping a square offers Swap next to the book suggestion; Swap lists every square the card hasn't got and puts the chosen one in that slot. The swap is saved as a place event with key b:<year>:<card>:<slot> in the existing choice log (D-0063), so it follows her to every device with no server change.
 
 ## Doing
 
