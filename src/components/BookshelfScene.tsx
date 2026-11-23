@@ -6,7 +6,7 @@ import type { ThreeEvent } from '@react-three/fiber'
 import type { Book, SortKey } from '#/lib/library'
 import { SHELF, computeLayout, fitShelf, rowFloorY, topGap } from '#/lib/shelfLayout'
 import type { BookDims } from '#/lib/shelfLayout'
-import { FOV, aimCamera, cameraZ, frameCase, newAim, parallaxTarget } from './cameraAim'
+import { FOV, aimCamera, cameraZ, frameCase, newAim, parallaxTarget, topShareFor } from './cameraAim'
 import type { PointerInput } from './cameraAim'
 import {
   DEFAULT_INSPECT,
@@ -783,7 +783,9 @@ function useCameraRig(
   const pointerInput = usePointerInput()
 
   const aspect = size.width / Math.max(1, size.height)
-  const { toCase, viewH, xMax, fitsH } = frameCase(caseWidth, caseHeight, aspect, opts.portrait, opts.zoom)
+  // how much of the view the header takes; on a phone the scrolling case uses topGap instead
+  const headerShare = opts.portrait ? 0 : opts.topInset / Math.max(1, size.height)
+  const { toCase, viewH, xMax, fitsH } = frameCase(caseWidth, caseHeight, aspect, opts.portrait, opts.zoom, headerShare)
   // the camera at her zoom; while a book is out it may step back from here (T-0026)
   const zoomZ = cameraZ(toCase)
   base.z = zoomZ
@@ -803,8 +805,10 @@ function useCameraRig(
     }
   }, [stripePx])
   if (fitsH) {
-    // everything fits: centre it, as before
-    s.min = s.max = caseHeight / 2 + caseHeight * 0.04
+    // everything fits: the case sits with the header's own margin above it, so the bar above
+    // the shelf (T-0051) never covers the top shelf. With a short header this is the 14% the
+    // room has always had, and the case lands where it always did.
+    s.min = s.max = caseHeight - viewH * (0.5 - topShareFor(headerShare))
   } else {
     s.min = viewH * 0.42 // bottom: a strip of floor below the case
     // top: clear of the header (on a phone, of its real height: #181)

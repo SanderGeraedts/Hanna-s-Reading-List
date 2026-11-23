@@ -75,13 +75,13 @@ function ReadingCorner({ room, night }: { room: Room; night: boolean }) {
       { geometry: box(0.03, 0.22, 0.34), position: [0.295, seatH + 0.1, 0.04] },
       { geometry: box(0.03, 0.16, 0.34), position: [0.185, seatH + 0.13, 0.04] },
     ])
-    // the lamp: a slim pole on a disc
+    // the lamp: a slim pole on a disc, standing at the bookcase's shoulder
     const pole = merge([
       { geometry: cyl(0.1, 0.02, 14), position: [0, 0.01, 0] },
-      { geometry: cyl(0.012, 1.3, 8), position: [0, 0.66, 0] },
+      { geometry: cyl(0.012, 1.1, 8), position: [0, 0.56, 0] },
     ])
     const shade = new THREE.CylinderGeometry(0.1, 0.13, 0.17, 14, 1, true)
-    shade.translate(0, 1.38, 0)
+    shade.translate(0, 1.18, 0)
     shade.deleteAttribute('uv')
     return { chair, blanket, pole, shade }
   }, [])
@@ -110,11 +110,14 @@ function ReadingCorner({ room, night }: { room: Room; night: boolean }) {
     <group>
       <mesh castShadow receiveShadow geometry={g.chair} material={m.chair} />
       <mesh castShadow receiveShadow geometry={g.blanket} material={m.blanket} />
-      <mesh castShadow receiveShadow geometry={g.pole} material={m.pole} position={[-0.42, 0, -0.16]} />
-      <mesh geometry={g.shade} material={m.shade} position={[-0.42, 0, -0.16]} />
+      <mesh castShadow receiveShadow geometry={g.pole} material={m.pole} position={LAMP} />
+      <mesh geometry={g.shade} material={m.shade} position={LAMP} />
     </group>
   )
 }
+
+/** Where the floor lamp stands in the corner's own frame: at the bookcase's shoulder. */
+const LAMP: [number, number, number] = [0.34, 0, -0.18]
 
 // ---------------------------------------------------------------------------
 // The plant that grows with the books she finished this year
@@ -131,18 +134,24 @@ function GrowingPlant({ stage, room }: { stage: PlantStage; room: Room }) {
     ])
     const size = PLANT_SIZE[stage]
     const n = PLANT_LEAVES[stage]
-    const stemH = 0.1 + 0.34 * size
-    const leaves: Piece[] = [{ geometry: cyl(0.007, stemH, 6), position: [0, 0.12 + stemH / 2, 0] }]
-    for (let i = 0; i < n; i++) {
-      const u = (i + 1) / (n + 1)
-      const a = i * 2.39
-      const reach = 0.05 + 0.1 * size
-      leaves.push({
-        geometry: ball(0.03 + 0.02 * size, 8),
-        position: [Math.cos(a) * reach * u, 0.13 + stemH * u, Math.sin(a) * reach * u],
-        scale: [1.5, 0.35, 1],
-        rotation: [0, -a, 0.5 - u],
-      })
+    const stemH = 0.06 + 0.2 * size
+    // a tuft of leaves fanning out of a short stem, in two or three tiers, not a spiral
+    const leaves: Piece[] = [{ geometry: cyl(0.008, stemH, 6), position: [0, 0.12 + stemH / 2, 0] }]
+    const tiers = Math.min(3, Math.max(1, Math.round(n / 5)))
+    let made = 0
+    for (let t = 0; t < tiers && made < n; t++) {
+      const per = Math.ceil((n - made) / (tiers - t))
+      const up = 0.12 + stemH * (0.45 + (0.55 * t) / Math.max(1, tiers - 1))
+      const reach = (0.05 + 0.1 * size) * (1 - t * 0.22)
+      for (let i = 0; i < per && made < n; i++, made++) {
+        const a = (i / per) * Math.PI * 2 + t * 0.7
+        leaves.push({
+          geometry: ball(0.028 + 0.022 * size, 8),
+          position: [Math.cos(a) * reach, up, Math.sin(a) * reach],
+          scale: [1.9, 0.4, 0.9],
+          rotation: [0, -a, 0.45],
+        })
+      }
     }
     const foliage = merge(leaves)
     const blooms =
@@ -150,7 +159,7 @@ function GrowingPlant({ stage, room }: { stage: PlantStage; room: Room }) {
         ? merge(
             Array.from({ length: 6 }, (_, i) => {
               const a = i * 1.047 + 0.4
-              return { geometry: ball(0.016, 7), position: [Math.cos(a) * 0.1, 0.3 + (i % 3) * 0.06, Math.sin(a) * 0.1] as [number, number, number] }
+              return { geometry: ball(0.016, 7), position: [Math.cos(a) * 0.085, 0.26 + (i % 3) * 0.05, Math.sin(a) * 0.085] as [number, number, number] }
             }),
           )
         : null
@@ -196,23 +205,24 @@ function seasonGeometry(season: Season): { body: THREE.BufferGeometry; trim: THR
     }
   }
   if (season === 'tree') {
+    // a little tree, low enough to stay on the strip of floor in front of the case
     const tiers = [
-      { r: 0.14, y: 0.26, h: 0.26 },
-      { r: 0.1, y: 0.45, h: 0.22 },
-      { r: 0.06, y: 0.6, h: 0.18 },
+      { r: 0.11, y: 0.17, h: 0.18 },
+      { r: 0.08, y: 0.28, h: 0.15 },
+      { r: 0.05, y: 0.37, h: 0.12 },
     ]
     return {
       body: merge(tiers.map((t) => ({ geometry: new THREE.ConeGeometry(t.r, t.h, 12), position: [0, t.y, 0] }))),
       trim: merge([
-        { geometry: cyl(0.025, 0.14, 8), position: [0, 0.07, 0] },
+        { geometry: cyl(0.022, 0.1, 8), position: [0, 0.05, 0] },
         // a string of baubles round the tree, and a star on top
         ...Array.from({ length: 10 }, (_, i) => {
           const a = i * 1.1
           const u = i / 10
-          const r = 0.13 - 0.08 * u
-          return { geometry: ball(0.014, 6), position: [Math.cos(a) * r, 0.2 + u * 0.42, Math.sin(a) * r] as [number, number, number] }
+          const r = 0.1 - 0.06 * u
+          return { geometry: ball(0.013, 6), position: [Math.cos(a) * r, 0.13 + u * 0.26, Math.sin(a) * r] as [number, number, number] }
         }),
-        { geometry: ball(0.022, 6), position: [0, 0.7, 0] },
+        { geometry: ball(0.02, 6), position: [0, 0.43, 0] },
       ]),
     }
   }
@@ -233,13 +243,13 @@ function seasonGeometry(season: Season): { body: THREE.BufferGeometry; trim: THR
   // sunflowers in a jug
   return {
     body: merge([
-      { geometry: new THREE.CylinderGeometry(0.055, 0.045, 0.14, 12), position: [0, 0.07, 0] },
-      ...Array.from({ length: 5 }, (_, i) => ({ geometry: cyl(0.006, 0.2, 5), position: [(i - 2) * 0.012, 0.2, 0] as [number, number, number], rotation: [0, 0, (i - 2) * 0.12] as [number, number, number] })),
+      { geometry: new THREE.CylinderGeometry(0.05, 0.042, 0.12, 12), position: [0, 0.06, 0] },
+      ...Array.from({ length: 5 }, (_, i) => ({ geometry: cyl(0.006, 0.16, 5), position: [(i - 2) * 0.012, 0.17, 0] as [number, number, number], rotation: [0, 0, (i - 2) * 0.12] as [number, number, number] })),
     ]),
     trim: merge(
       Array.from({ length: 5 }, (_, i) => ({
-        geometry: ball(0.026, 8),
-        position: [(i - 2) * 0.034, 0.3 + (i % 2) * 0.02, 0] as [number, number, number],
+        geometry: ball(0.025, 8),
+        position: [(i - 2) * 0.032, 0.25 + (i % 2) * 0.02, 0] as [number, number, number],
         scale: [1, 1, 0.5] as [number, number, number],
       })),
     ),
@@ -306,20 +316,25 @@ export function RoomExtras({
   const front = SHELF.depth / 2
   return (
     <>
+      {/* the camera frames the whole case with only a hand's width of floor beside it, so the
+          corner is tucked against the case's left shoulder: the lamp stands where it can be
+          seen, and the chair's near arm and blanket come into the frame beside it */}
       {room.readingCorner && (
-        <group position={[-side - 0.5, 0, front + 0.18]} rotation={[0, 0.45, 0]}>
+        <group position={[-side - 0.3, 0, front + 0.06]} rotation={[0, 0.5, 0]}>
           <ReadingCorner room={room} night={night} />
           {/* on a computer the lamp lights its corner at night; never on a phone */}
-          {lampLightOn({ night, readingCorner: true, lite }) && <pointLight position={[-0.42, 1.34, -0.16]} intensity={0.9} distance={2.2} decay={2} color="#ffd79a" />}
+          {lampLightOn({ night, readingCorner: true, lite }) && <pointLight position={[LAMP[0], 1.14, LAMP[2]]} intensity={0.9} distance={2.2} decay={2} color="#ffd79a" />}
         </group>
       )}
       {room.plant && (
-        <group position={[side + 0.17, 0, front - 0.02]}>
+        <group position={[side + 0.14, 0, front + 0.04]}>
           <GrowingPlant stage={stage} room={room} />
         </group>
       )}
+      {/* the season's pieces are low and stand on the strip of floor in front of the case's
+          right-hand foot, so they are never in front of a spine */}
       {room.seasonal && (
-        <group position={[side + 0.2, 0, front + 0.26]}>
+        <group position={[side - 0.16, 0, front + 0.3]}>
           <SeasonDecor season={season} room={room} />
         </group>
       )}

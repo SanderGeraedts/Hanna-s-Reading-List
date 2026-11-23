@@ -21,13 +21,39 @@ export interface CaseFraming {
  * whole case fits; on a phone held upright it is framed to the width of the screen. Zooming in
  * brings the camera closer (1: the whole case).
  */
-export function frameCase(caseWidth: number, caseHeight: number, aspect: number, portrait: boolean, zoom: number): CaseFraming {
+/**
+ * The share of the view that is left above the case when the whole case fits: the margin the
+ * room has always had (the same 14% `topGap` uses), and the matching share below it.
+ */
+export const TOP_SHARE = 0.14
+const BOTTOM_SHARE = 1 - TOP_SHARE - 1 / FRAME.vertical
+
+/**
+ * How much of the view the case may fill, given how much the header needs above it.
+ * With a short header this is exactly `FRAME.vertical`, as it has always been; with a
+ * taller one (the bar above the shelf, T-0051) the camera steps back so the bar covers
+ * no book.
+ */
+export const verticalMargin = (headerShare: number) => 1 / (1 - Math.max(TOP_SHARE, headerShare + 0.015) - BOTTOM_SHARE)
+
+/** The share of the view above the case, for this header. */
+export const topShareFor = (headerShare: number) => Math.max(TOP_SHARE, headerShare + 0.015)
+
+export function frameCase(
+  caseWidth: number,
+  caseHeight: number,
+  aspect: number,
+  portrait: boolean,
+  zoom: number,
+  /** the header's height as a share of the view; a phone handles its header with topGap instead */
+  headerShare = 0,
+): CaseFraming {
   const tan = Math.tan(THREE.MathUtils.degToRad(FOV / 2))
   // phones use (nearly) the full width; desktops keep a margin round the case
   const marginW = portrait ? 1.09 : FRAME.horizontal
   const distW = (caseWidth * marginW) / 2 / (tan * aspect)
   // leave room for the header at the top
-  const distH = (caseHeight * FRAME.vertical) / 2 / tan
+  const distH = (caseHeight * verticalMargin(portrait ? 0 : headerShare)) / 2 / tan
   // desktops show the whole case; phones held upright scroll through it
   const fitted = Math.max(distW, portrait ? 0 : distH, 0.9)
   const toCase = Math.max(0.35, fitted / Math.max(1, zoom))

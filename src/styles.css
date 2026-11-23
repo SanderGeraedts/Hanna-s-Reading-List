@@ -1441,11 +1441,24 @@ textarea.input {
   pointer-events: auto;
   min-width: 0;
 }
+/* the switch sits on the header's haze over the shelf, so it gets the header's own light
+   styling (as .topbar .input does), not the dark-card styling .segmented has on a card */
 .shelf-cases {
   justify-self: start;
   max-width: 100%;
   flex-wrap: wrap;
   row-gap: 3px;
+  background: rgba(255, 255, 255, 0.75);
+  border-color: rgba(40, 50, 90, 0.2);
+}
+.topbar .shelf-cases button {
+  color: var(--pill-ink);
+  opacity: 0.72;
+}
+.topbar .shelf-cases button.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+  opacity: 1;
 }
 .shelf-filters {
   display: flex;
@@ -1454,6 +1467,12 @@ textarea.input {
   gap: var(--space-2);
   max-width: 100%;
   min-width: 0;
+}
+.shelf-filters > * {
+  flex: 0 0 auto;
+}
+.shelf-filters .muted {
+  white-space: nowrap;
 }
 .shelf-filters .input {
   max-width: 11rem;
@@ -1466,6 +1485,8 @@ textarea.input {
 /* a phone: one sideways-scrolling row instead of four stacked lines eating the shelf */
 @media (max-width: 700px) {
   .shelf-filters {
+    /* the grid lays its items out at their own width, so say "the whole row" before it can scroll */
+    width: 100%;
     flex-wrap: nowrap;
     overflow-x: auto;
     overflow-y: hidden;
@@ -1480,6 +1501,11 @@ textarea.input {
   }
   .shelf-filters .input {
     max-width: 9rem;
+  }
+  /* the header hides a .sort label on a phone ("Arrange by"), but each filter needs its own
+     name: it is the only way to tell the six selects apart */
+  .shelf-filter > span {
+    display: inline;
   }
 }
 
@@ -1643,6 +1669,12 @@ textarea.input {
   .topbar .page-tab {
     pointer-events: auto;
     flex-shrink: 0;
+  }
+  /* the bar above the shelf (T-0051): a full-width row of its own under the page tabs,
+     so the bookcase switch fits on one line and the filter row has the whole width to scroll in */
+  .topbar .shelf-bar {
+    grid-column: 1 / -1;
+    grid-row: 4;
   }
 }
 
