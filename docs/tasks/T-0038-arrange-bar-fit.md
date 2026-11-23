@@ -2,12 +2,12 @@
 id: T-0038
 title: "Keep the Arrange bar small: its Hidden chips scroll inside a capped area, and on a short screen the bar no longer sticks over the blocks"
 description: "While arranging, the Hidden: chips of the Arrange bar (Dashboard and Challenges) sit in an area at most about two chip rows high that scrolls inside, so the bar never grows taller than the screen however many blocks are hidden; on a short screen (a phone held sideways) the bar stays at the top of the page instead of sticking under the header, so no bingo square ends up under it."
-status: Doing
+status: Done
 size: small
 depends_on: [T-0020, T-0035]
 decisions: [D-0014, D-0020, D-0022, D-0028]
 raised_on: 2026-11-23
-done_on: ""
+done_on: "2026-11-23"
 result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/244"]
 ---
 
@@ -183,6 +183,62 @@ Verdict: one must-fix, a single CSS value; applied by the developer step below a
 
 # Test
 
+Tester, 2026-11-23, on `c578c51` (the UX must-fix included) plus the new test below.
+
+**CI** (`gh run view 45090495212`): attempt 1, `checks / checks` success: Test Files 95 passed |
+1 skipped (96), Tests 952 passed | 9 skipped (961), `✓ built`; no retries. Netlify deploy preview
+ready. (CI reruns on the tester commit; marked ready only once that run is green.)
+
+**Locally**, from clean (`pnpm install --frozen-lockfile`: Done):
+
+- `pnpm exec vitest run src/styles.test.ts` five times in a row: `Tests  9 passed (9)` each time.
+- `pnpm exec tsc --noEmit`: exit 0. `pnpm exec harness check`: tasks, decisions, engineers,
+  generated files all ✓.
+- *Done when* focus script on a no-backend dev server (port 3152, no `POCKETBASE_URL`),
+  `focus-after-ux-fix.txt`: **0** focusable elements under the header or the bar in all 30 runs
+  (844 × 390 and 800 × 360: bar `static`); bar with 30 hidden 173 px = 20.5 % (390 × 844),
+  21.6 % (360 × 800), 137 px = 17.1 % (1280 × 800), all under 35 %; real clicks 30 of 30 Hide
+  buttons and 30 of 30 chips at 390 × 844; Tab 30 of 30 chips fully visible; 0 console errors, no
+  sideways scroll. Screenshots retaken by the developer step and looked at: third row peeks.
+
+**Trying to break it** (`tester-break.txt`, Playwright with real input):
+
+- **Tab through the chips** (all hidden), 390 × 844 and 1280 × 800: Tab 30/30 and Shift+Tab 30/30
+  fully visible inside the area; after the last chip Tab goes on to the page ("Quick update"),
+  before the first Shift+Tab goes to Done. Enter on a focused chip brings its block back.
+- **Touch scroll in the chips** (390 × 844, raw touch events): a 60 px drag scrolls the area
+  0 → 57; six more drags reach the end (526/526) while the page stays at 0; the drags don't count
+  as taps (still 30 chips); then a tap on the last chip ("+ On this day") brings it back (29
+  left); a drag on the page below still scrolls the page; dragging down returns to the top.
+- **Challenges page** at 390 × 844, 844 × 390 and 1280 × 800: hid all 4 blocks with real clicks,
+  4 chips all fully visible (bar 148 px sticky / 106 px static / 84 px sticky), all 4 back with
+  real clicks, Done leaves arranging; 0 console errors.
+- **Resizing across 500 px** (844 wide, 6 hidden, arranging): 700 and 501 → `sticky`,
+  scroll-padding 297 px; 500, 450, 390 → `static`, 133 px; back to 501 and 844 → `sticky`, 297 px.
+  0 of 171 focusable elements under the header or bar at every size. The line is at exactly
+  500 (`max-height` includes it), as the task says.
+- **The computer is unchanged** (mouse, 1280 × 800 and 1440 × 900): bar 51 px with 0 hidden and
+  84 px with 6, same as `main` (`focus-before-main.txt`); 13 hidden still two rows, all fully
+  visible (115 px); only with 30 hidden it is capped (137 px instead of `main`'s 178), and the
+  mouse wheel over the area scrolls the chips (0 → 40) and not the page.
+
+**Test added:** `src/styles.test.ts`, "on a touch screen a chip row is as tall as a .btn.small chip
+there": the touch `--chip-row` must equal `.btn.small`'s touch `min-height`, so a change to the
+chip size can't silently break the 2½-row cap. Checked that it fails when they differ
+(`expected '30px' to be '36px'`).
+
+**Found, not blocking (for the architect):**
+
+1. When Tab scrolls a chip into view, it lands flush with the area's edge (gap 0 px at the
+   bottom, measured per chip), so the bottom 4 px of its focus ring (2 px outline + 2 px offset)
+   are cut off; the chip itself and the rest of the ring are visible, so *Done when* holds. The
+   *Build notes* claim the padding prevents this; it does only at the very top and bottom of
+   the list. Likely fix: `scroll-padding-block: var(--space-1)` on `.hidden-blocks`.
+2. After Enter on a chip, focus falls back to the page (`BODY`), because the chip disappears.
+   CSS-only task, so the same on `main`; a keyboard user has to Tab back from the top.
+
+**Verdict: passed.** Nothing left for a human; the morning question to Hanna stays as written.
+
 # Log
 
 - 2026-11-23 architect: wrote the task from T-0035's tester notes (phone sideways with Arrange on:
@@ -220,3 +276,7 @@ Verdict: one must-fix, a single CSS value; applied by the developer step below a
   **137 px (17.1 %)** at 1280 × 800; real clicks 30 of 30 Hide buttons and 30 of 30 chips; Tab 30 of
   30 chips fully visible; no console errors, no sideways scroll. Screenshots retaken
   (`screens-branch.txt`): the top half of the third chip row now shows at 390 and 1280.
+- 2026-11-23 tester: passed. CI green on the first attempt; *Done when* rerun after the UX fix;
+  broke-it pass on Tab, touch scroll, Challenges, the 500 px line and the computer found nothing
+  failing; +1 test (touch chip row = `.btn.small`'s touch height). Two small findings for the
+  architect under *Test* (focus ring cut at the chip area's edge; focus lost after a chip is used).

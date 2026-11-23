@@ -82,6 +82,21 @@ describe('the Arrange bar stays small (T-0038)', () => {
     expect(prop(chips, 'overflow-y')).toBe('auto')
   })
 
+  it('on a touch screen a chip row is as tall as a .btn.small chip there, so the cap still shows 2½ rows', () => {
+    // every `@media (pointer: coarse)` block, and the rule inside them that sets each selector
+    const coarse = css.split('\n@media (pointer: coarse) {').slice(1).map((b) => b.slice(0, b.indexOf('\n}')))
+    const inCoarse = (selector: string) => {
+      for (const block of coarse) {
+        const at = block.search(new RegExp(`\\n  (?:[^{}]*,\\n  )?${selector.replace(/\./g, '\\.')}(?:,|\\s*\\{)`))
+        if (at >= 0) return block.slice(at, block.indexOf('\n  }', at))
+      }
+      throw new Error(`no ${selector} in a pointer: coarse block`)
+    }
+    const row = prop(inCoarse('.hidden-blocks'), '--chip-row')
+    expect(row).toBeDefined()
+    expect(row).toBe(prop(inCoarse('.btn.small'), 'min-height'))
+  })
+
   it('on a short screen the arranging bar does not stick, and the scroll padding is the header’s own', () => {
     const short = media('(max-height: 500px)')
     expect(prop(nested(short, '.dashboard-bar.arranging'), 'position')).toBe('static')
