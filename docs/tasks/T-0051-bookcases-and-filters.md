@@ -298,9 +298,54 @@ Local dev server, no backend, the same seeded books in every shot. Names
 | 6 | 1280 | lavender | Keyboard focus on `To read`, and on `Clear` (gold ring) |
 | 7 | 360 | lavender | 150 books, All: the switch wrapped inside the pill and the top shelf still whole |
 
-## Review after building
+## Review after building (2026-11-23)
 
-(UX designer, after the build.)
+(UX designer. Looked at all 16 shots in `T-0051-screens/` and at `git diff main...HEAD -- src`.)
+
+**Verdict: matches the design. Two differences, neither of which must be fixed before the
+tester; one of them is a correction to my own design.**
+
+**What matches.**
+- The bar is the header's bottom row and the shelf sits clear of it at every size I asked for:
+  at 360 × 800 with 150 books the **whole top shelf of books and the crown are below the filter
+  row** (row 7), and the same at 390 and 1280 (row 1, both wallpapers). This was the check I
+  cared about most, and the developer had to fix the computer's framing twice to get it.
+- The switch is the `.segmented` pill with `All` chosen, the four words in her order, no counts,
+  and at 360 it fits on **one line** (row 7).
+- The six filters are visible-labelled selects with the exact option words of the design
+  ("★4 and up", "🌶1 and up", "2026 (15)", "English (120)", "No language (n)"), and a set one
+  carries the gold ring (row 3: Rating, Year read and Language ringed, the other three not).
+- The count line reads exactly as designed: "5 of 150 books · ★4 and up · 2026 · English"
+  (row 3), "100 of 150 books · Digital" (row 2b), and the plain status line with nothing set.
+- **✕ Clear** appears only with a filter set and is gone otherwise; the empty result shows
+  "No books match these filters." with Clear beside it and the case still drawn (row 5).
+- Focus rings on *To read* and on *Clear* (rows 6a, 6b).
+- On a phone the row scrolls sideways and a select opens as a native list (row 4).
+
+**Difference 1 — the filter names needed a halo, and I accept it.** The bar's bottom row sits
+where the header's haze has nearly faded out, so over the dark wood of the case the filter names
+and the empty line were almost unreadable at 390. The developer gave exactly those two pieces of
+text a soft white halo (`text-shadow`). It is a treatment the design did not name, it is
+invisible on the wallpaper, and it makes them legible on the wood. Accepted: it is the right
+fix and smaller than reshaping the header's gradient.
+
+**Difference 2 — switching bookcase does not scroll back to the top row. My design was wrong.**
+I wrote "the camera re-frames and scrolls back to the top row, as it already does when a genre
+is chosen". It does not, and neither does the genre filter: the shelf keeps the height it was
+scrolled to, clamped into the new case (row 2b shows a mid-case view, because that shot switched
+bookcase twice from a scrolled position). I am **correcting the design, not the build**: the
+behaviour is exactly what the genre filter has done since #41, so it is what she already knows,
+and resetting the scroll on every tap of the switch would throw away where she was looking. A
+fresh visit always starts at the top. Left as it is, deliberately.
+
+**Checked and found nothing wrong with:** the bar is absent on Dashboard, Challenges, Calendar
+and Creatures (code, and their header height is unchanged); the keyboard order page tabs → four
+bookcase buttons → Genre … Trope → Clear; a filter the shelf has nothing for is simply not in
+the row (a plain demo shelf shows only Genre); long option text is cut by the select's own
+width, not by the row.
+
+**For the tester:** the empty-bookcase line, Clear with every filter set at once, and a shelf of
+only audiobooks under Digital.
 
 # Test
 
@@ -360,3 +405,8 @@ Local dev server, no backend, the same seeded books in every shot. Names
   this task moves nothing of its own; it only shows a little less shelf.
   Screenshots: all seven rows of the design's list in `T-0051-screens/` (16 files).
   Handed to the **UX designer** for review.
+- 2026-11-23 ux-designer: reviewed: matches the design. Two differences, neither blocking: the
+  filter names needed a soft light halo to stay readable where the header's haze has faded out
+  over the dark wood (accepted, it is the smaller fix), and switching bookcase keeps the shelf's
+  scroll height instead of going back to the top — which is what the genre filter has always
+  done, so I corrected my design rather than the build. Handed to the **tester**.

@@ -277,9 +277,54 @@ Clock pinned per shot.
 | 7 | 390 | lavender | Keyboard focus on `Day & night` (gold ring) |
 | 8 | 390 | lavender | Night with 150 books: the spines still readable |
 
-## Review after building
+## Review after building (2026-11-23)
 
-(UX designer, after the build.)
+(UX designer. Looked at all 20 shots in `T-0053-screens/`, compared day against night and
+all-on against all-off, and read the placement code.)
+
+**Verdict: matches the design where the room allows it. One difference I am accepting and
+recording as a correction to my own design; nothing must be fixed before the tester.**
+
+**What matches.**
+- The **Your room** group sits between *Books* and the decorations, with the four toggles in
+  her words, all ticked on a fresh device (rows 6, at 390 and 360). Focus ring on *Day & night*
+  (row 7).
+- **Day and night** is right (rows 1, 2, 3, 8). At 21:00 the room is a warm, dim evening: the
+  wallpaper darkens, the lamp's shade glows, the fairy lights stand out, and the **spines are
+  still readable** — at 390 with 150 books (row 8) I can read every title on the shelf, which
+  was the line I would have sent the build back over. All four off at 21:00 (row 3) is today's
+  bright room, so the difference is clearly the switch and not something else. Nothing animates
+  on the turn-over.
+- The **plant** grows through its five steps (row 5: a two-leaf sprout at 0, then small, medium,
+  full, and flowering with its accent-coloured blooms at 40) and is never an empty pot.
+- The **season** changes with the month and always shows something (row 4: three pumpkins in
+  October, a little tree with baubles and a star in December, potted flowers in April, a jug of
+  sunflowers in July).
+- Both wallpapers look the same in the panel, and the blanket, flowers and blooms take the
+  accent of the wallpaper she chose (rows 1, 2 on lavender and on midnight).
+- **Nothing covers a spine**, in any season, at any plant step, day or night, at 390 or 1280. I
+  checked each of the nine scenery shots for this specifically. Nothing hangs in the air.
+
+**Difference — where the corner and the season stand. My design asked for the impossible, and
+the developer was right to say so.** I wrote that the season's pieces stand "in front of the
+bookcase's feet … low enough to be under the bottom shelf's books". There is nothing under the
+bottom shelf: it is 3 cm above the floor. And the camera frames the whole case with only a hand's
+width of floor beyond each side, so a 56 cm chair cannot stand beside the case and be seen at
+all. What is built — the corner tucked against the case's left shoulder with its lamp where it
+can be seen and the chair's arm, back and blanket coming into the frame; the plant at the right
+foot; the season's pieces low on the strip of floor in **front of** the right foot — reads as a
+cosy room and keeps the one rule that matters (never in front of a spine). **I am correcting the
+design to what is built.**
+
+**One roughness I am letting through, with a note for Hanna.** The chair is plain next to the
+koala and the cat: flat panels in one brown, with the blanket as a small block. It reads as "a
+chair with a blanket" and nothing more. It is honest low-poly and it is in frame, so it does not
+block the task; but if Hanna says it looks like a cardboard box, that is a small follow-up on its
+shapes and colours, not a rebuild. Worth asking her in the same breath as the other questions.
+
+**For the tester:** all four on at once on a phone; the turn-over across 19:00 and across
+midnight; the plant with 0 books finished this year; each season; toggling each one ten times and
+checking the live WebGL counts come back; and *Detailed books* off with all four extras on.
 
 # Test
 
@@ -361,3 +406,11 @@ Clock pinned per shot.
   pinned per shot. At 360 × 800 the *Your room* group opens with its first three toggles in
   view and the fourth a short scroll away, as the design allows.
   Handed to the **UX designer** for review.
+- 2026-11-23 ux-designer: reviewed: matches the design where the room allows it, nothing to fix.
+  The evening is warm and dim with the spines still readable at 390 with 150 books, the plant
+  takes all five steps, every season shows something, and nothing stands in front of a spine. I
+  corrected my own design on where the corner and the season stand: the camera leaves only a
+  hand's width of floor beside the case and there is nothing under the bottom shelf, so a chair
+  cannot stand beside the case as I wrote. One roughness let through with a note for Hanna: the
+  chair is plainer than the koala and the cat, and its shapes are a small follow-up if she says
+  so. Handed to the **tester**.

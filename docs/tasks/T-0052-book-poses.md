@@ -295,9 +295,55 @@ shows the pose she chose, because that is what the book is — not what this scr
 | 6 | 390 | lavender | The same books all back to Standing: identical to the shelf before any pose was set |
 | 7 | 1280 | lavender | Keyboard focus on `Face-out` (gold ring) |
 
-## Review after building
+## Review after building (2026-11-23)
 
-(UX designer, after the build.)
+(UX designer. Looked at all 11 shots in `T-0052-screens/`, at the three picker shots state by
+state, and at the diff of `shelfLayout.ts`, `BookMesh.tsx` and `BookPanel.tsx`.)
+
+**Verdict: matches the design. Nothing must be fixed before the tester. One thing the shots
+cannot show, which I pass to the tester, and one picture the demo shelf cannot produce.**
+
+**The poses on a shelf** (rows 1, 2, 5), at 390 and 1280:
+- **Face-out** books turn their cover to her, are clearly wider than their neighbours, stand at
+  the same floor height, and their front faces line up with the standing books' fore-edges, so
+  the shelf's front line stays straight. The cover fills the board at the right shape.
+- **Flat stacks** read as a pile of books: the spines face her, each **title reads left to right
+  and the right way up**, the covers all face upward so a stack reads as one pile, the gold
+  ridges run along the top edge of each book, and a read book's medal sits at the left-hand end
+  of its spine. The hand-made nudge is there and is as small as I asked — it looks stacked, not
+  machined.
+- **Two stacks side by side** (row 5, and the zoom in row 2) look deliberate, not like a mistake.
+- Standing books between them are untouched.
+- Zoomed in (row 2, 1.96×) I can see the ridges, the medals and the paper edges of all three
+  poses; nothing flickers, no dark seams, no board edge in a different colour, no book sunk into
+  or floating above the board, nothing through the shelf above or past the case's sides.
+
+**The picker** (row 3, each pose pressed in turn at 390): it is the first group on **Looks**,
+the heading **How it stands** above a pill of **Standing · Face-out · Lying flat**, the current
+one gold, above *Front / Spine / Back*. No icons, no hint text, nothing disabled. The book above
+the sheet turns as she taps. Focus ring on *Face-out* at 1280 (row 7).
+
+**Back to Standing** (row 6): the 150-book shelf with every pose cleared is the same picture as
+the plain shelf of the same books — a pixel diff of row 6 against T-0051's row 1 finds **0.60 %**
+differing, all of it the fairy lights' twinkle and JPEG noise. Same places, same gaps, same
+decorations. That was the check I most wanted and it holds.
+
+**Difference 1 — the face-out cover is the painted fallback in every shot.** The design asked
+for "a face-out book without a cover next to one with a cover". The demo shelf has no
+`coverUrl`, and the shots run with no backend and no network (G-0019), so every face-out book in
+row 4 shows the **painted** cover. That picture is correct and is what a book without a cover
+gets; the pair with a real cover picture can only be seen on her own shelf. Not a fault of the
+build; it stays on her list to confirm.
+
+**Difference 2 — nothing here can show the flight.** A still cannot prove there is no jump when
+a posed book is taken out or lands back. The code slerps from the pose into exactly the standing
+book's inspect orientation, so the endpoints are identical, and the picker shots show the book
+out and correct. **For the tester:** watch one take-out and one put-back of a face-out book and
+of a book in the middle of a stack, at 390 and at 1280.
+
+**Accepted as built, not in the design:** the two camera fixes (the computer's whole-case framing
+and the zoomed-in top gap). Both are what the design demanded — the bar covers no book — and
+they are the only way to get it.
 
 # Test
 
@@ -383,3 +429,11 @@ shows the pose she chose, because that is what the book is — not what this scr
   shelf to confirm. The zoom shot (row 2) is at 1.96× and is scrolled where zooming left it,
   not at the top row.
   Handed to the **UX designer** for review.
+- 2026-11-23 ux-designer: reviewed: matches the design, nothing to fix. All three poses read
+  correctly on the shelf (a face-out cover at the right shape and front line, flat stacks with
+  their titles the right way up and their covers upward, two stacks side by side), the picker is
+  the first group on Looks, and a shelf with every pose cleared is the same picture as the plain
+  shelf (0.60 % of pixels differ, all twinkle and JPEG noise). Two things stills cannot show, both
+  passed to the tester: the flight out and back of a posed book, and a real cover picture
+  face-out (the demo shelf has none, so every shot shows the painted fallback). Handed to the
+  **tester**.
