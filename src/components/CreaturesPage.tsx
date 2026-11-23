@@ -305,6 +305,9 @@ export function CreaturesPage({ books, startChoose, onChooseOpened, startStep, o
         now={now}
         pets={c.pets}
         currentPetId={pet?.id ?? null}
+        // the current pet roams the den too (T-0046, D-0040), but not while an egg hatches,
+        // a creature is revealed or the Shop shows a creature being dressed
+        roamCurrent={home && !reveal && !shopView}
         dressOf={(id) => c.shop.worn.get(id) ?? {}}
         onFeed={(id) => {
           const r = feed(id)

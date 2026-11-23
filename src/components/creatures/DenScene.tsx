@@ -7,6 +7,8 @@ import type { DenSlot, HabitatId, OutfitSlot } from '#/lib/creatures/shop'
 import { WalkingPets } from './WalkingPets'
 import { DragFeed } from './DragFeed'
 import { skyAt, weatherAt } from '#/lib/creatures/weather'
+import { CURRENT_RANGE, GENTLE_WALK, HOP, WALK, gentleTarget, isHopper, pickCurrentRoam, roamTarget } from '#/lib/creatures/denRoam'
+import type { RoamState } from '#/lib/creatures/denRoam'
 import { creatureFor, eyeOpen, headTilt, rigOf, usePageVisible } from './pose'
 import { SPARKLE_SPOTS, glowTex, makeEgg, sparkleTexture } from './eggModel'
 import type { Rig } from './pose'
@@ -88,6 +90,13 @@ interface Props {
   onFeed?: (petId: string) => void
   /** tap on a pet — pet reaction (T-0032 §6a) */
   onTap?: (pet: Pet) => void
+  /**
+   * The current pet roams the den too (T-0046, D-0040): freely on a computer, a
+   * short gentle wander now and then on a phone. Off during a hatch, a crack, a
+   * reveal and the Shop's preview, where the creature is a picture, not a pet at
+   * home. Reduce motion keeps it on the cushion whatever this says.
+   */
+  roamCurrent?: boolean
 }
 
 /** Share of the canvas height a creature fills, per stage (Design §5), before the 10 % pull-back of T-0031. */
@@ -97,12 +106,16 @@ const VIEW_H = DEN_VIEW_H
 const LOOK = DEN_LOOK
 const CAMERA = DEN_CAMERA
 const NO_DEN: DenSetup = { habitat: 'cosy', placed: {} }
+/** The den's floor, where a roaming pet stands (T-0032 Design §3). */
+const FLOOR_Y = 0.01
 // Where the creature and the egg sit (world y): each bed has its own, from `seatYOf` in
 // shopModels.ts. The gold cushion is 0.18, the cloud cushion 0.22, the basket bed 0.14
 // (review 2026-11-23; closes backlog F14).
 
-export function DenScene({ shows, cookies, phone, reduce, paused, reaction, onCrackDone, dress, den = NO_DEN, now, pets, currentPetId, dressOf, onFeed, onTap }: Props) {
+export function DenScene({ shows, cookies, phone, reduce, paused, reaction, onCrackDone, dress, den = NO_DEN, now, pets, currentPetId, dressOf, onFeed, onTap, roamCurrent }: Props) {
   const visible = usePageVisible()
+  // one seed per mount, so the den isn't choreographed between sessions but doesn't re-roll while she watches
+  const session = useRef(Math.floor((now?.getTime() ?? Date.now()) / 60_000)).current
   const q: CreatureQuality = phone ? 'low' : 'high'
   const wall = HABITAT_BACK[den.habitat]
   // the clock is read per render: the page re-renders every minute (moods), so the sky follows
@@ -169,6 +182,8 @@ export function DenScene({ shows, cookies, phone, reduce, paused, reaction, onCr
           dress={dress}
           seat={seatYOf(den.placed.bed)}
           petId={currentPetId ?? null}
+          roam={!!roamCurrent && !!currentPetId}
+          session={session}
           onTap={() => currentPetId && pets && onTap?.(pets.find((p) => p.id === currentPetId)!)}
         />
       )}
@@ -177,7 +192,7 @@ export function DenScene({ shows, cookies, phone, reduce, paused, reaction, onCr
         <WalkingPets
           pets={pets.filter((p) => p.id !== currentPetId)}
           dressOf={dressOf}
-          session={Math.floor((now?.getTime() ?? Date.now()) / 60000)}
+          session={session}
           onTap={onTap}
           onFeed={(p) => onFeed?.(p.id)}
         />
@@ -528,6 +543,8 @@ function Creature({
   dress,
   seat,
   petId,
+  roam = false,
+  session = 0,
   onTap,
 }: {
   species: SpeciesId
@@ -540,6 +557,10 @@ function Creature({
   dress?: Partial<Record<OutfitSlot, string>>
   seat: number
   petId?: string | null
+  /** this pet roams the den (T-0046, D-0040); never with reduce motion */
+  roam?: boolean
+  /** the den's seed for this session, so the walk isn't choreographed */
+  session?: number
   onTap?: () => void
 }) {
   const q: CreatureQuality = phone ? 'low' : 'high'
@@ -565,6 +586,15 @@ function Creature({
   const blink = useRef({ next: 2 + Math.random() * 3 })
   const react = useRef<{ kind: Reaction['kind']; at: number | null } | null>(null)
   const seen = useRef<number | null>(reaction?.n ?? null)
+  // roaming (T-0046 Design §2–§4): where the pet stands, which way it faces, and its clock
+  const walking = roam && !reduce
+  const hop = isHopper(species)
+  const roamState = useRef<{ s: RoamState; until: number; target: THREE.Vector3; counter: number } | null>(null)
+  const pos = useRef(new THREE.Vector3(0, 0, 0))
+  const facing = useRef(0)
+  const lift = useRef(seat)
+  /** seconds spent frozen by a reaction: the state clock pauses with the walk (D-0040 guidance) */
+  const frozen = useRef(0)
 
   useEffect(() => {
     if (!reaction || reaction.n === seen.current) return
@@ -573,10 +603,14 @@ function Creature({
     invalidate()
   }, [reaction, invalidate])
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, dt) => {
     const t = clock.elapsedTime
+    const d = Math.min(dt, 0.1)
     const tilt = headTilt(mood)
     const idle = !reduce
+    /** the trick's own turn, added on top of the way the pet faces (T-0046 §5) */
+    let spin = 0
+    let flip = 0
     // breathing (+2 % y when happy, T-0032 Design §7)
     if (rig.body) {
       const period = mood ? 6 : 4
@@ -616,21 +650,17 @@ function Creature({
           }
           invalidate()
         } else if (tr === 'spin' && k < 0.9) {
-          if (holder.current) holder.current.rotation.y = (k / 0.9) * Math.PI * 2
+          spin = (k / 0.9) * Math.PI * 2
           bob = Math.sin((k / 0.9) * Math.PI) * 0.06
           invalidate()
         } else if (tr === 'somersault' && k < 1.0) {
-          if (holder.current) holder.current.rotation.x = (k / 1.0) * Math.PI * 2
+          flip = (k / 1.0) * Math.PI * 2
           bob = Math.sin((k / 1.0) * Math.PI) * 0.09
           invalidate()
         } else if ((tr === 'bow' || tr.startsWith('toy:')) && k < 0.7) {
           if (rig.body) rig.body.rotation.x = Math.sin((k / 0.7) * Math.PI) * 0.5
           invalidate()
         } else if (k >= 1.1) {
-          if (holder.current) {
-            holder.current.rotation.y = 0
-            holder.current.rotation.x = 0
-          }
           if (rig.body) rig.body.rotation.x = 0
           react.current = null
         } else {
@@ -650,7 +680,76 @@ function Creature({
       const look = idle && !phone && !mood && c > 6 ? Math.sin(((c - 6) / 2) * Math.PI) * 0.3 : 0
       rig.head.rotation.set(rig.base.head.x + tilt.x, rig.base.head.y + look, rig.base.head.z + tilt.z)
     }
-    if (holder.current) holder.current.position.y = seat + bob * scale
+    // ---- roaming (T-0046 Design §2–§5, D-0040) ----
+    let stepping = false
+    if (walking) {
+      // a reaction (pet, feed, level-up, trick) freezes the walk and its clock
+      const busy = react.current !== null
+      if (busy) frozen.current += d
+      const now = t - frozen.current
+      let s = roamState.current
+      if (!s || now > s.until) {
+        const counter = (s?.counter ?? 0) + 1
+        const pick = pickCurrentRoam(
+          { petId: petId ?? 'current', session, phone, reduce, current: true, toyFree: false, pairFree: false, mood, hour: new Date().getHours() },
+          counter,
+        )
+        // `cushion` and `sleep` walk home first; `rest` stays where it is
+        const go =
+          pick.state === 'roam'
+            ? phone
+              ? gentleTarget(petId ?? 'current', session, counter)
+              : roamTarget(petId ?? 'current', session, counter, CURRENT_RANGE)
+            : pick.state === 'rest'
+              ? { x: pos.current.x, z: pos.current.z }
+              : { x: 0, z: 0 }
+        roamState.current = s = { s: pick.state, until: now + pick.secs, target: new THREE.Vector3(go.x, 0, go.z), counter }
+        invalidate()
+      }
+      if (!busy) {
+        const dx = s.target.x - pos.current.x
+        const dz = s.target.z - pos.current.z
+        const dist = Math.sqrt(dx * dx + dz * dz)
+        if (dist > 0.02) {
+          const speed = phone ? GENTLE_WALK : hop ? HOP : WALK
+          const step = Math.min(dist, speed * d)
+          pos.current.x += (dx / dist) * step
+          pos.current.z += (dz / dist) * step
+          const want = Math.atan2(dx, dz)
+          const diff = THREE.MathUtils.euclideanModulo(want - facing.current + Math.PI, Math.PI * 2) - Math.PI
+          facing.current += diff * Math.min(1, 8 * d)
+          stepping = true
+        } else {
+          // standing: turn smoothly back to the ¾ view she knows
+          facing.current += (0 - facing.current) * Math.min(1, 4 * d)
+        }
+      }
+      // a pet standing on the cushion's spot is on the cushion, whatever it is doing there;
+      // it steps down to the floor as soon as it walks away (T-0046 Design §4)
+      const home = s.s !== 'roam' && Math.sqrt(pos.current.x * pos.current.x + pos.current.z * pos.current.z) < 0.08
+      lift.current += ((home ? seat : FLOOR_Y) - lift.current) * Math.min(1, 8 * d)
+      if (stepping) {
+        // arm swing and a hop or a body bob, as `WalkingPets` does (T-0032 §4b)
+        const armL = rig.root.getObjectByName('part:armL')
+        const armR = rig.root.getObjectByName('part:armR')
+        if (armL) armL.rotation.x = Math.sin(t * Math.PI * 4) * 0.3
+        if (armR) armR.rotation.x = -Math.sin(t * Math.PI * 4) * 0.3
+        bob += hop ? 0.04 * Math.sin(((t * 2) % 1) * Math.PI) : 0.015 * Math.sin(t * Math.PI * 4)
+      } else if (mood !== 'missing') {
+        const armL = rig.root.getObjectByName('part:armL')
+        const armR = rig.root.getObjectByName('part:armR')
+        if (armL) armL.rotation.x *= 1 - Math.min(1, 6 * d)
+        if (armR) armR.rotation.x *= 1 - Math.min(1, 6 * d)
+      }
+      // no invalidate per frame: on a phone the den is `demand` and the `Idle` ticker already
+      // asks for ~20 frames a second — a walking pet moves on those, it never asks for more
+      // (D-0040 §6, T-0046 Build notes).
+    }
+    if (holder.current) {
+      holder.current.position.set(pos.current.x, (walking ? lift.current : seat) + bob * scale, pos.current.z)
+      holder.current.rotation.y = facing.current + spin
+      holder.current.rotation.x = flip
+    }
     if (pops.current.length) {
       for (const p of pops.current) {
         if (p.at === null) p.at = t
