@@ -2,7 +2,7 @@
 id: T-0042
 title: "Show the badges as a grid of round medals with bronze, silver and gold rims, and a card under the grid when one is tapped"
 description: "The Badges block (BadgesCard) becomes a compact grid of round medals with the emoji in the middle, earned then locked then hidden, with a bronze/silver/gold rim worked out per family in badges.ts (D-0038), grey locked and dark hidden medals, one inline card under the grid with the tapped medal's name, how, day or progress (a hidden one's riddle), the head row kept, and the Europe postcard's icon 🗼 replaced by 🏰."
-status: Open
+status: Doing
 size: full
 depends_on: [T-0040]
 decisions: [D-0013, D-0014, D-0020, D-0022, D-0038]
@@ -347,6 +347,45 @@ gold medal, has a locked step badge with progress above 0, and hidden medals.
    its progress in the card even at 0; a locked one-off says "Locked".
 6. Folding closes the card. T-0043's birthday row goes at the end of the folding body.
 
+## Build notes (developer)
+
+- `src/lib/badges.ts`: `Badge.tier: Tier` (`'bronze' | 'silver' | 'gold'`), set once at the end
+  of `badges()` by `withTiers`: the family is the id without a final `-<number>`, and within a
+  family of two or more the lowest number is bronze, the highest gold, the rest silver; a badge
+  alone is gold. Nothing is listed per id. The Europe postcard is 🏰.
+- `src/components/NewBlocks.tsx` (`BadgesCard`): one `<ul class="medals" aria-label="Badges">`
+  of `<button class="medal …">`s in the order earned → locked → hidden (today's sorts). Each
+  medal has `data-state` (`earned` / `locked` / `hidden`), `data-tier` only when earned,
+  `aria-expanded`, `aria-controls="badges-card"` and the accessible names from the design.
+  Roving `tabIndex` (chosen, else last focused, else first). ← → Home End ↑ ↓ move focus; ↑ ↓
+  step by the columns read from the medals' `offsetTop`s. **Enter and Space are handled in the
+  grid's `onKeyDown`** (with `preventDefault`, so the button's own click doesn't fire too):
+  that makes them act once in every browser and lets jsdom test them. Escape anywhere in the
+  block and × close the card and focus its medal; folding closes it. The card follows its
+  badge by id (a medal that gets earned keeps its card and moves to the front, and keeps focus
+  if it had it); a badge that's gone closes it.
+- The card is `<section id="badges-card">` with the bingo suggestion card's classes
+  (`bingo-suggest`, `bingo-suggest-top`, `bingo-suggest-close`) while open. It is **always in
+  the page**, with its `aria-live="polite" aria-atomic="true"` body empty while closed; the
+  closed section takes back the stack's gap with a negative `margin-top`, so the grid has no
+  extra space under it and T-0043's row still sits one gap below the grid.
+- `src/styles.css`: the four tokens (`--medal-gold` = `var(--accent)`, `--medal-silver`,
+  `--medal-bronze`, `--medal-hidden`) in `:root`; `.badges-body`, `.medals`, `.medal` (48 px =
+  `calc(var(--tap) + var(--space-1))`, `box-sizing: border-box` so the 2 px and 3 px rims keep
+  the same size), the states, hover, the cream ring for chosen and the gold `:focus-visible`
+  outline. The old tile rules (`.badges`, `.badge*` list tiles, `.badges-hidden`,
+  `.hidden-badges`, `.secret-tile*`) are gone; `.badge-icon` / `.badge-text` stay (the
+  *Waiting for you* card uses them), as do `.badge-on`, `.badge-secret` and `.badge-progress`.
+- `src/lib/colours.test.ts`: 14 new pairs: each rim at 3 : 1 on a card and on the earned face
+  over a card, and the "?" (`--muted`) at 4.5 : 1 on `--medal-hidden` over a card, lavender
+  and midnight.
+- Screenshots: `docs/tasks/T-0042-screens/screens.mjs`, after T-0040's (a demo shelf in
+  localStorage, a dev server with no backend on port 3157, the window as tall as the page). It
+  imports `playwright`, or the module in `PLAYWRIGHT`. The shelf: six finished books in five
+  genres, one in Paris: First book and Explorer bronze, 5 books silver, Postcard from Europe
+  gold; 10 books locked at 6 / 10; 12 hidden medals. The script prints the medals per row and
+  their size: **6 a row at 390, 8 a row at 1280, every medal 48 × 48**, no page errors.
+
 # Test
 
 To be written by the tester.
@@ -363,3 +402,11 @@ To be written by the tester.
   with a live region, arrow keys on a one-Tab-stop grid, a free spot for T-0043's birthday row,
   12 screenshots). Night mode: six picks under *Choices made by the UX designer*, one question
   added to the morning list. Handed to the **developer**.
+- 2026-11-23 developer: built the medal grid (`Badge.tier` by family in `badges.ts`, 🏰 for
+  Europe, `BadgesCard` as a grid of 48 px medals with one inline card and a live region,
+  roving-tabindex arrow keys, Enter/Space/Escape/×, four `--medal-*` tokens). Check:
+  `badges.test.ts` 29 passed, `BadgesCard.test.tsx` 8 passed, `colours.test.ts` 42 passed;
+  `pnpm test` 97 files passed (1 skipped), 1078 tests passed (9 skipped);
+  `pnpm exec tsc --noEmit` clean; `pnpm run build` "✓ built"; `pnpm exec harness check` all ✓.
+  12 screenshots in `docs/tasks/T-0042-screens/` (6 a row at 390, 8 at 1280, 48 × 48, 0 page
+  errors). Handed to the **UX designer** for the review.

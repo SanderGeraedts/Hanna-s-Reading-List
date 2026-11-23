@@ -6,7 +6,7 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 
 ## Open
 
-- [T-0042 Show the badges as a grid of round medals with bronze, silver and gold rims, and a card under the grid when one is tapped](T-0042-badges-as-a-medal-grid.md): The Badges block (BadgesCard) becomes a compact grid of round medals with the emoji in the middle, earned then locked then hidden, with a bronze/silver/gold rim worked out per family in badges.ts (D-0038), grey locked and dark hidden medals, one inline card under the grid with the tapped medal's name, how, day or progress (a hidden one's riddle), the head row kept, and the Europe postcard's icon 🗼 replaced by 🏰.
+None.
 
 ## Doing
 
@@ -18,6 +18,7 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 - [T-0034 Bring the hardcover books back on phones, lighter to draw, with a Detailed books switch in the room panel](T-0034-hardcovers-on-the-phone-again.md): Phones show the hardcovers (pages, boards, spine, ridges) again instead of the simple blocks from T-0003, after making each hardcover one merged piece of at most two draws on the shelf; measured against the blocks at 390 × 844 with 150 books; a Detailed books on/off switch in the 🎨 room panel, per device, on by default; the SafeBookshelf note stays.
 - [T-0035 Give the header a band she can read on the Dashboard, Challenges and Calendar, and keep a focused card or button out from under it](T-0035-readable-header-over-the-pages.md) (small): On the page views (Dashboard, Challenges, Calendar) the header gets a solid band in its own --header-fade colour, so cards scrolled under it no longer show through the title, the stats line and the page tabs, on both wallpapers (checked by colours.test.ts); .dashboard gets a scroll-padding-top of the header's height (plus the Arrange bar while arranging), so a card or button scrolled to or focused never lands under the header; the shelf keeps its haze.
 - [T-0037 Polish the open book on the shelf: room under the header, calm reduced motion, sideways phones, parallax after a touch, ridges that respect the medal](T-0037-shelf-polish.md) (small): Five follow-ups from T-0026 and T-0034: on the phone the details sheet stops where an open book still has room (no more ~4 m step back) and a book's paper clip stays below the header; with reduced motion the camera jumps back only once a put-back book is home; on a phone held sideways the open book stands in the free space left of the panel and under the toolbar; on touch screens the parallax eases back to centre after a touch; a read-before did-not-finish book loses its bottom ridges like every book with a medal.
+- [T-0042 Show the badges as a grid of round medals with bronze, silver and gold rims, and a card under the grid when one is tapped](T-0042-badges-as-a-medal-grid.md): The Badges block (BadgesCard) becomes a compact grid of round medals with the emoji in the middle, earned then locked then hidden, with a bronze/silver/gold rim worked out per family in badges.ts (D-0038), grey locked and dark hidden medals, one inline card under the grid with the tapped medal's name, how, day or progress (a hidden one's riddle), the head row kept, and the Europe postcard's icon 🗼 replaced by 🏰.
 
 ## Done
 

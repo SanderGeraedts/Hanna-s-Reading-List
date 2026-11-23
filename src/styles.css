@@ -21,6 +21,11 @@
   --accent-ink: #2a1a08; /* text on gold */
   --warning: #e0a35f; /* behind, a reminder */
   --danger: #ea8670; /* remove, wrong: 4.5:1 on a card (colours.test.ts) */
+  /* the badge medals' rims (T-0042, D-0038): 3:1 on a card on both wallpapers (colours.test.ts) */
+  --medal-gold: var(--accent);
+  --medal-silver: #c3c9d4;
+  --medal-bronze: #c8814f;
+  --medal-hidden: rgba(0, 0, 0, 0.45); /* a hidden medal's dark face, under a --muted "?" */
   --header-ink: #2d2038; /* text straight on the wallpaper: deep plum */
   --header-muted: #54456a;
   /* text on the white round buttons in the header: always dark, whatever the wallpaper */
@@ -3332,34 +3337,106 @@ textarea.input {
 }
 
 /* ---- badges, the cover wall, when I read most ------------------------ */
-.badges {
+/* the unfolded body: the medal grid, then the medal card (and T-0043's birthday row) */
+.badges-body {
+  display: grid;
+  gap: var(--space-3);
+}
+.badges-body[hidden] {
+  display: none;
+}
+/* the medal grid (T-0042, D-0038): 48 px round medals, 6 a row at 390 px, 8 at 1280 px */
+.medals {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--tap) + var(--space-1)), 1fr));
+  justify-items: center;
   gap: var(--space-2);
 }
-.badge {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  border-radius: var(--radius-small);
+.medal {
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  width: calc(var(--tap) + var(--space-1));
+  height: calc(var(--tap) + var(--space-1));
+  padding: 0;
+  border-radius: var(--radius-pill);
+  font: inherit;
+  color: var(--text);
+  cursor: pointer;
+}
+.medal-icon {
+  font-size: var(--fs-heading);
+  line-height: 1;
+}
+/* earned: a 3 px rim in its tier's colour */
+.medal.earned {
+  background: var(--surface-raised);
+  border: 3px solid var(--medal-gold);
+}
+.medal.earned.silver {
+  border-color: var(--medal-silver);
+}
+.medal.earned.bronze {
+  border-color: var(--medal-bronze);
+}
+/* locked: plain grey, whatever rim it will get */
+.medal.locked {
   background: var(--surface-sunken);
+  border: 2px solid var(--border-strong);
+}
+.medal.locked .medal-icon,
+.medal-card-grey {
+  filter: grayscale(1);
   opacity: 0.5;
 }
-.badge.earned {
-  opacity: 1;
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-line);
+/* hidden: a dark medal with a "?" */
+.medal.hidden {
+  background: var(--medal-hidden);
+  border: 2px dashed var(--border-strong);
 }
-/* Steam-like: locked badges grey, with their progress */
-.badge.locked {
-  opacity: 0.6;
+.medal.hidden .medal-icon,
+.medal-card-q {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: var(--fs-large);
+  color: var(--muted);
 }
-.badge.locked .badge-icon {
-  filter: grayscale(1);
+.medal:hover,
+.medal.chosen {
+  background: var(--surface-hover);
+}
+/* chosen: a cream ring outside the rim (never gold, so it can't pass for a gold rim) */
+.medal.chosen {
+  box-shadow: 0 0 0 2px var(--text);
+}
+.medal:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+/* the medal card: the bingo suggestion card's box, under the whole grid */
+.badges-card:not(.open) {
+  /* empty, but its live region stays in the page: take back the stack's gap */
+  margin-top: calc(-1 * var(--space-3));
+}
+.badges-card.open {
+  margin-top: 0;
+}
+.badges-card-body {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.badges-card-body p,
+.badges-card h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.medal-riddle {
+  font-style: italic;
+  color: var(--text);
 }
 .badge-on {
   color: var(--accent);
@@ -3376,12 +3453,6 @@ textarea.input {
 }
 .badges-total {
   margin: 0 0 var(--space-2);
-}
-.badges-hidden {
-  margin: var(--space-3) 0 var(--space-2);
-}
-.hidden-badges {
-  list-style: none;
 }
 /* a block's title that folds it away (Badges) */
 .card-fold {
@@ -3409,39 +3480,6 @@ textarea.input {
 }
 .dash-card.folded .badges-total {
   margin-bottom: 0;
-}
-/* a hidden badge: a locked tile with a "?", its riddle when tapped */
-.secret-tile {
-  width: 100%;
-  border: 1px dashed var(--accent-line);
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  opacity: 0.75;
-}
-.secret-tile .badge-icon {
-  display: inline-grid;
-  place-items: center;
-  width: 1.6em;
-  height: 1.6em;
-  border-radius: 50%;
-  background: var(--surface-solid);
-  color: var(--accent);
-  font-family: var(--serif);
-  font-weight: 700;
-}
-.secret-tile.open {
-  opacity: 1;
-  border-style: solid;
-}
-.secret-tile.open .small-text {
-  font-style: italic;
-  color: var(--text);
-}
-.secret-tile:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
 }
 /* "Badge unlocked": slides in at the bottom right, like Steam */
 .badge-toast {
