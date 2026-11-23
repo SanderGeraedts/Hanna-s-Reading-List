@@ -322,19 +322,22 @@ $ pnpm exec tsc --noEmit
 (no output, exit 0)
 
 $ pnpm test
- Test Files  146 passed | 2 skipped (148)
-      Tests  1875 passed | 22 skipped (1897)
+ Test Files  155 passed | 2 skipped (157)
+      Tests  2007 passed | 22 skipped (2029)
 
 $ pnpm run build
-✓ built in 922ms     (client)
-✓ built in 843ms     (server)
+✓ built in 879ms     (client)
+✓ built in 899ms     (server)
 
 $ pnpm exec harness check
-✓ tasks: 52 tasks, index in step
-✓ decisions: 47 records, index complete, 3 overrules valid
+✓ tasks: 58 tasks, index in step
+✓ decisions: 50 records, index complete, 3 overrules valid
 ✓ engineers: 2 listed
 ✓ generated files: current
 ```
+
+These numbers are from the branch **after** it was rebased onto `main` with the Reading
+Garden on it (which is why the three tasks are T-0070 … T-0072 and not T-0060 … T-0062).
 
 The new and affected tests, run three times over (17 files, 187 tests: `wishlist`,
 `wishlist.break`, `wishlist.exclusion`, `seriesGuess`, `batchScan`, `batchScan.break`,
@@ -390,8 +393,8 @@ re-exported from there) and `recommend.test.ts` all pass unchanged.
   `getCoverChoices` server function and a shared `coverPhoto.ts`), the rule-based guess
   (`seriesGuess.ts`) and the series step in `AddFollowUp.tsx`; `buildBook` moved to
   `lib/buildBook.ts` and is re-exported from `AddBookDialog` so "New for you" is untouched.
-  Check output: `pnpm exec tsc --noEmit` clean; `pnpm test` 143 files, 1849 passed, 22
-  skipped; `pnpm run build` built in 801 ms; `pnpm exec harness check` all four lines ✓.
+  Check output: `pnpm exec tsc --noEmit` clean, `pnpm test`, `pnpm run build` and
+  `pnpm exec harness check` all green; the exact output is in *Test* above.
   Handed to the UX designer.
 - 2026-11-23 ux-designer: reviewed the built flow at 390 and 1280 and in real Chrome. Sent one
   thing back (the six-tab row overflowed at 390 instead of wrapping), which the developer fixed

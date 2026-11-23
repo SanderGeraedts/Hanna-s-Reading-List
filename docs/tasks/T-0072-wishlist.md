@@ -415,8 +415,8 @@ in **By hand** has no key and searching for it again offers **Add to wishlist** 
   `WishlistCard.tsx`, `FollowUpDialog.tsx`, the sixth tab with its **By hand** form, and the
   one-line split in `src/routes/index.tsx`. Nothing in `shelfMerge.ts`, `src/server/shelf.ts`,
   `deploy/nas/`, `.github/` or `netlify/` was touched. Check output: `pnpm exec tsc --noEmit`
-  clean; `pnpm test` 143 files, 1849 passed, 22 skipped; `pnpm run build` built in 801 ms;
-  `pnpm exec harness check` all four lines ✓. Handed to the UX designer.
+  clean, `pnpm test`, `pnpm run build` and `pnpm exec harness check` all green; the exact
+  output is in T-0070's *Test* section. Handed to the UX designer.
 - 2026-11-23 ux-designer: reviewed the built block and flow at 390 and 1280 on both wallpapers
   and in real Chrome. Sent one thing back (focus fell to `<body>` when the follow-up closed),
   which the developer fixed and covered with a test. Two differences recorded and accepted.

@@ -6775,6 +6775,9 @@ button.today-item:hover {
   .garden-spot {
     min-width: 44px;
     min-height: 44px;
+  }
+}
+
 /* ---- Pick the cover before the book is added (T-0070) ---------------- */
 .cover-step {
   gap: var(--space-2);

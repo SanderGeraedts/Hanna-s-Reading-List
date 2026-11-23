@@ -334,8 +334,8 @@ section; they cover all three tasks, which ship in one pull request.
 - 2026-11-23 developer: built `lib/batchScan.ts` (the list's rules, pure) and
   `components/BatchScan.tsx` (the camera, the rows, the per-row price, **Add all**); the Scan
   tab's one-at-a-time card is gone. Tests fake `BarcodeDetector` and `getUserMedia`; no
-  hardware. Check output: `pnpm exec tsc --noEmit` clean; `pnpm test` 143 files, 1849 passed,
-  22 skipped; `pnpm run build` built in 801 ms; `pnpm exec harness check` all four lines ✓.
+  hardware. Check output: `pnpm exec tsc --noEmit` clean, `pnpm test`, `pnpm run build` and
+  `pnpm exec harness check` all green; the exact output is in T-0070's *Test* section.
   Handed to the UX designer.
 - 2026-11-23 ux-designer: reviewed the built list at 390 and 1280 with a faked camera. Sent one
   thing back (a row's eight chips pushed the dialog wider than the phone), which the developer
