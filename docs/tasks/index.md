@@ -6,7 +6,7 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 
 ## Open
 
-None.
+- [T-0039 Tap a country on the world map to see its covers in a card under the map, and zoom the map with + −, pinch, Ctrl+scroll and dragging](T-0039-world-map-tap-and-zoom.md): In Where your books are set, tapping a country (or its name in the list) opens an inline card under the map with that country's covers, each opening its book (a plain country says No books set here yet.), imaginary-land covers open their book too, and the map zooms with + − buttons, pinch, Ctrl+scroll and drag-to-pan when zoomed, while at zoom 1 the page scrolls as before; still no numbers in the block.
 
 ## Doing
 
