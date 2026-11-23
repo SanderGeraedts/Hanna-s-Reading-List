@@ -11,6 +11,7 @@ import type { BookDims, Slot } from '#/lib/shelfLayout'
 import { METALS, medalFaceTexture, medalLayout, medalTier, pageTextures, paintBack, paintEdges, paintFallbackCover, paintSpine, plainTexture } from './textures'
 import { cleanEdges } from '#/lib/edges'
 import { inspectDistance } from './inspectPlacement'
+import type { InspectFrame } from './inspectPlacement'
 import { coverSize, facesToPaint } from '#/lib/bookFaces'
 
 export interface InspectTarget {
@@ -47,8 +48,10 @@ export interface BookMeshProps {
   /** where the camera sits (not the animated camera, the resting one) */
   cameraBase: THREE.Vector3
   fov: number
-  /** fraction of the view height the inspected book fills, and how far up it sits */
-  inspectFrame: { fill: number; yShift: number }
+  /** fraction of the view height the inspected book fills, and how far up and sideways it sits */
+  inspectFrame: InspectFrame
+  /** the ids of books put back and still flying home: this book is in it until it is back (T-0037) */
+  flyingHome?: Set<string>
   onPointerDown: (e: ThreeEvent<PointerEvent>, id: string) => void
   onPointerMove: (e: ThreeEvent<PointerEvent>, id: string) => void
   onPointerUp: (e: ThreeEvent<PointerEvent>, id: string) => void
@@ -155,6 +158,7 @@ export function BookMesh(props: BookMeshProps) {
     lite = false,
     ridges,
     ridgeSlot = 0,
+    flyingHome,
   } = props
   const group = useRef<THREE.Group>(null)
 
@@ -265,9 +269,8 @@ export function BookMesh(props: BookMeshProps) {
   const hc = parts.hardcover
 
   // the gilded ridges: this book's matrices in the shelf's one instanced mesh
-  const isRead = book.status === 'read'
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const ridgeMatrices = useMemo(() => ridgeLayout(dims, isRead).map(ridgeMatrix), [dims.w, dims.h, dims.t, isRead])
+  const ridgeMatrices = useMemo(() => ridgesFor(book, dims).map(ridgeMatrix), [dims.w, dims.h, dims.t, hasMedal(book)])
   const ridgeState = useRef({ mesh: null as THREE.InstancedMesh | null, slot: -1, ridges: ridgeMatrices, matrix: new THREE.Matrix4() })
 
   // ---- animation --------------------------------------------------------
@@ -284,8 +287,10 @@ export function BookMesh(props: BookMeshProps) {
     wasSelected: false,
   })
   const tmp = useMemo(() => ({ base: new THREE.Vector3(), target: new THREE.Vector3() }), [])
+  // a book removed or re-keyed mid-flight is no longer on its way home
+  useEffect(() => () => void flyingHome?.delete(book.id), [flyingHome, book.id])
 
-  useFrame((_, rawDt) => {
+  useFrame((state, rawDt) => {
     const g = group.current
     if (!g) return
     const dt = Math.min(rawDt, 0.05)
@@ -324,7 +329,8 @@ export function BookMesh(props: BookMeshProps) {
     if (selected) {
       const dist = inspectDistance(dims.h, inspectFrame.fill, fov)
       const viewHeight = 2 * dist * Math.tan(THREE.MathUtils.degToRad(fov / 2))
-      tmp.target.set(cameraBase.x, cameraBase.y + viewHeight * inspectFrame.yShift, cameraBase.z - dist)
+      const viewWidth = viewHeight * (state.camera as THREE.PerspectiveCamera).aspect
+      tmp.target.set(cameraBase.x + viewWidth * inspectFrame.xShift, cameraBase.y + viewHeight * inspectFrame.yShift, cameraBase.z - dist)
     }
     g.position.lerpVectors(tmp.base, tmp.target, fly)
 
@@ -347,6 +353,11 @@ export function BookMesh(props: BookMeshProps) {
 
     // back on the shelf: the light piece again
     if (!selected && out && a.progress < 0.001) setOut(false)
+    // put back and not home yet: with reduced motion the camera waits for it (T-0037)
+    if (flyingHome) {
+      if (!selected && a.progress >= 0.001) flyingHome.add(book.id)
+      else flyingHome.delete(book.id)
+    }
 
     // the ridges follow the book (hover, drag, taken out), written only when it moved
     const rm = ridges?.current
@@ -398,7 +409,7 @@ export function BookMesh(props: BookMeshProps) {
           <mesh {...part} material={materials.spine} geometry={hc.spine} position={[-dims.w / 2 + hc.board / 2, 0, 0]} />
         </>
       )}
-      {(book.status === 'reading' || book.status === 'paused') && (
+      {hasClip(book) && (
         <Bookmark dims={dims} progress={book.progress ?? 0} color={props.clipColor ?? RAINBOW[0]} />
       )}
       {/* the rim follows the phone, not Detailed books (T-0034 design) */}
@@ -556,6 +567,9 @@ function damp3(v: THREE.Vector3, x: number, y: number, z: number, lambda: number
 /** Paperclip colours, handed out in order to the books being read. */
 export const RAINBOW = ['#e5484d', '#f2843a', '#f5c842', '#4fb365', '#3d8fe0', '#5b5bd6', '#a35bd0']
 
+/** a book she is reading or has paused carries a paper clip on its page */
+export const hasClip = (book: Book) => book.status === 'reading' || book.status === 'paused'
+
 const CLIP = {
   width: 0.02,
   height: 0.07,
@@ -563,6 +577,8 @@ const CLIP = {
   out: 0.042, // how far it sticks out above the pages
   fromSpine: 0.012, // gap between the spine and the clip's outer leg
 }
+/** how far the paper clip sticks out above the pages: the opened book's framing makes room for it (T-0037) */
+export const CLIP_OUT = CLIP.out
 
 /**
  * Gem-style paperclip as one continuous wire, in units of the clip width.
@@ -705,13 +721,19 @@ const NO_RIDGE = new THREE.Matrix4().makeScale(0, 0, 0)
 const ridgeTmp = new THREE.Matrix4()
 
 /** A book's ridges in its own frame (spine at -x): where they sit and their size. */
-export function ridgeLayout(dims: BookDims, read: boolean) {
+export function ridgeLayout(dims: BookDims, medal: boolean) {
   const height = Math.max(0.0014, dims.h * 0.006)
-  return [0.06, 0.085, ...(read ? [] : [0.89, 0.915])].map((f) => ({
+  return [0.06, 0.085, ...(medal ? [] : [0.89, 0.915])].map((f) => ({
     position: [-dims.w / 2 - 0.0006, dims.h / 2 - f * dims.h, 0] as const,
     size: [0.0014, height, dims.t * 0.9] as const,
   }))
 }
+
+/**
+ * The ridges BookMesh gives a book: none at the bottom where a medal hangs, by the same rule as
+ * the medal (`hasMedal`: read, or did-not-finish and read before; T-0037).
+ */
+export const ridgesFor = (book: Book, dims: BookDims) => ridgeLayout(dims, hasMedal(book))
 
 function ridgeMatrix(r: ReturnType<typeof ridgeLayout>[number]) {
   return new THREE.Matrix4().compose(new THREE.Vector3(...r.position), new THREE.Quaternion(), new THREE.Vector3(...r.size))

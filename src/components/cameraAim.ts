@@ -79,3 +79,19 @@ export function aimCamera(
   // easing at the same rate as the camera so moving stays level
   camera.lookAt(aim.lookX, aim.lookY, 0)
 }
+
+/** what kind of pointer moved last, and whether a finger is on the screen (T-0037, F4) */
+export interface PointerInput {
+  kind: string
+  touching: boolean
+}
+
+/**
+ * Where the parallax wants the camera: it follows a mouse (or a hovering pen) and a finger while
+ * it is down; once the last finger lifts it goes back to the centre, and `aimCamera` eases the
+ * camera there. Off while a book is open.
+ */
+export function parallaxTarget(pointer: { x: number; y: number }, input: PointerInput, on: boolean) {
+  if (!on || (input.kind === 'touch' && !input.touching)) return { x: 0, y: 0 }
+  return { x: pointer.x * 0.06, y: pointer.y * 0.04 }
+}

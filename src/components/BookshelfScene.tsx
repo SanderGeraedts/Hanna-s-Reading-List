@@ -6,9 +6,19 @@ import type { ThreeEvent } from '@react-three/fiber'
 import type { Book, SortKey } from '#/lib/library'
 import { SHELF, computeLayout, fitShelf, rowFloorY, topGap } from '#/lib/shelfLayout'
 import type { BookDims } from '#/lib/shelfLayout'
-import { FOV, aimCamera, cameraZ, frameCase, newAim } from './cameraAim'
-import { HEADER_SHARE, inspectPlacement, portraitInspect } from './inspectPlacement'
-import type { Placement } from './inspectPlacement'
+import { FOV, aimCamera, cameraZ, frameCase, newAim, parallaxTarget } from './cameraAim'
+import type { PointerInput } from './cameraAim'
+import {
+  DEFAULT_INSPECT,
+  SHEET_MAX_WIDTH,
+  headerShareOf,
+  inspectPlacement,
+  landscapeInspect,
+  panelLeft,
+  portraitInspect,
+  reducedMotionCamera,
+} from './inspectPlacement'
+import type { InspectFrame, Placement } from './inspectPlacement'
 import {
   buttonStep,
   clampPan,
@@ -22,7 +32,7 @@ import {
 import type { PanDirection, PanEdges } from '#/lib/shelfPan'
 import { arrangementSeparators } from '#/lib/separators'
 import type { ShelfLayout } from '#/lib/shelfLayout'
-import { BookMesh, RAINBOW, ShelfRidges } from './BookMesh'
+import { BookMesh, CLIP_OUT, RAINBOW, ShelfRidges, hasClip } from './BookMesh'
 import { Decorations, FairyLights, StillDecorations } from './Decorations'
 import { BookNooks } from './BookNook'
 import { SeriesDividers } from './SeriesDivider'
@@ -64,8 +74,6 @@ export interface BookshelfSceneProps {
 export const ZOOM_MAX = 3
 export const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(1, z))
 
-const DEFAULT_INSPECT = { fill: 0.6, yShift: 0 }
-
 /** whether she asked her device for less motion; the camera then jumps instead of gliding (T-0026) */
 function useReducedMotion() {
   const reduced = useRef(false)
@@ -97,6 +105,35 @@ function useLite() {
     return () => m.removeEventListener('change', on)
   }, [])
   return lite
+}
+
+/** what kind of pointer moved last, and whether a finger is on the screen (T-0037) */
+function usePointerInput() {
+  const input = useRef<PointerInput>({ kind: 'mouse', touching: false })
+  useEffect(() => {
+    const touches = new Set<number>()
+    const seen = (e: PointerEvent) => {
+      input.current.kind = e.pointerType
+      if (e.pointerType === 'touch' && e.type === 'pointerdown') touches.add(e.pointerId)
+      input.current.touching = touches.size > 0
+    }
+    const ended = (e: PointerEvent) => {
+      touches.delete(e.pointerId)
+      input.current.touching = touches.size > 0
+    }
+    // capture: the shelf's own handlers can't hide an event from it
+    window.addEventListener('pointerdown', seen, true)
+    window.addEventListener('pointermove', seen, true)
+    window.addEventListener('pointerup', ended, true)
+    window.addEventListener('pointercancel', ended, true)
+    return () => {
+      window.removeEventListener('pointerdown', seen, true)
+      window.removeEventListener('pointermove', seen, true)
+      window.removeEventListener('pointerup', ended, true)
+      window.removeEventListener('pointercancel', ended, true)
+    }
+  }, [])
+  return input
 }
 
 export function BookshelfScene(props: BookshelfSceneProps) {
@@ -192,9 +229,32 @@ function Scene({
   const aspect = size.width / Math.max(1, size.height)
   const portrait = aspect < 0.8
   // one object, updated in place every frame as the sheet is dragged
-  const portraitFrame = useMemo(() => ({ fill: 0.4, yShift: 0.17 }), [])
-  const headerShare = topInset > 0 ? topInset / Math.max(1, size.height) : HEADER_SHARE
-  useFrame(() => portraitInspect(portraitFrame, sheet?.current ?? 0.45, aspect, headerShare))
+  const inspectFrame = useMemo<InspectFrame>(() => ({ ...DEFAULT_INSPECT }), [])
+  const headerShare = headerShareOf(topInset, size.height)
+  useFrame(() => {
+    // the open book's paper clip, as a share of its height: the framing makes room for it (T-0037)
+    const openBook = selectedId ? byId.get(selectedId) : undefined
+    const openH = (selectedId && layout.dims.get(selectedId)?.h) || 0
+    const clip = openBook && openH > 0 && hasClip(openBook) ? CLIP_OUT / openH : 0
+    if (portrait) {
+      portraitInspect(inspectFrame, sheet?.current ?? 0.45, aspect, headerShare, clip)
+      return
+    }
+    // not portrait: clear of the panel at the side, or of the sheet on a small screen (T-0037)
+    const { width, height } = size
+    const isSheet = width <= SHEET_MAX_WIDTH
+    landscapeInspect(
+      inspectFrame,
+      {
+        width,
+        height,
+        top: headerShare * height,
+        right: isSheet ? width : panelLeft(width),
+        bottom: isSheet ? height * (1 - (sheet?.current ?? 0.45)) : height,
+      },
+      clip,
+    )
+  })
   const separators = useMemo(() => arrangementSeparators(ordered, arrangement), [arrangement, ordered])
   // the case's width follows the screen, and widens on big screens so the books stay large (#39)
   const fit = useMemo(() => fitShelf(ordered, aspect, separators), [ordered, aspect, separators])
@@ -219,7 +279,8 @@ function Scene({
   const caseLayout = drag ? stableLayout.current : layout
 
   const scroll = useRef<ScrollState>({ y: null, min: 0, max: 0, worldPerPx: 0, x: 0, xMax: 0, viewW: 0 })
-  const inspectFrame = portrait ? portraitFrame : DEFAULT_INSPECT
+  // books put back and still flying home (BookMesh keeps it): with reduced motion the camera waits for them
+  const flyingHome = useMemo(() => new Set<string>(), [])
   const { base: cameraBase, placement } = useCameraRig(caseLayout.caseWidth, caseLayout.caseHeight, {
     parallax: !selectedId,
     portrait,
@@ -229,6 +290,7 @@ function Scene({
     topInset,
     open: (selectedId && layout.dims.get(selectedId)) || null,
     inspectFrame,
+    flyingHome,
   })
   // the zoom as the input handlers see it, without re-adding them on every change
   const zoomRef = useRef(zoom)
@@ -620,6 +682,7 @@ function Scene({
             fov={FOV}
             // on phones the details sheet covers the bottom: show the book above it
             inspectFrame={inspectFrame}
+            flyingHome={flyingHome}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
@@ -667,7 +730,9 @@ function useCameraRig(
     /** the size of the book taken out, or null */
     open: BookDims | null
     /** how much of the view it fills and how far up it sits (follows the phone's sheet) */
-    inspectFrame: { fill: number; yShift: number }
+    inspectFrame: InspectFrame
+    /** books put back and still flying home */
+    flyingHome: Set<string>
   },
 ) {
   const camera = useThree((s) => s.camera)
@@ -680,6 +745,9 @@ function useCameraRig(
   const placement = useMemo<Placement>(() => ({ cameraZ: 0, bookZ: 0, backdropZ: 0 }), [])
   const reducedMotion = useReducedMotion()
   const wasOpen = useRef<BookDims | null>(null)
+  /** reduced motion: the camera was stepped back or held in the last frame */
+  const held = useRef(false)
+  const pointerInput = usePointerInput()
 
   const aspect = size.width / Math.max(1, size.height)
   const { toCase, viewH, xMax, fitsH } = frameCase(caseWidth, caseHeight, aspect, opts.portrait, opts.zoom)
@@ -749,13 +817,21 @@ function useCameraRig(
       )
       base.z = placement.cameraZ
     }
-    // a touch of parallax following the mouse: it moves the camera, never the aim (no bobbing)
-    parallax.x = opts.parallax ? state.pointer.x * 0.06 : 0
-    parallax.y = opts.parallax ? state.pointer.y * 0.04 : 0
+    // a touch of parallax following the mouse: it moves the camera, never the aim (no bobbing);
+    // on a touch screen it goes back to the centre once the finger lifts (T-0037)
+    Object.assign(parallax, parallaxTarget(state.pointer, pointerInput.current, opts.parallax))
     aimCamera(c, base, aim, parallax, dt)
-    // reduced motion: no gliding back and forth; the camera is there in the frame the book comes out
-    // (and back at her zoom in the frame it goes back)
-    if (reducedMotion.current && (open || wasOpen.current !== open)) c.position.z = base.z
+    // reduced motion: no gliding back and forth; the camera is there in the frame the book comes out,
+    // stays back while a put-back book flies home, and is back at her zoom in the frame it is home (T-0037)
+    const step = reducedMotionCamera({
+      reduced: reducedMotion.current,
+      open: !!open,
+      flyingHome: !!wasOpen.current || opts.flyingHome.size > 0,
+      held: held.current,
+    })
+    if (step === 'back' || step === 'zoom') c.position.z = base.z
+    else if (step === 'hold') c.position.z = placement.cameraZ
+    held.current = step === 'back' || step === 'hold'
     wasOpen.current = open
   })
 

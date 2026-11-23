@@ -86,12 +86,208 @@ describe('riddles for the hidden badges', () => {
   it('every secret badge has a riddle, and the riddle never gives its name away', () => {
     const all = badges([read('a', '2026-01-02')], '2026-11-20')
     const secrets = all.filter((b) => b.secret)
-    expect(secrets.length).toBe(11)
+    expect(secrets.length).toBe(12)
     for (const b of secrets) {
       expect(b.riddle, b.id).toBeTruthy()
       expect(b.riddle!.toLowerCase()).not.toContain(b.name.toLowerCase())
     }
     expect(all.filter((b) => !b.secret).every((b) => b.riddle === undefined)).toBe(true)
+  })
+})
+
+describe('every badge', () => {
+  it('has a unique name and a unique id', () => {
+    const all = badges([read('a', '2026-01-02')], '2026-11-20')
+    expect(new Set(all.map((b) => b.name)).size).toBe(all.length)
+    expect(new Set(all.map((b) => b.id)).size).toBe(all.length)
+  })
+})
+
+describe('travel badges (T-0040, D-0037)', () => {
+  const at = (id: string, day: string, places: string[], extra: Partial<Book> = {}) => read(id, day, { places, ...extra })
+  const countries = ['France', 'Japan', 'Kenya', 'Brazil', 'Canada', 'Peru']
+
+  it('are all there, with their icons and names, in the table order', () => {
+    const all = badges([], '2026-11-20')
+    const table: Array<[string, string, string]> = [
+      ['countries-5', '🛂', 'Passport stamped'],
+      ['countries-10', '✈️', 'Frequent flyer'],
+      ['countries-25', '🧳', 'World traveller'],
+      ['countries-50', '🌐', 'Around the world'],
+      ['continent-europe', '🏰', 'Postcard from Europe'],
+      ['continent-asia', '🏯', 'Postcard from Asia'],
+      ['continent-africa', '🦒', 'Postcard from Africa'],
+      ['continent-north-america', '🗽', 'Postcard from North America'],
+      ['continent-south-america', '🦜', 'Postcard from South America'],
+      ['continent-oceania', '🦘', 'Postcard from Oceania'],
+      ['continents-6', '🌏', 'World tour'],
+      ['lands-3', '🦄', 'Dreamwalker'],
+      ['lands-10', '🐉', 'Realm hopper'],
+      ['home-sweet-home', '🌷', 'Home sweet home'],
+    ]
+    for (const [id, icon, name] of table) expect(find(all, id), id).toMatchObject({ id, icon, name, earned: false })
+    const ids = all.map((b) => b.id)
+    // after the variety badges, before the ratings; Home sweet home with the secrets, at the end
+    expect(ids.indexOf('countries-5')).toBe(ids.indexOf('languages-3') + 1)
+    expect(ids.indexOf('rated-10')).toBe(ids.indexOf('lands-10') + 1)
+    expect(ids.at(-1)).toBe('home-sweet-home')
+  })
+
+  it('earns Passport stamped on the first finish of the book that brought the fifth country', () => {
+    const shelf = countries.slice(0, 5).map((c, i) => at(`c${i}`, `2026-0${i + 1}-10`, [c]))
+    expect(find(badges(shelf, '2026-11-20'), 'countries-5')).toMatchObject({ earned: true, on: '2026-05-10' })
+    const four = badges(shelf.slice(0, 4), '2026-11-20')
+    expect(find(four, 'countries-5')).toMatchObject({ earned: false, progress: { done: 4, goal: 5 } })
+  })
+
+  it('counts both countries of a book, a re-read book once, and only finished books with known places', () => {
+    const shelf = [
+      at('two', '2026-01-10', ['Paris (France)', 'Tokyo (Japan)']),
+      book('twice', { places: ['Kenya'], readCount: 2, finished: ['2026-02-10', '2026-08-01'] }),
+      book('want', { status: 'want', places: ['Brazil', 'Canada'] }),
+      read('unknown', '2026-03-10'),
+    ]
+    const all = badges(shelf, '2026-11-20')
+    expect(find(all, 'countries-5').progress).toEqual({ done: 3, goal: 5 })
+    const five = badges([...shelf, at('more', '2026-04-10', ['Peru', 'Canada'])], '2026-11-20')
+    expect(find(five, 'countries-5')).toMatchObject({ earned: true, on: '2026-04-10' })
+    // the re-read in August didn't move Kenya's day
+    expect(find(five, 'continent-africa')).toMatchObject({ earned: true, on: '2026-02-10' })
+  })
+
+  it('gives a book set in Russia a postcard from Europe and from Asia', () => {
+    const all = badges([at('r', '2026-03-03', ['Moscow (Russia)', 'Russia'])], '2026-11-20')
+    expect(find(all, 'continent-europe')).toMatchObject({ earned: true, on: '2026-03-03' })
+    expect(find(all, 'continent-asia')).toMatchObject({ earned: true, on: '2026-03-03' })
+    expect(find(all, 'continent-africa').earned).toBe(false)
+  })
+
+  it('earns World tour on the day of the sixth continent, with 5 of 6 before', () => {
+    const six = ['France', 'Japan', 'Kenya', 'Canada', 'Brazil', 'Fiji'].map((c, i) => at(`w${i}`, `2026-0${i + 1}-01`, [c]))
+    expect(find(badges(six, '2026-11-20'), 'continents-6')).toMatchObject({ earned: true, on: '2026-06-01' })
+    expect(find(badges(six.slice(0, 5), '2026-11-20'), 'continents-6')).toMatchObject({ earned: false, progress: { done: 5, goal: 6 } })
+  })
+
+  it('counts an imaginary land once in any spelling, and earns Dreamwalker on the third land', () => {
+    const shelf = [
+      at('n1', '2026-01-01', ['Narnia (Imaginary place)']),
+      at('n2', '2026-02-01', ['narnia (Imaginary place)']),
+      at('h', '2026-03-01', ['Hogwarts School of Witchcraft and Wizardry (Imaginary place)']),
+    ]
+    expect(find(badges(shelf, '2026-11-20'), 'lands-3')).toMatchObject({ earned: false, progress: { done: 2, goal: 3 } })
+    const three = [...shelf, at('m', '2026-04-01', ['Middle Earth (Imaginary place)']), at('hw', '2026-05-01', ['Hogwarts'])]
+    expect(find(badges(three, '2026-11-20'), 'lands-3')).toMatchObject({ earned: true, on: '2026-04-01' })
+    expect(find(badges(three, '2026-11-20'), 'lands-10').progress).toEqual({ done: 3, goal: 10 })
+  })
+
+  it('unlocks the secret Home sweet home with a book set in Amsterdam', () => {
+    const locked = find(badges([at('x', '2026-01-01', ['France'])], '2026-11-20'), 'home-sweet-home')
+    expect(locked).toMatchObject({
+      earned: false,
+      secret: true,
+      riddle: 'No passport needed: a story set among the tulips, windmills and canals.',
+    })
+    expect(locked.progress).toBeUndefined()
+    const all = badges([book('a', { places: ['Amsterdam (Netherlands)'], readCount: 2, finished: ['2026-09-01', '2026-06-15'] })], '2026-11-20')
+    expect(find(all, 'home-sweet-home')).toMatchObject({ earned: true, on: '2026-06-15', secret: true })
+  })
+
+  it('counts a place Hanna set herself like one from Open Library (D-0023)', () => {
+    const all = badges([at('own', '2026-07-07', ['Netherlands'])], '2026-11-20')
+    expect(find(all, 'home-sweet-home')).toMatchObject({ earned: true, on: '2026-07-07' })
+    expect(find(all, 'continent-europe')).toMatchObject({ earned: true, on: '2026-07-07' })
+  })
+})
+
+describe('travel badges, trying to break them (T-0040 tester)', () => {
+  const at = (id: string, day: string, places: string[], extra: Partial<Book> = {}) => read(id, day, { places, ...extra })
+  const earned = (all: ReturnType<typeof badges>) => all.filter((b) => b.earned).map((b) => b.id)
+  const postcards = (all: ReturnType<typeof badges>) => earned(all).filter((id) => id.startsWith('continent-'))
+
+  it('gives Egypt, Turkey and Kazakhstan both their continents, but each counts as one country', () => {
+    expect(postcards(badges([at('e', '2026-01-01', ['Cairo (Egypt)'])], '2026-11-20')).sort()).toEqual(['continent-africa', 'continent-asia'])
+    expect(postcards(badges([at('t', '2026-01-01', ['Istanbul (Turkey)'])], '2026-11-20')).sort()).toEqual(['continent-asia', 'continent-europe'])
+    expect(postcards(badges([at('k', '2026-01-01', ['Kazakhstan'])], '2026-11-20')).sort()).toEqual(['continent-asia', 'continent-europe'])
+    const all = badges([at('r', '2026-01-01', ['Russia', 'Siberia (Russia)'])], '2026-11-20')
+    expect(find(all, 'countries-5').progress).toEqual({ done: 1, goal: 5 })
+    expect(find(all, 'continents-6').progress).toEqual({ done: 2, goal: 6 })
+  })
+
+  it('counts the French Southern and Antarctic Lands as a country on no continent', () => {
+    const all = badges([at('a', '2026-01-01', ['Fr. S. Antarctic Lands'])], '2026-11-20')
+    expect(find(all, 'countries-5').progress).toEqual({ done: 1, goal: 5 })
+    expect(postcards(all)).toEqual([])
+    expect(find(all, 'continents-6').progress).toEqual({ done: 0, goal: 6 })
+  })
+
+  it('never counts an imaginary land as a country or a continent, and Middle-earth once', () => {
+    const shelf = [
+      at('m1', '2026-01-01', ['Middle-earth (Imaginary place)']),
+      at('m2', '2026-02-01', ['Middle Earth']),
+      at('w', '2026-03-01', ['Westeros (Fictitious place)']),
+      at('a', '2026-04-01', ['Atlantis']),
+    ]
+    const all = badges(shelf, '2026-11-20')
+    expect(find(all, 'lands-3')).toMatchObject({ earned: true, on: '2026-04-01' })
+    expect(find(all, 'countries-5').progress).toEqual({ done: 0, goal: 5 })
+    expect(postcards(all)).toEqual([])
+  })
+
+  it('leaves out books that are not finished: reading, paused, did not finish, want to read', () => {
+    const shelf = (['reading', 'paused', 'dnf', 'want'] as const).map((status, i) =>
+      book(`u${i}`, { status, places: ['Netherlands', 'Japan', 'Kenya', 'Brazil', 'Fiji', 'Canada'] }),
+    )
+    const travel = earned(badges(shelf, '2026-11-20')).filter((id) => /^(countries|continent|lands|home)/.test(id))
+    expect(travel).toEqual([])
+  })
+
+  it('counts a book being re-read now from its first finish', () => {
+    const again = book('again', { status: 'reading', readCount: 1, finished: ['2025-08-08'], places: ['Japan'] })
+    expect(find(badges([again], '2026-11-20'), 'continent-asia')).toMatchObject({ earned: true, on: '2025-08-08' })
+  })
+
+  it("doesn't let a re-read move a badge, whatever order the finishes are stored in", () => {
+    const shelf = [
+      at('c1', '2026-01-01', ['France']),
+      at('c2', '2026-02-01', ['Japan']),
+      at('c3', '2026-03-01', ['Kenya']),
+      at('c4', '2026-04-01', ['Brazil']),
+      // first read in 2025, re-read in October: it brought its country first
+      book('old', { readCount: 2, finished: ['2026-10-01', '2025-05-05'], places: ['Canada'] }),
+    ]
+    const all = badges(shelf, '2026-11-20')
+    expect(find(all, 'countries-5')).toMatchObject({ earned: true, on: '2026-04-01' })
+    expect(find(all, 'continent-north-america')).toMatchObject({ earned: true, on: '2025-05-05' })
+  })
+
+  it('counts a finished book with no finish day, with no day on the badge (D-0037)', () => {
+    const all = badges([book('nodate', { places: ['Peru'] })], '2026-11-20')
+    const b = find(all, 'continent-south-america')
+    expect(b.earned).toBe(true)
+    expect(b.on).toBeUndefined()
+  })
+
+  it("follows Hanna's own places: an empty list counts nothing, and taking a place away takes the badge away", () => {
+    expect(postcards(badges([at('none', '2026-01-01', [])], '2026-11-20'))).toEqual([])
+    const before = badges([at('own', '2026-01-01', ['Japan', 'Netherlands'])], '2026-11-20')
+    expect(find(before, 'home-sweet-home').earned).toBe(true)
+    const after = badges([at('own', '2026-01-01', ['Japan'])], '2026-11-20')
+    expect(find(after, 'home-sweet-home').earned).toBe(false)
+    expect(find(after, 'continent-asia').earned).toBe(true)
+  })
+
+  it('unlocks Home sweet home for Netherlands, Holland and Amsterdam in the ways Open Library and Hanna write them', () => {
+    for (const place of ['Netherlands', 'netherlands', 'Holland', 'Amsterdam', 'Amsterdam (Netherlands)', 'Netherlands -- Amsterdam', 'Holland -- Amsterdam']) {
+      const all = badges([at('nl', '2026-05-05', [place])], '2026-11-20')
+      expect(find(all, 'home-sweet-home'), place).toMatchObject({ earned: true, on: '2026-05-05', secret: true })
+      expect(find(all, 'countries-5').progress, place).toEqual({ done: 1, goal: 5 })
+    }
+    // Holland and Amsterdam on one book are one country
+    const both = badges([at('nl', '2026-05-05', ['Holland', 'Amsterdam', 'Netherlands'])], '2026-11-20')
+    expect(find(both, 'countries-5').progress).toEqual({ done: 1, goal: 5 })
+    // a neighbour, or the place in an unfinished book, doesn't
+    expect(find(badges([at('be', '2026-05-05', ['Brussels (Belgium)'])], '2026-11-20'), 'home-sweet-home').earned).toBe(false)
+    expect(find(badges([book('w', { status: 'want', places: ['Amsterdam'] })], '2026-11-20'), 'home-sweet-home').earned).toBe(false)
   })
 })
 
@@ -103,5 +299,44 @@ describe('when I read most', () => {
     expect(r.line).toBe('You read most on Sundays.')
     expect(r.months[10]).toBe(3)
     expect(rhythm([], 2026, '2026-11-20').line).toBeUndefined()
+  })
+})
+
+describe('medal tiers by family (T-0042, D-0038)', () => {
+  const all = badges([read('a', '2026-01-02')], '2026-11-20')
+
+  it('gives every badge a tier', () => {
+    for (const b of all) expect(['bronze', 'silver', 'gold'], b.id).toContain(b.tier)
+  })
+
+  it('follows the family rule over the whole list: lowest bronze, highest gold, the rest silver, alone gold', () => {
+    const families = new Map<string, Array<{ n: number; tier: string; id: string }>>()
+    for (const b of all) {
+      const m = b.id.match(/^(.*)-(\d+)$/)
+      const family = m ? m[1] : b.id
+      families.set(family, [...(families.get(family) ?? []), { n: m ? Number(m[2]) : 0, tier: b.tier, id: b.id }])
+    }
+    for (const [family, group] of families) {
+      if (group.length === 1) {
+        expect(group[0].tier, family).toBe('gold')
+        continue
+      }
+      const sorted = [...group].sort((a, b) => a.n - b.n)
+      expect(sorted.map((b) => b.tier), family).toEqual(sorted.map((_, i) => (i === 0 ? 'bronze' : i === sorted.length - 1 ? 'gold' : 'silver')))
+    }
+  })
+
+  it('spot checks', () => {
+    const tier = (id: string) => find(all, id).tier
+    expect(tier('books-1')).toBe('bronze')
+    for (const n of [5, 10, 25, 50, 100]) expect(tier(`books-${n}`)).toBe('silver')
+    expect(tier('books-250')).toBe('gold')
+    expect([tier('genres-5'), tier('genres-10')]).toEqual(['bronze', 'gold'])
+    expect([tier('listen-10'), tier('listen-100'), tier('listen-1000')]).toEqual(['bronze', 'silver', 'gold'])
+    expect([tier('series-1'), tier('series-10')]).toEqual(['bronze', 'gold'])
+    expect([tier('streak-3'), tier('streak-100')]).toEqual(['bronze', 'gold'])
+    expect(find(all, 'reread-3').secret).toBe(true)
+    expect([tier('reread-3'), tier('reread-5')]).toEqual(['bronze', 'gold'])
+    for (const id of ['continent-europe', 'continents-6', 'bingo', 'author-5', 'home-sweet-home']) expect(tier(id), id).toBe('gold')
   })
 })

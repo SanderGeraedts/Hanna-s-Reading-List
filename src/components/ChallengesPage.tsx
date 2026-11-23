@@ -8,6 +8,7 @@ import { BingoCard } from './DashboardMore'
 import { AlphabetCard } from './AlphabetCard'
 import { ChallengeCard } from './ChallengeCard'
 import { ArrangeGrid } from './ArrangeGrid'
+import { useArrangeBarHeight } from './useArrangeBarHeight'
 import { useNarrow } from './Dashboard'
 import { cleanTwoColumns, showIn } from '#/lib/twoColumns'
 import type { TwoColumns } from '#/lib/twoColumns'
@@ -85,6 +86,7 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
   const nameOf = (id: ChallengeId) =>
     id.startsWith('own:') ? (ownThisYear.find((c) => `own:${c.id}` === id)?.name ?? 'Challenge') : CHALLENGE_NAMES[id as ChallengeSection]
   const [arranging, setArranging] = useState(false)
+  const arrangeBar = useArrangeBarHeight()
   const narrow = useNarrow()
   const goal = useYearGoal(accountId, year)
   const trophies = useMemo(() => yearTrophies(books, year, goal), [books, year, goal])
@@ -124,7 +126,7 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
 
       <Trophies trophies={trophies} year={year} />
 
-      <div className={`dashboard-bar${arranging ? ' arranging' : ''}`}>
+      <div className={`dashboard-bar${arranging ? ' arranging' : ''}`} ref={arrangeBar}>
         {arranging ? (
           <>
             <div className="dashboard-bar-actions">

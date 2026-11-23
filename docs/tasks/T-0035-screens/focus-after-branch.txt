@@ -1,0 +1,13 @@
+branch 390 dashboard: 0 of 198 focusable elements under the header
+branch 390 challenges: 0 of 25 focusable elements under the header
+branch 390 calendar: 0 of 36 focusable elements under the header
+branch 390 dashboard+arrange: 0 of 285 focusable elements under the header or the Arrange bar
+branch 390 challenges+arrange: 0 of 32 focusable elements under the header or the Arrange bar
+branch 390 dashboard+arrange+6-hidden: 0 of 174 focusable elements under the header or the Arrange bar
+branch 1280 dashboard: 0 of 198 focusable elements under the header
+branch 1280 challenges: 0 of 25 focusable elements under the header
+branch 1280 calendar: 0 of 36 focusable elements under the header
+branch 1280 dashboard+arrange: 0 of 285 focusable elements under the header or the Arrange bar
+branch 1280 challenges+arrange: 0 of 32 focusable elements under the header or the Arrange bar
+branch 1280 dashboard+arrange+6-hidden: 0 of 174 focusable elements under the header or the Arrange bar
+branch total: 0 elements under the header

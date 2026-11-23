@@ -21,6 +21,11 @@
   --accent-ink: #2a1a08; /* text on gold */
   --warning: #e0a35f; /* behind, a reminder */
   --danger: #ea8670; /* remove, wrong: 4.5:1 on a card (colours.test.ts) */
+  /* the badge medals' rims (T-0042, D-0038): 3:1 on a card on both wallpapers (colours.test.ts) */
+  --medal-gold: var(--accent);
+  --medal-silver: #c3c9d4;
+  --medal-bronze: #c8814f;
+  --medal-hidden: rgba(0, 0, 0, 0.45); /* a hidden medal's dark face, under a --muted "?" */
   --header-ink: #2d2038; /* text straight on the wallpaper: deep plum */
   --header-muted: #54456a;
   /* text on the white round buttons in the header: always dark, whatever the wallpaper */
@@ -162,6 +167,21 @@ h2 {
     rgba(var(--header-fade), 0) 100%
   );
   color: var(--header-ink);
+  pointer-events: none;
+}
+/* on the pages (Dashboard, Challenges, Calendar) the cards scroll under the header, so there it is a
+   solid band in the header's own colour: nothing shows through the title, the stats or the tabs.
+   A short soft fade under it (in the gap .dashboard leaves above the first card) instead of a hard
+   line. The shelf keeps the haze above (T-0035). */
+.topbar.on-page {
+  background: rgb(var(--header-fade));
+}
+.topbar.on-page::after {
+  content: '';
+  position: absolute;
+  inset: 100% 0 auto 0;
+  height: var(--space-3);
+  background: linear-gradient(to bottom, rgb(var(--header-fade)), rgba(var(--header-fade), 0));
   pointer-events: none;
 }
 .topbar .muted {
@@ -1577,6 +1597,9 @@ textarea.input {
   overflow-y: auto;
   /* starts under the header's real height (set on .app as --header-h), so the tabs cover nothing (#181) */
   padding: max(6.5rem, calc(var(--header-h, 0px) + var(--space-3))) 1.5rem 2rem;
+  /* and whatever is scrolled to or focused (Tab, scrollIntoView, a search result) lands below the
+     header too, never under it (T-0035, WCAG 2.4.11) */
+  scroll-padding-top: max(6.5rem, calc(var(--header-h, 0px) + var(--space-3)));
   /* the same lavender wallpaper as behind the shelf */
   background: var(--wallpaper);
   color: var(--header-ink);
@@ -1654,6 +1677,13 @@ textarea.input {
   top: var(--space-2);
   z-index: 3;
 }
+/* while arranging the sticky bar sits under the header too: keep what is focused below the bar as
+   well (its height is measured into --arrange-h by useArrangeBarHeight, T-0035) */
+.dashboard:has(.dashboard-bar.arranging) {
+  scroll-padding-top: calc(
+    max(6.5rem, calc(var(--header-h, 0px) + var(--space-3))) + var(--space-2) + var(--arrange-h, 0px) + var(--space-2)
+  );
+}
 .dashboard-bar p {
   margin: 0;
 }
@@ -1661,12 +1691,38 @@ textarea.input {
   display: flex;
   gap: 0.5rem;
 }
+/* the Hidden chips scroll inside an area of two and a half chip rows, so the bar never grows taller
+   than the screen however many blocks are hidden (T-0038). The top half of a third row peeks out:
+   the only (text-free) sign that more chips scroll into view. A row is one .btn.small chip: its
+   text, padding and border, or its finger height on a touch screen (below). The padding (taken
+   back by the margin, so nothing moves) leaves room for a focused chip's outline. */
 .hidden-blocks {
+  --chip-row: calc(var(--fs-small) * 1.25 + 2 * var(--space-1) + 2px);
+  --chip-gap: 0.4rem;
   flex-basis: 100%;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: var(--chip-gap);
   align-items: center;
+  max-height: calc(2.5 * var(--chip-row) + 2 * var(--chip-gap) + 2 * var(--space-1));
+  overflow-y: auto;
+  padding: var(--space-1);
+  margin: calc(-1 * var(--space-1));
+}
+@media (pointer: coarse) {
+  .hidden-blocks {
+    --chip-row: 36px; /* .btn.small's min-height on a touch screen */
+  }
+}
+/* a short screen (a phone held sideways): the arranging bar stays where it is on the page instead
+   of sticking under the header, so a bingo square only has to fit under the header (T-0038) */
+@media (max-height: 500px) {
+  .dashboard-bar.arranging {
+    position: static;
+  }
+  .dashboard:has(.dashboard-bar.arranging) {
+    scroll-padding-top: max(6.5rem, calc(var(--header-h, 0px) + var(--space-3)));
+  }
 }
 .dashboard-empty {
   text-align: center;
@@ -3328,34 +3384,106 @@ textarea.input {
 }
 
 /* ---- badges, the cover wall, when I read most ------------------------ */
-.badges {
+/* the unfolded body: the medal grid, then the medal card (and T-0043's birthday row) */
+.badges-body {
+  display: grid;
+  gap: var(--space-3);
+}
+.badges-body[hidden] {
+  display: none;
+}
+/* the medal grid (T-0042, D-0038): 48 px round medals, 6 a row at 390 px, 8 at 1280 px */
+.medals {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--tap) + var(--space-1)), 1fr));
+  justify-items: center;
   gap: var(--space-2);
 }
-.badge {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  border-radius: var(--radius-small);
+.medal {
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  width: calc(var(--tap) + var(--space-1));
+  height: calc(var(--tap) + var(--space-1));
+  padding: 0;
+  border-radius: var(--radius-pill);
+  font: inherit;
+  color: var(--text);
+  cursor: pointer;
+}
+.medal-icon {
+  font-size: var(--fs-heading);
+  line-height: 1;
+}
+/* earned: a 3 px rim in its tier's colour */
+.medal.earned {
+  background: var(--surface-raised);
+  border: 3px solid var(--medal-gold);
+}
+.medal.earned.silver {
+  border-color: var(--medal-silver);
+}
+.medal.earned.bronze {
+  border-color: var(--medal-bronze);
+}
+/* locked: plain grey, whatever rim it will get */
+.medal.locked {
   background: var(--surface-sunken);
+  border: 2px solid var(--border-strong);
+}
+.medal.locked .medal-icon,
+.medal-card-grey {
+  filter: grayscale(1);
   opacity: 0.5;
 }
-.badge.earned {
-  opacity: 1;
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-line);
+/* hidden: a dark medal with a "?" */
+.medal.hidden {
+  background: var(--medal-hidden);
+  border: 2px dashed var(--border-strong);
 }
-/* Steam-like: locked badges grey, with their progress */
-.badge.locked {
-  opacity: 0.6;
+.medal.hidden .medal-icon,
+.medal-card-q {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: var(--fs-large);
+  color: var(--muted);
 }
-.badge.locked .badge-icon {
-  filter: grayscale(1);
+.medal:hover,
+.medal.chosen {
+  background: var(--surface-hover);
+}
+/* chosen: a cream ring outside the rim (never gold, so it can't pass for a gold rim) */
+.medal.chosen {
+  box-shadow: 0 0 0 2px var(--text);
+}
+.medal:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+/* the medal card: the bingo suggestion card's box, under the whole grid */
+.badges-card:not(.open) {
+  /* empty, but its live region stays in the page: take back the stack's gap */
+  margin-top: calc(-1 * var(--space-3));
+}
+.badges-card.open {
+  margin-top: 0;
+}
+.badges-card-body {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.badges-card-body p,
+.badges-card h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.medal-riddle {
+  font-style: italic;
+  color: var(--text);
 }
 .badge-on {
   color: var(--accent);
@@ -3372,12 +3500,6 @@ textarea.input {
 }
 .badges-total {
   margin: 0 0 var(--space-2);
-}
-.badges-hidden {
-  margin: var(--space-3) 0 var(--space-2);
-}
-.hidden-badges {
-  list-style: none;
 }
 /* a block's title that folds it away (Badges) */
 .card-fold {
@@ -3405,39 +3527,6 @@ textarea.input {
 }
 .dash-card.folded .badges-total {
   margin-bottom: 0;
-}
-/* a hidden badge: a locked tile with a "?", its riddle when tapped */
-.secret-tile {
-  width: 100%;
-  border: 1px dashed var(--accent-line);
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  opacity: 0.75;
-}
-.secret-tile .badge-icon {
-  display: inline-grid;
-  place-items: center;
-  width: 1.6em;
-  height: 1.6em;
-  border-radius: 50%;
-  background: var(--surface-solid);
-  color: var(--accent);
-  font-family: var(--serif);
-  font-weight: 700;
-}
-.secret-tile.open {
-  opacity: 1;
-  border-style: solid;
-}
-.secret-tile.open .small-text {
-  font-style: italic;
-  color: var(--text);
-}
-.secret-tile:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
 }
 /* "Badge unlocked": slides in at the bottom right, like Steam */
 .badge-toast {

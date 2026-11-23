@@ -359,7 +359,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
 
   return (
     <div className="app" style={headerPx ? ({ '--header-h': `${headerPx}px` } as React.CSSProperties) : undefined}>
-      <header className="topbar" ref={header}>
+      <header className={offShelf ? 'topbar on-page' : 'topbar'} ref={header}>
         <div className="brand">
           <div className="brand-title">
             {/* the ☰ menu only holds the shelf's tools on a phone: elsewhere it would be empty */}
@@ -587,6 +587,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           }}
           onClose={() => select(null)}
           onSheet={onSheet}
+          headerPx={headerPx}
         />
       )}
 

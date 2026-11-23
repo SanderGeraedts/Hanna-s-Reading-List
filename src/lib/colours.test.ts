@@ -58,6 +58,41 @@ const mid = (name: string): RGBA => {
   return m ? parse(m[1]) : c(name)
 }
 
+// the header's own colour, --header-fade, is written as "r, g, b" (for rgba(var(--header-fade), a))
+const fadeIn = (block: string): string => {
+  const m = block.match(/--header-fade:\s*([^;]+);/)
+  if (!m) throw new Error('--header-fade is not defined')
+  return m[1].trim()
+}
+const fade = (rgb: string, alpha: number): RGBA => [...(rgb.split(',').map((x) => Number(x.trim())) as [number, number, number]), alpha]
+const lavFade = fadeIn(root)
+const midFade = midnight.includes('--header-fade') ? fadeIn(midnight) : lavFade
+/** The body of a rule in styles.css, by its exact selector. */
+const rule = (selector: string): string => {
+  const at = css.indexOf(`\n${selector} {`)
+  if (at < 0) throw new Error(`no rule for ${selector}`)
+  return css.slice(at, css.indexOf('}', at))
+}
+/** How see-through --header-fade is where a rule uses it: rgb(var(--header-fade)) is solid, else its alpha (a number or a token). */
+const fadeAlpha = (body: string): number => {
+  const m = body.match(/rgba?\(var\(--header-fade\)(?:,\s*(var\(--[\w-]+\)|[\d.]+))?\)/)
+  if (!m) throw new Error('the rule does not use --header-fade')
+  if (!m[1]) return 1
+  return m[1].startsWith('var(') ? Number(token(m[1].slice(6, -1))) : Number(m[1])
+}
+// the header's haze over the shelf: its densest stop, at the top (where the title sits)
+const hazeAlpha = fadeAlpha(rule('.topbar'))
+// the header's band over the pages (Dashboard, Challenges, Calendar): solid, or its opacity from a token (T-0035)
+const bandAlpha = fadeAlpha(rule('.topbar.on-page'))
+// the worst a card, a cover or a white button could put under the band
+const blackAndWhite: RGBA[] = [
+  [0, 0, 0, 1],
+  [255, 255, 255, 1],
+]
+const lavBand = blackAndWhite.map((u) => over(fade(lavFade, bandAlpha), u))
+const midBand = blackAndWhite.map((u) => over(fade(midFade, bandAlpha), u))
+const headerButton = (bg: RGBA) => over([255, 255, 255, 0.72], bg)
+
 // the backgrounds: the wallpaper from top to bottom, and a card on it
 const walls = ['wall-top', 'wall-page-bottom'].map(c)
 const cardsOnWall = walls.map((w) => over(c('surface'), w))
@@ -92,12 +127,38 @@ describe('colour check: everything stays readable', () => {
     ['text on a header button (lavender)', c('pill-ink'), walls.map((w) => over([255, 255, 255, 0.72], w)), 4.5],
     ['text on a header button (midnight)', c('pill-ink'), midWalls.map((w) => over([255, 255, 255, 0.72], w)), 4.5],
     // the header text over the header's haze, on the midnight wallpaper
-    ['header text over the midnight haze', mid('header-ink'), midWalls.map((w) => over([30, 40, 88, 0.92], w)), 4.5],
+    ['header text over the midnight haze', mid('header-ink'), midWalls.map((w) => over(fade(midFade, hazeAlpha), w)), 4.5],
+    // the header's band on the pages, over black and over white underneath, on both wallpapers (T-0035)
+    ['header text on the band (lavender)', c('header-ink'), lavBand, 4.5],
+    ['header helper text on the band (lavender)', c('header-muted'), lavBand, 4.5],
+    ['text on a header button over the band (lavender)', c('pill-ink'), lavBand.map(headerButton), 4.5],
+    ['header text on the band (midnight)', mid('header-ink'), midBand, 4.5],
+    ['header helper text on the band (midnight)', mid('header-muted'), midBand, 4.5],
+    ['text on a header button over the band (midnight)', mid('pill-ink'), midBand.map(headerButton), 4.5],
   )
+  // the badge medals (T-0042, D-0038): the rims are outlines (3:1) on a card and on the earned
+  // face over a card; a hidden medal's "?" is text (4.5:1) on its dark face over a card
+  for (const [wallpaper, cards] of [
+    ['lavender', cardsOnWall],
+    ['midnight', midCards],
+  ] as const) {
+    for (const tier of ['gold', 'silver', 'bronze']) {
+      cases.push([`${tier} medal rim on a card (${wallpaper})`, c(`medal-${tier}`), cards, 3])
+      cases.push([`${tier} medal rim on an earned medal's face (${wallpaper})`, c(`medal-${tier}`), cards.map((card) => over(c('surface-raised'), card)), 3])
+    }
+    cases.push([`the "?" on a hidden medal (${wallpaper})`, c('muted'), cards.map((card) => over(c('medal-hidden'), card)), 4.5])
+  }
   it('reads the midnight wallpaper’s own colours', () => {
     expect(midStart).toBeGreaterThan(0)
     expect(mid('header-ink')).not.toEqual(c('header-ink'))
     expect(mid('wall-top')).not.toEqual(c('wall-top'))
+  })
+  it('reads the band and the haze from styles.css (T-0035)', () => {
+    expect(midFade).not.toEqual(lavFade)
+    expect(hazeAlpha).toBeGreaterThan(0)
+    expect(hazeAlpha).toBeLessThan(1)
+    expect(bandAlpha).toBeGreaterThan(0)
+    expect(bandAlpha).toBeLessThanOrEqual(1)
   })
   for (const [what, fg, bgs, min] of cases) {
     it(`${what} (at least ${min}:1)`, () => {

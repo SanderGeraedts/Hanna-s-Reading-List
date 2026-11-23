@@ -20,6 +20,7 @@ const {
   paceTime,
   paceNumber,
 } = await import('./insights')
+const { pileHeights } = await import('./pileHeight')
 
 const book = (id: string, extra: Partial<Book> = {}): Book => ({
   id,
@@ -148,6 +149,143 @@ describe('reading goals on the server (#66)', async () => {
   })
 })
 
+describe('the pile’s grey line: every audiobook’s hours, real pages (T-0036, D-0036)', () => {
+  const one = (extra: Partial<Book>) => {
+    const { pages, minutes } = wantPile([book('x', extra)], NOW)
+    return { pages, minutes }
+  }
+
+  it('counts one book of each kind', () => {
+    expect(one({ formats: ['storytel'], minutes: 600 })).toEqual({ pages: 0, minutes: 600 })
+    expect(one({ formats: ['storytel'], pages: 300 })).toEqual({ pages: 0, minutes: 600 })
+    expect(one({ formats: ['storytel'] })).toEqual({ pages: 0, minutes: 560 })
+    expect(one({ formats: ['paperback', 'storytel'], pages: 300, minutes: 720 })).toEqual({ pages: 300, minutes: 720 })
+    expect(one({ formats: ['ebook', 'audiobook'], minutes: 600 })).toEqual({ pages: 0, minutes: 600 })
+    expect(one({ storytelId: '123' })).toEqual({ pages: 0, minutes: 560 })
+    expect(one({ formats: ['paperback'] })).toEqual({ pages: 0, minutes: 0 })
+    expect(one({ formats: ['other'], pages: 200 })).toEqual({ pages: 200, minutes: 0 })
+  })
+
+  it('a read, reading, paused or did-not-finish audiobook adds no minutes and no pages', () => {
+    for (const status of ['read', 'reading', 'paused', 'dnf'] as const) {
+      expect(one({ status, formats: ['storytel'], pages: 300, minutes: 600 })).toEqual({ pages: 0, minutes: 0 })
+      expect(one({ status, formats: ['paperback', 'storytel'], pages: 300, minutes: 720 })).toEqual({ pages: 0, minutes: 0 })
+    }
+  })
+
+  it('on T-0023’s mixed shelf: 1,200 pages and 1,320 min, the 🎧 line’s total', () => {
+    const mixed = [
+      book('A', { formats: ['paperback'], pages: 300 }),
+      book('B', { formats: ['hardcover'], pages: 300 }),
+      book('C', { formats: ['ebook'], pages: 300 }),
+      book('D', { formats: ['storytel'], pages: 600, minutes: 600 }),
+      book('E', { formats: ['paperback', 'storytel'], pages: 300, minutes: 720 }),
+      book('F', { formats: ['other'] }),
+      book('G', { status: 'read', formats: ['paperback'], pages: 300 }),
+    ]
+    const pile = wantPile(mixed, NOW)
+    expect(pile).toMatchObject({ books: 6, pages: 1200, minutes: 1320 })
+    expect(pile.minutes).toBe(pileHeights(mixed).audioMinutes)
+    expect(pile.minutes).toBe(kindPace(mixed, 'audio', NOW).waiting)
+  })
+})
+
+describe('the pile’s grey line: edge cases (tester, T-0036)', () => {
+  /** The grey line's minutes are the 🎧 line's and the 🎧 pace line's, whatever the shelf. */
+  const same = (shelf: Book[]) => {
+    const pile = wantPile(shelf, NOW)
+    expect(pile.minutes).toBe(pileHeights(shelf).audioMinutes)
+    expect(pile.minutes).toBe(kindPace(shelf, 'audio', NOW).waiting)
+    return pile
+  }
+
+  it('only books she listens to: no pages, every audiobook’s hours (copied pages don’t count twice)', () => {
+    const shelf = [
+      book('s1', { formats: ['storytel'], pages: 600, minutes: 600 }),
+      book('s2', { formats: ['audiobook'], pages: 450 }),
+      book('s3', { formats: ['storytel', 'other'] }),
+      book('s4', { storytelId: '9', minutes: 300 }),
+    ]
+    expect(same(shelf)).toMatchObject({ books: 4, pages: 0, minutes: 600 + 900 + 560 + 300 })
+  })
+
+  it('no audiobooks at all: pages only, 0 minutes, the 🎧 total 0 too', () => {
+    const shelf = [
+      book('p', { formats: ['paperback'], pages: 320 }),
+      book('h', { formats: ['hardcover'], pages: 200 }),
+      book('e', { formats: ['ebook'], pages: 150 }),
+      book('n', { pages: 100 }),
+      read('r', '2026-10-01', { formats: ['storytel'], minutes: 600 }),
+    ]
+    expect(same(shelf)).toMatchObject({ books: 4, pages: 770, minutes: 0 })
+  })
+
+  it('a sleep read on the pile counts like any other book, in both halves', () => {
+    const shelf = [
+      book('z1', { formats: ['storytel'], minutes: 480, sleepRead: true }),
+      book('z2', { formats: ['paperback', 'storytel'], pages: 250, sleepSeries: 'cosy', sleepRead: true }),
+    ]
+    expect(same(shelf)).toMatchObject({ books: 2, pages: 250, minutes: 480 + 500 })
+  })
+
+  it('a length of 0 counts as no length: the fill-in rule, as on the 🎧 line', () => {
+    expect(same([book('x', { formats: ['storytel'], minutes: 0, pages: 0 })])).toMatchObject({ pages: 0, minutes: 560 })
+    expect(same([book('y', { formats: ['storytel'], minutes: 0, pages: 200 })])).toMatchObject({ pages: 0, minutes: 400 })
+  })
+
+  it('a huge pile: 3,000 books of every kind still agree to the minute', () => {
+    const kinds: Partial<Book>[] = [
+      { formats: ['paperback'], pages: 312 },
+      { formats: ['storytel'], minutes: 731 },
+      { formats: ['storytel'], pages: 417 },
+      { formats: ['storytel'] },
+      { formats: ['hardcover', 'audiobook'], pages: 280, minutes: 655 },
+      { formats: ['ebook', 'storytel'] },
+      { storytelId: 'old' },
+      { formats: ['other'], pages: 90 },
+    ]
+    const shelf = Array.from({ length: 3000 }, (_, i) => book(`b${i}`, kinds[i % kinds.length]))
+    const per = 3000 / kinds.length
+    const pile = same(shelf)
+    expect(pile).toMatchObject({
+      books: 3000,
+      pages: per * (312 + 280 + 90),
+      minutes: per * (731 + 834 + 560 + 655 + 560 + 560),
+    })
+  })
+
+  it('every mix of formats, lengths and statuses agrees with the 🎧 line', () => {
+    const formatSets: Partial<Book>[] = [
+      {},
+      { formats: ['other'] },
+      { formats: ['storytel'] },
+      { formats: ['audiobook'] },
+      { storytelId: '1' },
+      { formats: ['paperback', 'storytel'] },
+      { formats: ['ebook', 'audiobook'] },
+      { formats: ['hardcover', 'ebook', 'storytel', 'other'] },
+      { formats: ['paperback'] },
+    ]
+    const lengths: Partial<Book>[] = [{}, { pages: 300 }, { minutes: 500 }, { pages: 300, minutes: 720 }, { pages: 0, minutes: 0 }]
+    const statuses = ['want', 'read', 'reading', 'paused', 'dnf'] as const
+    const shelf: Book[] = []
+    for (const f of formatSets) for (const l of lengths) for (const status of statuses) shelf.push(book(`m${shelf.length}`, { ...f, ...l, status }))
+    same(shelf)
+    for (const b of shelf) same([b])
+  })
+
+  it('with a pace: the 🎧 pace line waits for the grey line’s minutes', () => {
+    const shelf = [
+      read('done', '2026-06-01', { formats: ['storytel'], minutes: 1200 }),
+      book('s', { formats: ['storytel'] }),
+      book('e', { formats: ['paperback', 'storytel'], pages: 300 }),
+    ]
+    const pile = same(shelf)
+    expect(pile.minutes).toBe(560 + 600)
+    expect(kindPace(shelf, 'audio', NOW)).toMatchObject({ waiting: 1160, perMonth: 100, months: 12 })
+  })
+})
+
 describe('the pile’s pace per kind (T-0024, D-0031)', () => {
   const paper = (id: string, day: string, extra: Partial<Book> = {}) => read(id, day, { formats: ['paperback'], pages: 300, ...extra })
   /** The pace shelf of T-0024's Done when, NOW = 7 November 2026. */
@@ -173,6 +311,14 @@ describe('the pile’s pace per kind (T-0024, D-0031)', () => {
     expect(pile).toMatchObject({ books: 15, perMonth: 1.25, months: 12 })
     expect(paceNumber(pile.perMonth)).toBe('1.3')
     expect(paceTime(pile.months!)).toBe('about 1 year')
+  })
+
+  it('the grey line on the pace shelf: 3,900 pages and 1,920 min, the 🎧 line’s and pace’s total (T-0036)', () => {
+    const shelf = paceShelf()
+    const pile = wantPile(shelf, NOW)
+    expect(pile).toMatchObject({ books: 15, pages: 3900, minutes: 1920, perMonth: 1.25, months: 12 })
+    expect(pile.minutes).toBe(pileHeights(shelf).audioMinutes)
+    expect(pile.minutes).toBe(kindPace(shelf, 'audio', NOW).waiting)
   })
 
   it('gives each kind its pace and months', () => {
