@@ -32,9 +32,9 @@ ok   at zoom one the UK still opens the UK (United Kingdom)
 ok   tapping a cover in the card opens that book’s panel (Les Misérables)
 ok   land covers at least 44 px wide (48)
 ok   tapping a land cover opens its book (Harry Potter and the Prisoner of Azkaban)
-ok   zoom one: a one-finger swipe over the map scrolls the page ({"win":0,"dash":7772} → {"win":0,"dash":7965})
+ok   zoom one: a one-finger swipe over the map scrolls the page ({"win":0,"dash":7953} → {"win":0,"dash":8441})
 ok   the swipe opened no card
-ok   zoom one: a plain wheel over the map scrolls the page, no zoom ({"win":0,"dash":7772} → {"win":0,"dash":8012})
+ok   zoom one: a plain wheel over the map scrolls the page, no zoom ({"win":0,"dash":7953} → {"win":0,"dash":8193})
 ok   one press doubles the zoom, three reach the maximum (+ disabled) (360 → 180 → 45)
 ok   borders and gold outlines as thin at 8× as at zoom one ({"border":"0.3px","bve":"non-scaling-stroke","outline":"1.25px","ove":"non-scaling-stroke"})
 ok   no digit in the block zoomed in

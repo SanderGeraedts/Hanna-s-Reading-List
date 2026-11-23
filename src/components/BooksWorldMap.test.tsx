@@ -399,6 +399,35 @@ describe('Where your books are set: tap a country, zoom the map (T-0039)', () =>
     }
   })
 
+  it('F3: the smallest-zone step also looks under the finger, not at the zone the click was moved onto', async () => {
+    const nl = book('amsterdam', { title: 'Canal Houses', color: '#223344', finished: ['2026-01-02'], places: ['Amsterdam (Netherlands)'] })
+    const { svg, card } = await setup([...shelf, nl])
+    const zone = (name: string) => svg.querySelector(`.world-zone[data-country="${name}"]`)!
+    const real = document.elementsFromPoint
+    // under the finger (5, 5): only France's zone, out at sea; the click lands on the Netherlands' zone (40, 40)
+    document.elementsFromPoint = (x: number, y: number) => (x === 5 && y === 5 ? [zone('France'), svg] : [zone('Netherlands'), svg])
+    const tap = (target: Element, x: number, y: number) => {
+      fireEvent.pointerDown(target, { pointerId: 4, pointerType: 'touch', clientX: x, clientY: y })
+      fireEvent.pointerUp(target, { pointerId: 4, pointerType: 'touch', clientX: x, clientY: y })
+      fireEvent.click(zone('Netherlands'), { clientX: 40, clientY: 40 })
+    }
+    try {
+      tap(zone('France'), 5, 5)
+      expect(within(card()!).getByRole('heading').textContent).toBe('France')
+      // nothing under the finger (the sea, no zone): the target the browser moved the tap onto counts
+      document.elementsFromPoint = (x: number, y: number) => (x === 7 && y === 7 ? [svg] : [zone('Netherlands'), svg])
+      tap(svg, 7, 7)
+      expect(within(card()!).getByRole('heading').textContent).toBe('Netherlands')
+      // a plain country under the finger, no zone: that country, not the moved target
+      document.elementsFromPoint = (x: number, y: number) =>
+        x === 9 && y === 9 ? [svg.querySelector('path.world-country[data-country="Japan"]')!, svg] : [zone('Netherlands'), svg]
+      tap(svg, 9, 9)
+      expect(within(card()!).getByRole('heading').textContent).toBe('Japan')
+    } finally {
+      document.elementsFromPoint = real
+    }
+  })
+
   it('a drag never opens a card; a press that stays put does', async () => {
     const { country, card } = await setup()
     const fr = country('France')

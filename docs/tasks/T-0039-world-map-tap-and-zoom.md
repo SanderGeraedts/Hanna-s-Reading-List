@@ -685,6 +685,7 @@ slowed CPU.
   (Chrome's touch adjustment: the finger at 200, 448, the click at 193, 457). So the coast rule measured
   from the wrong point, and 15 px north of the Netherlands opened the UK. The rule now measures from
   where the finger went down (`pressAt`, from `pointerdown`). A component test covers it.
+- **Third send-back (F3), the whole rule from the finger:** all three steps are now judged at the  finger-down point: the lit shape under it, the nearest coast within 8 px, then the topmost zone  under it. With no zone under the finger, a plain country under it opens. Only on the bare sea does  the target Chrome moved the tap onto count. Ctrl+scroll and pinch also record at gesture time which  zoom button takes focus (`noteLimit`), which settles the race the tester saw with focus on the map  itself.
 - **Send-back, the one/two-column width:** the dashboard puts the block in a different column, so
   React remounts it. The open card is handed from the old block to the new one within the same
   commit (a module variable, cleared in a microtask). A later visit still starts closed. The zoom
@@ -956,3 +957,16 @@ attempt 1.
   nearest-coast steps only; the "smallest zone" step still takes Chrome's moved click, so 9 of 269
   real-touch taps open the Netherlands where its zone isn't under the finger (see *Test*, F3). CI
   attempt 1 green. #248 stays a draft. Handed back to the **developer**.
+- 2026-11-23 developer: third send-back fixed (F3). The "topmost zone" step now also looks under the
+  finger-down point, not at the zone Chrome moved the click onto; with no zone there, a plain country
+  under the finger, and only on the bare sea the moved target. Ctrl+scroll and pinch note the focus
+  target at gesture time too. New component test: the click lands on the Netherlands' zone while the
+  finger is on France's only (France), on the sea (the moved target), on a plain country (that
+  country). It fails on the previous code ("expected 'Netherlands' to be 'France'"). The tester's tap
+  set (`t39re2ab.mjs`, `t39re2.mjs`, run on 3155) found **0** taps opening a zone not under the finger
+  (8 + 1 before). The demo shelf agreed 151/162 (was 143) and France with the Netherlands 104/107; the
+  rest are the accepted island cases (Corsica, Sardinia, Crimea). Focus: all F2, Ctrl+scroll and pinch
+  checks ok, including "Ctrl+scroll to 1× with focus on the zoomed map". `screens.mjs`: "all checks
+  passed" (104 ok). `vitest run BooksWorldMap Dashboard mapZoom`: 50 passed (50). `pnpm test`: 110 files
+  passed, 1427 tests passed, 9 skipped. `pnpm exec tsc --noEmit` clean, `harness check` ✓. Handed to
+  the **tester**.

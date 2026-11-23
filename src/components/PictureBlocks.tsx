@@ -423,15 +423,18 @@ export function BooksWorldMapCard({ books, onShowBook }: { books: Book[]; onShow
   }
   /** a press from the keyboard or a button: which zoom button takes focus once the view reaches the limit */
   const focusAtLimit = useRef<'in' | 'out' | null>(null)
-  const zoomTo = (v: MapView) => {
+  /** which zoom button takes focus once the view reaches v's limit, by what has focus now */
+  const noteLimit = (v: MapView) => {
     const active = document.activeElement
     const z = zoomOf(v, MAP_W)
-    focusAtLimit.current =
-      z >= MAP_ZOOM_MAX - 1e-6 && active === zoomInRef.current
-        ? 'out'
-        : z <= 1 + 1e-6 && !!active && (active === zoomOutRef.current || active === wholeRef.current || active === svgEl)
-          ? 'in'
-          : null
+    if (z >= MAP_ZOOM_MAX - 1e-6 && active === zoomInRef.current) focusAtLimit.current = 'out'
+    else if (z <= 1 + 1e-6 && !!active && (active === zoomOutRef.current || active === wholeRef.current || active === svgEl)) focusAtLimit.current = 'in'
+    else focusAtLimit.current = null
+  }
+  const noteLimitRef = useRef(noteLimit)
+  noteLimitRef.current = noteLimit
+  const zoomTo = (v: MapView) => {
+    noteLimit(v)
     glide(v)
   }
   const zoomBy = (factor: number) => zoomTo(zoomAround(target.current, factor, 0.5, 0.5, MAP_W, MAP_H))
@@ -545,7 +548,9 @@ export function BooksWorldMapCard({ books, onShowBook }: { books: Book[]; onShow
         const zoomedView = zoomAround(target.current, p.dist / Math.max(1, pinch.dist), fx, fy, MAP_W, MAP_H)
         const r = box()
         const u = r.width > 0 ? zoomedView.w / r.width : 0
-        jump(panView(zoomedView, -(p.mx - pinch.mx) * u, -(p.my - pinch.my) * u, MAP_W, MAP_H))
+        const v = panView(zoomedView, -(p.mx - pinch.mx) * u, -(p.my - pinch.my) * u, MAP_W, MAP_H)
+        noteLimitRef.current(v)
+        jump(v)
         pinch = p
         return
       }
@@ -582,7 +587,10 @@ export function BooksWorldMapCard({ books, onShowBook }: { books: Book[]; onShow
       e.preventDefault()
       const unit = e.deltaMode === 1 ? 16 : 1
       const [fx, fy] = fraction(e.clientX, e.clientY)
-      jump(zoomAround(target.current, Math.exp(-e.deltaY * unit * 0.01), fx, fy, MAP_W, MAP_H))
+      const v = zoomAround(target.current, Math.exp(-e.deltaY * unit * 0.01), fx, fy, MAP_W, MAP_H)
+      // a Ctrl+scroll to a limit while a zoom button or the map has focus: the layout effect moves it
+      noteLimitRef.current(v)
+      jump(v)
     }
     el.addEventListener('pointerdown', down)
     el.addEventListener('wheel', wheel, { passive: false })
@@ -604,21 +612,30 @@ export function BooksWorldMapCard({ books, onShowBook }: { books: Book[]; onShow
       return
     }
     let name = countryAt(e.target)
+    // the whole tap rule is judged where the finger went down: a touch screen may move the click
+    // itself to a nearby target (about 6 px, onto the Netherlands' zone more often than not)
+    const down = pressAt.current
+    pressAt.current = null
+    const fresh = !!down && performance.now() - down.t < 2000
+    if ((fresh || (e.target instanceof Element && e.target.classList.contains('world-zone'))) && typeof document.elementsFromPoint === 'function') {
+      const at = fresh ? down! : { x: e.clientX, y: e.clientY }
+      const hits = document.elementsFromPoint(at.x, at.y).filter((el) => svgEl?.contains(el))
+      // 1. a lit country's own shape under the finger (the UK next to the Netherlands)
+      const own = hits.find((el) => el.matches('path.world-country.lit'))
+      // 2. where zones overlap, the nearest lit coast within 8 px (France, not the Netherlands);
+      // 3. further out, the topmost zone under the finger, the smallest country (the Netherlands from 15 px north)
+      const zonesHere = hits.filter((el): el is SVGPathElement => el.matches('path.world-zone'))
+      // no zone there: a plain country under the finger, else (the sea) the target the browser moved the tap onto
+      const plainHere = hits.find((el) => el.matches('path.world-country'))
+      name =
+        own?.getAttribute('data-country') ??
+        (svgEl && nearestCoast(svgEl, zonesHere, at.x, at.y)) ??
+        zonesHere[0]?.getAttribute('data-country') ??
+        plainHere?.getAttribute('data-country') ??
+        name
+    }
     // the sea does nothing
     if (!name) return
-    // on a tap zone: a lit country's own shape under the finger wins (the UK next to the Netherlands);
-    // where zones overlap, within 8 px of a lit coast the nearest country wins (France, not the Netherlands),
-    // and further out at sea the topmost zone, the smallest country (the Netherlands from 15 px north)
-    if (e.target instanceof Element && e.target.classList.contains('world-zone') && typeof document.elementsFromPoint === 'function') {
-      // where the finger went down: a touch screen may move the click itself to a nearby target
-      const down = pressAt.current
-      const at = down && performance.now() - down.t < 2000 ? down : { x: e.clientX, y: e.clientY }
-      pressAt.current = null
-      const hits = document.elementsFromPoint(at.x, at.y)
-      const own = hits.find((el) => el.matches('path.world-country.lit'))
-      const zonesHere = hits.filter((el): el is SVGPathElement => el.matches('path.world-zone'))
-      name = own?.getAttribute('data-country') ?? (svgEl && nearestCoast(svgEl, zonesHere, at.x, at.y)) ?? name
-    }
     toggle(name, map.countries.has(name) ? litPath(name) : null, false)
   }
   const zoomKeys = (e: ReactKeyboardEvent) => {
