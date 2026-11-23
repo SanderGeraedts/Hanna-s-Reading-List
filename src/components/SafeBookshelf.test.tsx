@@ -15,6 +15,7 @@ vi.mock('./BookshelfScene', () => ({
 }))
 
 const { SafeBookshelf } = await import('./SafeBookshelf')
+const { DEFAULT_ROOM } = await import('#/lib/room')
 
 const props = {
   books: [],
@@ -77,5 +78,62 @@ describe('the bookshelf when the 3D drawing fails (#181)', () => {
     render(<SafeBookshelf {...props} />)
     expect(screen.getByTestId('shelf')).toBeTruthy()
     expect(screen.queryByRole('status')).toBeNull()
+  })
+})
+
+describe('the note offers the simple books while they are detailed (T-0034, D-0035)', () => {
+  it('shows "Show simple books" next to "Try again" when Detailed books is on', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    render(<SafeBookshelf {...props} room={DEFAULT_ROOM} onRoom={() => {}} />)
+    const buttons = screen.getAllByRole('button').map((b) => b.textContent)
+    expect(buttons).toEqual(['Try again', 'Show simple books'])
+  })
+
+  it('switches Detailed books off and draws the shelf again with it', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const onRoom = vi.fn()
+    const room = { ...DEFAULT_ROOM, wood: 'cherry' as const }
+    render(<SafeBookshelf {...props} room={room} onRoom={onRoom} />)
+    const before = scene.renders
+    scene.fail = false
+    fireEvent.click(screen.getByRole('button', { name: 'Show simple books' }))
+    expect(onRoom).toHaveBeenCalledTimes(1)
+    expect(onRoom).toHaveBeenCalledWith({ ...room, detailedBooks: false })
+    expect(scene.renders).toBeGreaterThan(before)
+    expect(screen.getByTestId('shelf')).toBeTruthy()
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('offers only "Try again" when Detailed books is off', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    render(<SafeBookshelf {...props} room={{ ...DEFAULT_ROOM, detailedBooks: false }} onRoom={() => {}} />)
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Show simple books' })).toBeNull()
+  })
+
+  it('never switches it off by itself: a lost drawing only shows the note', () => {
+    scene.fail = false
+    const onRoom = vi.fn()
+    render(<SafeBookshelf {...props} room={DEFAULT_ROOM} onRoom={onRoom} />)
+    act(() => scene.lost?.())
+    expect(screen.getByRole('button', { name: 'Show simple books' })).toBeTruthy()
+    expect(onRoom).not.toHaveBeenCalled()
+  })
+
+  // tester (T-0034): with no way to save the choice, the action would do nothing, so it isn't offered
+  it('offers only "Try again" when there is no onRoom to switch it with', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    render(<SafeBookshelf {...props} room={DEFAULT_ROOM} />)
+    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['Try again'])
+  })
+
+  it('comes back with only "Try again" when the simple books fail too', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const onRoom = vi.fn()
+    const { rerender } = render(<SafeBookshelf {...props} room={DEFAULT_ROOM} onRoom={onRoom} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Show simple books' }))
+    // the parent passes the room it saved; the scene still fails (scene.fail stays true)
+    rerender(<SafeBookshelf {...props} room={{ ...DEFAULT_ROOM, detailedBooks: false }} onRoom={onRoom} />)
+    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['Try again'])
   })
 })

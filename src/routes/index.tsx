@@ -30,6 +30,8 @@ import { WishCard } from '#/components/WishCard'
 import { RoomPanel, useRoom } from '#/components/RoomPanel'
 import { ChallengesPage } from '#/components/ChallengesPage'
 import { CalendarPage } from '#/components/CalendarPage'
+import { CreaturesPage } from '#/components/CreaturesPage'
+import { CreaturesProvider } from '#/components/creatures/CreaturesContext'
 import type { ChallengeSection } from '#/components/ChallengesPage'
 import { useStorytelSync } from '#/lib/useStorytelSync'
 import type { Tab } from '#/components/AddBookDialog'
@@ -45,16 +47,27 @@ export const Route = createFileRoute('/')({
   // back button returns to the shelf; &focus= scrolls to one challenge ("Open ›")
   validateSearch: (
     search: Record<string, unknown>,
-  ): { view?: 'dashboard' | 'challenges' | 'calendar'; focus?: ChallengeSection; month?: string } => {
+  ): {
+    view?: 'dashboard' | 'challenges' | 'calendar' | 'creatures'
+    focus?: ChallengeSection
+    month?: string
+    step?: 'choose' | 'hatch' | 'duplicate'
+  } => {
     const view =
-      search.view === 'dashboard' || search.view === 'challenges' || search.view === 'calendar' ? search.view : undefined
+      search.view === 'dashboard' || search.view === 'challenges' || search.view === 'calendar' || search.view === 'creatures'
+        ? search.view
+        : undefined
     const focus = FOCUS.find((f) => f === search.focus)
     // &month=2026-11 opens the Calendar page at that month
     const month = typeof search.month === 'string' && /^\d{4}-\d{2}$/.test(search.month) ? search.month : undefined
+    // &step=choose opens the Creatures tab at "Choose your first creature" (a Hatch button, T-0029);
+    // &step=hatch hatches the oldest milestone egg, &step=duplicate opens a duplicate's choice (T-0030)
+    const step = search.step === 'choose' || search.step === 'hatch' || search.step === 'duplicate' ? search.step : undefined
     return {
       ...(view && { view }),
       ...(view === 'challenges' && focus && { focus }),
       ...(view === 'calendar' && month && { month }),
+      ...(view === 'creatures' && step && { step }),
     }
   },
 })
@@ -266,6 +279,15 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     },
     [navigate, select],
   )
+  const openCreatures = useCallback(
+    (step?: 'choose' | 'hatch' | 'duplicate') => {
+      select(null)
+      navigate({ search: step ? { view: 'creatures', step } : { view: 'creatures' } })
+    },
+    [navigate, select],
+  )
+  /** the choose step is open: drop &step=choose, so a reload or Back doesn't open it again */
+  const choseOpened = useCallback(() => navigate({ search: { view: 'creatures' }, replace: true }), [navigate])
   const openChallenges = useCallback(
     (focus: ChallengeSection) => {
       select(null)
@@ -358,8 +380,10 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   )
 
   return (
+    // her creature choices once for the whole page: the Creatures tab, the dashboard block and Waiting for you share them
+    <CreaturesProvider accountId={account?.id ?? null}>
     <div className="app" style={headerPx ? ({ '--header-h': `${headerPx}px` } as React.CSSProperties) : undefined}>
-      <header className="topbar" ref={header}>
+      <header className={offShelf ? 'topbar on-page' : 'topbar'} ref={header}>
         <div className="brand">
           <div className="brand-title">
             {/* the ☰ menu only holds the shelf's tools on a phone: elsewhere it would be empty */}
@@ -473,6 +497,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             topInset={headerPx}
             paused={offShelf}
             room={room}
+            onRoom={setRoom}
             onPan={setPan}
             panControl={panControl}
           />
@@ -489,7 +514,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             <button className="btn" aria-label="Show the whole bookcase" title="Show the whole bookcase" disabled={zoom <= 1} onClick={() => setZoom(1)}>
               ⤢
             </button>
-            <button className="btn" aria-label="Your room" title="Your room: wood, wallpaper, decorations" aria-expanded={roomOpen} onClick={() => setRoomOpen(!roomOpen)}>
+            <button className="btn" aria-label="Your room" title="Your room: wood, wallpaper, books, decorations" aria-expanded={roomOpen} onClick={() => setRoomOpen(!roomOpen)}>
               🎨
             </button>
           </div>
@@ -513,9 +538,22 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             onOpenChallenges={openChallenges}
             onOpenCalendar={openCalendar}
             onAdd={addBook}
+            onOpenCreatures={openCreatures}
           />
         )}
         {view === 'calendar' && <CalendarPage books={books} onShowBook={showBook} onUpdate={updateBook} startMonth={search.month} />}
+        {view === 'creatures' && (
+          <ClientOnly fallback={null}>
+            <CreaturesPage
+              books={books}
+              startChoose={search.step === 'choose'}
+              onChooseOpened={choseOpened}
+              startStep={search.step === 'hatch' || search.step === 'duplicate' ? search.step : undefined}
+              onStepOpened={choseOpened}
+              paused={!!selected || adding !== null || wishing}
+            />
+          </ClientOnly>
+        )}
         {view === 'challenges' && (
           <ChallengesPage
             books={books}
@@ -586,6 +624,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           }}
           onClose={() => select(null)}
           onSheet={onSheet}
+          headerPx={headerPx}
         />
       )}
 
@@ -647,16 +686,18 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
         </div>
       )}
     </div>
+    </CreaturesProvider>
   )
 }
 
-type View = 'shelf' | 'dashboard' | 'challenges' | 'calendar'
+type View = 'shelf' | 'dashboard' | 'challenges' | 'calendar' | 'creatures'
 
 const VIEWS = [
   { view: 'shelf', icon: '📚', label: 'Bookshelf' },
   { view: 'dashboard', icon: '📊', label: 'Dashboard' },
   { view: 'challenges', icon: '🏆', label: 'Challenges' },
   { view: 'calendar', icon: '📅', label: 'Calendar' },
+  { view: 'creatures', icon: '🐾', label: 'Creatures' },
 ] as const
 
 const FOCUS: ChallengeSection[] = ['goal', 'monthly', 'bingo', 'alphabet']

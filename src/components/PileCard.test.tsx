@@ -253,6 +253,62 @@ describe('PileCard: the switch and the lines (T-0023)', () => {
   })
 })
 
+describe('PileCard: the grey line has the 🎧 line’s hours (T-0036, D-0036)', () => {
+  /** The grey line: the paragraph right after “N books waiting”, if it is the pages and hours line. */
+  const grey = (container: HTMLElement) => {
+    const p = container.querySelector('.big-number')?.nextElementSibling
+    return p?.matches('p.muted.small-text') ? p : null
+  }
+
+  it('on the mixed shelf: “1,200 pages · 22 h to listen”, the same hours as 🎧 Audiobook', () => {
+    const { container } = render(<PileCard books={mixed()} />)
+    expect(grey(container)!.textContent).toBe('1,200 pages · 22 h to listen')
+    press('Audiobook')
+    expect(seen(heightLine(container)!)).toContain(`22${nb}h`)
+    expect(grey(container)!.textContent).toBe('1,200 pages · 22 h to listen')
+  })
+
+  it('one Storytel book without a length: “9 h 20 min to listen” and no pages half', () => {
+    const { container } = render(<PileCard books={[book('s', { formats: ['storytel'] })]} />)
+    expect(grey(container)!.textContent).toBe('9 h 20 min to listen')
+  })
+
+  it('one paperback without pages: no grey line', () => {
+    const { container } = render(<PileCard books={[book('p', { formats: ['paperback'] })]} />)
+    expect(grey(container)).toBeNull()
+    expect(container.textContent).not.toMatch(/\d pages|to listen/)
+  })
+
+  /** The hours in the grey line, with regular spaces: "22 h", "9 h 20 min". */
+  const greyHours = (container: HTMLElement) => grey(container)!.textContent!.split(' · ').pop()!.replace(/ to listen$/, '')
+
+  it('a huge pile (tester): the grey line and 🎧 Audiobook show the same hours', () => {
+    const shelf = Array.from({ length: 600 }, (_, i) =>
+      book(`h${i}`, i % 3 === 0 ? { formats: ['paperback'], pages: 350 } : i % 3 === 1 ? { formats: ['storytel'], minutes: 613 } : { formats: ['ebook', 'storytel'] }),
+    )
+    const { container } = render(<PileCard books={[finished, ...shelf]} />)
+    // 200 × 613 + 200 × 560 = 234,600 min; the hours have no thousands comma, as formatDuration writes them
+    expect(grey(container)!.textContent).toBe('70,000 pages · 3910 h to listen')
+    press('Audiobook')
+    expect(seen(heightLine(container)!)).toContain(greyHours(container).replace(/ /g, nb))
+  })
+
+  it('only books she listens to (tester): no pages half, the 🎧 line’s hours', () => {
+    const { container } = render(
+      <PileCard books={[finished, book('a', { formats: ['storytel'], pages: 600, minutes: 600 }), book('b', { formats: ['audiobook'] })]} />,
+    )
+    // 600 + 560 min; with one kind there is no switch, so no 🎧 line to compare with on screen
+    expect(grey(container)!.textContent).toBe('19 h 20 min to listen')
+    expect(theSwitch()).toBeNull()
+  })
+
+  it('no audiobooks at all (tester): pages only, no hours anywhere', () => {
+    const { container } = render(<PileCard books={[finished, book('p', { formats: ['paperback'], pages: 320 }), book('e', { formats: ['ebook'], pages: 180 })]} />)
+    expect(grey(container)!.textContent).toBe('500 pages')
+    expect(container.textContent).not.toMatch(/to listen|Audiobook/)
+  })
+})
+
 describe('PileCard: height line edge cases (tester, T-0021, updated for T-0023)', () => {
   it('a pile of 1 book: seen and heard in centimetres, with the mug line', () => {
     const { container } = render(<PileCard books={[finished, book('one', { pages: 400, format: 'paperback' })]} />)

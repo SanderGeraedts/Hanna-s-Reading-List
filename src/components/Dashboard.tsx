@@ -60,8 +60,11 @@ import {
 import type { ArrowKey, BlockId, SectionId } from '#/lib/dashboardLayout'
 import { TodayStrip } from './TodayStrip'
 import { useDashboardLayout } from './useDashboardLayout'
-import { BadgesCard, CoverWallCard, RhythmCard } from './NewBlocks'
+import { useArrangeBarHeight } from './useArrangeBarHeight'
+import { BadgesCard, CoverWallCard, RhythmCard, useBirthday } from './NewBlocks'
 import { badges, newBadges } from '#/lib/badges'
+import { CreaturesCard } from './CreaturesCard'
+import { useCreatures } from './creatures/CreaturesContext'
 
 const BADGES_SEEN = 'hannas-reading-list:badges-seen'
 /** the month whose wrap-up was opened or put away under Waiting for you (yyyy-mm) */
@@ -97,6 +100,11 @@ interface DashboardProps extends Props {
   onOpenCalendar?: (month: string) => void
   /** put a suggested book on the shelf ("New for you") */
   onAdd?: (book: NewBook) => void
+  /**
+   * the Creatures tab; `choose`: straight to choosing the first creature, `hatch`: hatching the
+   * oldest egg, `duplicate`: the choice for a duplicate (a Hatch or Choose button)
+   */
+  onOpenCreatures?: (step?: 'choose' | 'hatch' | 'duplicate') => void
 }
 
 export interface PeriodPick {
@@ -148,7 +156,7 @@ type Drag = { id: BlockId; dx: number; dy: number } & (
   | { place: 'favourites'; drop: FavDrop | null }
 )
 
-export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChallenges, onOpenCalendar, onAdd }: DashboardProps) {
+export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChallenges, onOpenCalendar, onAdd, onOpenCreatures }: DashboardProps) {
   const open = (section: ChallengeSection) => (onOpenChallenges ? () => onOpenChallenges(section) : undefined)
   const now = new Date()
   // the period picked under "Books read"; the charts and records follow it
@@ -156,6 +164,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
   const period = toPeriod(pick)
   const [layout, setLayout] = useDashboardLayout(accountId)
   const [arranging, setArranging] = useState(false)
+  const arrangeBar = useArrangeBarHeight()
   // the monthly challenge's editor is open (#144)
   const [challengeEditing, setChallengeEditing] = useState(false)
   const [drag, setDrag] = useState<Drag | null>(null)
@@ -175,7 +184,12 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
       return []
     }
   })
-  const freshBadges = useMemo(() => newBadges(badges(books)).filter((b) => !seenBadges.includes(b.id)), [books, seenBadges])
+  // this device's birthday counts here too (D-0039), so the Birthday book can wait for you
+  const birthday = useBirthday()
+  const freshBadges = useMemo(
+    () => newBadges(badges(books, undefined, { birthday })).filter((b) => !seenBadges.includes(b.id)),
+    [books, seenBadges, birthday],
+  )
   const seeBadge = (id: string) => {
     const next = [...seenBadges, id]
     setSeenBadges(next)
@@ -240,7 +254,37 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
   const dustOff = dustBook
     ? { book: dustBook, waited: waitedText(dustBook, today), onDismiss: () => keepDust(dustOffDismiss(dustState, dustBook, today)) }
     : undefined
-  const nothingWaiting = toRate.length === 0 && questions.length === 0 && freshBadges.length === 0 && !wrapUp && !dustOff
+  // her creature (T-0029): the welcome egg and the newest level-up wait here too, never in a pop-up
+  const creatures = useCreatures(books)
+  const hatchEgg = onOpenCreatures ? () => onOpenCreatures('choose') : undefined
+  const creatureEgg = creatures.c.egg && hatchEgg ? { onHatch: hatchEgg } : undefined
+  // milestone eggs and duplicates waiting for her choice (T-0030), only once she has her first pet
+  const hatchMilestone = onOpenCreatures ? () => onOpenCreatures('hatch') : undefined
+  const creatureEggs = creatures.c.pet && creatures.c.eggs.length && hatchMilestone ? { eggs: creatures.c.eggs, onHatch: hatchMilestone } : undefined
+  const waitingDup = creatures.c.pet ? creatures.c.waiting[0] : undefined
+  const creatureDuplicate =
+    waitingDup && onOpenCreatures ? { species: waitingDup.species, onChoose: () => onOpenCreatures('duplicate') } : undefined
+  const levelUp = creatures.levelUp
+  const creatureLevelUp = levelUp
+    ? {
+        text: levelUp.text,
+        onNice: () => creatures.api.see(levelUp.pet.id, levelUp.pet.level),
+        onVisit: () => {
+          creatures.api.see(levelUp.pet.id, levelUp.pet.level)
+          onOpenCreatures?.()
+        },
+      }
+    : undefined
+  const nothingWaiting =
+    toRate.length === 0 &&
+    questions.length === 0 &&
+    freshBadges.length === 0 &&
+    !wrapUp &&
+    !dustOff &&
+    !creatureEgg &&
+    !creatureEggs &&
+    !creatureDuplicate &&
+    !creatureLevelUp
 
   const blocks: Record<BlockId, React.ReactNode> = {
     waiting: (
@@ -253,6 +297,19 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
         onSeenBadge={seeBadge}
         wrapUp={wrapUp}
         dustOff={dustOff}
+        creatureEgg={creatureEgg}
+        creatureEggs={creatureEggs}
+        creatureDuplicate={creatureDuplicate}
+        creatureLevelUp={creatureLevelUp}
+      />
+    ),
+    creatures: (
+      <CreaturesCard
+        c={creatures.c}
+        onFeed={creatures.feed}
+        onOpen={onOpenCreatures ? () => onOpenCreatures() : undefined}
+        onHatch={hatchEgg}
+        onHatchMilestone={hatchMilestone}
       />
     ),
     badges: <BadgesCard books={books} />,
@@ -260,7 +317,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
     rhythm: <RhythmCard books={books} />,
     flower: <GenreFlowerCard books={books} />,
     months: <PagesPerMonthCard books={books} />,
-    world: <BooksWorldMapCard books={books} />,
+    world: <BooksWorldMapCard books={books} onShowBook={onShowBook} />,
     challenge: (
       <ChallengeCard
         books={books}
@@ -303,7 +360,8 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
   }
 
   /** a block that has nothing to say right now stays out of the way (still shown while arranging) */
-  const showing = (id: BlockId) => arranging || !(id === 'waiting' && nothingWaiting)
+  const showing = (id: BlockId) =>
+    arranging || !((id === 'waiting' && nothingWaiting) || (id === 'creatures' && !creatures.c.pet && !creatures.c.egg))
   const columnsOf = (section: SectionId): BlockId[][] =>
     narrow ? [singleColumn(layout.sections[section])] : layout.sections[section]
   const scroller = () => root.current
@@ -495,7 +553,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
         <WrapUpCard books={books} year={wrapOpen.year} month={wrapOpen.month} onShowBook={onShowBook} onClose={() => setWrapOpen(null)} />
       )}
       <TodayStrip books={books} accountId={accountId} onShowBook={onShowBook} />
-      <div className={`dashboard-bar${arranging ? ' arranging' : ''}`}>
+      <div className={`dashboard-bar${arranging ? ' arranging' : ''}`} ref={arrangeBar}>
         {arranging ? (
           <>
             <div className="dashboard-bar-actions">

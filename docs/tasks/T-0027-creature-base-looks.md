@@ -2,13 +2,13 @@
 id: T-0027
 title: "Design the base 3D look of the 20 book creatures, each once by a Fable agent"
 description: "First step of the book creatures (D-0033): the species list with rarity, IUCN Red List category and source in the code, and one cute low-poly 3D base model per creature, designed once per animal by an agent on the Fable model; shown on the unlinked /style page; nothing in the app links to them yet."
-status: Open
+status: Done
 size: full
 depends_on: []
 decisions: [D-0002, D-0017, D-0020, D-0022, D-0033]
 raised_on: 2026-11-22
-done_on: ""
-result: []
+done_on: "2026-11-23"
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/241"]
 ---
 
 # Goal
@@ -397,7 +397,7 @@ the review (Done when 7) and may adjust a hex within the same twist.
 | `axolotl` | `#f4b6c4` | `#fbd9e0` | `#e0607e` gills | `#e0607e` | `#d98a8a` | gold: `#f5d27a` / `#fbebc0` / `#e98a6a` / `#e98a6a` / `#d98a8a` |
 | `book-dragon` | `#6f9a7c` sage | `#f0e2c0` belly plates, pages | `#d9a85b` horns, spikes (satin) | `#8a3a4a` book-cover wings | `#2b2a2f` | amethyst: `#8f6fb8` / `#f6ecd6` / `#d9a85b` / `#4a5aa8` / `#2b2a2f` |
 | `library-owl` | `#8a6a52` | `#efe2cc` facial disc, chest | `#5e4634` tufts, wing tips | `#d9a85b` chest chevrons | `#d9a85b` beak | night owl: `#3f4a7a` / `#dfe3f5` / `#2b2f4f` / `#f4d68c` / `#d9a85b` |
-| `bookmark-fox` | `#f3e9d8` paper cream | `#fffaf0` | `#b0413e` ribbon red (satin) | `#d9a85b` ribbon gold (satin) | `#2b2a2f` | gilded page, plum and blue ribbons: `#f2d9a0` / `#fbf0d6` / `#6e4f8f` / `#4a5aa8` / `#2b2a2f` |
+| `bookmark-fox` | `#f3e9d8` paper cream | `#fffaf0` | `#b0413e` ribbon red (satin) | `#d9a85b` ribbon gold (satin) | `#2b2a2f` | gilded page, plum and blue ribbons: `#f2d9a0` / `#fbf0d6` / `#9a5fb5` / `#5f86d9` / `#2b2a2f` (ribbons lightened at the review, 2026-11-23: `#6e4f8f` / `#4a5aa8` vanished on midnight) |
 | `starlight-unicorn` | `#fbf6ee` pearl | `#fbf6ee` | `#d9a85b` horn, hooves, star (satin) | `#9d86d1` lavender mane, tail | `#e8a9a4` | night sky: `#4a5aa8` / `#dfe3f5` / `#f4d68c` / `#f4d68c` / `#e8a9a4` |
 
 ## 8. The 20 at a glance (key silhouette features)
@@ -493,11 +493,364 @@ required parts and anchors, and a short comment at the top listing its primitive
 `extra` and `detail` meshes and its estimated triangle count. If something in this style sheet
 cannot be met for its animal, the agent says so in its reply instead of breaking the family rule.
 
-## Review
+## Review after building (2026-11-23)
 
-(after the build: the four screenshots, family check and the 120 px check, Done when 4)
+UX designer. Looked at the 16 screenshots in `docs/tasks/T-0027-screens/`, read the 20 model
+files, and on the no-backend dev server (`vite dev --port 3143`, stopped afterwards) took each
+tile at 2× from four sides (0°, 90°, 180°, 270° of the turn), on lavender, and the shinies on
+midnight. Every must-fix number below was tried in the working copy, checked on screen and with
+the model test (all 102 passed), and then reverted: this review changes no code.
+
+**Verdict: changes needed.** Five small must-fix items, all positions, sizes, a deleted
+mesh pair or two palette hexes. The family and 16 of the 20 animals pass as built.
+
+### Family (Done when 4)
+
+**Pass.** All 20 read as one family next to the cat and the koala decoration: the same chubby
+egg body with a lighter tummy, the head as wide as the body with no neck, stubby forward feet,
+the same small black bead eyes with a white glint, pink blush, no mouth, matte plush finish and
+warm muted colours. No one has bigger or coloured eyes; the owl's facial disc is the only thing
+around eyes, as designed. Silhouettes are carried by ears, tails, snouts and markings, as §1 asks.
+
+### Recognisable at about 120 px (Done when 4)
+
+Checked on the 390 px shots (tiles about 120 px) and the 2× closeups.
+
+- **Clear as built (16):** cat, red fox, red squirrel, Adélie penguin, hedgehog, otter,
+  platypus, koala, giant panda, polar bear, red panda, emperor penguin, ring-tailed lemur,
+  axolotl, book dragon, library owl. The platypus, hedgehog, lemur, owl and dragon are
+  especially strong.
+- **Not yet (4), fixed by must-fix 1–5:** the **capybara** reads as a brown bear from the front
+  (round ears on top, a short round muzzle); the **starlight unicorn** reads as a cream pig or
+  cat from the front (the mane hides straight behind the head, the two pink nostrils on a flat
+  muzzle say "pig"); the **bookmark fox**'s side ribbons stick out sideways at waist height and
+  read as two little red wings, and the gold one is a thin stick behind the head; the **African
+  penguin** is recognisable, but its chest band with three spots inside reads as a smiling face
+  on its tummy, which breaks the family's "no mouth" rule.
+
+### Penguins and foxes
+
+- **The three penguins differ clearly:** Adélie the small round one with white eye rings and
+  pink feet; emperor the tall one with golden ear patches and the yellow chest; African the
+  slim one with the white face band and the black chest band. Pass.
+- **Bookmark fox vs red fox:** clearly different (paper cream vs orange, ribbons vs one bushy
+  tail). Pass once must-fix 1 makes the ribbons show.
+
+### Wallpapers and shinies (Done when 7)
+
+- **Normal colours:** all 20 stand out on lavender and on midnight; the dark backs (penguins,
+  otter) keep a light edge on midnight from the back light. Pass.
+- **Shinies:** all 20 are clearly a different hue from their normal colours, not just lighter.
+  Every colour the shiny palette changes changes; eyes, glints and blush stay. (Where §7 keeps
+  a slot the same on purpose, like the cat's inner ears, the Adélie's feet or most noses, that
+  is the design, not a miss.) One fail: on midnight the **bookmark fox's shiny ribbons** (plum
+  `#6e4f8f`, blue `#4a5aa8`) disappear into the wall, and the ribbons are what make it a
+  bookmark fox: must-fix 2. The shiny library owl (`#3f4a7a`) and emperor penguin (`#46508f`)
+  are dim on midnight but readable through their light disc and tummy; T-0030's gold sparkle
+  will help them. Not blocking.
+
+### The integrator's notes
+
+- **Book dragon's arms on its tummy** (Design §4 said folded at the sides): **accepted.** It
+  matches the family's plush pose and the book wings already carry its silhouette. §4's
+  "wing-arms folded against the sides" now holds for the owl only.
+- **Book dragon's `back` anchor under the book wings:** **accepted** for the base model. Note
+  for the outfits task (T-0031): a backpack on the dragon would collide with the book; that
+  task decides (no backpack for the dragon, or hide the book while one is worn).
+- **Unicorn's `hat` anchor near the horn:** **must-fix 3** (a hat there would sit on the horn).
+- **Unicorn's satin on three parts** (hooves, horn, flank star; §3 says at most two):
+  **accepted.** All three are the same gold, it costs no draw call, and it does not look shinier
+  than the other legendaries. Read §3's limit as "at most two satin draw calls".
+- **Red panda's dark tummy:** **accepted.** True to the animal; the cream face mask and ear rims
+  give it the light front the family needs, and it reads on both wallpapers.
+- **Emperor penguin 1.08 tall:** **accepted.** Within §2's 1.10 and it is what tells it from the
+  other two penguins.
+- **Penguins' stub tails:** **accepted.** Seen only from behind; they don't change the front
+  silhouette.
+- **Tight budgets** (lemur 2,960, red panda 2,932, unicorn 2,936 triangles; hedgehog at the
+  40-primitive cap): **accepted.** All inside the test's limits; must-fix 3 lowers the unicorn to
+  2,864. These four have no room for more parts: later changes to them must swap, not add.
+
+### Must-fix (developer, normal agent, no Fable needed)
+
+Each is a small edit in one file; the numbers were tried and pass the model test.
+
+1. **`src/components/creatures/models/bookmark-fox.ts`, the `ribbons` table:** the two red
+   side ribbons fan up beside the head instead of out at the waist.
+   - `[0.7, 0.36, 0.24, 0.45, m.accent]` → `[0.45, 0.52, 0.26, 0.2, m.accent]`
+   - `[-0.7, 0.36, 0.24, -0.45, m.accent]` → `[-0.45, 0.52, 0.26, -0.2, m.accent]`
+   - The gold middle ribbon stays. Result: 0.82 wide × 1.08 tall.
+2. **`src/lib/creatures/species.ts`, `bookmark-fox` `shinyPalette`:** accent `#6e4f8f` →
+   `#9a5fb5`, accent2 `#4a5aa8` → `#5f86d9` (same plum-and-blue twist, readable on both
+   wallpapers; §7's row is updated to match).
+3. **`src/components/creatures/models/starlight-unicorn.ts`:**
+   - Mane tufts (the four `[x, y, z, r]` rows): the mane falls down the creature's left side
+     (+x, the tail's side) so it shows from the front:
+     `[0.17, 0.32, -0.08, 0.085]`, `[0.24, 0.22, -0.13, 0.09]`, `[0.27, 0.09, -0.14, 0.085]`,
+     `[0.24, -0.03, -0.12, 0.075]`.
+   - Delete the two nostril meshes (the `for` loop that makes `nostril`). The `nose` slot is then
+     unused, like the axolotl's. Update the top comment (29 primitives, 9 draw calls, no
+     nostrils in the `detail` list).
+   - `hat` anchor: `hat.position.set(0, 0.348, -0.08)` and add `hat.rotation.x = -0.35`, so a
+     hat sits on the skull behind the horn. Size stays 0.22.
+   - Result: 2,864 / 1,288 triangles, 9 draw calls, 0.71 × 1.11.
+4. **`src/components/creatures/models/capybara.ts`:** a longer blunt snout and ears set back.
+   - snout: `m.body, [0, 0.02, 0.3], [0, 0, 0], [1.05, 0.77, 1]` →
+     `m.body, [0, 0.02, 0.32], [0, 0, 0], [1.1, 0.85, 1.25]`
+   - darker snout top: `m.accent, [0, 0.1, 0.34], [0, 0, 0], [0.85, 0.35, 0.9]` →
+     `m.accent, [0, 0.115, 0.34], [0, 0, 0], [1.0, 0.3, 1.5]`
+   - nose: `[0, 0.07, 0.435]` → `[0, 0.06, 0.5]`
+   - ears: `[s * 0.165, 0.35, -0.02]` → `[s * 0.17, 0.35, -0.07]`; inner ears
+     `[s * 0.165, 0.352, 0.01]` → `[s * 0.17, 0.352, -0.04]`. Keep the ears at y 0.35: lower
+     ears drop the model below 0.95 tall.
+   - Result: 0.72 × 0.97 × **0.80 deep**, exactly at the depth limit; don't push the snout
+     further forward.
+5. **`src/components/creatures/models/african-penguin.ts`, the three chest spots:** below the
+   band instead of inside it: `[-0.06, 0.0]`, `[0.055, -0.07]`, `[0.03, 0.05]` →
+   `[-0.07, -0.11]`, `[0.08, -0.13]`, `[0.01, -0.16]`.
+
+Then re-take the screenshots with the same script (all 16) and run the model test.
+
+### Nice to have (not blocking, untested)
+
+- Emperor penguin: the pale-yellow chest wash floats as an oval mid-chest; it would read more
+  like the real fade if it sat higher and wider, joining the ear patches (try y 0.21 → 0.25 and
+  scale x 1 → 1.25 in `emperor-penguin.ts`).
+- Red squirrel: the dark tail tip on its own ball looks a little like a lollipop; painting it
+  `m.body` would make the tail one bushy S.
+
+### Re-review (2026-11-23)
+
+**Verdict: pass.** Commit 11382ff makes must-fix 1–5 exactly as written: the diff of the
+four model files and `species.ts` matches the review line for line, and the unicorn's top
+comment is updated. These are the same numbers I checked at 2× from four sides before.
+The 16 new screenshots show:
+
+- **Bookmark fox:** the red ribbons rise beside the head and the gold one stands above it.
+  It reads as a ribbon-tailed fox, not a winged cat. On midnight the shiny ribbons
+  (`#9a5fb5`, `#5f86d9`) now show clearly.
+- **Starlight unicorn:** the lavender mane shows down its left side from the front, and with
+  the nostrils gone the muzzle looks like a pony's. The horn is clear. The shiny's gold mane
+  stands out on midnight.
+- **Capybara:** a longer, blunter snout with the darker top and the ears set back. In the ¾
+  view it reads as a capybara, not a bear.
+- **African penguin:** the spots sit below the chest band, so it no longer reads as a face on
+  its tummy.
+
+The other 16 creatures are unchanged. The family and both wallpapers still pass. Hand-over to
+the tester.
+
+### Hand-over
+
+Back to the developer for must-fix 1–5 (done; see *Re-review*). When the new screenshots match, the UX designer only
+needs a quick look at the four changed tiles before the tester; nothing else needs a new review.
+
+## Modelling brief for Fable agents
+
+Developer, 2026-11-22. Each Fable agent gets this brief, *Design* §1–§10 above, and its one
+creature's row from the table, §7 and §8. The shared code and one finished example exist:
+
+- `src/components/creatures/model.ts`: the shared interface (read it; don't change it).
+- `src/components/creatures/models/cat.ts`: **the example to copy**: same structure, same
+  helpers, same comment at the top.
+
+**Your file.** Exactly one new file: `src/components/creatures/models/<id>.ts`, with `<id>` from
+the table (e.g. `red-fox.ts`). It exports two things, named from the id
+(`red-fox` → `RedFox` / `redFox`, `starlight-unicorn` → `StarlightUnicorn` / `starlightUnicorn`):
+
+```ts
+import * as THREE from 'three'
+import { anchor, capsule, cone, creatureMaterials, group, mesh, orientBetween, sphere, torus } from '../model'
+import type { CreatureModel, CreatureParams } from '../model'
+
+export function buildRedFox(p: CreatureParams): THREE.Group { /* ... */ }
+export const redFox: CreatureModel = { id: 'red-fox', build: buildRedFox }
+```
+
+The registry finds the file by its name: don't edit `models/index.ts` or anything else.
+
+**The interface** (all from `../model`):
+
+- `p.quality` (`'low' | 'high'`) goes into every geometry; `p.stage` is never read (always build the
+  grown-up); `p.palette` is only used through `creatureMaterials(p)`.
+- `const m = creatureMaterials(p)`: paint every mesh with one of `m.body`, `m.belly`, `m.accent`,
+  `m.accent2`, `m.eye`, `m.nose`, `m.glint`, `m.blush`. Nothing else.
+- Geometry only through the helpers, which take their segments from `SEG`:
+  `sphere(r, 'L' | 'M' | 'S' | 'XS', q)`, `capsule(r, length, q)` (along y; the caps add `r` at each
+  end), `cone(r, h, q, sides?)` (`sides` 4 for small ears, 3 for a triangle nose),
+  `cylinder(rTop, rBottom, h, q)`, `torus(r, tube, q, arc?)` (round the z axis). For a flat shape
+  (star, ribbon end, wing) `new THREE.ShapeGeometry` / `ExtrudeGeometry` with at most 12 points.
+- `mesh(geometry, material, position?, rotation?, scale?)` and `group(name, position?, rotation?)`;
+  `orientBetween(obj, a, b)` puts `obj` between two points with its +y along them and returns the
+  distance (see the cat's tail).
+- Parts are groups named `part:body`, `part:head`, `part:eyes` (inside `part:head`), `part:armL`,
+  `part:armR`, and if it has them `part:tail`, `part:wings`, at the pivots of §5. Helper groups
+  inside a part (an ear with its inner ear) are fine. On the root only parts and `seat`.
+- Anchors: `anchor('seat' | 'neck' | 'back' | 'head' | 'hat' | 'face' | 'paw', size)`, size above 0,
+  in the part §5 names, then `.position.set(...)` (and a rotation for `back`).
+- Tags on meshes: `userData.detail = true` (dropped on low), `userData.stageRole = 'extra'` (horns,
+  wings, ribbons, gills, tufts, mane), `userData.stageRole = 'foot'` (feet; added by the developer
+  so stages can shrink feet with the arms), `userData.satin = true` (at most two parts, on
+  `accent`/`accent2`).
+- Mirror by position (`s * x` for `s` in −1, 1), never by a negative scale.
+
+**The budget** (checked by the test): at most 40 meshes; after the shared merge at most **3,000
+triangles on high**, **1,500 on low**, **12 draw calls**; bounding box 0.95–1.15 tall, at most 1.1
+wide and 0.8 deep; bottom on y = 0. The cat, with the full shared body, is **2,638 / 1,154
+triangles and 8 draw calls**: the shared body costs most of the budget, so keep species features on
+`M`/`S`/`XS` segments, prefer one stretched sphere over several, and tag small markings `detail`.
+Each extra material kind in a part (gloss nose, blush, satin) is one more draw call.
+
+**Don't touch:** `model.ts`, `models/index.ts`, `cat.ts` or any other creature's file, the species
+list (`src/lib/creatures/species.ts`), the tests, `/style`, `package.json` or anything outside your
+one file. No colour literal (`#…`, `0x…`, `rgb(`), no `THREE.Color`, no `new THREE.…Material`, no
+merging, no animation, no `p.stage`, no import except `three` and `../model`: the test fails on
+each. If the style sheet can't be met for your animal, say so in your reply instead.
+
+**Test your own file** (from `C:\Users\User\hrl-creatures`, Git Bash):
+
+```bash
+export PATH="/c/Program Files/nodejs:$PATH:$APPDATA/npm"
+pnpm exec vitest run src/components/creatures/models.test.ts -t <id> --silent=false
+pnpm exec tsc --noEmit
+```
+
+The test prints a line `model <id>: <high> / <low> tris, <calls> calls, <w> wide × <h> tall × <d> deep`. Both commands must pass. The registry loads every file in `models/`, so while other agents are writing theirs a run can fail on *their* half-written file: check the error names your file, otherwise wait a minute and run again. Reply with the
+file path, that line, and your token count.
+
+## Developer notes (step B, part 1)
+
+Taken at night with the recommended option, without asking Hanna (all reversible):
+
+1. **Palettes live only in the species list** (`src/lib/creatures/species.ts`, `palette` and
+   `shinyPalette` for all 20), not in each model file as Design §6 sketched (`CreatureModel` has
+   `id` and `build`). Reason: Done when 6 forbids any colour literal in the model files, and one
+   place for the colours means the shiny of T-0030 is just `shinyPalette`.
+2. **`makeCreature` lives in `models/index.ts`** (re-exported from `src/components/creatures`),
+   not in `model.ts`: the model files import `model.ts`, so `model.ts` importing the models would
+   be an import cycle. The registry finds model files by name (`import.meta.glob`), so the Fable
+   agents never edit a shared file.
+3. **Geometry helpers in `model.ts`** (`sphere`, `capsule`, `cone`, `cylinder`, `torus`, `mesh`,
+   `group`, `orientBetween`) so segment counts can only come from `SEG`.
+4. **Stages:** `STAGE_SCALE` holds Design §2's table and `applyStage` a first version (body round
+   its centre, the other parts follow the body and scale round their pivots; eyes, feet and extras
+   get their own factor). T-0029 refines it. Feet are tagged `stageRole: 'foot'` for it.
+5. **Merged meshes** are named `mesh:<part>:<kind>` (e.g. `mesh:body:matte`) so they are not taken
+   for parts.
+6. **The model test** waits for all 20 with `EXPECT_ALL_MODELS = false`; set it to `true` after
+   step A.
+7. **/style:** one canvas behind a grid of tiles, Lavender/Midnight buttons that change the
+   wallpaper for this page only (the saved room stays), and a Shiny switch for Done when 7.
+
+## Developer notes (step B, part 2)
+
+Taken at night with the recommended option, without asking Hanna (all reversible):
+
+8. **Precise bounding box.** `inspectCreature` and `finishCreature`'s "stand it on y = 0" now
+   measure with `Box3.setFromObject(root, true)` (vertex-precise). The plain box measures each
+   geometry's own box after rotation, so it over-measures rotated parts (one agent saw `red-fox`
+   fail the raw "bottom at y = 0" check that way). No model was changed to work around it.
+9. **Shared `front(c, r, x, y)`** (z of an ellipsoid's front surface at x, y) moved into
+   `model.ts`; the five files that had an identical local copy (african-penguin, axolotl,
+   emperor-penguin, red-panda, ring-tailed-lemur) import it now. Their test numbers are unchanged.
+   Later Fable briefs may use it.
+10. **Screenshots** are of the Creatures section only, at exactly 390 × 844 and 1280 × 800, in
+    viewport-sized parts down the section (`-1`, `-2`: the WebGL canvas paints only what is on
+    screen). Time is frozen with Playwright's clock and moved on a few frames, so every creature
+    shows its ¾ start pose instead of a random point of the turn. Shiny shots on both wallpapers
+    at both sizes (Done when 7). No black silhouette shots: Done when does not ask for them; the
+    UX designer can ask.
+11. **Fable token log per batch, not per creature.** Step A ran as four Fable agents of four or
+    five creatures each (one creature per file), not one agent per creature as *Notes* planned;
+    the agents reported one total per batch, so Done when 5's "one line per creature" can only
+    list the creatures per batch. Per-creature numbers were not reported and are not invented.
 
 # Test
+
+Tester, 2026-11-23, on `83d031e` (branch `t-0027-book-creatures`, draft PR #241).
+
+**CI's run, read, not repeated.** Run 45081995103 (attempt 1, no re-runs): `checks / checks`
+pass. `harness check`: 34 tasks, index in step; 38 decisions, 3 overrules valid; generated files
+current. `pnpm test`: `Test Files 95 passed | 1 skipped (96)`, `Tests 1028 passed | 9 skipped
+(1037)`; no retry in the log. `pnpm run build`: client and server built. `e2e` and `shards`
+skipped (this project's CI passes no e2e command; the same on `main`). Netlify deploy preview
+ready.
+
+**Run here, from clean.** `pnpm install --frozen-lockfile`: done. `pnpm exec harness check`: all
+four ✓. `pnpm test` (Done when 1, 2, 6): `Test Files 95 passed | 1 skipped (96)`, `Tests 1028
+passed | 9 skipped (1037)`, the same as CI. `pnpm exec tsc --noEmit`: clean. `pnpm run build`:
+built. The creature tests five times, shuffled, no retries (`vitest run src/components/creatures
+src/lib/creatures --sequence.shuffle --retry=0`): `3 passed (3)`, `172 passed (172)` all five
+times.
+
+**Code read (targeted).**
+- `model.ts`: the merge bakes each slot colour into a `color` attribute per vertex, merges per
+  part and kind into the four shared materials, flips the winding of mirrored parts, and disposes
+  the raw geometries, the clones and the slot materials that were drawn with. Bounds use
+  `setFromObject(root, true)` (vertex-precise) in both `finishCreature` and `inspectCreature`.
+  `front()` is the ellipsoid surface formula, clamped at 0 outside the outline. `disposeCreature`
+  frees geometries only and leaves the shared materials alone, as it should.
+- `species.ts`: 20 species, tiers 5/3/3/3/2/4 in order, commons first, all with `shiny: true`
+  and a shiny palette whose body differs; 15 wild animals with scientific name, category, year
+  where known and https sources; the cat `domestic`; the four fantasy ones legendary with no
+  category. `speciesById` throws on an unknown id.
+- Registry (`models/index.ts`): finds model files by name with `import.meta.glob`; `makeCreature`
+  throws `No model for creature <id> yet`. The model test checks every file is found and all 20
+  exist.
+
+**Tried to break it.** New test file `src/components/creatures/creatures.stress.test.ts`
+(62 tests, the gaps the model test left):
+- every creature × 3 stages × 2 qualities × plain and shiny (240 builds): within budget (1,500
+  low / 3,000 high triangles, ≤ 12 draw calls), on y = 0, at most 1.15 tall, only the shared
+  materials, no NaN vertex, a vertex colour on every vertex: **pass**;
+- leaks: every geometry made while building is either in the finished creature or disposed,
+  every slot material that was drawn with is disposed, `disposeCreature` frees every geometry
+  left and never a shared material; then all 20 built and disposed 10 times over (200 builds):
+  no geometry left alive, the four shared materials unchanged: **pass**. I made sure the test
+  bites: removing any of the three dispose calls (raw geometries, slot materials, or half of
+  `disposeCreature`) fails 21 tests;
+- an unknown id (`unicorn-cat`): `modelFor` gives undefined, `makeCreature` and `speciesById`
+  throw a clear error: **pass**;
+- no colour of its own in any model file: no hex, `rgb()`, `0x…`, `THREE.Color`, `.color.set…`,
+  `emissive` or `vertexColors` (on top of the model test's check): **pass**; a grep of the 20
+  files finds no colour literal at all.
+
+Finding, not blocking: `creatureMaterials()` makes all eight slot materials, but
+`finishCreature` disposes only the ones a mesh used, so a creature that never paints with, say,
+`accent2` leaves that material undisposed. It is never drawn, so it holds nothing on the GPU and
+the garbage collector takes it (the test pins exactly that: only unused slot materials stay).
+T-0029 may dispose all eight to be tidy.
+
+**/style in Chrome** (no-backend `vite dev --port 3145`, playwright-core; stopped afterwards and
+the port checked free): at 390 × 844 (touch) and 1280 × 800, on lavender and midnight, plain and
+shiny: 20 tiles with the right names, none "Not modelled yet", every tile's square has a drawn
+creature (each square's screenshot 5.3–22 KB; samples looked at by eye), the wallpaper attribute
+follows the buttons. 30 fast Shiny/wallpaper flips and a live 1280 ↔ 390 resize: no page error,
+WebGL context not lost. Console: no error from the page or the creatures; only `favicon.ico`
+404 on the dev server and r3f's `THREE.Clock` deprecation warning, which the home page shows too
+(both already on `main`). The home page loads no creature module.
+
+**Bundle (code splitting).** All creature code sits in the `/style` route chunk only (the
+species ids and `No model for creature` appear in `style-*.js` and no other chunk).
+`style-*.js` grows from 5.89 kB to 63.70 kB (15.53 kB gzip); the home page's chunks go from
+`index` 342.04 + `routes` 1,406.86 + `StarRating` 25.41 kB (main's CI) to `index` 342.04 +
+`routes` 476.89 + `RoomPanel` 955.82 kB: +0.44 kB (+0.24 kB gzip), the same code split
+differently because `/style` now shares `useRoom`. No page without creatures grew.
+
+**Done when.** 1, 2 and 6: the tests pass (above). 3: seen myself on 3145, screenshots in
+`docs/tasks/T-0027-screens/`. 4 and 7: the UX designer's review and re-review pass. 5: the Fable
+tokens are logged per batch of four or five creatures with a total (595,975), not per creature,
+because the agents reported only batch totals (*Developer notes* 11); recorded as it is, not
+invented.
+
+**Verdict: passed.** The PR stays a **draft** on purpose: the 15 Red List categories still need
+a person to check them on iucnredlist.org (the site refuses automated reading), or Hanna's OK on
+the cited sources. Once that is done and noted here, it is ready to go: mark it ready and it
+merges itself when green.
+
+**Update, 2026-11-23 (about 03:30):** Hanna OKs the cited sources (no check on iucnredlist.org
+by hand needed) and keeps the looks as they are. Nothing remains: the task is Done and the PR
+marked ready.
 
 # Log
 
@@ -517,3 +870,19 @@ cannot be met for its animal, the agent says so in its reply instead of breaking
   confirm step (and the shiny warning with hold), and all 20 creatures get a shiny (ten more
   palettes added to Design §7, gold / purple / night-sky). D-0033, the brief and T-0028 to T-0030
   updated. Saving her choices without a server change looked at again: see T-0028.
+- 2026-11-22 developer: step B part 1 on branch t-0027-book-creatures: the species list with palettes and shiny palettes for all 20 and its test (`src/lib/creatures/species.ts`); the shared `src/components/creatures/model.ts` (types, `SEG`, `radial`, geometry helpers, `creatureMaterials`, `anchor`, `ANCHORS`/`PARTS`, `STAGE_SCALE` and `applyStage`, vertex-colour bake and merge per part and kind in `finishCreature`); `makeCreature` and a file-name registry in `models/index.ts`; the model test (Done when 2 and 6) in `src/components/creatures/models.test.ts`; the Creatures section on /style; the house cat as the example model. Check: `pnpm test` 93 files passed, 883 tests passed (10 skipped, among them the all-20 check until step A); `model cat: 2638 / 1154 tris, 8 / 8 calls, 0.75 wide × 1.00 tall × 0.61 deep`; `tsc --noEmit` clean; `harness check` passed. /style seen in headless Chrome: the cat turns in its tile on lavender. Choices taken without asking: *Developer notes* above. Modelling brief for the Fable agents written. Remaining: step A (19 Fable models, tokens in *Log*), the four screenshots, the UX review, the Red List re-check on iucnredlist.org in a browser before merging, and the PR.
+- 2026-11-22 developer: step A done by four Fable agents (one file per creature, the 19 new model files in `src/components/creatures/models/`). Fable tokens as reported, per agent: batch 1 (red-fox, capybara, red-squirrel, adelie-penguin, hedgehog) 138,665; batch 2 (otter, platypus, koala, giant-panda, polar-bear) 145,830; batch 3 (red-panda, emperor-penguin, ring-tailed-lemur, african-penguin, axolotl) 181,225; batch 4 (book-dragon, library-owl, bookmark-fox, starlight-unicorn) 130,255; **total 595,975 (about 596,000)**. The cat was written by the developer (no Fable tokens). Per-creature numbers were not reported (*Developer notes* 11).
+- 2026-11-22 developer: step B part 2. Reviewed the 19 files against the Modelling brief (no colour literal, budget, parts, anchors, tags: all met; the test checks each). `EXPECT_ALL_MODELS = true`; bounding boxes now vertex-precise (`setFromObject(root, true)`) in `inspectCreature` and `finishCreature`; shared `front()` in `model.ts` for the five files that copied it. No model file changed its look. Check: `pnpm exec vitest run src/components/creatures src/lib/creatures`: 2 files, 110 tests passed; `pnpm test`: 93 files passed (1 skipped), 979 tests passed (9 skipped); `tsc --noEmit` clean; `pnpm run build` built; `harness check` passed. The model lines (high / low triangles, high / low draw calls, size):
+  - `cat` 2638 / 1154, 8 / 8, 0.75 × 1.00 × 0.61; `red-fox` 2516 / 1220, 8 / 8, 0.83 × 1.02 × 0.70; `capybara` 2296 / 1056, 7 / 7, 0.72 × 0.97 × 0.73; `red-squirrel` 2392 / 1176, 8 / 8, 0.82 × 1.13 × 0.74; `adelie-penguin` 2296 / 1036, 8 / 8, 0.76 × 0.96 × 0.74
+  - `hedgehog` 2716 / 1380, 7 / 7, 0.74 × 1.02 × 0.74; `otter` 2532 / 1200, 8 / 8, 0.78 × 0.96 × 0.65; `platypus` 2116 / 992, 8 / 7, 0.82 × 0.96 × 0.76; `koala` 2344 / 1144, 7 / 7, 0.75 × 0.97 × 0.60; `giant-panda` 2716 / 1276, 8 / 8, 0.67 × 0.98 × 0.66
+  - `polar-bear` 2416 / 1144, 8 / 8, 0.71 × 0.97 × 0.73; `red-panda` 2932 / 1444, 8 / 8, 0.92 × 0.98 × 0.71; `emperor-penguin` 2476 / 1160, 8 / 8, 0.69 × 1.08 × 0.71; `ring-tailed-lemur` 2960 / 1360, 8 / 8, 0.82 × 1.11 × 0.71; `african-penguin` 2608 / 1156, 8 / 8, 0.65 × 0.97 × 0.68
+  - `axolotl` 2524 / 1208, 7 / 7, 0.95 × 0.98 × 0.72; `book-dragon` 2604 / 1244, 11 / 10, 0.95 × 1.05 × 0.66; `library-owl` 2436 / 1192, 8 / 8, 0.72 × 0.98 × 0.58; `bookmark-fox` 2000 / 1000, 9 / 9, 0.93 × 1.08 × 0.76; `starlight-unicorn` 2936 / 1288, 10 / 9, 0.71 × 1.11 × 0.69
+- 2026-11-22 developer: notes from the Fable agents for the UX review (design judgement left to the UX designer): the book dragon's arms rest on its tummy, not folded at its sides as Design §4 says for wing-arms; the dragon's `back` anchor sits under the book wings; the unicorn's `hat` anchor sits near its horn; the red panda has a dark tummy on purpose (real red pandas are dark underneath); the emperor penguin is 1.08 tall (the tall one); the Adélie, African and emperor penguins have stub tails; the hedgehog is at the 40-primitive cap; the lemur's (2,960) and the red panda's (2,932) triangle budgets are tight. Found in review: the unicorn tags `satin` on three parts (hooves, horn, flank star), one more than Design §3's "at most two"; it costs no extra draw call, left as built for the UX designer.
+- 2026-11-22 developer: screenshots of the /style Creatures section in `docs/tasks/T-0027-screens/` (`390-…` at 390 × 844, `1280-…` at 1280 × 800; lavender, midnight, and `-shiny` on both; `-1`/`-2` are the top and bottom of the section). All 20 tiles render (none "Not modelled yet"), no page errors and no failed requests. Taken on the no-backend dev server (`vite dev --port 3141`), stopped afterwards and the port checked free.
+- 2026-11-22 developer: Red List re-check on iucnredlist.org in a real browser (Chrome through playwright-core, `channel: 'chrome'`): **the site still refuses automated access**. Headless gets Cloudflare's "Just a moment…" (403) at once. Headed Chrome got through twice: the species search now asks for a login ("Advanced Search is available to signed-in users"), and the red fox's page by taxon number opened on its *Mediterranean regional* assessment (Least Concern, 2008, e.T23062A9413836), not the global one. After that every page, headed, with a kept profile, after an 8-minute pause and 25 s between pages, got Cloudflare's challenge (403) again. I did not try to disguise the automation or to log in. The categories in the table stay as cited from the sources that quote the Red List (*The 20 creatures*). Remaining: a person opens the 15 real animals on iucnredlist.org by hand before merging and notes the date here.
+- 2026-11-22 developer: Remaining: the UX review (Done when 4 and 7, *Review*), the Red List check by hand (above), and the tester.
+- 2026-11-23 ux-designer: reviewed: changes needed. The family passes (Done when 4) and 16 of 20 are recognisable at 120 px; five must-fix items (bookmark fox ribbons and its shiny ribbon colours, unicorn mane, nostrils and hat anchor, capybara snout and ears, African penguin chest spots), each tried on the dev server and with the model test, then reverted. Integrator notes accepted except the unicorn's hat anchor. §7's bookmark-fox shiny row updated. Back to the developer. Remaining: must-fix 1–5 and new screenshots, a quick UX look at the four changed tiles, the Red List check by hand, and the tester.
+- 2026-11-23 developer: must-fix 1–5 from *Review after building* applied exactly, no Fable: bookmark-fox side ribbons up beside the head; bookmark-fox shiny ribbons `#9a5fb5` / `#5f86d9` in `species.ts`; starlight-unicorn mane down its left side, nostrils removed (nose slot unused), `hat` at (0, 0.348, −0.08) with `rotation.x = −0.35`, top comment updated; capybara longer snout, wider darker top, nose forward, ears set back; african-penguin chest spots below the band. The two optional tweaks were left alone. Check: `vitest run src/components/creatures src/lib/creatures` 2 files, 110 tests passed; `model bookmark-fox: 2000 / 1000 tris, 9 / 9 calls, 0.82 wide × 1.08 tall × 0.76 deep`; `model starlight-unicorn: 2864 / 1288 tris, 9 / 9 calls, 0.71 wide × 1.11 tall × 0.68 deep`; `model capybara: 2296 / 1056 tris, 7 / 7 calls, 0.72 wide × 0.97 tall × 0.80 deep`; `model african-penguin: 2608 / 1156 tris, 8 / 8 calls, 0.65 wide × 0.97 tall × 0.68 deep` (all as the review expected); `tsc --noEmit` clean. All 16 screenshots re-taken with the same script on `vite dev --port 3141` (no errors, all 20 tiles render), vite stopped and the port checked free. Lesson added to `docs/lessons.md`. Remaining: a quick UX look at the four changed tiles, the Red List check by hand, and the tester.
+- 2026-11-23 ux-designer: reviewed: pass. Re-review of must-fix 1–5 (commit 11382ff, new screenshots): bookmark fox ribbons and shiny ribbons, unicorn mane, muzzle and hat anchor, capybara snout and ears, African penguin chest spots all as specified and readable at 120 px on both wallpapers. Hand-over to the tester. Remaining: the Red List check by hand on iucnredlist.org, and the tester.
+- 2026-11-23 tester: passed. CI green on the first attempt; tests, build and `harness check` re-run here; 62 new tests in `creatures.stress.test.ts` (all stages × qualities × plain/shiny, leaks over 200 builds, unknown id, colour writes); /style seen at 390 and 1280 on both wallpapers with no page errors; creature code only in the /style chunk. Not marked ready: it waits for the Red List check. Remaining: a person opens the 15 wild animals on iucnredlist.org by hand (or Hanna OKs the cited sources) and notes the date here; then mark PR #241 ready and it merges itself.
+- 2026-11-23 tester: Hanna answered (about 03:30): the cited Red List sources are good enough, so nobody needs to check iucnredlist.org by hand, and she keeps the looks as they are. That resolves the open item; nothing remains for a person. Done; PR #241 marked ready.

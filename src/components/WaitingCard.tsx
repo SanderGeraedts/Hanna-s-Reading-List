@@ -6,6 +6,9 @@ import { joinSeries, notInSeries } from '#/lib/sleepSeries'
 import type { SeriesQuestion } from '#/lib/sleepSeries'
 import { ratingText, spiceText, NO_SPICE } from '#/lib/ratings'
 import type { Badge } from '#/lib/badges'
+import type { Egg } from '#/lib/creatures/eggs'
+import type { SpeciesId } from '#/lib/creatures/species'
+import { eggReason, eggsWaitingLine, speciesWord } from '#/lib/creatures/words'
 import { StarRating } from './StarRating'
 import { Cover } from './Dashboard'
 
@@ -23,6 +26,14 @@ interface Props {
   wrapUp?: { label: string; onOpen: () => void; onDismiss: () => void }
   /** once a week: the want-to-read book that has waited longest (T-0014), until Not now */
   dustOff?: { book: Book; waited: string; onDismiss: () => void }
+  /** the welcome egg, until she hatches it (T-0029): Hatch goes to the Creatures tab */
+  creatureEgg?: { onHatch: () => void }
+  /** milestone eggs waiting, oldest first (T-0030): one line, Hatch hatches the oldest in the Creatures tab */
+  creatureEggs?: { eggs: Egg[]; onHatch: () => void }
+  /** a duplicate waiting for her choice (T-0030) */
+  creatureDuplicate?: { species: SpeciesId; onChoose: () => void }
+  /** her creature's newest level-up, not seen on this device yet (T-0029) */
+  creatureLevelUp?: { text: string; onNice: () => void; onVisit: () => void }
 }
 
 /**
@@ -31,15 +42,131 @@ interface Props {
  * takes a book off the list) and new books that might belong to a series.
  * The dashboard leaves the block out when nothing is waiting.
  */
-export function WaitingCard({ toRate, questions, onUpdate, onShowBook, newBadges = [], onSeenBadge, wrapUp, dustOff }: Props) {
+export function WaitingCard({
+  toRate,
+  questions,
+  onUpdate,
+  onShowBook,
+  newBadges = [],
+  onSeenBadge,
+  wrapUp,
+  dustOff,
+  creatureEgg,
+  creatureEggs,
+  creatureDuplicate,
+  creatureLevelUp,
+}: Props) {
   const heading = useRef<HTMLHeadingElement>(null)
   return (
     <section className="dash-card waiting-card" aria-labelledby="waiting-title">
       <h2 id="waiting-title" ref={heading} tabIndex={-1}>
         Waiting for you
       </h2>
-      {toRate.length === 0 && questions.length === 0 && newBadges.length === 0 && !wrapUp && !dustOff && (
-        <p className="muted small-text">Nothing waiting.</p>
+      {toRate.length === 0 &&
+        questions.length === 0 &&
+        newBadges.length === 0 &&
+        !wrapUp &&
+        !dustOff &&
+        !creatureEgg &&
+        !creatureEggs &&
+        !creatureDuplicate &&
+        !creatureLevelUp && <p className="muted small-text">Nothing waiting.</p>}
+      {creatureEgg && (
+        <ul className="waiting-list">
+          <li>
+            <span className="badge-icon" aria-hidden>
+              🥚
+            </span>
+            <div className="waiting-info">
+              <p className="waiting-title">
+                <strong>A welcome egg is waiting for you!</strong>
+              </p>
+              <div className="chips">
+                <button type="button" className="btn small primary" onClick={creatureEgg.onHatch}>
+                  Hatch
+                </button>
+              </div>
+            </div>
+          </li>
+        </ul>
+      )}
+      {creatureEggs && (
+        <ul className="waiting-list">
+          <li>
+            <span className="badge-icon" aria-hidden>
+              🥚
+            </span>
+            <div className="waiting-info">
+              <p className="waiting-title">
+                <strong>{eggsWaitingLine(creatureEggs.eggs)}</strong>
+              </p>
+              {creatureEggs.eggs.length === 1 && <p className="muted small-text">{eggReason(creatureEggs.eggs[0])}</p>}
+              <div className="chips">
+                <button
+                  type="button"
+                  className="btn small primary"
+                  aria-label={creatureEggs.eggs.length === 1 ? `Hatch the ${creatureEggs.eggs[0].tier} egg` : 'Hatch the oldest egg'}
+                  onClick={creatureEggs.onHatch}
+                >
+                  Hatch
+                </button>
+              </div>
+            </div>
+          </li>
+        </ul>
+      )}
+      {creatureDuplicate && (
+        <ul className="waiting-list">
+          <li>
+            <span className="badge-icon" aria-hidden>
+              🐣
+            </span>
+            <div className="waiting-info">
+              <p className="waiting-title">
+                <strong>Your new {speciesWord(creatureDuplicate.species)} is waiting for you to choose</strong>
+              </p>
+              <div className="chips">
+                <button
+                  type="button"
+                  className="btn small primary"
+                  aria-label={`Choose for your new ${speciesWord(creatureDuplicate.species)}`}
+                  onClick={creatureDuplicate.onChoose}
+                >
+                  Choose
+                </button>
+              </div>
+            </div>
+          </li>
+        </ul>
+      )}
+      {creatureLevelUp && (
+        <ul className="waiting-list">
+          <li>
+            <span className="badge-icon" aria-hidden>
+              ⭐
+            </span>
+            <div className="waiting-info">
+              <p className="waiting-title">
+                <strong>{creatureLevelUp.text}</strong>
+              </p>
+              <div className="chips">
+                <button
+                  type="button"
+                  className="btn small primary"
+                  onClick={() => {
+                    heading.current?.focus()
+                    creatureLevelUp.onNice()
+                  }}
+                >
+                  Nice!
+                </button>
+                <button type="button" className="btn small" onClick={creatureLevelUp.onVisit}>
+                  Visit
+                </button>
+              </div>
+            </div>
+          </li>
+        </ul>
       )}
       {wrapUp && (
         <ul className="waiting-list">

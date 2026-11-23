@@ -33,6 +33,7 @@ import { ownsCopy } from '#/lib/price'
 import { ebookHref } from '#/lib/ebookLink'
 import { findBackText } from '#/lib/findBackText'
 import { stoppedAtText } from '#/lib/didNotFinish'
+import { SHEET_MAX, SHEET_MAX_WIDTH, SHEET_MIN_PX, clampSheetPx, headerShareOf, openingSheetPx, sheetCap } from './inspectPlacement'
 
 export type Face = 'front' | 'spine' | 'back'
 
@@ -64,13 +65,15 @@ interface Props {
   onClose: () => void
   /** on phones: called with the share of the screen height the sheet covers */
   onSheet?: (share: number) => void
+  /** the header's height in px (0 until measured): the sheet stops below the room the open book needs */
+  headerPx?: number
 }
 
-const SHEET_QUERY = '(max-width: 720px)'
+const SHEET_QUERY = `(max-width: ${SHEET_MAX_WIDTH}px)`
 const SHEET_KEY = 'hannas-reading-list:sheet'
 const SHEET_DEFAULT = 0.45
-const SHEET_MIN_PX = 96 // enough for the handle and the title
-const SHEET_MAX = 0.88
+// SHEET_MIN_PX: enough for the handle and the title
+export { SHEET_MAX, SHEET_MIN_PX }
 
 function savedSheetShare() {
   try {
@@ -81,15 +84,26 @@ function savedSheetShare() {
   }
 }
 
+function saveSheetShare(share: number) {
+  try {
+    localStorage.setItem(SHEET_KEY, share.toFixed(3))
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
  * On phones the panel is a bottom sheet whose height follows a drag on its
- * handle or title. The height is remembered for the next book.
+ * handle or title. The height is remembered for the next book. It stops where the open book
+ * still has a quarter of the screen above it, under the header (`headerPx`, T-0037).
  */
-function useSheet(onSheet?: (share: number) => void) {
+function useSheet(onSheet?: (share: number) => void, headerPx = 0) {
   const [isSheet, setIsSheet] = useState(false)
   const [height, setHeight] = useState<number | null>(null)
   const drag = useRef<{ y: number; h: number; id: number; moved: boolean } | null>(null)
   const panel = useRef<HTMLElement>(null)
+  /** the clamped height was saved when the panel opened */
+  const remembered = useRef(false)
 
   useEffect(() => {
     const mq = window.matchMedia(SHEET_QUERY)
@@ -105,18 +119,25 @@ function useSheet(onSheet?: (share: number) => void) {
       onSheet?.(0)
       return
     }
+    // on opening, turning the phone or a header that changes height: the height she last saw,
+    // under the cap. On opening, what is remembered becomes that height, so nothing jumps between
+    // books; while the screen turns it is only shown, so a passing in-between size is not kept
     const fit = () => {
-      const h = Math.round(savedSheetShare() * window.innerHeight)
+      const screen = window.innerHeight
+      const saved = savedSheetShare()
+      const h = openingSheetPx(saved, screen, sheetCap(headerShareOf(headerPx, screen)))
+      if (!remembered.current && h / screen < saved - 0.001) saveSheetShare(h / screen)
+      remembered.current = true
       setHeight(h)
-      onSheet?.(h / window.innerHeight)
+      onSheet?.(h / screen)
     }
     fit()
     window.addEventListener('resize', fit)
     return () => window.removeEventListener('resize', fit)
-  }, [isSheet, onSheet])
+  }, [isSheet, onSheet, headerPx])
 
   const clampHeight = (h: number) =>
-    Math.round(Math.min(window.innerHeight * SHEET_MAX, Math.max(SHEET_MIN_PX, h)))
+    clampSheetPx(h, window.innerHeight, sheetCap(headerShareOf(headerPx, window.innerHeight)))
 
   const handlers = isSheet
     ? {
@@ -149,12 +170,7 @@ function useSheet(onSheet?: (share: number) => void) {
           if (e.currentTarget.hasPointerCapture(e.pointerId)) {
             e.currentTarget.releasePointerCapture(e.pointerId)
           }
-          const share = clampHeight(d.h - (e.clientY - d.y)) / window.innerHeight
-          try {
-            localStorage.setItem(SHEET_KEY, share.toFixed(3))
-          } catch {
-            /* ignore */
-          }
+          saveSheetShare(clampHeight(d.h - (e.clientY - d.y)) / window.innerHeight)
         },
         onPointerCancel: () => {
           drag.current = null
@@ -183,8 +199,9 @@ export function BookPanel({
   onRemove,
   onClose,
   onSheet,
+  headerPx = 0,
 }: Props) {
-  const sheet = useSheet(onSheet)
+  const sheet = useSheet(onSheet, headerPx)
   const progress = book.progress ?? 0
   const pct = Math.round(progress * 100)
   const reads = timesRead(book)

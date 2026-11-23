@@ -3,7 +3,8 @@ import type { DecorKind } from './shelfLayout'
 
 /**
  * Make the room yours: the wood of the bookcase, the wallpaper (on every
- * page) and which decorations stand on the shelves, in which order. Kept per
+ * page), whether the books are detailed hardcovers (D-0035) and which
+ * decorations stand on the shelves, in which order. Kept per
  * device, like the dashboard layout; the defaults are the room as it was.
  */
 
@@ -39,12 +40,15 @@ export interface Room {
   wallpaper: Wallpaper
   /** every decoration once, in shelf order (the first on the top shelf), on or off */
   decor: Array<{ kind: DecorKind; on: boolean }>
+  /** the books as hardcovers (on) or as simple blocks (off), on this device (D-0035) */
+  detailedBooks: boolean
 }
 
 export const DEFAULT_ROOM: Room = {
   wood: 'walnut',
   wallpaper: 'lavender',
   decor: DECOR.map((d) => ({ kind: d.kind, on: true })),
+  detailedBooks: true,
 }
 
 const isKey = <T extends string>(o: Record<T, string>, v: unknown): v is T => typeof v === 'string' && Object.hasOwn(o, v)
@@ -66,6 +70,8 @@ export function cleanRoom(raw: unknown): Room {
     wood: isKey(WOODS, r.wood) ? r.wood : DEFAULT_ROOM.wood,
     wallpaper: isKey(WALLPAPERS, r.wallpaper) ? r.wallpaper : DEFAULT_ROOM.wallpaper,
     decor,
+    // only a saved false turns them off: a room saved before the switch counts as on
+    detailedBooks: r.detailedBooks !== false,
   }
 }
 

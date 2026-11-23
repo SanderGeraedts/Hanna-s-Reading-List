@@ -1,0 +1,486 @@
+---
+id: T-0037
+title: "Polish the open book on the shelf: room under the header, calm reduced motion, sideways phones, parallax after a touch, ridges that respect the medal"
+description: "Five follow-ups from T-0026 and T-0034: on the phone the details sheet stops where an open book still has room (no more ~4 m step back) and a book's paper clip stays below the header; with reduced motion the camera jumps back only once a put-back book is home; on a phone held sideways the open book stands in the free space left of the panel and under the toolbar; on touch screens the parallax eases back to centre after a touch; a read-before did-not-finish book loses its bottom ridges like every book with a medal."
+status: Doing
+size: small
+depends_on: [T-0026, T-0034]
+decisions: [D-0014, D-0020, D-0022, D-0032, D-0035]
+raised_on: 2026-11-23
+done_on: ""
+result: [https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/245]
+---
+
+# Goal
+
+Five small things the team found while building T-0026 (open book while zoomed in) and T-0034
+(hardcovers on the phone). Each is a fix within the shelf and its book panel: no new screen, no
+new data, nothing about saving. Requester: Hanna. Night mode: she wasn't asked anything tonight;
+F2 follows the choice she already made (the smallest change). The team's picks are under
+*Choices made by the team*.
+
+## F1. On the phone, the details sheet leaves room for the open book
+
+**Now:** with a book open on the phone she can drag the details sheet up to 88 % of the screen
+(`SHEET_MAX` in `src/components/BookPanel.tsx`). Between the header (about 17–19 % of a
+390 × 844 screen) and the sheet there is then nothing left, but `portraitInspect`
+(`src/components/inspectPlacement.ts`) keeps the book at least `0.15 × 0.85` of the view tall,
+so the book reaches under the header, and because such a small book needs a long distance
+(`inspectDistance`), the camera steps back to about 4.5 m from the case (zoom 1 is at 2.5 m).
+See T-0026, UX review note 2 and *Build notes* "Found, not fixed".
+
+**After:** while a book is open on the phone, the sheet stops at the height where the space
+between the header and the sheet is still **at least 25 % of the screen** (`MIN_BOOK_SPACE`,
+name the developer's). The cap is `min(SHEET_MAX, 1 − headerShare − 0.25)`, with the header's
+**measured** share (`topInset / height`, as `BookshelfScene` already works it out; until it is
+known, `HEADER_SHARE`). The sheet's default (0.45) stays below the cap on every phone screen we
+check, so the first look doesn't change.
+
+- Dragging the sheet up stops at the cap, smoothly (the same clamp as today, a lower top).
+- A remembered sheet height above the cap opens at the cap. What is remembered becomes what she
+  last saw (the clamped height), so nothing jumps between books.
+- Turning the phone or a header that changes height (e.g. a wrapped toolbar) re-applies the cap.
+- Measured by the architect with the real sums (60 books, tallest book 0.325 m, 390 × 844): with
+  25 % left the book's `fill` is at least 0.2125 and the camera is at most **2.9 m** from the case
+  at zoom 1 (a step back of at most 0.4 m; at the default sheet none), against 4.5 m today. At
+  zoom 3 it stays the step back T-0026 designed (the book must stand in front of the case).
+
+**The paper clip** of a book she is reading or has paused (`Bookmark` in `BookMesh.tsx`, `CLIP.out`
+= 0.042 above the pages) reaches under the header buttons, at every zoom
+(`T-0026-screens/open-zoom3-panned-390-*`). The framing must count the clip: for a book with a
+clip, the height that has to fit between the header and the sheet is the book's height plus
+`CLIP.out` (so the book's top plus the clip ends below the header), and the cover stays centred
+in the space as now. Books without a clip are framed exactly as today.
+
+## F2. Reduced motion: the camera jumps back only once the book is home
+
+**Now:** with `prefers-reduced-motion: reduce`, in the frame she puts a book back the camera's
+z jumps straight to her zoom (`BookshelfScene.tsx`, `useCameraRig`: `if (reducedMotion.current &&
+(open || wasOpen.current !== open)) c.position.z = base.z`), while the book still flies home
+from the spot where it was open. At zoom 3 the book is then briefly about 1.8 × its open size
+(T-0026 UX review note 4).
+
+**After (Hanna's choice, the smallest change):** with reduced motion, after the book is put back
+the camera **stays at its stepped-back distance** while the book flies home, and jumps to her
+zoom **in one frame once the book is home** (the book's `out` state clears when its `progress`
+is below 0.001, `BookMesh.tsx`; how the rig learns that is the developer's: a ref, a callback, or
+the same `progress` threshold). The book's flight itself is unchanged. Opening is unchanged
+(camera there in the first frame). Without reduced motion nothing changes.
+
+- If she opens another book while the first is still flying home, the camera stays back and
+  follows the new book's placement as today (no jump forward in between).
+- Zooming or panning meanwhile works as today.
+
+## F3. Phone held sideways: the open book stands in the free space
+
+**Now:** when the screen is not portrait (`aspect ≥ 0.8`), the open book uses `DEFAULT_INSPECT`
+(`fill` 0.6, centred). On a phone held sideways (844 × 390, 800 × 360) the toolbar takes a big
+part of the top and the details panel (`.panel`: 340 px wide, 20 px from the right) a big part of
+the right, so the book stands half under both, **also at zoom 1** (T-0026 tester, *Not checked
+here / found*).
+
+**After:** in landscape the open book is framed in the **free rectangle**: below the header's
+measured bottom and left of the panel's left edge (each with a small margin, e.g. 12 px), like
+`portraitInspect` does for the sheet. That needs a sideways shift (`xShift`) next to `fill` and
+`yShift` in the inspect frame, used by `BookMesh` (the flight target) and by `inspectPlacement`'s
+callers in the same way as `yShift`. The framing takes the book's widest cover (aspect 0.82) and,
+for a book with a clip, the clip (F1).
+
+- **Where the default already fits, nothing changes:** when the centred `fill` 0.6 book (widest
+  cover, plus clip) is already inside the free rectangle, the frame stays exactly
+  `{ fill: 0.6, yShift: 0, xShift: 0 }`. So the computer at 1280 × 800 and larger looks as
+  today. Smaller computer windows where the book did overlap (e.g. 1024 × 768 with a two-row
+  toolbar) get the fix too; that is intended.
+- The camera step back from T-0026 (`inspectPlacement`) keeps working with the new `fill`; the
+  book still stands in front of the case and the dimming at every zoom.
+- The panel's width can be read from the CSS numbers (340 px, 1.25 rem) as a constant shared
+  with the test, or measured; the developer's choice. No new CSS for the panel.
+
+## F4. Touch screens: the parallax eases back to centre after a touch
+
+**Now:** the camera's parallax follows `state.pointer` (`useCameraRig`: `parallax.x =
+state.pointer.x * 0.06`, `y * 0.04`). On a touch screen the pointer stays where the last finger
+lifted, so after a swipe the view sits a few px sideways until the next touch (on main too).
+
+**After:** the parallax follows only a **mouse** pointer (or a pen hovering). While a finger is
+down it may follow the finger as today; once the last touch ends (`pointerup` / `pointercancel`
+of a touch), the parallax target goes back to 0, and the camera **eases** back with the existing
+damping in `aimCamera` (no jump). With a mouse nothing changes. While a book is open the parallax
+stays off, as now.
+
+## F5. Ridges use the same "has a medal" rule as the medal
+
+**Now:** the gilded ridges leave out the bottom pair for `book.status === 'read'`
+(`BookMesh.tsx`, `isRead` passed to `ridgeLayout`), while the medal and the painted bands use
+`hasMedal(book)` (`src/lib/library.ts`: read, or did-not-finish and read before). So a
+read-before *did not finish* book has a medal and still gets its bottom ridges across it (e.g.
+"The Island of Salt 9" in T-0034's screens), on the phone and the computer.
+
+**After:** the ridges use `hasMedal(book)`. A read-before DNF book gets 2 ridges (top only), a
+never-read DNF book 4, as every other book. Nothing else about the ridges changes.
+
+# Done when
+
+**Unit tests** (Vitest, next to the code, with the real `fitShelf` / `computeLayout` /
+`frameCase` and a real `THREE.PerspectiveCamera` (FOV 35) like `inspectPlacement.test.ts`):
+
+- **F1, the cap:** for header shares 0.10, 0.17, 0.19 and 0.22 and phone screens 390 × 844 and
+  360 × 640: the sheet's cap is `min(0.88, 1 − header − 0.25)`; at the cap the space between
+  header and sheet is ≥ 0.25 and the default 0.45 is ≤ the cap; at the cap, for the shortest and
+  the tallest book (60-book shelf) and the widest cover, the **whole book, plus `CLIP.out` for a
+  book with a clip**, projects between the header and the sheet and inside NDC x ±1; at zoom 1 the
+  settled camera z is ≤ zoom-1 z + 0.45 (today: + 2.0); the T-0026 checks (book and dimming in
+  front of the case, book size on screen = `2 × fill`) still hold at zoom 1, 1.5, 2 and 3.
+- **F1, the sheet:** a test of the clamp (pure function or `BookPanel` with jsdom): a drag above
+  the cap stops at the cap; a saved share of 0.88 opens at the cap; a cap that changes (header
+  height or turning the phone) re-applies.
+- **F1 fails before the fix:** with today's `SHEET_MAX` 0.88 and no clip in the sum, the
+  "between the header and the sheet" and the "≤ + 0.45" checks are red. The developer shows that
+  in the *Log* (run against a copy of the old sums, as T-0026 did).
+- **F2:** a pure helper (e.g. `reducedMotionCameraZ({ reduced, open, bookHome, … })` → `snap to
+  stepped back | snap to her zoom | ease`, name the developer's) tested for: opening (snap back),
+  open (stay back), put back and still flying (stay back), home (snap to zoom), another book
+  opened while flying (stay back), reduced motion off (ease, as today).
+- **F3:** the landscape framing function, for 844 × 390, 800 × 360, 667 × 375 and 1024 × 768
+  (header heights as measured on the dev server, written in the test with where they came from)
+  and the panel at `width − 20 − min(340, width − 40)`: the whole book (shortest and tallest,
+  widest cover, plus clip) projects below the header, left of the panel and inside the screen, at
+  zoom 1 and 3; for 1280 × 800, 1440 × 900 and 1920 × 1080 the frame is exactly
+  `{ fill: 0.6, yShift: 0, xShift: 0 }`; the T-0026 checks hold with the new `fill`. Fails before
+  the fix at 844 × 390 (book under the panel), shown in the *Log*.
+- **F4:** a pure helper for the parallax target (pointer type, a touch active or not) tested:
+  mouse → follows the pointer; touch down → may follow; touch ended → 0; and the eased camera
+  reaches the centre (within 0.001) after ~2 s of frames, never in one frame.
+- **F5:** in `BookMesh.test.ts`, the ridges for read (2), DNF read before (`readCount: 1`, 2),
+  DNF never read (4), reading (4) and want (4) books, through the same function `BookMesh` uses
+  (so the test fails if the component goes back to `status === 'read'`).
+- **The existing tests pass**, in particular `inspectPlacement.test.ts`, `cameraAim.test.ts`,
+  `shelfPanFraming.test.ts`, `BookMesh.test.ts`, `SafeBookshelf.test.tsx`, `contextLoss.test.ts`.
+- `pnpm test`, `pnpm exec tsc --noEmit`, `pnpm run build` and `pnpm exec harness check` pass;
+  `src/routeTree.gen.ts` is not committed.
+
+**Clicked through** on a local dev server with no backend (`pnpm run dev` or `vite dev` on a free
+port; never a production `POCKETBASE_URL`), 60+ books seeded in `hannas-reading-list:v1` with at
+least one book being read (clip) and one read-before DNF book, lavender and midnight where it
+says `*`. Screenshots in `docs/tasks/T-0037-screens/`:
+
+1. `sheet-top-390-*`: phone 390 × 844, a tall book with a clip open at zoom 1, sheet dragged as
+   high as it goes: the sheet stops with the book whole between the header and the sheet, the clip
+   below the header buttons; the shelf behind about as far away as with the sheet at its default.
+2. `sheet-top-zoom3-panned-390-lavender`: the same at zoom 3, panned to an end (compare
+   `T-0026-screens/open-zoom3-panned-390-lavender.jpg`: the clip no longer under the buttons).
+3. `reduced-close-390-lavender-1` / `-2` / `-3`: reduced motion emulated
+   (`reducedMotion: 'reduce'`), zoom 3, about 0.05 s, 0.3 s and 1.5 s after ×: in 1 and 2 the shelf
+   is still at its stepped-back size and the book is **never larger** than when it was open; in 3
+   the view is back at zoom 3 and the same pan.
+4. `sideways-844-*` and `sideways-800x360-lavender`: phone sideways, a book with a clip open, at
+   zoom 1 and zoom 3 (`sideways-844-zoom3-lavender`): the whole book left of the panel and under
+   the toolbar, room dimmed.
+5. `open-1280-lavender`: computer 1280 × 800, book open, zoom 1: the same as on main (a pixel
+   comparison with main shows only the moving decorations).
+6. `parallax-390-lavender-before` / `-after`: phone, zoom 3, before a swipe and 2 s after a
+   swipe that ended where it started: the case at the same place (the ‹ › and the books line up;
+   on main the view sits a few px sideways).
+7. `ridges-dnf-*`: a read-before DNF book on the shelf at zoom about 2.7 on the phone and on the
+   computer: the medal with no ridges across it.
+
+Also checked and written in the *Log*: rotating the phone with a book open (390 × 844 → 844 × 390
+→ back) keeps it whole and in the free space at each step; dragging the sheet stays smooth; no
+console errors; no horizontal scroll.
+
+# Notes
+
+- **Read first:** T-0026 (the whole inspect placement: `inspectPlacement`, `portraitInspect`, the
+  camera step back, reduced motion, its UX review notes 2 and 4 and the tester's *Not checked
+  here / found*), T-0034's UX review (*Seen, not to be fixed here*) and *Build notes* (the ridges'
+  instanced mesh), T-0025 (pan and zoom, D-0032).
+- **Files:** `src/components/inspectPlacement.ts` (+ test), `src/components/BookPanel.tsx` (the
+  sheet clamp; it needs the header's share, e.g. a prop from `src/routes/index.tsx`, which has
+  `headerPx`), `src/components/BookshelfScene.tsx` (`useCameraRig`, `useReducedMotion`, the
+  inspect frame), `src/components/BookMesh.tsx` (flight target with `xShift`, `Bookmark`'s
+  `CLIP`, ridges), `src/components/cameraAim.ts` (parallax easing). No CSS change is expected
+  except perhaps the sheet's `max-height: 88vh` fallback, which may stay as the outer limit.
+- **Group 1** (guardrails): app code only. Nothing in `src/lib/shelfMerge.ts`, `src/server/`,
+  saving or syncing, `deploy/`, `.github/`. The remembered sheet height in localStorage is a
+  per-device preference, not her books.
+- **Size: small.** All five are changes within the existing shelf and book panel, no new
+  screen, route, data or service; the UX designer writes no design before the build and reviews
+  the screenshots after. *Done when* says what she sees.
+- No new decision: these are reversible framing and motion details under D-0032 and D-0035.
+  No new words, colours or hint texts (D-0014, D-0020); both wallpapers (D-0022).
+
+## Choices made by the team
+
+Hanna wasn't asked anything (night mode). The architect took these:
+
+1. **F1: cap the sheet, don't shrink the book.** Of the two options in T-0026's UX review
+   (a lower sheet, or a smaller book) the sheet cap, as the request says: the book stays
+   recognisable and the camera stays close. The sheet scrolls inside, so every detail is still
+   reachable.
+2. **F1: at least 25 % of the screen for the book** (not 15 %, `portraitInspect`'s floor). With
+   15 % the book is as small as today and the camera still steps back ~2 m; 25 % keeps it within
+   0.4 m of zoom 1 and leaves the sheet up to about 55–65 % of a phone screen (from 88 %).
+3. **F1: the clip counts in the book's height** only for books that have one, so other books
+   don't change size.
+4. **F2: Hanna's smaller option** (the camera waits for the book), not "the book appears without
+   flying".
+5. **F3: only where the book doesn't fit,** so the computer at common sizes looks exactly as
+   today; one rule for every landscape screen rather than a phone-only special case.
+6. **F4: ease back, don't switch off.** The parallax keeps following the mouse; on touch it
+   returns to centre after the finger lifts, with the existing gentle easing.
+7. **F5: `hasMedal` everywhere,** the rule the medal and the painted bands already use.
+
+## Questions to re-ask Hanna in the morning
+
+1. "On your phone the details sheet now stops a bit lower (about halfway up the screen instead of
+   almost to the top), so the book you opened always stays in view above it. Does that feel
+   right, or would you rather drag it higher and have a smaller book?"
+2. "Holding your phone sideways, an open book now stands to the left of the details, under the
+   buttons. Is that the place you'd expect?"
+
+# Design
+
+No design before the build (small task). The UX designer reviews the screenshots after.
+
+## Review after building (2026-11-23)
+
+(UX designer, night mode, Hanna not asked. Looked at `git diff main...HEAD -- src` and all 15
+shots of the 7 sets in `T-0037-screens/`, compared with *Done when* and with
+`T-0026-screens/open-zoom3-panned-390-lavender.jpg`.)
+
+**Verdict: matches *Done when*. Nothing must be fixed before the tester.**
+
+**The shots, set by set:**
+1. `sheet-top-390-*` [x]: the sheet stops at about 44 % from the top (373 px of 844). Title 28
+   stands whole between the header and the sheet, its clip below the tab buttons, on lavender and
+   midnight. The case behind is about as large as with the sheet at its default: no step back you
+   can see.
+2. `sheet-top-zoom3-panned-390-lavender` [x]: Title 1's red clip ends just below the tab buttons.
+   In T-0026's shot it ran under them.
+3. `reduced-close-390-lavender-1/2/3` [x]: in 1 (0.12 s) the book is on its way home and no
+   larger than when it was open. In 2 (0.31 s) the book looks home already and the shelf is still
+   at its stepped-back size. In 3 (1.8 s) the view is back at zoom 3 with the same pan. There is
+   no moment where the book looks too large, which was the point of F2.
+4. `sideways-844-*`, `sideways-844-zoom3-lavender`, `sideways-800x360-lavender` [x]: the book
+   with its clip stands whole left of the panel, below the toolbar and above the bottom edge,
+   centred in that free space. The room is dimmed. It is small (the toolbar takes half the
+   height), but it is whole and recognisable, which beats half under the panel as on `main`.
+5. `open-1280-lavender` [x]: looks like `main` (the developer's pixel comparison: 5 pixels).
+   The clip reaches up into the toolbar there, as it does on `main` (see deviation 2).
+6. `parallax-390-lavender-before/after` [x]: the two can't be told apart by eye. The ‹ ›, the
+   spines and the koala line up.
+7. `ridges-dnf-390/1280-lavender` [x]: Title 3 (did not finish, read before) has its medal with
+   no ridges across it, like Title 4 (read). Title 5 (never read) keeps its 4 ridges.
+
+**The developer's deviations:**
+1. **A clipped book's cover sits about 12 px lower** (the book and its clip are centred
+   together, not the cover alone). Accepted. Nobody will see 12 px at the top of a sheet that
+   moves. Centring the cover alone would make every clipped book smaller and step the camera
+   back past the 0.45 m that *Done when* allows. The clip staying clear of the header (shots 1
+   and 2) is what she will notice.
+2. **The sideways framing is triggered by the panel or the sheet, not the header.** Accepted.
+   The task contradicts itself here: with the header counted, 1280 × 800 and larger would not
+   "look as today", because on `main` the centred book (and its clip) already reaches the
+   two-row header band there. The trigger the developer chose picks exactly the screens the task
+   names. Once a book is moved, it is framed below the header, as asked. **Follow-up for the
+   architect, not this task:** on the computer the clip of an open book still touches the
+   toolbar (shot 5, the same as on `main`). If Hanna minds, that is a small new task.
+3. **At 667 × 375 the sheet opens lower** (its cap is 0.318, below the default 0.45, because
+   the header takes 43 % of that screen). Accepted. It is the F1 rule applied honestly: a lower
+   sheet that she can scroll, rather than a book squeezed to a sliver. That screen is a small
+   phone held sideways, not Hanna's usual view. Note for the tester and the morning: opening a
+   book there also saves the lower height as her preference, so her upright phone then opens the
+   sheet at about a third until she drags it up again. That follows the task's own rule ("what
+   is remembered becomes what she last saw"), so it is not a defect. Morning question 1 already
+   asks about the sheet's height.
+4. **The mid-rotation preference fix** (the clamped height is saved once, when the panel opens;
+   a resize or header change only applies the cap). Accepted, and needed. Without it, turning
+   the phone once lowered her remembered sheet height for good (0.558 → 0.333). The code saves
+   only when the panel is opened, and the panel is mounted again for each book, so the next book
+   still saves what she last saw.
+5. **The reduced-motion shot 3 at 1.8 s instead of 1.5 s.** Accepted. The camera waits for
+   the task's own "home" threshold (`progress` < 0.001), which comes at about 1.55 s. Shot 2
+   shows the book visually home by about 0.3 s, so with reduced motion the view stays back about
+   a second longer than the book appears to need, then jumps once. That is calm, not motion, so
+   it doesn't hold this task. If Hanna finds the pause long, a looser threshold is a one-line
+   follow-up.
+6. **The shelf in the sideways shots** (Titles 30–55 seeded as being read so a clipped book is
+   reachable under the 844 × 390 toolbar). Accepted. It is test data and changes nothing about
+   what is checked.
+
+**For the tester:** drag the sheet up while a book is open, and while turning the phone. Turn
+the phone 390 × 844 → 844 × 390 → back several times and check the remembered height. Open and
+close quickly with reduced motion, also opening a second book while the first flies home. Do a
+swipe that lifts off the canvas (the parallax must still ease back). Check the ridges on DNF
+books with and without a past read.
+
+# Build notes
+
+- **F1, the cap:** `sheetCap(header) = min(SHEET_MAX, 1 − header − MIN_BOOK_SPACE)` with
+  `MIN_BOOK_SPACE` = 0.25, in `inspectPlacement.ts`. `SHEET_MAX` and `SHEET_MIN_PX` moved there
+  (`BookPanel` re-exports them), with `clampSheetPx`, `openingSheetPx` and `headerShareOf`
+  (measured `headerPx / height`, `HEADER_SHARE` until known). `BookPanel` gets `headerPx` from
+  `src/routes/index.tsx`; its drag clamp and its opening height use the cap, and the opening runs
+  again on a resize or a header change. The CSS `max-height: 88vh` stays as the outer limit.
+- **F1, what is remembered:** a saved height above the cap opens at the cap and the clamped share is
+  saved, **once, when the panel opens** (it is keyed per book). On a resize or header change the cap
+  is only applied, not saved: in the click-through, turning the phone 390 × 844 → 844 × 390 → back
+  first came back at 0.333 instead of 0.558, because a cap worked out from an in-between size was
+  saved as her preference. Fixed before the commit; the rotation now returns at 0.558.
+- **F1, the clip:** `portraitInspect(frame, sheet, aspect, header, clip)`, `clip` = `CLIP_OUT / h`
+  for a book she is reading or has paused (`hasClip`, exported from `BookMesh` with `CLIP_OUT`),
+  else 0. `fill = min(0.6, 0.85 × free, free / (1 + clip), byWidth)`; a book without a clip is
+  framed exactly as before (tested). **Deviation:** the task says "the cover stays centred in the
+  space as now"; I centre the book *and its clip* together, so the cover of a clipped book sits half
+  a clip lower (about 1.4 % of the screen, 12 px at 390 × 844). With the cover itself centred, the
+  clip needs room above *and* the same room below, so the book must shrink to
+  `free / (1 + 2 × clip)`, and at the cap the tallest clipped book's camera steps back 0.55 m (zoom
+  1, 390 × 844), against the *Done when*'s ≤ 0.45. Centred together, a clipped book keeps the same
+  `fill` as one without (0.2125 at the cap), so the step back is the same 0.38 m.
+- **F2:** `reducedMotionCamera({ reduced, open, flyingHome, held })` → `back | hold | zoom | ease`.
+  `BookMesh` adds its id to a shared `flyingHome` set while `!selected && progress ≥ 0.001` (the
+  same threshold as its `out` state) and removes it after; the rig also counts "a book was open in
+  the last frame" as flying, since the meshes' frame may run after the rig's. `hold` keeps
+  `camera.z = placement.cameraZ` (the placement is kept after closing). Probed on the dev server
+  (zoom 3, 390 × 844): z held at 2.074 until 1.29 s after ×, at her zoom 0.936 at 1.55 s.
+- **F3:** `landscapeInspect(frame, { width, height, top, right, bottom }, clip)` with `xShift` (share
+  of the view's width) added to the frame; `BookMesh` puts the book at `cameraBase.x + viewWidth ×
+  xShift`. The free rectangle is below the header's measured bottom, left of `panelLeft(width) =
+  width − 20 − min(340, width − 40)` (the CSS numbers as constants shared with the test), 12 px
+  margins. On screens of 720 px wide or less (`SHEET_QUERY`), where the panel is the sheet at the
+  bottom, `right` is the screen's width and `bottom` the sheet's top: 667 × 375 is such a screen
+  in real life, so it is tested both ways (with the panel, as *Done when* says, and with the sheet).
+  **Deviation, the trigger:** the default `{ 0.6, 0, 0 }` is kept whenever the centred book (widest
+  cover) is clear of the panel and the sheet; the header is not part of that test. The header at
+  1280 × 800 measured 184 px on the dev server (two rows: tabs and toolbar), so the centred book's
+  top (160 px) already reaches the header's band on main, and with a clip so does 1440 × 900 and
+  1920 × 1080 (header 129 px). Counting the header would change every computer screen, against
+  "the computer at 1280 × 800 and larger looks as today" and the exact-default checks. The panel
+  test alone picks exactly the screens the task names: 844 × 390, 800 × 360, 667 × 375 and 1024 ×
+  768 get the free rectangle, 1280 × 800 and up stay exactly as on main (pixel comparison: 5 pixels
+  differ). Once moved, the book is framed below the header as the task says.
+- **F4:** `parallaxTarget(pointer, { kind, touching }, on)` in `cameraAim.ts`; `usePointerInput` in
+  the scene keeps the last `pointerType` and the touches that are down (window listeners, capture
+  phase). Touch with no finger down → 0, eased by `aimCamera`'s damping (3/s): within 0.001 after
+  2 s, 0.057 of 0.06 after one frame.
+- **F5:** `ridgesFor(book, dims) = ridgeLayout(dims, hasMedal(book))`, called by `BookMesh`.
+- **Found, not fixed (for the architect):** at 844 × 390 the header is 193 px of 390 (half the
+  screen), so the sideways book is small (fill about 0.39); and the ‹ › buttons sit under the header
+  there (playwright's tap is intercepted by the toolbar; I clicked them through the DOM). At
+  667 × 375 the header is 43 % of the screen, so the sheet's cap is 0.318, below its default 0.45:
+  the sheet opens lower than on an upright phone there. At 800 × 360 the panel covers the Calendar
+  tab. All as on main except the sheet cap.
+
+# Test
+
+(Tester, 2026-11-23, night mode, Hanna not asked. G-0031: CI's run read, not repeated; the new
+and affected tests run again, then tried to break each of F1–F5 on the dev server.)
+
+**CI** (`gh pr checks 245`, run 45091108204, head `e745cde`): `checks / checks` pass in 1 min,
+**attempt 1** (no re-run), *Test Files 95 passed | 1 skipped (96)*, *Tests 1011 passed | 9 skipped
+(1020)*, `harness check` and both builds (`✓ built`) in the job, no retried or flaky test in the
+log. `checks / shards` and `checks / e2e` are **skipped** by the harness workflow, because this
+project has no e2e shards configured. That is the same as every PR here (T-0034, T-0036), not a
+check that failed to run. Netlify deploy preview ready.
+
+**Local, from clean:** `pnpm install --frozen-lockfile` (done), `pnpm exec tsc --noEmit`
+(clean), `pnpm exec harness check` (✓ tasks, ✓ decisions, ✓ engineers, ✓ generated files). New
+and affected tests run three times in a row (`vitest run inspectPlacement.test.ts BookMesh.test.ts
+cameraAim.test.ts shelfPanFraming.test.ts SafeBookshelf.test.tsx contextLoss.test.ts`): **6 files,
+121 passed (121)** each time.
+
+**Tried to break it** on `vite dev --port 3153` (no `POCKETBASE_URL`, no backend), 70 books seeded
+(Titles 1, 2 and 28 being read; Title 3 did-not-finish read once; Title 4 did-not-finish never
+read), playwright-core with Chrome, touch emulated through CDP at 390 × 844. Scratch scripts, not
+committed. No console errors in any run, and no horizontal scroll.
+
+| # | Check | Result |
+|---|---|---|
+| F1 | Drag the sheet up hard (to y = 20) **while the book is still flying out** (150 ms after the tap) | Stops at top 373 px, height 471 (= 0.558 × 844, the cap for header 162 px); saved `0.558`; Title 28 whole with its clip below the tab buttons ✓ |
+| F1 | 5 fast drags down to the bottom and back up past the top (4 steps each) | Ends at 373 / 471, saved `0.558` ✓ |
+| F1 | Top sampled every 40 px of a slow drag up past the screen | `687,647,607,567,527,487,447,407,373,373,…`: follows the finger 1:1, then holds at the cap with no overshoot or jump ✓ |
+| F1 | Turn 390 × 844 → 844 × 390 → back, 4 times with 0.9 s between | Every time: sideways the panel at the side (left 484, header 193), the book whole left of it; upright again top 373 / 471; saved stays `0.558` ✓ |
+| F1 | 10 turns 60 ms apart, then settle (sideways, then upright) | The same 56 / 484 sideways and 373 / 471 upright, saved `0.558`: no in-between size kept ✓ |
+| F2 | Reduced motion, zoom 3: open, put back after 100 ms | Camera stays back at 50, 300, 800, 1300 ms (view 60–63 % different from before); at 1700 and 2500 ms back to the view before opening (8 pixels differ). At 50 ms the book is on its way home, smaller than open ✓ |
+| F2 | Open Title 6, put back, open Title 3 200 ms later (Title 6 still flying), put back | The camera never came forward between the two; Title 3 came out with the view still stepped back; after both were home the view is the one before (9 pixels) ✓ |
+| F2 | 5 open/put-back in a row, 120 ms apart | Nothing left open; the view is the one before (9 pixels) ✓ |
+| F2 | Zoom out while a put-back book flies home, then zoom in | Zoom works meanwhile; back at zoom 3 the view differs 0.5 % (the pan clamped at the lower zoom), nothing stuck ✓ |
+| F4 | Swipe up and back, ending where it started | 2.5 s later the same view as before (12 pixels) ✓ |
+| F4 | Finger lifted **over the header**, **over the zoom buttons**, **outside the window** | 2.5 s and 3.5 s later still; compared with the view after a short swipe at the centre: 0–1 pixels differ, so the parallax went back to the centre each time ✓ |
+| F4 | A pinch with the fingers lifted one at a time; a cancelled touch (`touchCancel`) | Compared with the view after a normal swipe elsewhere: 79 and 13 pixels (decorations): no finger left "down" ✓ |
+| F4 | Computer, mouse to a corner and back | The corner moves the view (1,369 pixels), back at the centre the same view (133 pixels): the mouse parallax works as before ✓ |
+| F5 | Title 3 (DNF, read once) and Title 4 (DNF, never read) at 390 | Title 3: medal, no ridges or bands across it; Title 4: no medal, bottom ridges ✓ |
+| F5 | Live: Title 3 *Times read* − (to 0); Title 4 status *Read* then *Did not finish* again | Title 3 loses the medal and gets its bottom ridges back; Title 4 gets the medal (saved `readCount: 1`) and loses its bottom ridges. The ridges follow the change without a reload ✓ |
+
+**Found, not caused by this change:** after turning the phone with a book open, the shelf behind
+it shows the lower rows (Titles 48–70) instead of the top row, because the vertical scroll from
+the sideways layout is kept. The same on `main` (checked with the same script), so it doesn't
+hold this task; a possible follow-up for the architect. Also as the UX review says: opening a book
+on a small sideways phone with the sheet (667 × 375) saves its low cap (0.318) as the remembered
+height. That follows the task's rule.
+
+**Tests added for a gap:** the fix for the remembered sheet height (saved once when the panel
+opens, never while the phone turns) had no test; it lives in `BookPanel`'s sheet hook, and only
+the pure clamp was tested. New `src/components/BookPanel.sheet.test.tsx` (the real panel, happy-dom):
+a saved 0.88 opens at the cap and saves it once; a height under the cap is left alone; turning to
+667 × 375 and back three times (with an in-between size) keeps her preference and comes back at
+the same height; a taller header lowers the cap without changing what is saved; a drag past the
+top saves the cap and the next book opens there. `5 passed (5)`, three runs in a row. **Fails
+without the fix:** with the "only when the panel opens" condition removed, `2 failed | 3 passed`
+(the turning and the taller-header tests). `pnpm exec tsc --noEmit` clean.
+
+**Verdict: passed.** F1–F5 hold under every attempt above, the record is current (UX review
+present, no new decision needed). Remaining for Hanna: the two morning questions, and a look on
+her own phone.
+
+# Log
+
+- 2026-11-23 architect: wrote the task from T-0026's follow-ups F1 (sheet at 0.88, ~4 m step
+  back, clip under the header) and F2 (reduced motion, book ~1.8× when put back; Hanna chose the
+  smallest change), T-0026's tester findings (sideways phone; parallax after a touch) and T-0034's
+  UX follow-up (ridges across a DNF medal). Measured the sums for F1 with the real layout (390 ×
+  844, header 0.17: sheet 0.88 → camera 4.5 m from the case at zoom 1 against 2.5 m; with ≥ 25 %
+  left for the book ≤ 2.9 m). Night mode: choices under *Choices made by the team*, two questions
+  for the morning. No new decision. Size: **small**. Handed to the **developer**; the UX designer
+  reviews after the build.
+- 2026-11-23 developer: built F1–F5 in draft PR #245 (night mode, nothing asked; see *Build
+  notes*, two deviations: the clipped book and its clip are centred together, and the sideways
+  framing is triggered by the panel or sheet, not the header). **Fails before the fix:** the new
+  tests run against a copy with the old numbers (cap = `SHEET_MAX` 0.88, clip not counted,
+  landscape = `DEFAULT_INSPECT`): `Tests 32 failed | 52 passed (84)`. Red were, for 390 × 844 and
+  360 × 640 at every header share, the cap check, "between the header and the sheet" (e.g. `390×844,
+  header 0.17, sheet 0.880, zoom 1, book 0.280: fill 0.1275, camera 3.917 (zoom 1 at 2.507): expected
+  0.8375 to be less than or equal to 0.66`) and "≤ + 0.45" (`expected 3.9166 to be less than or equal
+  to 2.9566`), and all 8 sideways cases, e.g. 844 × 390 (book top `0.6` against `≤ 0.0103` under the
+  header; its right edge at NDC 0.227, past the panel at 0.147). **With the fix:**
+  `inspectPlacement.test.ts` 84 passed; `BookMesh.test.ts` + `cameraAim.test.ts` 21 passed;
+  `pnpm test`: `Test Files 95 passed | 1 skipped (96)`, `Tests 1011 passed | 9 skipped (1020)`;
+  `pnpm exec tsc --noEmit` clean; `pnpm run build` `✓ built`; `pnpm exec harness check` passed
+  (below); `src/routeTree.gen.ts` not committed. **Clicked through** on `vite dev` port 3150, no
+  backend, 70 books seeded (Title 28, the tallest, being read; Title 3 a read-before DNF; Title 4
+  read; Title 5 a never-read DNF; for the sideways shots Title 30–55 being read too, because at
+  844 × 390 the top row sits under the toolbar), playwright-core with Chrome, touch emulated on the
+  phone. (1) the sheet dragged to the top stops at 373 px (share 0.558 = 1 − 162/844 − 0.25), the
+  saved share becomes 0.558, Title 28 whole with its clip below the header buttons (lavender and
+  midnight). (2) zoom 3 panned to the left end, Title 1 (clip) open, the sheet opens at the cap and
+  won't go higher; clip below the buttons. (3) reduced motion, zoom 3: shots at 116, 308 and 1809 ms
+  after ×; in 1 and 2 the shelf is still at its stepped-back size and the book no larger than open,
+  in 3 back at zoom 3 and the same pan (shot 3 is at 1.8 s, not 1.5 s: the book reaches home at
+  about 1.55 s, and a shot at 1.52 s still showed the stepped-back view). (4) 844 × 390 zoom 1 and 3,
+  800 × 360: the book left of the panel (panel at 484 / 440 px) and under the toolbar (193 / 191 px),
+  room dimmed. (5) 1280 × 800, Title 28 open at zoom 1: pixel comparison with main, 5 pixels differ
+  (1280 × 800 PNGs). (6) zoom 3, a swipe up and back that ends where it started: before/after differ
+  in 48 pixels (0.015 %, the moving decorations); on main 40 577 (12.3 %). (7) zoom 2.74 at the left
+  end, phone and computer: Title 3's medal with no ridges across it, Title 5 (never read) with its 4.
+  Also: rotating 390 × 844 → 844 × 390 → back with a book open keeps it open and whole, in the free
+  space at each step (found and fixed the saved-share bug, see *Build notes*); dragging the sheet
+  follows the finger up to the cap; no console errors; no horizontal scroll at any size. Handed to
+  the **UX designer** for the review after the build.
+- 2026-11-23 ux-designer: reviewed: matches *Done when*, nothing must be fixed (all 7 shot sets
+  checked; deviations 1–6 accepted, see *Review after building*; follow-up for the architect:
+  the clip on the computer still touches the toolbar, as on `main`). Handed to the **tester**.
+- 2026-11-23 tester: passed (CI attempt 1 green, e2e shards skipped by the workflow as on every
+  PR; F1–F5 tried to break on the dev server at 390 × 844 and 844 × 390, see *Test*; added
+  `BookPanel.sheet.test.tsx` for the remembered-height fix). Marked #245 ready.
+  Remaining: Hanna answers the two morning questions (sheet height, the book's place sideways) and
+  looks at the open book on her own phone.

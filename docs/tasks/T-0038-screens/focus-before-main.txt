@@ -1,0 +1,50 @@
+main 844x390 dashboard+arrange+0-hidden: 0 of 285 focusable elements under the header or the Arrange bar; bar 62 px (15.9 % of 390), sticky; sideways scroll false; console errors 0
+main 844x390 dashboard+arrange+6-hidden: 14 of 174 focusable elements under the header or the Arrange bar; bar 148 px (38 % of 390), sticky; sideways scroll false; console errors 0
+    e.g. button "From a series of 5+, suggest a book" top 252 < 289
+    e.g. button "A spicy read (4+ 🌶️), suggest a book" top 252 < 289
+    e.g. button "Not fantasy, suggest a book" top 252 < 289
+main 844x390 dashboard+arrange+30-hidden: a Hide click failed: TimeoutError: locator.click: Timeout 5000ms exceeded.
+main 844x390 dashboard+arrange+30-hidden: 0 of 35 focusable elements under the header or the Arrange bar; bar 318 px (81.5 % of 390), sticky; sideways scroll false; console errors 0
+main 844x390 challenges+arrange+0-hidden: 0 of 32 focusable elements under the header or the Arrange bar; bar 62 px (15.9 % of 390), sticky; sideways scroll false; console errors 0
+main 844x390 challenges+arrange+4-hidden: 0 of 6 focusable elements under the header or the Arrange bar; bar 106 px (27.2 % of 390), sticky; sideways scroll false; console errors 0
+main 844x390 challenges+arrange+4-hidden: 0 of 6 focusable elements under the header or the Arrange bar; bar 106 px (27.2 % of 390), sticky; sideways scroll false; console errors 0
+main 800x360 dashboard+arrange+0-hidden: 14 of 285 focusable elements under the header or the Arrange bar; bar 62 px (17.2 % of 360), sticky; sideways scroll false; console errors 0
+    e.g. button "From a series of 5+, suggest a book" top 199 < 201
+    e.g. button "A spicy read (4+ 🌶️), suggest a book" top 199 < 201
+    e.g. button "Not fantasy, suggest a book" top 199 < 201
+main 800x360 dashboard+arrange+6-hidden: 24 of 174 focusable elements under the header or the Arrange bar; bar 148 px (41.2 % of 360), sticky; sideways scroll false; console errors 0
+    e.g. button "From a series of 5+, suggest a book" top 242 < 287
+    e.g. button "A spicy read (4+ 🌶️), suggest a book" top 242 < 287
+    e.g. button "Not fantasy, suggest a book" top 242 < 287
+main 800x360 dashboard+arrange+30-hidden: a Hide click failed: TimeoutError: locator.click: Timeout 5000ms exceeded.
+main 800x360 dashboard+arrange+30-hidden: 0 of 35 focusable elements under the header or the Arrange bar; bar 318 px (88.3 % of 360), sticky; sideways scroll false; console errors 0
+main 800x360 challenges+arrange+0-hidden: 14 of 32 focusable elements under the header or the Arrange bar; bar 62 px (17.2 % of 360), sticky; sideways scroll false; console errors 0
+    e.g. button "From a series of 5+, suggest a book" top 190 < 201
+    e.g. button "A spicy read (4+ 🌶️), suggest a book" top 190 < 201
+    e.g. button "Not fantasy, suggest a book" top 190 < 201
+main 800x360 challenges+arrange+4-hidden: 0 of 6 focusable elements under the header or the Arrange bar; bar 106 px (29.4 % of 360), sticky; sideways scroll false; console errors 0
+main 800x360 challenges+arrange+4-hidden: 0 of 6 focusable elements under the header or the Arrange bar; bar 106 px (29.4 % of 360), sticky; sideways scroll false; console errors 0
+main 390x844 dashboard+arrange+0-hidden: 0 of 285 focusable elements under the header or the Arrange bar; bar 62 px (7.3 % of 844), sticky; sideways scroll false; console errors 0
+main 390x844 dashboard+arrange+6-hidden: 0 of 174 focusable elements under the header or the Arrange bar; bar 233 px (27.6 % of 844), sticky; sideways scroll false; console errors 0
+main 390x844 dashboard+arrange+30-hidden: a Hide click failed: TimeoutError: locator.click: Timeout 5000ms exceeded.
+main 390x844 dashboard+arrange+30-hidden: 0 of 35 focusable elements under the header or the Arrange bar; bar 699 px (82.9 % of 844), sticky; sideways scroll false; console errors 0
+main 390x844 challenges+arrange+0-hidden: 0 of 32 focusable elements under the header or the Arrange bar; bar 62 px (7.3 % of 844), sticky; sideways scroll false; console errors 0
+main 390x844 challenges+arrange+4-hidden: 0 of 6 focusable elements under the header or the Arrange bar; bar 148 px (17.6 % of 844), sticky; sideways scroll false; console errors 0
+main 390x844 challenges+arrange+4-hidden: 0 of 6 focusable elements under the header or the Arrange bar; bar 148 px (17.6 % of 844), sticky; sideways scroll false; console errors 0
+main 360x800 dashboard+arrange+0-hidden: 0 of 285 focusable elements under the header or the Arrange bar; bar 62 px (7.8 % of 800), sticky; sideways scroll false; console errors 0
+main 360x800 dashboard+arrange+6-hidden: 0 of 174 focusable elements under the header or the Arrange bar; bar 233 px (29.1 % of 800), sticky; sideways scroll false; console errors 0
+main 360x800 dashboard+arrange+30-hidden: a Hide click failed: TimeoutError: locator.click: Timeout 5000ms exceeded.
+main 360x800 dashboard+arrange+30-hidden: 0 of 35 focusable elements under the header or the Arrange bar; bar 742 px (92.7 % of 800), sticky; sideways scroll false; console errors 0
+main 360x800 challenges+arrange+0-hidden: 0 of 32 focusable elements under the header or the Arrange bar; bar 62 px (7.8 % of 800), sticky; sideways scroll false; console errors 0
+main 360x800 challenges+arrange+4-hidden: 0 of 6 focusable elements under the header or the Arrange bar; bar 148 px (18.5 % of 800), sticky; sideways scroll false; console errors 0
+main 360x800 challenges+arrange+4-hidden: 0 of 6 focusable elements under the header or the Arrange bar; bar 148 px (18.5 % of 800), sticky; sideways scroll false; console errors 0
+main 1280x800 dashboard+arrange+0-hidden: 0 of 285 focusable elements under the header or the Arrange bar; bar 51 px (6.4 % of 800), sticky; sideways scroll false; console errors 0
+main 1280x800 dashboard+arrange+6-hidden: 0 of 174 focusable elements under the header or the Arrange bar; bar 84 px (10.5 % of 800), sticky; sideways scroll false; console errors 0
+main 1280x800 dashboard+arrange+30-hidden: 0 of 35 focusable elements under the header or the Arrange bar; bar 178 px (22.3 % of 800), sticky; sideways scroll false; console errors 0
+main 1280x800 challenges+arrange+0-hidden: 0 of 32 focusable elements under the header or the Arrange bar; bar 51 px (6.4 % of 800), sticky; sideways scroll false; console errors 0
+main 1280x800 challenges+arrange+4-hidden: 0 of 6 focusable elements under the header or the Arrange bar; bar 84 px (10.5 % of 800), sticky; sideways scroll false; console errors 0
+main 1280x800 challenges+arrange+4-hidden: 0 of 6 focusable elements under the header or the Arrange bar; bar 84 px (10.5 % of 800), sticky; sideways scroll false; console errors 0
+main total: 66 elements under the header or the bar
+main clicks 390x844: 29 Hide buttons clicked for real, then failed: TimeoutError: locator.click: Timeout 5000ms exceeded.; bar with all 29 hidden: 699 px
+main clicks 390x844: 29 chips clicked for real (all of them, every block back); console errors 0
+main tab 390x844 with 30 hidden: 30 of 30 chips fully visible in the chip area when reached by Tab
