@@ -67,6 +67,16 @@ describe('Set in: what she typed', () => {
     expect(placeFromTyped('Paris', [])).toEqual({ place: 'Paris', kind: 'country' })
   })
 
+  it('saves other spellings of a country as a country, and a made-up “The …” as a made-up place (T-0041)', () => {
+    expect(placeFromTyped('Nederland', [])).toEqual({ place: 'Nederland', kind: 'country' })
+    expect(placeFromTyped('nederland', [])).toEqual({ place: 'Nederland', kind: 'country' })
+    expect(placeFromTyped('the netherlands', [])).toEqual({ place: 'The Netherlands', kind: 'country' })
+    expect(placeFromTyped('België', [])).toEqual({ place: 'België', kind: 'country' })
+    expect(placeKind('Nederland')).toBe('country')
+    expect(placeSuggestions('Nederland', [], []).at(-1)).toMatchObject({ place: 'Nederland', kind: 'country', add: true })
+    expect(placeFromTyped('the shire', [])).toEqual({ place: 'The shire (Imaginary place)', kind: 'imaginary' })
+  })
+
   it('spells a name the map knows as a country properly: every word capitalised, abbreviations in capitals', () => {
     expect(placeFromTyped('usa', [])).toEqual({ place: 'USA', kind: 'country' })
     expect(placeFromTyped('uk', [])).toEqual({ place: 'UK', kind: 'country' })
