@@ -1,12 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Book } from '#/lib/library'
-import { challengeYears, yearTrophies } from '#/lib/trophies'
-import type { Trophy } from '#/lib/trophies'
+import { challengeYears, fullCardsLine } from '#/lib/trophies'
+import { challengeRings, completedChallenges } from '#/lib/challengeRings'
+import { toCelebrate } from '#/lib/challengeCelebrate'
+import { bingoSwaps, swapEvent } from '#/lib/bingoSwap'
+import { bingoYear } from '#/lib/bingo'
 import { GoalCard } from './DashboardExtras'
 import { useYearGoal } from './useYearGoal'
 import { BingoCard } from './DashboardMore'
 import { AlphabetCard } from './AlphabetCard'
 import { ChallengeCard } from './ChallengeCard'
+import { ChallengeRings } from './ChallengeRings'
+import { confetti } from './Confetti'
+import { MinutesChallengeCard, SeasonChallengeCard, SeriesChallengeCard, WorldChallengeCard } from './ReadyChallenges'
 import { ArrangeGrid } from './ArrangeGrid'
 import { useArrangeBarHeight } from './useArrangeBarHeight'
 import { useNarrow } from './Dashboard'
@@ -14,10 +20,11 @@ import { cleanTwoColumns, showIn } from '#/lib/twoColumns'
 import type { TwoColumns } from '#/lib/twoColumns'
 import { NewChallengeForm, OwnChallengeCard, useOwnChallenges } from './OwnChallenges'
 import { PILE_CHALLENGE } from '#/lib/ownChallenges'
+import { useCreatureChoices } from './useCreatureChoices'
 
-export type ChallengeSection = 'goal' | 'monthly' | 'bingo' | 'alphabet'
+export type ChallengeSection = 'goal' | 'monthly' | 'bingo' | 'alphabet' | 'world' | 'season' | 'minutes' | 'series'
 
-const CHALLENGE_IDS: readonly ChallengeSection[] = ['goal', 'monthly', 'bingo', 'alphabet']
+const CHALLENGE_IDS: readonly ChallengeSection[] = ['goal', 'monthly', 'bingo', 'alphabet', 'world', 'season', 'minutes', 'series']
 /** a block on the page: one of the fixed challenges, or one of her own ("own:<id>") */
 type ChallengeId = ChallengeSection | `own:${string}`
 const CHALLENGE_NAMES: Record<ChallengeSection, string> = {
@@ -25,14 +32,21 @@ const CHALLENGE_NAMES: Record<ChallengeSection, string> = {
   monthly: 'Monthly challenge',
   bingo: 'Book bingo',
   alphabet: 'A–Z challenge',
+  world: 'Around the world',
+  season: 'Seasonal',
+  minutes: 'Minutes a day',
+  series: 'Read the series',
 }
 const DEFAULT_ORDER: TwoColumns<ChallengeId> = {
   columns: [
-    ['goal', 'bingo'],
-    ['monthly', 'alphabet'],
+    ['goal', 'bingo', 'world', 'minutes'],
+    ['monthly', 'alphabet', 'season', 'series'],
   ],
   hidden: [],
 }
+
+/** What this device has already celebrated with confetti (D-0064 §4). */
+const celebratedKey = (accountId: string | null) => `hannas-reading-list:challenges-done:${accountId ?? 'local'}`
 
 /** The Challenges page's arrangement, remembered on this device for this account. */
 function useChallengeLayout(accountId: string | null) {
@@ -69,6 +83,9 @@ interface Props {
  * All challenges on one page, big and complete, with a year switch to look
  * back (the dashboard has a compact version of each, with "Open ›"). Earlier
  * years are shown, not changed.
+ *
+ * Since D-0064 the page opens with a ring per challenge, and the first visit
+ * after one is finished drops a short burst of confetti.
  */
 export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }: Props) {
   const years = useMemo(() => challengeYears(books), [books])
@@ -78,9 +95,13 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
   // the order of the challenges, which she arranges like the dashboard (per device)
   const [savedLayout, setLayout] = useChallengeLayout(accountId)
   const [own, setOwn] = useOwnChallenges(accountId)
+  // her choices, for the bingo swaps (D-0067): the same log as the creatures and the garden
+  const choices = useCreatureChoices(accountId)
+  const swaps = useMemo(() => bingoSwaps(choices.log), [choices.log])
   // the new-challenge form: empty, or filled in by the Pile challenge button (T-0014)
   const [adding, setAdding] = useState<false | 'new' | 'pile'>(false)
-  const ownThisYear = useMemo(() => own.filter((c) => c.year === year), [own, year])
+  // the series picks live in the Read the series card, not as cards of their own (D-0065 §4)
+  const ownThisYear = useMemo(() => own.filter((c) => c.year === year && c.rule !== 'finishseries'), [own, year])
   const known = useMemo<ChallengeId[]>(() => [...CHALLENGE_IDS, ...ownThisYear.map((c) => `own:${c.id}` as const)], [ownThisYear])
   const layout = useMemo(() => cleanTwoColumns(savedLayout, known, DEFAULT_ORDER), [savedLayout, known])
   const nameOf = (id: ChallengeId) =>
@@ -89,13 +110,46 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
   const arrangeBar = useArrangeBarHeight()
   const narrow = useNarrow()
   const goal = useYearGoal(accountId, year)
-  const trophies = useMemo(() => yearTrophies(books, year, goal), [books, year, goal])
+  const rings = useMemo(() => challengeRings({ books, year, goal, own, swaps }), [books, year, goal, own, swaps])
+  const fullCards = useMemo(() => fullCardsLine(books, year, undefined, swaps), [books, year, swaps])
+  // the card being played, so a swap is saved under the right card number (D-0067 §2)
+  const cardNow = useMemo(() => bingoYear(books, year, undefined, swaps).card, [books, year, swaps])
   const at = years.indexOf(year)
 
   // "Open ›" on the dashboard: scroll to that challenge
   useEffect(() => {
     if (focus) document.getElementById(`challenge-${focus}`)?.scrollIntoView({ block: 'start' })
   }, [focus])
+
+  /**
+   * One short burst for a challenge finished since this device last looked
+   * (D-0064 §4). The first run on a device records everything and fires
+   * nothing; storage blocked means no confetti rather than one every visit.
+   */
+  const key = celebratedKey(accountId)
+  const complete = useMemo(
+    () => completedChallenges({ books, own, swaps, goals: goal === null ? {} : { [year]: goal } }),
+    [books, own, swaps, goal, year],
+  )
+  useEffect(() => {
+    let seen: string[] | null = null
+    try {
+      const raw = localStorage.getItem(key)
+      seen = raw ? (JSON.parse(raw) as string[]) : null
+    } catch {
+      return
+    }
+    const { burst, remember } = toCelebrate(complete, Array.isArray(seen) ? seen : null)
+    try {
+      localStorage.setItem(key, JSON.stringify(remember))
+    } catch {
+      /* storage blocked: no confetti, rather than the same burst every visit */
+      return
+    }
+    // straight away, not on a timer: the page re-renders as her choices and goals
+    // arrive, and a timer would be cleared by the next run before it ever fired
+    if (burst) confetti()
+  }, [complete, key])
 
   /** A Hidden chip was restored (Enter): focus moves to the next chip or to the block's handle (T-0044, F7). */
   const pageRef = useRef<HTMLDivElement>(null)
@@ -137,7 +191,9 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
         </div>
       </header>
 
-      <Trophies trophies={trophies} year={year} />
+      <ChallengeRings rings={rings} year={year} />
+      {rings.length === 0 && <p className="muted small-text">No challenges in {year} yet.</p>}
+      {fullCards && <p className="small-text bingo-full">{fullCards} 🎉</p>}
 
       <div className={`dashboard-bar${arranging ? ' arranging' : ''}`} ref={arrangeBar}>
         {arranging ? (
@@ -235,7 +291,31 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
               year={year}
             />
           ) : id === 'bingo' ? (
-            <BingoCard key={`bingo-${year}`} books={books} onUpdate={onUpdate} year={year} onShowBook={onShowBook} />
+            <BingoCard
+              key={`bingo-${year}`}
+              books={books}
+              onUpdate={onUpdate}
+              year={year}
+              onShowBook={onShowBook}
+              swaps={swaps}
+              onSwap={(slot, square) => choices.record(swapEvent(year, cardNow, slot, square))}
+            />
+          ) : id === 'world' ? (
+            <WorldChallengeCard key={`world-${year}`} books={books} year={year} />
+          ) : id === 'season' ? (
+            <SeasonChallengeCard key={`season-${year}`} books={books} year={year} />
+          ) : id === 'minutes' ? (
+            <MinutesChallengeCard key={`minutes-${year}`} books={books} year={year} />
+          ) : id === 'series' ? (
+            <SeriesChallengeCard
+              key={`series-${year}`}
+              books={books}
+              year={year}
+              own={own}
+              editable={year === thisYear}
+              onAdd={(c) => setOwn([...own, c])}
+              onRemove={(cid) => setOwn(own.filter((x) => x.id !== cid))}
+            />
           ) : (
             <AlphabetCard key={`alphabet-${year}`} books={books} onShowBook={onShowBook} onUpdate={onUpdate} year={year} />
           )
@@ -243,19 +323,5 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
       />
     </div>
     </div>
-  )
-}
-
-/** What she completed that year, one line per challenge. */
-function Trophies({ trophies, year }: { trophies: Trophy[]; year: number }) {
-  if (trophies.length === 0) return <p className="muted small-text">No challenges in {year} yet.</p>
-  return (
-    <ul className="trophies" aria-label={`Challenges in ${year}`}>
-      {trophies.map((t) => (
-        <li key={t.id} className={t.done ? 'trophy done' : 'trophy'}>
-          <span aria-hidden>{t.done ? '🏆' : '·'}</span> {t.label}
-        </li>
-      ))}
-    </ul>
   )
 }

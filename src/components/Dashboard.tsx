@@ -62,6 +62,7 @@ import { useArrangeBarHeight } from './useArrangeBarHeight'
 import { BadgesCard, CoverWallCard, useBirthday } from './NewBlocks'
 import { TropesCard, tropesBlock } from './TropesCard'
 import { badges, newBadges } from '#/lib/badges'
+import { useChallengeExtras } from './useChallengeExtras'
 import { CreaturesCard } from './CreaturesCard'
 import { WishlistCard } from './WishlistCard'
 import { useCreatures } from './creatures/CreaturesContext'
@@ -212,9 +213,11 @@ export function Dashboard({
   })
   // this device's birthday counts here too (D-0039), so the Birthday book can wait for you
   const birthday = useBirthday()
+  // her own challenges, bingo swaps and goals: the challenges-N medals count them (D-0064 §6)
+  const badgeExtras = useChallengeExtras(accountId)
   const freshBadges = useMemo(
-    () => newBadges(badges(books, undefined, { birthday })).filter((b) => !seenBadges.includes(b.id)),
-    [books, seenBadges, birthday],
+    () => newBadges(badges(books, undefined, { birthday, ...badgeExtras })).filter((b) => !seenBadges.includes(b.id)),
+    [books, seenBadges, birthday, badgeExtras],
   )
   const seeBadge = (id: string) => {
     const next = [...seenBadges, id]
@@ -344,7 +347,7 @@ export function Dashboard({
       />
     ),
     garden: <GardenCard garden={garden.garden} onOpen={onOpenGarden} />,
-    badges: <BadgesCard books={books} />,
+    badges: <BadgesCard books={books} extras={badgeExtras} />,
     tropes: <TropesCard books={books} onShowBook={onShowBook} />,
     covers: <CoverWallCard books={books} onShowBook={onShowBook} />,
     world: <BooksWorldMapCard books={books} onShowBook={onShowBook} />,

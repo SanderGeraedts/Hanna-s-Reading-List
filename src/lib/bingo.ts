@@ -267,16 +267,40 @@ function shuffled<T>(list: T[], seed: number): T[] {
   return out
 }
 
-/** The squares a card starts with, and the ones waiting to be swapped in. */
-export function cardSquares(year: number, card: number): { squares: string[]; spare: string[] } {
-  if (card === 1) {
-    const fresh = shuffled(NEW_SQUARES, year * 1000 + 1)
-    let next = 0
-    const squares = FIRST_CARD.map((id) => id ?? fresh[next++])
-    return { squares, spare: fresh.slice(next) }
+/**
+ * The squares a card starts with, and the ones waiting to be swapped in by
+ * the app after 30 days (`autoSwap` below).
+ *
+ * `picked` are the swaps Hanna chose herself (D-0067), as slot → square id: a
+ * swap puts that square in that slot and sends the square that was there back
+ * into the spare pile. A swap is ignored when the square is already on the
+ * card, so no square is ever on a card twice. Without `picked` this is exactly
+ * what it always was.
+ */
+export function cardSquares(year: number, card: number, picked?: ReadonlyMap<number, string>): { squares: string[]; spare: string[] } {
+  const start = (() => {
+    if (card === 1) {
+      const fresh = shuffled(NEW_SQUARES, year * 1000 + 1)
+      let next = 0
+      const squares = FIRST_CARD.map((id) => id ?? fresh[next++])
+      return { squares, spare: fresh.slice(next) }
+    }
+    const all = shuffled(SQUARE_IDS, year * 1000 + card)
+    return { squares: all.slice(0, CARD_SIZE), spare: all.slice(CARD_SIZE) }
+  })()
+  if (!picked?.size) return start
+  const squares = [...start.squares]
+  const spare = [...start.spare]
+  for (const [slot, square] of [...picked].sort((a, b) => a[0] - b[0])) {
+    if (!Number.isInteger(slot) || slot < 0 || slot >= squares.length) continue
+    if (!SQUARES[square] || squares.includes(square)) continue
+    const out = squares[slot]
+    squares[slot] = square
+    const at = spare.indexOf(square)
+    if (at >= 0) spare.splice(at, 1)
+    if (out && !spare.includes(out)) spare.push(out)
   }
-  const all = shuffled(SQUARE_IDS, year * 1000 + card)
-  return { squares: all.slice(0, CARD_SIZE), spare: all.slice(CARD_SIZE) }
+  return { squares, spare }
 }
 
 // ---- playing a card -----------------------------------------------------------------
@@ -377,8 +401,28 @@ function rememberedCards(books: Book[], year: number): FinishedBingoCard[] {
   return [...byCard.values()].sort((a, b) => a.card - b.card)
 }
 
-/** Every card of a year: the ones filled, and the one being played. */
-export function bingoYear(books: Book[], year: number, today = localDay()): BingoYear {
+/**
+ * Her own swaps for one card, as slot → square id, out of the whole map keyed
+ * `year:card:slot` (D-0067). Lives here, not in `bingoSwap.ts`, so that module
+ * can read this one's square list without a circle.
+ */
+export function forCard(picked: ReadonlyMap<string, string> | undefined, year: number, card: number): Map<number, string> {
+  const out = new Map<number, string>()
+  if (!picked) return out
+  for (const [at, square] of picked) {
+    const [y, c, slot] = at.split(':').map(Number)
+    if (y === year && c === card) out.set(slot, square)
+  }
+  return out
+}
+
+/**
+ * Every card of a year: the ones filled, and the one being played.
+ *
+ * `picked` are her own swaps (D-0067), as `year:card:slot` → square id; without
+ * them the year is exactly what it was before swapping existed.
+ */
+export function bingoYear(books: Book[], year: number, today = localDay(), picked?: ReadonlyMap<string, string>): BingoYear {
   const shelf = shelfFacts(books, year)
   const finishes = yearFinishes(books, year)
   const until = today < `${year}-12-31` ? today : `${year}-12-31`
@@ -393,7 +437,7 @@ export function bingoYear(books: Book[], year: number, today = localDay()): Bing
     const played = playCard(
       { ...shelf, before: finishes.filter((f) => f.key <= after) },
       finishes.filter((f) => f.key > after),
-      cardSquares(year, card),
+      cardSquares(year, card, forCard(picked, year, card)),
       startDay,
       until,
     )

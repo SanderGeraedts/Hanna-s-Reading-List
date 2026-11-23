@@ -24,35 +24,16 @@ How to use it:
   characters (T-0048), the reading garden (T-0060 … T-0065, agreed 23 November 2026 and never
   part of this queue), the bookcases & filters, book poses and cosy room extras
   (T-0051, T-0052, T-0053), all of better adding — covers & series (T-0070), batch scan
-  (T-0071) and the wishlist (T-0072) — and the Stats tab with year compare and the year
-  wrap-up story (T-0080 and T-0081, taken off this queue on 23 November 2026 and built
-  together on one branch, because the wrap-up's entry point sits on the Stats page).
+  (T-0071) and the wishlist (T-0072) — the Stats tab with year compare and the year wrap-up
+  story (T-0080 and T-0081, taken off this queue on 23 November 2026 and built together on one
+  branch, because the wrap-up's entry point sits on the Stats page), and the better challenges
+  (T-0090 … T-0093, taken off this queue on 23 November 2026 and built together on one branch,
+  because all four are the Challenges page).
 
 ## The queue
 
-### 1. Better challenges (CH1–CH4)
-*Agreed 22 November 2026.* Several tasks. (Files: `ChallengesPage.tsx`, `ownChallenges.ts`,
-`bingo.ts`.)
-
-- **CH1, overview and rewards:** a row of small progress rings at the top of the Challenges
-  page, one per challenge (tap one to jump to it). Finishing a challenge gives a short
-  confetti burst (once, on the first visit after finishing; not a pop-up, D-0013) and a
-  medal in the badge collection.
-- **CH2, new ready-made challenges:**
-  - *Around the world:* books set in 12 different countries this year (uses the places and
-    the map);
-  - *Seasonal:* by calendar season, for example 3 cosy or spooky books in autumn, 5 beach
-    reads in summer (by genre, and by tropes (D-0042));
-  - *Minutes a day:* at least 20 minutes a day read or listened, as a month grid (paper
-    pages count as about 1.5 minutes a page, listen-only books their real minutes);
-  - *Read the series:* pick series to finish this year, with progress per series.
-- **CH3, own-challenge rules:** a pages or hours goal; author; decade published; trope;
-  rated 4 or more; and mixing two rules (both must hold). Check how challenges are saved:
-  `saveChallenges` in `src/server/shelf.ts` is a path only Sander may approve. If the server
-  checks rule kinds, it needs Sander, or the new rules are encoded on the app side.
-- **CH4, bingo swap:** on a card with nothing ticked yet, tap a square, then **Swap**, and
-  pick from all squares. Ticked squares can't be swapped. Saved with her account; if that
-  needs a server change, tell Hanna first (it would need Sander).
+Empty: everything Hanna agreed on 22 November 2026 has been taken off it and built. The
+small follow-ups below are what is left.
 
 ## Small follow-ups found by the team
 
