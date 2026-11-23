@@ -22,13 +22,17 @@ ok   a plain chosen country has the gold wash (rgba(217, 168, 91, 0.18))
 ok   no digit in the block with a plain card open
      shot card-plain-390-lavender.png
 ok   tapping the chosen country again closes the card
-ok   found the sea about 15 px off the Netherlands ({"x":183,"y":463,"side":"west","w":3.50439453125})
-ok   a tap 15 px off the Netherlands (on the sea) opens its card (west of a 3.5 px wide country: Netherlands)
+ok   found the sea about 15 px off the Netherlands ({"x":200,"y":447,"side":"north","w":3.50439453125})
+ok   a tap 15 px off the Netherlands (on the sea) opens its card (north of a 3.5 px wide country: Netherlands)
      shot tiny-390-lavender.png
+ok   mainland France has a tap zone of its own (11.7 × 8.1 px, without French Guiana) ({"zone":true,"w":11.712005615234375,"h":8.11541748046875,"west":{"x":188,"y":469,"coast":193.8,"row":0.55}})
+ok   a tap 6 px west of France opens the nearest coast there, never the Netherlands (Spain)
+ok   at zoom one the UK still opens the UK (United Kingdom)
+     mainland sizes at 390, zoom one: {"United States of America":"53.2×22.4","Norway":"none","Denmark":"none","France":"11.7×8.1"}
 ok   tapping a cover in the card opens that book’s panel (Pride and Prejudice)
 ok   land covers at least 44 px wide (48)
 ok   tapping a land cover opens its book (Harry Potter and the Prisoner of Azkaban)
-ok   zoom one: a one-finger swipe over the map scrolls the page ({"win":0,"dash":10932} → {"win":0,"dash":11126})
+ok   zoom one: a one-finger swipe over the map scrolls the page ({"win":0,"dash":10932} → {"win":0,"dash":11127})
 ok   the swipe opened no card
 ok   zoom one: a plain wheel over the map scrolls the page, no zoom ({"win":0,"dash":10932} → {"win":0,"dash":11172})
 ok   one press doubles the zoom, three reach the maximum (+ disabled) (360 → 180 → 45)
@@ -54,6 +58,13 @@ ok   midnight: the UK card opens
      shot card-lit-390-midnight.png
      shot zoomed-390-midnight.png
 ok   midnight: no console errors
+
+== 390, only France and the Netherlands lit ==
+ok   found the sea 6 px west of mainland France (Bay of Biscay, Brittany) ([{"x":188,"y":469,"row":0.55},{"x":185,"y":467,"row":0.3}])
+ok   a tap 6 px west of mainland France (row 0.55) opens France (France)
+ok   a tap 6 px west of mainland France (row 0.3) opens France (France)
+ok   the Netherlands still opens from 15 px north (Netherlands)
+ok   no console errors
 
 == 1280 (lavender) ==
 ok   zoom buttons + − ⤢, left to right (+ − ⤢)
@@ -99,6 +110,11 @@ ok   a Tab-focused lit country has the dashed gold mark (4px, 3px)
      shot focus-1280-lavender.png
 ok   Enter on a focused country opens its card
 ok   Escape puts focus back on the country
+ok   Enter on + to the maximum: focus moves to − (Zoom out)
+ok   Enter on − back to zoom one: focus moves to + (Zoom in)
+ok   - on the zoomed map back to zoom one: focus moves to + (Zoom in)
+ok   resized to 600 px: the card stays open (France)
+ok   resized to 1280 px: the card stays open (France)
 ok   no horizontal scroll of the page
 ok   no console errors
 

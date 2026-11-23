@@ -80,7 +80,7 @@ const wait = (page, ms) => page.waitForTimeout(ms)
 
 const browser = await chromium.launch({ channel: args.channel ?? 'chrome', headless: true })
 
-async function open(width, wallpaper) {
+async function open(width, wallpaper, list = shelf) {
   const phone = width === 390
   const ctx = await browser.newContext(
     phone
@@ -95,7 +95,7 @@ async function open(width, wallpaper) {
       localStorage.setItem('hannas-reading-list:room', JSON.stringify({ wallpaper }))
       sessionStorage.setItem('t39-seeded', '1')
     },
-    { list: shelf, wallpaper },
+    { list, wallpaper },
   )
   const page = await ctx.newPage()
   const errors = []
@@ -300,7 +300,7 @@ async function run(width) {
       const r = nl.getBoundingClientRect()
       const sea = (x, y) => !document.elementsFromPoint(x, y).some((e) => e.classList?.contains('world-country'))
       for (const [x, y, side] of [
-        [r.left - 15, r.top + r.height / 2, 'west'],
+        // north, over the North Sea: out at sea the smallest country wins (to the west, 15 px is beyond Britain)
         [r.left + r.width / 2, r.top - 15, 'north'],
         [r.left - 11, r.top - 11, 'north-west'],
       ])
@@ -314,6 +314,53 @@ async function run(width) {
       await snap(card(page), 'tiny-390-lavender')
       await page.locator('.world-pick .bingo-suggest-close').click()
     }
+    // send-back F1: mainland France (French Guiana aside) gets a zone of its own. Where zones overlap, within
+    // 8 px of a lit coast the nearest country wins, further out the smallest. On this shelf at 390, France is ringed
+    // by lit neighbours: 6 px west of it the UK's or Spain's coast is nearer (0.5 to 2.5 px), so one of them
+    // opens, never the Netherlands, some 14 px away (the tester's fail). franceAlone() below checks France itself.
+    await centreMap(page)
+    const fr = await page.evaluate(() => {
+      const zone = document.querySelector('svg.world-map .world-zone[data-country="France"]')
+      if (!zone) return { zone: false }
+      const r = zone.getBoundingClientRect()
+      const sea = (x, y) => !document.elementsFromPoint(x, y).some((e) => e.classList?.contains('world-country'))
+      const isFrance = (x, y) => document.elementsFromPoint(x, y).some((e) => e.classList?.contains('world-country') && e.getAttribute('data-country') === 'France')
+      let west = null
+      for (const f of [0.55, 0.3]) {
+        const y = r.top + r.height * f
+        for (let x = r.left - 2; x < r.right; x += 0.25)
+          if (isFrance(x, y)) {
+            if (sea(x - 6, y)) west = { x: Math.round(x - 6), y: Math.round(y), coast: Math.round(x * 10) / 10, row: f }
+            break
+          }
+        if (west) break
+      }
+      return { zone: true, w: r.width, h: r.height, west }
+    })
+    check(fr.zone && Math.abs(fr.w - 11.7) < 1, 'mainland France has a tap zone of its own (11.7 × 8.1 px, without French Guiana)', JSON.stringify(fr))
+    if (fr.west) {
+      await centreMap(page)
+      await tap(env, fr.west.x, fr.west.y)
+      const h = await cardHeading(page)
+      check(h === 'Spain' || h === 'United Kingdom' || h === 'France', 'a tap 6 px west of France opens the nearest coast there, never the Netherlands', `${h}`)
+      if (h) await page.locator('.world-pick .bingo-suggest-close').click()
+    }
+    await centreMap(page)
+    const uk = await pointIn(page, 'United Kingdom')
+    await tap(env, uk.x, uk.y)
+    check((await cardHeading(page)) === 'United Kingdom', 'at zoom one the UK still opens the UK', `${await cardHeading(page)}`)
+    await page.locator('.world-pick .bingo-suggest-close').click()
+    // the other countries with overseas parts: each zone sits on its mainland
+    const zones = await page.evaluate(() =>
+      Object.fromEntries(
+        ['United States of America', 'Norway', 'Denmark', 'France'].map((n) => {
+          const z = document.querySelector(`svg.world-map .world-zone[data-country="${n}"]`)
+          const r = z?.getBoundingClientRect()
+          return [n, r ? `${r.width.toFixed(1)}×${r.height.toFixed(1)}` : 'none']
+        }),
+      ),
+    )
+    console.log(`     mainland sizes at 390, zoom one: ${JSON.stringify(zones)}`)
   }
 
   // a cover in the card opens its book
@@ -471,6 +518,35 @@ async function run(width) {
     await page.keyboard.press('Escape')
     await wait(page, 200)
     check(await page.evaluate(() => document.activeElement?.getAttribute('aria-label') === 'United Kingdom'), 'Escape puts focus back on the country')
+    // send-back: focus is never lost when a zoom button becomes disabled
+    const focusedLabel = () => page.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? document.activeElement?.tagName)
+    await page.getByRole('button', { name: 'Zoom in' }).focus()
+    for (let i = 0; i < 3; i++) {
+      await page.keyboard.press('Enter')
+      await wait(page, 250)
+    }
+    check((await focusedLabel()) === 'Zoom out', 'Enter on + to the maximum: focus moves to −', `${await focusedLabel()}`)
+    for (let i = 0; i < 3; i++) {
+      await page.keyboard.press('Enter')
+      await wait(page, 250)
+    }
+    check((await focusedLabel()) === 'Zoom in', 'Enter on − back to zoom one: focus moves to +', `${await focusedLabel()}`)
+    await page.keyboard.press('Enter')
+    await wait(page, 250)
+    await page.locator('svg.world-map').focus()
+    await page.keyboard.press('-')
+    await wait(page, 250)
+    check((await focusedLabel()) === 'Zoom in', '- on the zoomed map back to zoom one: focus moves to +', `${await focusedLabel()}`)
+    // send-back: crossing the one/two-column width keeps the card
+    await centreMap(page)
+    const p = await pointIn(page, 'France')
+    await tap(env, p.x, p.y)
+    for (const w of [600, 1280]) {
+      await page.setViewportSize({ width: w, height: 800 })
+      await wait(page, 800)
+      check((await cardHeading(page)) === 'France', `resized to ${w} px: the card stays open`, `${await cardHeading(page)}`)
+    }
+    await centreMap(page)
   } else {
     // the land covers, one focused by the keyboard: the gold ring
     const land = card(page).locator('.world-land-books .world-cover').nth(1)
@@ -513,10 +589,49 @@ async function midnight(width) {
   await env.ctx.close()
 }
 
+/**
+ * The tester's F1, on a shelf where only France and the Netherlands are lit: a tap 6 px west of mainland
+ * France (Bay of Biscay, Brittany) opens France, and the Netherlands still opens from 15 px north (390).
+ */
+async function franceAlone() {
+  console.log('\n== 390, only France and the Netherlands lit ==')
+  const two = shelf.filter((b) => b.places.some((p) => /France|Netherlands/.test(p)) && !b.places.some((p) => /England|Imaginary|Rome/.test(p)))
+  const env = await open(390, 'lavender', two)
+  const { page } = env
+  const pts = await page.evaluate(() => {
+    const r = document.querySelector('svg.world-map .world-zone[data-country="France"]').getBoundingClientRect()
+    const sea = (x, y) => !document.elementsFromPoint(x, y).some((e) => e.classList?.contains('world-country'))
+    const isFrance = (x, y) => document.elementsFromPoint(x, y).some((e) => e.classList?.contains('world-country') && e.getAttribute('data-country') === 'France')
+    const out = []
+    for (const f of [0.55, 0.3]) {
+      const y = r.top + r.height * f
+      for (let x = r.left - 2; x < r.right; x += 0.25)
+        if (isFrance(x, y)) {
+          if (sea(x - 6, y)) out.push({ x: Math.round(x - 6), y: Math.round(y), row: f })
+          break
+        }
+    }
+    const nl = [...document.querySelectorAll('svg.world-map path.world-country')].find((e) => e.getAttribute('data-country') === 'Netherlands').getBoundingClientRect()
+    return { west: out, nl: { x: Math.round(nl.left + nl.width / 2), y: Math.round(nl.top - 15) } }
+  })
+  check(pts.west.length === 2, 'found the sea 6 px west of mainland France (Bay of Biscay, Brittany)', JSON.stringify(pts.west))
+  for (const p of pts.west) {
+    await tap(env, p.x, p.y)
+    check((await cardHeading(page)) === 'France', `a tap 6 px west of mainland France (row ${p.row}) opens France`, `${await cardHeading(page)}`)
+    if (await cardHeading(page)) await page.locator('.world-pick .bingo-suggest-close').click()
+    await centreMap(page)
+  }
+  await tap(env, pts.nl.x, pts.nl.y)
+  check((await cardHeading(page)) === 'Netherlands', 'the Netherlands still opens from 15 px north', `${await cardHeading(page)}`)
+  check(env.errors.length === 0, 'no console errors', env.errors.join(' | '))
+  await env.ctx.close()
+}
+
 try {
   for (const w of [390, 1280]) {
     await run(w)
     await midnight(w)
+    if (w === 390) await franceAlone()
   }
 } finally {
   await browser.close()

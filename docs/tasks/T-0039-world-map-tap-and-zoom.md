@@ -600,8 +600,33 @@ build doesn't change them. Handed to the **tester**.
   opened the Netherlands. This follows the design's "a lit USA never steals a tap meant for
   Canada". Over the sea or a plain country, the zone still wins (the Netherlands from 15 px off
   its edge, Belgium only when zoomed in). Covered by a component test.
+- **Send-back F1 (tap zones by main landmass):** each country's largest piece (shoelace area of its
+  outer rings) decides whether it is "tiny" and is what its zone is drawn around (`main` in
+  `CountryShape`). France is now judged as mainland France (11.7 × 8.1 px at 390, so it gets a
+  zone; before, French Guiana made it 59 × 45). The USA is judged without Alaska (53 × 22 px, zone
+  around the mainland), Norway without Svalbard, Denmark by Jutland.
+- **Developer's call on overlapping zones, for the UX designer to review:** the design's "the
+  smaller country is drawn last and wins" let the Netherlands take every tap near France (its zone
+  reaches about 14 px past Brittany). The new rule: a lit country's own shape under the finger wins.
+  Otherwise, where zones overlap, the country whose coast is within **8 px** and nearest wins
+  (`nearestCoast`, sampled along the zones' paths). Further out at sea, the topmost zone, the
+  smallest country, still wins. Measured at 390 (`screens-output.txt`): the Netherlands still opens
+  from 15 px north, the UK at zoom 1 opens the UK, and with only France and the Netherlands lit, a
+  tap 6 px west of mainland France (Bay of Biscay or Brittany) opens France.
+  **Deviation from the send-back's wording:** on the demo shelf, the UK, Spain, Italy and Germany
+  are lit too and lie within 6 px of mainland France on every side. Of 216 non-lit points 6 px from
+  France's outline, France is the nearest lit coast at only 4. A tap 6 px west of France there opens
+  Spain or the UK, whichever coast is nearer (0.5 to 2.5 px nearer), never the Netherlands. To
+  open France from those spots, a rule would have to take taps from a nearer neighbour.
+- **Send-back, focus at the zoom limits:** a press that takes the view to 8× moves focus from + to
+  −. One that takes it to 1× moves focus from −, ⤢ or the map itself (which stops being a Tab stop)
+  to +. The buttons stay truly `disabled`, as the design says.
+- **Send-back, the one/two-column width:** the dashboard puts the block in a different column, so
+  React remounts it. The open card is handed from the old block to the new one within the same
+  commit (a module variable, cleared in a microtask). A later visit still starts closed. The zoom
+  isn't carried over (team choice 3).
 - **The Playwright script** (`docs/tasks/T-0039-screens/screens.mjs`, output in
-  `screens-output.txt`): 88 checks, all passing, on `vite dev --port 3155` with no backend. The
+  `screens-output.txt`): 101 checks after the send-back (88 before), all passing, on `vite dev --port 3155` with no backend. The
   phone context uses touch emulation and real CDP touch events (`Input.dispatchTouchEvent`) for
   the tap, the swipe, the pinch and the drag. The page scrolls in `.dashboard` (its `scrollTop`),
   not on `window`, so the script checks both `scrollY` and `.dashboard` `scrollTop`. Two console
@@ -713,3 +738,17 @@ the way it is in a browser.
   mainland France is an 11.7 × 8.1 px target on the phone, and a tap a few px off it opens the
   Netherlands (see *Test*, F1). CI attempt 1 green; everything else held up; six gap tests added.
   #248 stays a draft. Handed back to the **developer**.
+- 2026-11-23 developer: send-back fixed. Tap zones are decided and drawn by each country's main
+  landmass (France without French Guiana, the USA without Alaska, Norway without Svalbard). Where
+  zones overlap, a coast within 8 px wins, nearest first, otherwise the smallest. Focus moves to the
+  other zoom button at 8× and 1×, and the open card survives the one/two-column remount (see *Build
+  notes*). Deviation: on the demo shelf, France's neighbours are nearer than 6 px west of France, so
+  the nearer coast (Spain or the UK) opens there, never the Netherlands; France opens 6 px west of
+  itself when the neighbours aren't lit. New component tests: main landmass at a phone's width, focus
+  at the limits, card across a remount. `vitest run BooksWorldMap Dashboard mapZoom`: 47 passed (47).
+  `pnpm test`: 98 files passed, 1084 tests passed, 9 skipped. `tsc --noEmit` clean, `pnpm run build`
+  built, `harness check` ✓ tasks, decisions, engineers, generated files. `screens.mjs` on 3155:
+  "all checks passed" (101 ok, 0 FAIL; 15 px north of the Netherlands opens it, the UK at zoom 1 opens
+  the UK, 6 px west of France with only France and the Netherlands lit opens France, resizing
+  1280 → 600 → 1280 keeps the card). Handed to the **UX designer** for review (the overlap rule),
+  then the tester.

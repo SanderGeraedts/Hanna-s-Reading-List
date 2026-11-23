@@ -148,11 +148,11 @@ export function PagesPerMonthCard({ books }: { books: Book[] }) {
 interface CountryShape {
   name: string
   d: string
-  /** its bounding box, in map units: the top-left corner is where its cover tiles start */
+  /** the top-left corner of its bounding box, in map units: where its cover tiles start */
   x: number
   y: number
-  w: number
-  h: number
+  /** its largest piece (its main landmass) and that piece's size in map units: decides its tap zone */
+  main: { d: string; w: number; h: number }
 }
 
 /** One cover tile on the map, in map units (2:3, a book's shape; T-0018). */
@@ -219,6 +219,13 @@ function CoverButton({ book, onShowBook }: { book: Book; onShowBook?: (id: strin
   )
 }
 
+/** A ring's area in square degrees (shoelace), to find a country's largest piece. */
+const ringArea = (r: number[][]) => {
+  let a = 0
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++) a += (r[j][0] + r[i][0]) * (r[j][1] - r[i][1])
+  return Math.abs(a / 2)
+}
+
 /**
  * The world as SVG paths (equirectangular, Antarctica left out), loaded once when the block first shows.
  * The far north and south fall outside the picture's frame (cut off, not squashed onto its edge).
@@ -240,20 +247,29 @@ function loadWorld(): Promise<CountryShape[]> {
       .map((f) => {
         const g = f.geometry!
         const polys = (g.type === 'Polygon' ? [g.coordinates] : g.coordinates) as number[][][][]
-        // the top-left corner of its points, where its cover tiles start (T-0018), and its size (T-0039's tap zones)
+        // the top-left corner of its points, where its cover tiles start (T-0018)
         let x = MAP_W
         let y = MAP_H
-        let x2 = 0
-        let y2 = 0
         for (const poly of polys)
           for (const r of poly)
             for (const [lon, lat] of r) {
               x = Math.min(x, lon + 180)
               y = Math.min(y, LAT_TOP - lat)
-              x2 = Math.max(x2, lon + 180)
-              y2 = Math.max(y2, LAT_TOP - lat)
             }
-        return { name: f.properties.name, d: polygonsToPath(polys), x, y, w: x2 - x, h: y2 - y }
+        // its main landmass, the largest piece, decides its tap zone (T-0039): France without French
+        // Guiana, the USA without Alaska, Norway without Svalbard
+        const main = polys.reduce((best, p) => (ringArea(p[0]) > ringArea(best[0]) ? p : best), polys[0])
+        let mx = MAP_W
+        let my = MAP_H
+        let mx2 = 0
+        let my2 = 0
+        for (const [lon, lat] of main[0]) {
+          mx = Math.min(mx, lon + 180)
+          my = Math.min(my, LAT_TOP - lat)
+          mx2 = Math.max(mx2, lon + 180)
+          my2 = Math.max(my2, LAT_TOP - lat)
+        }
+        return { name: f.properties.name, d: polygonsToPath(polys), x, y, main: { d: polygonsToPath([main]), w: mx2 - mx, h: my2 - my } }
       })
   })
   return worldShapes
@@ -264,6 +280,11 @@ const TAP_SLOP = 6
 /** Every lit country is at least this big a target on screen (T-0039's tap zones). */
 const TAP_ZONE = 44
 const GLIDE_MS = 150
+/**
+ * The card open when the block unmounted, kept only until the end of that commit: a block that
+ * moves to another column unmounts and mounts again in the same commit, a later visit doesn't.
+ */
+let cardAtUnmount: string | null = null
 
 const countryAt = (t: EventTarget | null): string | null => (t instanceof Element ? (t.closest('[data-country]')?.getAttribute('data-country') ?? null) : null)
 const isFocusVisible = (el: Element) => {
@@ -274,6 +295,35 @@ const isFocusVisible = (el: Element) => {
   }
 }
 const reducedMotion = () => typeof window.matchMedia !== 'function' || window.matchMedia('(prefers-reduced-motion: reduce)').matches
+/** Within this many px of a lit country's coast, a tap on overlapping zones opens the nearest country. */
+const COAST_PX = 8
+/**
+ * Of the tap zones under a point, the country whose outline (its main landmass) is within COAST_PX
+ * of it and nearest, sampled along each zone's path. Null when none is that close (out at sea the
+ * topmost zone, the smallest country, wins) or where the browser can't measure paths.
+ */
+function nearestCoast(svg: SVGSVGElement, zones: SVGPathElement[], cx: number, cy: number): string | null {
+  if (zones.length < 2) return null
+  const ctm = svg.getScreenCTM?.()
+  if (!ctm || typeof zones[0].getTotalLength !== 'function' || typeof DOMPoint !== 'function') return null
+  const p = new DOMPoint(cx, cy).matrixTransform(ctm.inverse())
+  const pxPerUnit = Math.hypot(ctm.a, ctm.b)
+  let best: string | null = null
+  let bestD = Infinity
+  for (const z of zones) {
+    const len = z.getTotalLength()
+    const steps = Math.min(4000, Math.max(60, Math.ceil(len / 0.1)))
+    for (let i = 0; i <= steps; i++) {
+      const q = z.getPointAtLength((len * i) / steps)
+      const d = Math.hypot(q.x - p.x, q.y - p.y) * pxPerUnit
+      if (d < bestD) {
+        bestD = d
+        best = z.getAttribute('data-country')
+      }
+    }
+  }
+  return bestD <= COAST_PX ? best : null
+}
 
 export function BooksWorldMapCard({ books, onShowBook }: { books: Book[]; onShowBook?: (id: string) => void }) {
   const [shapes, setShapes] = useState<CountryShape[] | null>(null)
@@ -338,7 +388,18 @@ export function BooksWorldMapCard({ books, onShowBook }: { books: Book[]; onShow
   const zoom = zoomOf(view, MAP_W)
   const zoomed = zoom > 1 + 1e-6
   const atMax = zoom >= MAP_ZOOM_MAX - 1e-6
-  const zoomBy = (factor: number) => glide(zoomAround(target.current, factor, 0.5, 0.5, MAP_W, MAP_H))
+  const zoomInRef = useRef<HTMLButtonElement>(null)
+  const zoomOutRef = useRef<HTMLButtonElement>(null)
+  const wholeRef = useRef<HTMLButtonElement>(null)
+  /** a press that reaches a limit disables what has focus (+ at 8×; −, ⤢ and the map itself at 1×): focus moves to the other button */
+  const zoomTo = (v: MapView) => {
+    const active = document.activeElement
+    glide(v)
+    const z = zoomOf(v, MAP_W)
+    if (z >= MAP_ZOOM_MAX - 1e-6 && active === zoomInRef.current) zoomOutRef.current?.focus()
+    else if (z <= 1 + 1e-6 && active && (active === zoomOutRef.current || active === wholeRef.current || active === svgEl)) zoomInRef.current?.focus()
+  }
+  const zoomBy = (factor: number) => zoomTo(zoomAround(target.current, factor, 0.5, 0.5, MAP_W, MAP_H))
 
   // the map's width on screen, for the tap zones
   const [svgEl, setSvgEl] = useState<SVGSVGElement | null>(null)
@@ -354,10 +415,25 @@ export function BooksWorldMapCard({ books, onShowBook }: { books: Book[]; onShow
   }, [svgEl])
   const pxPerUnit = pxWide / view.w
   // lit countries smaller than a fingertip get an invisible 44 px wide edge to tap; the largest first, so the smallest wins
-  const zones = litShapes.filter((s) => s.w * pxPerUnit < TAP_ZONE || s.h * pxPerUnit < TAP_ZONE).sort((a, b) => b.w * b.h - a.w * a.h)
+  // decided by its main landmass and drawn around it, so French Guiana doesn't make mainland France "big"
+  const zones = litShapes
+    .filter((s) => s.main.w * pxPerUnit < TAP_ZONE || s.main.h * pxPerUnit < TAP_ZONE)
+    .sort((a, b) => b.main.w * b.main.h - a.main.w * a.main.h)
 
   // ---- the chosen country and its card -----------------------------------------------------------
   const [chosen, setChosen] = useState<string | null>(null)
+  // crossing the dashboard's one/two-column width moves the block to another column, which
+  // remounts it: the open card comes back in the new place (a later visit starts closed)
+  const chosenNow = useRef(chosen)
+  chosenNow.current = chosen
+  useEffect(() => {
+    if (cardAtUnmount) setChosen(cardAtUnmount)
+    cardAtUnmount = null
+    return () => {
+      cardAtUnmount = chosenNow.current
+      if (cardAtUnmount) queueMicrotask(() => (cardAtUnmount = null))
+    }
+  }, [])
   const opener = useRef<Element | null>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const [focusTick, setFocusTick] = useState(0)
@@ -492,10 +568,14 @@ export function BooksWorldMapCard({ books, onShowBook }: { books: Book[]; onShow
     let name = countryAt(e.target)
     // the sea does nothing
     if (!name) return
-    // a tap zone never steals a tap from a lit country's own shape under it (UK next to the Netherlands)
+    // on a tap zone: a lit country's own shape under the finger wins (the UK next to the Netherlands);
+    // where zones overlap, within 8 px of a lit coast the nearest country wins (France, not the Netherlands),
+    // and further out at sea the topmost zone, the smallest country (the Netherlands from 15 px north)
     if (e.target instanceof Element && e.target.classList.contains('world-zone') && typeof document.elementsFromPoint === 'function') {
-      const own = document.elementsFromPoint(e.clientX, e.clientY).find((el) => el.matches('path.world-country.lit'))
-      name = own?.getAttribute('data-country') ?? name
+      const hits = document.elementsFromPoint(e.clientX, e.clientY)
+      const own = hits.find((el) => el.matches('path.world-country.lit'))
+      const zonesHere = hits.filter((el): el is SVGPathElement => el.matches('path.world-zone'))
+      name = own?.getAttribute('data-country') ?? (svgEl && nearestCoast(svgEl, zonesHere, e.clientX, e.clientY)) ?? name
     }
     toggle(name, map.countries.has(name) ? litPath(name) : null, false)
   }
@@ -627,7 +707,7 @@ export function BooksWorldMapCard({ books, onShowBook }: { books: Book[]; onShow
               {/* tap zones: tiny lit countries reach 22 px beyond their edge on screen */}
               <g className="world-zones" aria-hidden>
                 {zones.map((s) => (
-                  <path key={s.name} d={s.d} className="world-zone" data-country={s.name} />
+                  <path key={s.name} d={s.main.d} className="world-zone" data-country={s.name} />
                 ))}
               </g>
               {/* the chosen country (solid gold) and the Tab-focused one (dashed), above everything */}
@@ -647,13 +727,13 @@ export function BooksWorldMapCard({ books, onShowBook }: { books: Book[]; onShow
               </g>
             </svg>
             <div className="world-zoom" role="group" aria-label="Zoom" onKeyDown={zoomKeys}>
-              <button type="button" className="btn" aria-label="Zoom in" title="Zoom in (Ctrl + scroll)" disabled={atMax} onClick={() => zoomBy(MAP_ZOOM_STEP)}>
+              <button ref={zoomInRef} type="button" className="btn" aria-label="Zoom in" title="Zoom in (Ctrl + scroll)" disabled={atMax} onClick={() => zoomBy(MAP_ZOOM_STEP)}>
                 +
               </button>
-              <button type="button" className="btn" aria-label="Zoom out" title="Zoom out" disabled={!zoomed} onClick={() => zoomBy(1 / MAP_ZOOM_STEP)}>
+              <button ref={zoomOutRef} type="button" className="btn" aria-label="Zoom out" title="Zoom out" disabled={!zoomed} onClick={() => zoomBy(1 / MAP_ZOOM_STEP)}>
                 −
               </button>
-              <button type="button" className="btn" aria-label="Show the whole map" title="Show the whole map" disabled={!zoomed} onClick={() => glide(wholeMap(MAP_W, MAP_H))}>
+              <button ref={wholeRef} type="button" className="btn" aria-label="Show the whole map" title="Show the whole map" disabled={!zoomed} onClick={() => zoomTo(wholeMap(MAP_W, MAP_H))}>
                 ⤢
               </button>
             </div>

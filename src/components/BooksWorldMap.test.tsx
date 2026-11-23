@@ -587,4 +587,125 @@ describe('Where your books are set: tap a country, zoom the map (T-0039)', () =>
     fireEvent.keyDown(zoomIn, { key: '−' })
     expect(viewBox()[2]).toBeCloseTo(90)
   })
+
+  // ---- send-back fixes (T-0039 *Test*: F1 and the small items) -------------------------------------
+
+  /** the map at a phone's width: 334 px on screen, as at 390 (happy-dom draws nothing by itself) */
+  const atPhoneWidth = () =>
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      const w = this.classList.contains('world-map') ? 334 : 0
+      const h = this.classList.contains('world-map') ? (334 * 142) / 360 : 0
+      return { x: 0, y: 0, left: 0, top: 0, width: w, height: h, right: w, bottom: h, toJSON: () => ({}) } as DOMRect
+    })
+  /** the x and y of every point in a path, in map units */
+  const pointsOf = (d: string) => [...d.matchAll(/[ML](-?[\d.]+),(-?[\d.]+)/g)].map((m) => [Number(m[1]), Number(m[2])])
+  const travels: Book[] = [
+    book('paris', { title: 'Paris Nights', color: '#112233', finished: ['2026-01-01'], places: ['Paris (France)'] }),
+    book('amsterdam', { title: 'Canal Houses', color: '#223344', finished: ['2026-01-02'], places: ['Amsterdam (Netherlands)'] }),
+    book('london', { title: 'Fog and Tea', color: '#334455', finished: ['2026-01-03'], places: ['England'] }),
+    book('ny', { title: 'Big Apple', color: '#445566', finished: ['2026-01-04'], places: ['New York (N.Y.)'] }),
+    book('oslo', { title: 'Fjords', color: '#556677', finished: ['2026-01-05'], places: ['Norway'] }),
+    book('copenhagen', { title: 'Little Mermaid', color: '#667788', finished: ['2026-01-06'], places: ['Denmark'] }),
+  ]
+
+  it('a country’s tap zone is decided by its main landmass and drawn around it (France without French Guiana)', async () => {
+    const spy = atPhoneWidth()
+    try {
+      const { svg, card } = await setup(travels)
+      const zone = (name: string) => svg.querySelector(`.world-zone[data-country="${name}"]`)
+      // mainland France is about 12 × 8 px at 390, so it gets a zone, although its box with French Guiana is 59 × 45 px
+      expect(zone('France')).not.toBeNull()
+      const fr = pointsOf(zone('France')!.getAttribute('d')!)
+      // around mainland France only (about 5° W to 8° E, so x 175 to 188), not French Guiana (x about 126)
+      expect(Math.min(...fr.map(([x]) => x))).toBeGreaterThan(170)
+      expect(Math.max(...fr.map(([x]) => x))).toBeLessThan(192)
+      // the Netherlands and the UK keep theirs
+      expect(zone('Netherlands')).not.toBeNull()
+      expect(zone('United Kingdom')).not.toBeNull()
+      // countries with overseas parts: each zone is around its mainland
+      const usa = pointsOf(zone('United States of America')!.getAttribute('d')!)
+      expect(Math.min(...usa.map(([x]) => x))).toBeGreaterThan(50) // not Alaska (x about 10 to 40)
+      const no = pointsOf(zone('Norway')!.getAttribute('d')!)
+      expect(Math.max(...no.map(([, y]) => y))).toBeGreaterThan(20) // reaches the south of Norway
+      expect(Math.min(...no.map(([, y]) => y))).toBeGreaterThan(10) // not Svalbard (y about 4 to 8)
+      expect(zone('Denmark')).not.toBeNull()
+      // the smallest is drawn last, so it wins where zones overlap: the Netherlands after France
+      const order = [...svg.querySelectorAll('.world-zone')].map((z) => z.getAttribute('data-country'))
+      expect(order.indexOf('Netherlands')).toBeGreaterThan(order.indexOf('France'))
+      // a press that lands on France's zone (on the sea west of France) opens France
+      const real = document.elementsFromPoint
+      document.elementsFromPoint = () => [zone('France')!, svg]
+      try {
+        fireEvent.click(zone('France')!, { clientX: 10, clientY: 10 })
+        expect(within(card()!).getByRole('heading').textContent).toBe('France')
+      } finally {
+        document.elementsFromPoint = real
+      }
+      // at 8× mainland France is big enough to tap by itself: no zone; the Netherlands keeps one
+      for (let i = 0; i < 3; i++) fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }))
+      expect(zone('France')).toBeNull()
+      expect(zone('Netherlands')).not.toBeNull()
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  it('keyboard focus is never lost when a zoom button becomes disabled', async () => {
+    const { svg, zoomButtons } = await setup()
+    const [zoomIn, zoomOut, whole] = zoomButtons()
+    // + at 4×: Enter takes it to 8×, + is disabled, focus moves to −
+    act(() => zoomIn.focus())
+    fireEvent.click(zoomIn)
+    fireEvent.click(zoomIn)
+    expect(document.activeElement).toBe(zoomIn)
+    fireEvent.click(zoomIn)
+    expect(zoomIn.disabled).toBe(true)
+    expect(document.activeElement).toBe(zoomOut)
+    // − at 2×: to 1×, − is disabled, focus moves to +
+    fireEvent.click(zoomOut)
+    fireEvent.click(zoomOut)
+    expect(document.activeElement).toBe(zoomOut)
+    fireEvent.click(zoomOut)
+    expect(zoomOut.disabled).toBe(true)
+    expect(document.activeElement).toBe(zoomIn)
+    // ⤢: to 1×, focus moves to +
+    fireEvent.click(zoomIn)
+    act(() => whole.focus())
+    fireEvent.click(whole)
+    expect(whole.disabled).toBe(true)
+    expect(document.activeElement).toBe(zoomIn)
+    // - on the zoomed map until 1×: the map stops being a Tab stop, focus moves to +
+    fireEvent.click(zoomIn)
+    act(() => svg.focus())
+    expect(document.activeElement).toBe(svg)
+    fireEvent.keyDown(svg, { key: '-' })
+    expect(svg.getAttribute('tabindex')).toBeNull()
+    expect(document.activeElement).toBe(zoomIn)
+  })
+
+  it('the open card survives the block moving to another column (a remount), but a later visit starts closed', async () => {
+    const onShowBook = vi.fn()
+    const view = render(
+      <div>
+        <BooksWorldMapCard books={shelf} onShowBook={onShowBook} />
+      </div>,
+    )
+    const svg = await screen.findByRole('group', { name: /^World map/ }, { timeout: 10000 })
+    fireEvent.click(svg.querySelector('path.world-country[data-country="France"]')!)
+    expect(document.querySelector('.world-pick h3')!.textContent).toBe('France')
+    // the dashboard crosses its one/two-column width: the block lands in another parent and remounts
+    view.rerender(
+      <section>
+        <BooksWorldMapCard books={shelf} onShowBook={onShowBook} />
+      </section>,
+    )
+    await screen.findByRole('group', { name: /^World map/ }, { timeout: 10000 })
+    expect((await screen.findByRole('heading', { level: 3, name: 'France' })).closest('.world-pick')).not.toBeNull()
+    // leaving the dashboard and coming back later: the card is closed
+    view.unmount()
+    await act(async () => {})
+    render(<BooksWorldMapCard books={shelf} onShowBook={onShowBook} />)
+    await screen.findByRole('group', { name: /^World map/ }, { timeout: 10000 })
+    expect(document.querySelector('.world-pick')).toBeNull()
+  })
 })
