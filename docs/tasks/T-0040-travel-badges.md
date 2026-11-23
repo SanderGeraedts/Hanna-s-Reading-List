@@ -8,7 +8,7 @@ depends_on: [T-0015, T-0018]
 decisions: [D-0014, D-0023, D-0026, D-0037]
 raised_on: 2026-11-23
 done_on: ""
-result: []
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/246"]
 ---
 
 # Goal
@@ -213,4 +213,4 @@ To be written by the tester.
   is unlocked on the Moscow book's day (Russia and Peru were countries 5 and 6), with five
   postcards, World tour 5 / 6, Frequent flyer 7 / 10 and Dreamwalker 2 / 3. Home sweet home is
   a hidden tile showing its riddle, and earned in the Amsterdam shot. The world map block was
-  not touched. Handed to the **UX designer** for the block review.
+  not touched. Draft PR #246. Handed to the **UX designer** for the block review.
