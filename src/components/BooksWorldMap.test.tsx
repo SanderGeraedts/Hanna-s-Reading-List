@@ -1,5 +1,5 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Book } from '#/lib/library'
 import { BooksWorldMapCard } from './PictureBlocks'
 
@@ -50,7 +50,7 @@ afterEach(cleanup)
 describe('Where your books are set: covers, no numbers (T-0018)', () => {
   it('shows no digit anywhere: text, hover titles, map label, waiting line', async () => {
     const { container } = render(<BooksWorldMapCard books={shelf} />)
-    const svg = await screen.findByRole('img', { name: /^World map/ }, { timeout: 10000 })
+    const svg = await screen.findByRole('group', { name: /^World map/ }, { timeout: 10000 })
     expect(container.textContent).not.toMatch(/\d/)
     for (const t of container.querySelectorAll('title')) expect(t.textContent).not.toMatch(/\d/)
     expect(svg.getAttribute('aria-label')).not.toMatch(/\d/)
@@ -62,7 +62,7 @@ describe('Where your books are set: covers, no numbers (T-0018)', () => {
 
   it('fills a lit country with one tile per book in tile order, spine colour behind each, small covers', async () => {
     const { container } = render(<BooksWorldMapCard books={shelf} />)
-    await screen.findByRole('img', { name: /^World map/ }, { timeout: 10000 })
+    await screen.findByRole('group', { name: /^World map/ }, { timeout: 10000 })
     const svg = container.querySelector('svg.world-map')!
     const uk = tilesOf(svg, 'United Kingdom')
     expect(uk.path.classList.contains('lit')).toBe(true)
@@ -84,48 +84,49 @@ describe('Where your books are set: covers, no numbers (T-0018)', () => {
 
   it('hover text of a lit country: its name, then its books’ titles, one per line', async () => {
     const { container } = render(<BooksWorldMapCard books={shelf} />)
-    await screen.findByRole('img', { name: /^World map/ }, { timeout: 10000 })
+    await screen.findByRole('group', { name: /^World map/ }, { timeout: 10000 })
     const { path } = tilesOf(container.querySelector('svg.world-map')!, 'United Kingdom')
     expect(path.querySelector('title')!.textContent).toBe(['United Kingdom', 'Jane Eyre', 'The Philosopher’s Stone', 'Pride and Prejudice', 'Emma'].join('\n'))
   })
 
   it('lists country names only, most books first', async () => {
     const { container } = render(<BooksWorldMapCard books={shelf} />)
-    await screen.findByRole('img', { name: /^World map/ }, { timeout: 10000 })
+    await screen.findByRole('group', { name: /^World map/ }, { timeout: 10000 })
     expect([...container.querySelectorAll('.world-top li')].map((li) => li.textContent)).toEqual(['United Kingdom', 'France'])
   })
 
   it('shows one row per land, most books first, one cover per book', async () => {
     render(<BooksWorldMapCard books={shelf} />)
-    await screen.findByRole('img', { name: /^World map/ }, { timeout: 10000 })
+    await screen.findByRole('group', { name: /^World map/ }, { timeout: 10000 })
     expect(screen.getByRole('heading', { name: 'Imaginary lands' })).toBeTruthy()
     const hogwarts = screen.getByRole('list', { name: 'Hogwarts' })
     const narnia = screen.getByRole('list', { name: 'Narnia' })
     // Hogwarts (two books) before Narnia (one)
     expect(hogwarts.compareDocumentPosition(narnia) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     // tile order: the Chamber of Secrets (latest) first; it has no cover, so a spine-colour chip
-    const covers = within(hogwarts).getAllByRole('img')
-    expect(covers.map((c) => c.getAttribute('aria-label') ?? c.getAttribute('alt'))).toEqual(['The Chamber of Secrets', 'The Philosopher’s Stone'])
-    expect(covers[0].classList.contains('cover-chip')).toBe(true)
-    expect(covers[0].getAttribute('style')).toMatch(/#005555|rgb\(0, 85, 85\)/)
-    expect(covers[1].getAttribute('src')).toBe('/api/cover/id/333?size=M')
+    // (T-0039: each cover is now a button named by its title)
+    const covers = within(hogwarts).getAllByRole('button')
+    expect(covers.map((c) => c.getAttribute('aria-label'))).toEqual(['The Chamber of Secrets', 'The Philosopher’s Stone'])
+    const chip = covers[0].querySelector('.cover-chip')!
+    expect(chip.getAttribute('style')).toMatch(/#005555|rgb\(0, 85, 85\)/)
+    expect(covers[1].querySelector('img')!.getAttribute('src')).toBe('/api/cover/id/333?size=M')
     expect(covers[1].getAttribute('title')).toBe('The Philosopher’s Stone')
-    expect(within(narnia).getAllByRole('img')).toHaveLength(1)
+    expect(within(narnia).getAllByRole('button')).toHaveLength(1)
   })
 
   it('a land cover that fails to load becomes a spine-colour chip', async () => {
     render(<BooksWorldMapCard books={shelf} />)
-    await screen.findByRole('img', { name: /^World map/ }, { timeout: 10000 })
+    await screen.findByRole('group', { name: /^World map/ }, { timeout: 10000 })
     const narnia = screen.getByRole('list', { name: 'Narnia' })
-    fireEvent.error(within(narnia).getByRole('img'))
-    const chip = within(narnia).getByRole('img', { name: 'The Lion, the Witch and the Wardrobe' })
-    expect(chip.tagName).toBe('SPAN')
-    expect(chip.classList.contains('cover-chip')).toBe(true)
+    fireEvent.error(within(narnia).getByRole('button').querySelector('img')!)
+    const cover = within(narnia).getByRole('button', { name: 'The Lion, the Witch and the Wardrobe' })
+    expect(cover.querySelector('img')).toBeNull()
+    expect(cover.querySelector('span.cover-chip')).not.toBeNull()
   })
 
   it('a map cover that fails to load leaves its spine colour, never a broken-image sign', async () => {
     const { container } = render(<BooksWorldMapCard books={shelf} />)
-    await screen.findByRole('img', { name: /^World map/ }, { timeout: 10000 })
+    await screen.findByRole('group', { name: /^World map/ }, { timeout: 10000 })
     const svg = container.querySelector('svg.world-map')!
     fireEvent.error(tilesOf(svg, 'France').tiles[0].querySelector('image')!)
     const tile = tilesOf(svg, 'France').tiles[0]
@@ -140,7 +141,7 @@ describe('Where your books are set: covers, no numbers (T-0018)', () => {
       book('local', { title: 'Home Ground', color: '#654321', finished: ['2026-03-01'], places: ['England'] }),
     ]
     const { container } = render(<BooksWorldMapCard books={travels} />)
-    await screen.findByRole('img', { name: /^World map/ }, { timeout: 10000 })
+    await screen.findByRole('group', { name: /^World map/ }, { timeout: 10000 })
     const svg = container.querySelector('svg.world-map')!
     const fills = (c: string) => tilesOf(svg, c).tiles.map((t) => t.querySelector('rect')!.getAttribute('fill'))
     // one book: a 1 × 1 pattern
@@ -158,9 +159,9 @@ describe('Where your books are set: covers, no numbers (T-0018)', () => {
       book('hg2', { title: 'Catching Fire', color: '#aa0055', finished: ['2026-02-01'], places: ['district 12 (Imaginary place)', 'District  12 (Imaginary place)'] }),
     ]
     render(<BooksWorldMapCard books={district} />)
-    await screen.findByRole('img', { name: 'World map' }, { timeout: 10000 })
+    await screen.findByRole('group', { name: 'World map' }, { timeout: 10000 })
     const row = screen.getByRole('list', { name: 'District 12' })
-    expect(within(row).getAllByRole('img').map((c) => c.getAttribute('aria-label'))).toEqual(['Catching Fire', 'The Hunger Games'])
+    expect(within(row).getAllByRole('button').map((c) => c.getAttribute('aria-label'))).toEqual(['Catching Fire', 'The Hunger Games'])
     expect(screen.queryByRole('list', { name: 'district 12' })).toBeNull()
     // the only digits in the block are the land's own name
     expect(document.querySelector('.world-card')!.textContent!.replace(/District 12/g, '')).not.toMatch(/\d/)
@@ -171,17 +172,614 @@ describe('Where your books are set: covers, no numbers (T-0018)', () => {
       book('l' + i, { title: 'Tale ' + String.fromCharCode(65 + i), places: ['Glimmerdale (Imaginary place)'], ...(i % 3 ? { coverUrl: `/api/cover/id/${i + 1}?size=L` } : {}) }),
     )
     const { container } = render(<BooksWorldMapCard books={many} />)
-    await screen.findByRole('img', { name: 'World map' }, { timeout: 10000 })
+    await screen.findByRole('group', { name: 'World map' }, { timeout: 10000 })
     const row = screen.getByRole('list', { name: 'Glimmerdale' })
-    expect(within(row).getAllByRole('img')).toHaveLength(12)
+    expect(within(row).getAllByRole('button')).toHaveLength(12)
     expect(row.classList.contains('world-land-books')).toBe(true)
     expect(container.textContent).not.toMatch(/\d|more/i)
   })
 
   it('with no places yet: the plain map and the empty line', async () => {
     render(<BooksWorldMapCard books={[book('x', { title: 'Nowhere', places: [] })]} />)
-    const svg = await screen.findByRole('img', { name: 'World map' }, { timeout: 10000 })
+    const svg = await screen.findByRole('group', { name: 'World map' }, { timeout: 10000 })
     expect(svg.querySelectorAll('pattern')).toHaveLength(0)
     expect(screen.getByText("Open Library doesn't know where your finished books are set yet.")).toBeTruthy()
+  })
+})
+
+/**
+ * T-0039 *Done when*: tap a country for a card under the map, zoom and pan, keyboard, and still no
+ * numbers. The buttons' glide is skipped (reduced motion) so the viewBox changes at once.
+ */
+describe('Where your books are set: tap a country, zoom the map (T-0039)', () => {
+  const realMatchMedia = window.matchMedia
+  beforeEach(() => {
+    window.matchMedia = ((q: string) => ({
+      matches: /reduce/.test(q),
+      media: q,
+      onchange: null,
+      addListener() {},
+      removeListener() {},
+      addEventListener() {},
+      removeEventListener() {},
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia
+  })
+  afterEach(() => {
+    window.matchMedia = realMatchMedia
+  })
+
+  const setup = async (books: Book[] = shelf) => {
+    const onShowBook = vi.fn()
+    const utils = render(<BooksWorldMapCard books={books} onShowBook={onShowBook} />)
+    const svg = (await screen.findByRole('group', { name: /^World map/ }, { timeout: 10000 })) as unknown as SVGSVGElement
+    const block = utils.container.querySelector('.world-card') as HTMLElement
+    const country = (name: string) => svg.querySelector(`path.world-country[data-country="${name}"]`) as SVGPathElement
+    const card = () => block.querySelector('.world-pick') as HTMLElement | null
+    const names = () => block.querySelector('.world-top') as HTMLElement
+    const viewBox = () => svg.getAttribute('viewBox')!.split(' ').map(Number)
+    const zoomButtons = () => within(screen.getByRole('group', { name: 'Zoom' })).getAllByRole('button') as HTMLButtonElement[]
+    return { ...utils, onShowBook, svg, block, country, card, names, viewBox, zoomButtons }
+  }
+  /** no digit in the block's text, nor in any aria-label, title or alt inside it (D-0026) */
+  const noDigits = (block: HTMLElement) => {
+    expect(block.textContent).not.toMatch(/\d/)
+    for (const el of block.querySelectorAll('[aria-label], [title], [alt]'))
+      for (const a of ['aria-label', 'title', 'alt']) expect(el.getAttribute(a) ?? '').not.toMatch(/\d/)
+    for (const t of block.querySelectorAll('title')) expect(t.textContent).not.toMatch(/\d/)
+  }
+
+  it('clicking a lit country opens a card under the map: its name, one button per book in tile order, each opening its book', async () => {
+    const { country, card, names, block, onShowBook } = await setup()
+    expect(card()).toBeNull()
+    fireEvent.click(country('United Kingdom'))
+    const c = card()!
+    expect(c).not.toBeNull()
+    expect(within(c).getByRole('heading', { level: 3 }).textContent).toBe('United Kingdom')
+    // under the map frame, above the list of names
+    const frame = block.querySelector('.world-map-frame')!
+    expect(frame.compareDocumentPosition(c) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(c.compareDocumentPosition(names()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const covers = within(c.querySelector('.world-covers') as HTMLElement).getAllByRole('button')
+    expect(covers.map((b) => b.getAttribute('aria-label'))).toEqual(['Jane Eyre', 'The Philosopher’s Stone', 'Pride and Prejudice', 'Emma'])
+    // named by the title only: the image inside says nothing, a chip has no role of its own
+    expect(covers[0].querySelector('img')!.getAttribute('alt')).toBe('')
+    expect(covers[3].querySelector('.cover-chip')!.getAttribute('role')).toBeNull()
+    fireEvent.click(covers[2])
+    expect(onShowBook).toHaveBeenCalledWith('pride')
+    // the card stays open behind the book
+    expect(card()).not.toBeNull()
+    // the chosen country carries the solid gold mark
+    expect(block.querySelectorAll('.world-marks .world-mark:not(.focus)')).toHaveLength(1)
+    expect(block.querySelector('.world-marks .world-mark-edge.plain')).toBeNull()
+  })
+
+  it('clicking a plain country shows its name and exactly "No books set here yet."', async () => {
+    const { country, card, block } = await setup()
+    fireEvent.click(country('Japan'))
+    const c = card()!
+    expect(within(c).getByRole('heading', { level: 3 }).textContent).toBe('Japan')
+    expect(c.querySelector('p')!.textContent).toBe('No books set here yet.')
+    expect(c.querySelector('.world-covers')).toBeNull()
+    expect(within(c).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['Close'])
+    // a plain chosen country gets the gold wash as well as the mark
+    expect(block.querySelector('.world-marks .world-mark-edge.plain')).not.toBeNull()
+    // × puts focus on the block's title (a plain country can't take focus)
+    fireEvent.click(within(c).getByRole('button', { name: 'Close' }))
+    expect(card()).toBeNull()
+    expect(document.activeElement?.id).toBe('world-title')
+  })
+
+  it('a name in the list opens the same card; the country again, ×, or Escape close it; another country switches it', async () => {
+    const { country, card, names, block } = await setup()
+    const ukName = within(names()).getByRole('button', { name: 'United Kingdom' })
+    expect(ukName.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(ukName)
+    expect(within(card()!).getByRole('heading').textContent).toBe('United Kingdom')
+    expect(ukName.getAttribute('aria-expanded')).toBe('true')
+    expect(ukName.getAttribute('aria-controls')).toBe(card()!.id)
+    expect(ukName.classList.contains('chosen')).toBe(true)
+    // the same country on the map closes it
+    fireEvent.click(country('United Kingdom'))
+    expect(card()).toBeNull()
+    // the name again closes it
+    fireEvent.click(ukName)
+    fireEvent.click(ukName)
+    expect(card()).toBeNull()
+    // × closes it and puts focus back on the name that opened it
+    fireEvent.click(ukName)
+    fireEvent.click(within(card()!).getByRole('button', { name: 'Close' }))
+    expect(card()).toBeNull()
+    expect(document.activeElement).toBe(ukName)
+    // Escape, with focus in the card, closes it
+    fireEvent.click(ukName)
+    expect(document.activeElement?.tagName).toBe('H3')
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    expect(card()).toBeNull()
+    expect(document.activeElement).toBe(ukName)
+    // another country switches the card in place
+    fireEvent.click(ukName)
+    const first = card()
+    fireEvent.click(country('France'))
+    expect(card()).toBe(first)
+    expect(within(card()!).getByRole('heading').textContent).toBe('France')
+    expect(within(card()!).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['Les Misérables', 'Close'])
+    expect(ukName.getAttribute('aria-expanded')).toBe('false')
+    expect(block.querySelector('.world-name.chosen')!.textContent).toBe('France')
+  })
+
+  it('a lit country is focusable and Enter opens its card; Escape puts focus back on it; plain ones are not Tab stops', async () => {
+    const { country, card } = await setup()
+    const uk = country('United Kingdom')
+    expect(uk.getAttribute('tabindex')).toBe('0')
+    expect(uk.getAttribute('role')).toBe('button')
+    expect(uk.getAttribute('aria-label')).toBe('United Kingdom')
+    expect(uk.getAttribute('aria-expanded')).toBe('false')
+    expect(country('Japan').getAttribute('tabindex')).toBeNull()
+    act(() => uk.focus())
+    fireEvent.keyDown(uk, { key: 'Enter' })
+    expect(within(card()!).getByRole('heading').textContent).toBe('United Kingdom')
+    expect(uk.getAttribute('aria-expanded')).toBe('true')
+    // focus moves to the card's heading
+    expect(document.activeElement).toBe(within(card()!).getByRole('heading'))
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    expect(card()).toBeNull()
+    expect(document.activeElement).toBe(uk)
+    // Space opens too, and Enter on the chosen one closes it
+    fireEvent.keyDown(uk, { key: ' ' })
+    expect(card()).not.toBeNull()
+    fireEvent.keyDown(uk, { key: 'Enter' })
+    expect(card()).toBeNull()
+  })
+
+  it('the lit countries come in alphabetical order, before the zoom buttons, the names and the lands', async () => {
+    const { svg, block } = await setup()
+    expect([...svg.querySelectorAll('path.world-country.lit')].map((p) => p.getAttribute('aria-label'))).toEqual(['France', 'United Kingdom'])
+    const order = [...block.querySelectorAll('[tabindex="0"], button:not(:disabled)')].map((e) => e.getAttribute('aria-label') ?? e.textContent)
+    expect(order).toEqual([
+      'France',
+      'United Kingdom',
+      'Zoom in',
+      'United Kingdom',
+      'France',
+      'The Chamber of Secrets',
+      'The Philosopher’s Stone',
+      'The Lion, the Witch and the Wardrobe',
+    ])
+  })
+
+  it('an imaginary-land cover is a button and clicking it opens its book', async () => {
+    const { onShowBook } = await setup()
+    const narnia = screen.getByRole('list', { name: 'Narnia' })
+    fireEvent.click(within(narnia).getByRole('button', { name: 'The Lion, the Witch and the Wardrobe' }))
+    expect(onShowBook).toHaveBeenCalledWith('wardrobe')
+  })
+
+  it('a tiny lit country’s tap zone opens its card; zones are pointer targets only', async () => {
+    const { svg, card } = await setup()
+    // happy-dom draws nothing, so every lit country counts as tiny here
+    const zone = svg.querySelector('.world-zone[data-country="France"]')!
+    expect(zone.closest('[aria-hidden]')).not.toBeNull()
+    expect(zone.getAttribute('tabindex')).toBeNull()
+    fireEvent.click(zone)
+    expect(within(card()!).getByRole('heading').textContent).toBe('France')
+  })
+
+  it('a tap zone never steals a tap that lands on another lit country’s own shape', async () => {
+    const { svg, card, country } = await setup()
+    const zone = svg.querySelector('.world-zone[data-country="France"]')!
+    const real = document.elementsFromPoint
+    // the press lands on France's zone, right over the United Kingdom's own shape
+    document.elementsFromPoint = () => [zone, country('United Kingdom'), svg]
+    try {
+      fireEvent.click(zone, { clientX: 10, clientY: 10 })
+      expect(within(card()!).getByRole('heading').textContent).toBe('United Kingdom')
+      // over the sea or a plain country, the zone wins
+      document.elementsFromPoint = () => [zone, country('Japan'), svg]
+      fireEvent.click(zone, { clientX: 10, clientY: 10 })
+      expect(within(card()!).getByRole('heading').textContent).toBe('France')
+    } finally {
+      document.elementsFromPoint = real
+    }
+  })
+
+  it('the zone rule looks where the finger went down, not where a touch screen moved the click', async () => {
+    const { svg, card, country } = await setup()
+    const zone = svg.querySelector('.world-zone[data-country="France"]')!
+    const real = document.elementsFromPoint
+    // where the finger went down: only France's zone; where Chrome moved the click: the UK's own shape
+    document.elementsFromPoint = (x: number, y: number) => (x === 5 && y === 5 ? [zone, svg] : [zone, country('United Kingdom'), svg])
+    try {
+      fireEvent.pointerDown(zone, { pointerId: 3, pointerType: 'touch', clientX: 5, clientY: 5 })
+      fireEvent.pointerUp(zone, { pointerId: 3, pointerType: 'touch', clientX: 5, clientY: 5 })
+      fireEvent.click(zone, { clientX: 40, clientY: 40 })
+      expect(within(card()!).getByRole('heading').textContent).toBe('France')
+    } finally {
+      document.elementsFromPoint = real
+    }
+  })
+
+  it('F3: the smallest-zone step also looks under the finger, not at the zone the click was moved onto', async () => {
+    const nl = book('amsterdam', { title: 'Canal Houses', color: '#223344', finished: ['2026-01-02'], places: ['Amsterdam (Netherlands)'] })
+    const { svg, card } = await setup([...shelf, nl])
+    const zone = (name: string) => svg.querySelector(`.world-zone[data-country="${name}"]`)!
+    const real = document.elementsFromPoint
+    // under the finger (5, 5): only France's zone, out at sea; the click lands on the Netherlands' zone (40, 40)
+    document.elementsFromPoint = (x: number, y: number) => (x === 5 && y === 5 ? [zone('France'), svg] : [zone('Netherlands'), svg])
+    const tap = (target: Element, x: number, y: number) => {
+      fireEvent.pointerDown(target, { pointerId: 4, pointerType: 'touch', clientX: x, clientY: y })
+      fireEvent.pointerUp(target, { pointerId: 4, pointerType: 'touch', clientX: x, clientY: y })
+      fireEvent.click(zone('Netherlands'), { clientX: 40, clientY: 40 })
+    }
+    try {
+      tap(zone('France'), 5, 5)
+      expect(within(card()!).getByRole('heading').textContent).toBe('France')
+      // nothing under the finger (the sea, no zone): the target the browser moved the tap onto counts
+      document.elementsFromPoint = (x: number, y: number) => (x === 7 && y === 7 ? [svg] : [zone('Netherlands'), svg])
+      tap(svg, 7, 7)
+      expect(within(card()!).getByRole('heading').textContent).toBe('Netherlands')
+      // a plain country under the finger, no zone: that country, not the moved target
+      document.elementsFromPoint = (x: number, y: number) =>
+        x === 9 && y === 9 ? [svg.querySelector('path.world-country[data-country="Japan"]')!, svg] : [zone('Netherlands'), svg]
+      tap(svg, 9, 9)
+      expect(within(card()!).getByRole('heading').textContent).toBe('Japan')
+    } finally {
+      document.elementsFromPoint = real
+    }
+  })
+
+  it('a drag never opens a card; a press that stays put does', async () => {
+    const { country, card } = await setup()
+    const fr = country('France')
+    const press = (dx: number) => {
+      fireEvent.pointerDown(fr, { pointerId: 7, pointerType: 'mouse', button: 0, clientX: 50, clientY: 50 })
+      fireEvent.pointerMove(fr, { pointerId: 7, pointerType: 'mouse', clientX: 50 + dx, clientY: 50 })
+      fireEvent.pointerUp(fr, { pointerId: 7, pointerType: 'mouse', clientX: 50 + dx, clientY: 50 })
+      fireEvent.click(fr)
+    }
+    press(20)
+    expect(card()).toBeNull()
+    press(3)
+    expect(card()).not.toBeNull()
+  })
+
+  it('no digit in the block with a card open (lit and plain) and with the map zoomed in', async () => {
+    const { block, country, zoomButtons } = await setup()
+    fireEvent.click(country('United Kingdom'))
+    noDigits(block)
+    fireEvent.click(country('Japan'))
+    noDigits(block)
+    fireEvent.click(zoomButtons()[0])
+    fireEvent.click(zoomButtons()[0])
+    noDigits(block)
+  })
+
+  it('the zoom buttons: + − ⤢ in that order, named, + zooms in, − and ⤢ are disabled at zoom one and bring it back', async () => {
+    const { viewBox, zoomButtons, svg } = await setup()
+    const [zoomIn, zoomOut, whole] = zoomButtons()
+    expect(zoomButtons().map((b) => [b.textContent, b.getAttribute('aria-label'), b.getAttribute('title')])).toEqual([
+      ['+', 'Zoom in', 'Zoom in (Ctrl + scroll)'],
+      ['−', 'Zoom out', 'Zoom out'],
+      ['⤢', 'Show the whole map', 'Show the whole map'],
+    ])
+    expect(viewBox()).toEqual([0, 0, 360, expect.any(Number)])
+    const fullW = viewBox()[2]
+    expect(zoomOut.disabled).toBe(true)
+    expect(whole.disabled).toBe(true)
+    expect(svg.getAttribute('tabindex')).toBeNull()
+    expect(svg.style.touchAction).toBe('pan-x pan-y')
+    // one press doubles the zoom
+    fireEvent.click(zoomIn)
+    expect(viewBox()[2]).toBeCloseTo(fullW / 2)
+    expect(zoomOut.disabled).toBe(false)
+    expect(whole.disabled).toBe(false)
+    expect(svg.getAttribute('tabindex')).toBe('0')
+    expect(svg.style.touchAction).toBe('none')
+    // − halves it again
+    fireEvent.click(zoomOut)
+    expect(viewBox()[2]).toBeCloseTo(fullW)
+    expect(zoomOut.disabled).toBe(true)
+    // three presses reach the maximum (8×)
+    fireEvent.click(zoomIn)
+    fireEvent.click(zoomIn)
+    expect(zoomIn.disabled).toBe(false)
+    fireEvent.click(zoomIn)
+    expect(viewBox()[2]).toBeCloseTo(fullW / 8)
+    expect(zoomIn.disabled).toBe(true)
+    // ⤢ shows the whole map
+    fireEvent.click(whole)
+    expect(viewBox()).toEqual([0, 0, fullW, expect.any(Number)])
+    expect(whole.disabled).toBe(true)
+  })
+
+  it('Ctrl+wheel zooms and calls preventDefault; a plain wheel does neither', async () => {
+    const { svg, viewBox } = await setup()
+    const plain = new WheelEvent('wheel', { deltaY: -100, bubbles: true, cancelable: true })
+    act(() => void svg.dispatchEvent(plain))
+    expect(plain.defaultPrevented).toBe(false)
+    expect(viewBox()[2]).toBe(360)
+    // happy-dom's WheelEvent has no ctrlKey of its own (it isn't a MouseEvent there): set it as a browser would
+    const ctrl = new WheelEvent('wheel', { deltaY: -100, ctrlKey: true, bubbles: true, cancelable: true })
+    Object.defineProperty(ctrl, 'ctrlKey', { value: true })
+    act(() => void svg.dispatchEvent(ctrl))
+    expect(ctrl.defaultPrevented).toBe(true)
+    expect(viewBox()[2]).toBeLessThan(360)
+  })
+
+  it('at zoom one an arrow key does not pan; zoomed in, an arrow key moves the viewBox', async () => {
+    const { svg, viewBox, zoomButtons, country } = await setup()
+    const uk = country('United Kingdom')
+    fireEvent.keyDown(uk, { key: 'ArrowRight' })
+    expect(viewBox()).toEqual([0, 0, 360, expect.any(Number)])
+    fireEvent.click(zoomButtons()[0])
+    const [x, y, w, h] = viewBox()
+    fireEvent.keyDown(svg, { key: 'ArrowRight' })
+    expect(viewBox()[0]).toBeCloseTo(x + w / 5)
+    fireEvent.keyDown(uk, { key: 'ArrowUp' })
+    expect(viewBox()[1]).toBeCloseTo(y - h / 5)
+    // + and − on the map zoom too
+    fireEvent.keyDown(svg, { key: '+' })
+    expect(viewBox()[2]).toBeCloseTo(w / 2)
+    fireEvent.keyDown(svg, { key: '-' })
+    expect(viewBox()[2]).toBeCloseTo(w)
+  })
+
+  // ---- tester's gap tests (T-0039 *Test*) ----------------------------------------------------------
+
+  const touch = (el: Element, type: 'pointerDown' | 'pointerMove' | 'pointerUp', id: number, x: number, y = 50) =>
+    fireEvent[type](el, { pointerId: id, pointerType: 'touch', isPrimary: id === 1, clientX: x, clientY: y })
+
+  it('the tap threshold is 6 px: a press that moves 5.9 px opens the card, 6 px does not', async () => {
+    const { country, card } = await setup()
+    const fr = country('France')
+    const press = (dx: number, dy: number) => {
+      touch(fr, 'pointerDown', 1, 50)
+      touch(fr, 'pointerMove', 1, 50 + dx, 50 + dy)
+      touch(fr, 'pointerUp', 1, 50 + dx, 50 + dy)
+      fireEvent.click(fr)
+    }
+    press(6, 0)
+    expect(card()).toBeNull()
+    press(4.3, 4.3) // just over 6 px diagonally
+    expect(card()).toBeNull()
+    press(5.9, 0)
+    expect(within(card()!).getByRole('heading').textContent).toBe('France')
+  })
+
+  it('a second finger turns a press into a pinch: no card, whichever finger lifts first; the next press is a tap again', async () => {
+    const { country, card, svg } = await setup()
+    const fr = country('France')
+    // finger two lands and lifts without moving, then finger one lifts: still no tap
+    touch(fr, 'pointerDown', 1, 50)
+    touch(svg, 'pointerDown', 2, 90)
+    touch(svg, 'pointerUp', 2, 90)
+    touch(fr, 'pointerUp', 1, 50)
+    fireEvent.click(fr)
+    expect(card()).toBeNull()
+    // finger one lifts first, finger two stays and lifts
+    touch(fr, 'pointerDown', 1, 50)
+    touch(svg, 'pointerDown', 2, 90)
+    touch(fr, 'pointerUp', 1, 50)
+    touch(svg, 'pointerUp', 2, 90)
+    fireEvent.click(fr)
+    expect(card()).toBeNull()
+    // a plain press afterwards opens the card
+    touch(fr, 'pointerDown', 1, 50)
+    touch(fr, 'pointerUp', 1, 50)
+    fireEvent.click(fr)
+    expect(within(card()!).getByRole('heading').textContent).toBe('France')
+  })
+
+  it('a pinch zooms between one and eight; the finger left after a pinch does not move the map', async () => {
+    const { svg, viewBox, zoomButtons } = await setup()
+    // spread from 20 px to 60 px apart: three times as close
+    touch(svg, 'pointerDown', 1, 40)
+    touch(svg, 'pointerDown', 2, 60)
+    touch(svg, 'pointerMove', 2, 80)
+    touch(svg, 'pointerMove', 1, 20)
+    expect(viewBox()[2]).toBeCloseTo(120)
+    // far apart: stops at 8×
+    touch(svg, 'pointerMove', 1, -5000)
+    expect(viewBox()[2]).toBeCloseTo(45)
+    expect(zoomButtons()[0].disabled).toBe(true)
+    // finger two lifts; finger one moving on does nothing
+    touch(svg, 'pointerUp', 2, 80)
+    const before = viewBox()
+    touch(svg, 'pointerMove', 1, -4900, 90)
+    expect(viewBox()).toEqual(before)
+    touch(svg, 'pointerUp', 1, -4900, 90)
+    // pinching in hard stops at the whole map
+    touch(svg, 'pointerDown', 1, -2000)
+    touch(svg, 'pointerDown', 2, 2000)
+    touch(svg, 'pointerMove', 1, 0)
+    touch(svg, 'pointerMove', 2, 1)
+    expect(viewBox()).toEqual([0, 0, 360, expect.any(Number)])
+    touch(svg, 'pointerUp', 1, 0)
+    touch(svg, 'pointerUp', 2, 1)
+    expect(svg.style.touchAction).toBe('pan-x pan-y')
+  })
+
+  it('a cancelled press (the page took the swipe) never opens a card', async () => {
+    const { country, card } = await setup()
+    const fr = country('France')
+    touch(fr, 'pointerDown', 1, 50)
+    touch(fr, 'pointerMove', 1, 50, 58)
+    fireEvent.pointerCancel(fr, { pointerId: 1, pointerType: 'touch' })
+    fireEvent.click(fr)
+    expect(card()).toBeNull()
+  })
+
+  it('Escape from a cover in the card closes it and puts focus back on the name; covers open their book by keyboard', async () => {
+    const { card, names, onShowBook } = await setup()
+    const ukName = within(names()).getByRole('button', { name: 'United Kingdom' })
+    fireEvent.click(ukName)
+    const cover = within(card()!).getByRole('button', { name: 'Pride and Prejudice' })
+    act(() => cover.focus())
+    fireEvent.click(cover)
+    expect(onShowBook).toHaveBeenCalledWith('pride')
+    fireEvent.keyDown(cover, { key: 'Escape' })
+    expect(card()).toBeNull()
+    expect(document.activeElement).toBe(ukName)
+  })
+
+  it('+ and − keys on a zoom button zoom one step each, never past the limits', async () => {
+    const { viewBox, zoomButtons } = await setup()
+    const [zoomIn] = zoomButtons()
+    fireEvent.keyDown(zoomIn, { key: '-' })
+    expect(viewBox()[2]).toBe(360)
+    for (let i = 0; i < 5; i++) fireEvent.keyDown(zoomIn, { key: '+' })
+    expect(viewBox()[2]).toBeCloseTo(45)
+    fireEvent.keyDown(zoomIn, { key: '−' })
+    expect(viewBox()[2]).toBeCloseTo(90)
+  })
+
+  // ---- send-back fixes (T-0039 *Test*: F1 and the small items) -------------------------------------
+
+  /** the map at a phone's width: 334 px on screen, as at 390 (happy-dom draws nothing by itself) */
+  const atPhoneWidth = () =>
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      const w = this.classList.contains('world-map') ? 334 : 0
+      const h = this.classList.contains('world-map') ? (334 * 142) / 360 : 0
+      return { x: 0, y: 0, left: 0, top: 0, width: w, height: h, right: w, bottom: h, toJSON: () => ({}) } as DOMRect
+    })
+  /** the x and y of every point in a path, in map units */
+  const pointsOf = (d: string) => [...d.matchAll(/[ML](-?[\d.]+),(-?[\d.]+)/g)].map((m) => [Number(m[1]), Number(m[2])])
+  const travels: Book[] = [
+    book('paris', { title: 'Paris Nights', color: '#112233', finished: ['2026-01-01'], places: ['Paris (France)'] }),
+    book('amsterdam', { title: 'Canal Houses', color: '#223344', finished: ['2026-01-02'], places: ['Amsterdam (Netherlands)'] }),
+    book('london', { title: 'Fog and Tea', color: '#334455', finished: ['2026-01-03'], places: ['England'] }),
+    book('ny', { title: 'Big Apple', color: '#445566', finished: ['2026-01-04'], places: ['New York (N.Y.)'] }),
+    book('oslo', { title: 'Fjords', color: '#556677', finished: ['2026-01-05'], places: ['Norway'] }),
+    book('copenhagen', { title: 'Little Mermaid', color: '#667788', finished: ['2026-01-06'], places: ['Denmark'] }),
+  ]
+
+  it('a country’s tap zone is decided by its main landmass and drawn around it (France without French Guiana)', async () => {
+    const spy = atPhoneWidth()
+    try {
+      const { svg, card } = await setup(travels)
+      const zone = (name: string) => svg.querySelector(`.world-zone[data-country="${name}"]`)
+      // mainland France is about 12 × 8 px at 390, so it gets a zone, although its box with French Guiana is 59 × 45 px
+      expect(zone('France')).not.toBeNull()
+      const fr = pointsOf(zone('France')!.getAttribute('d')!)
+      // around mainland France only (about 5° W to 8° E, so x 175 to 188), not French Guiana (x about 126)
+      expect(Math.min(...fr.map(([x]) => x))).toBeGreaterThan(170)
+      expect(Math.max(...fr.map(([x]) => x))).toBeLessThan(192)
+      // the Netherlands and the UK keep theirs
+      expect(zone('Netherlands')).not.toBeNull()
+      expect(zone('United Kingdom')).not.toBeNull()
+      // countries with overseas parts: each zone is around its mainland
+      const usa = pointsOf(zone('United States of America')!.getAttribute('d')!)
+      expect(Math.min(...usa.map(([x]) => x))).toBeGreaterThan(50) // not Alaska (x about 10 to 40)
+      const no = pointsOf(zone('Norway')!.getAttribute('d')!)
+      expect(Math.max(...no.map(([, y]) => y))).toBeGreaterThan(20) // reaches the south of Norway
+      expect(Math.min(...no.map(([, y]) => y))).toBeGreaterThan(10) // not Svalbard (y about 4 to 8)
+      expect(zone('Denmark')).not.toBeNull()
+      // the smallest is drawn last, so it wins where zones overlap: the Netherlands after France
+      const order = [...svg.querySelectorAll('.world-zone')].map((z) => z.getAttribute('data-country'))
+      expect(order.indexOf('Netherlands')).toBeGreaterThan(order.indexOf('France'))
+      // a press that lands on France's zone (on the sea west of France) opens France
+      const real = document.elementsFromPoint
+      document.elementsFromPoint = () => [zone('France')!, svg]
+      try {
+        fireEvent.click(zone('France')!, { clientX: 10, clientY: 10 })
+        expect(within(card()!).getByRole('heading').textContent).toBe('France')
+      } finally {
+        document.elementsFromPoint = real
+      }
+      // at 8× mainland France is big enough to tap by itself: no zone; the Netherlands keeps one
+      for (let i = 0; i < 3; i++) fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }))
+      expect(zone('France')).toBeNull()
+      expect(zone('Netherlands')).not.toBeNull()
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  it('keyboard focus is never lost when a zoom button becomes disabled', async () => {
+    const { svg, zoomButtons } = await setup()
+    const [zoomIn, zoomOut, whole] = zoomButtons()
+    // + at 4×: Enter takes it to 8×, + is disabled, focus moves to −
+    act(() => zoomIn.focus())
+    fireEvent.click(zoomIn)
+    fireEvent.click(zoomIn)
+    expect(document.activeElement).toBe(zoomIn)
+    fireEvent.click(zoomIn)
+    expect(zoomIn.disabled).toBe(true)
+    expect(document.activeElement).toBe(zoomOut)
+    // − at 2×: to 1×, − is disabled, focus moves to +
+    fireEvent.click(zoomOut)
+    fireEvent.click(zoomOut)
+    expect(document.activeElement).toBe(zoomOut)
+    fireEvent.click(zoomOut)
+    expect(zoomOut.disabled).toBe(true)
+    expect(document.activeElement).toBe(zoomIn)
+    // ⤢: to 1×, focus moves to +
+    fireEvent.click(zoomIn)
+    act(() => whole.focus())
+    fireEvent.click(whole)
+    expect(whole.disabled).toBe(true)
+    expect(document.activeElement).toBe(zoomIn)
+    // - on the zoomed map until 1×: the map stops being a Tab stop, focus moves to +
+    fireEvent.click(zoomIn)
+    act(() => svg.focus())
+    expect(document.activeElement).toBe(svg)
+    fireEvent.keyDown(svg, { key: '-' })
+    expect(svg.getAttribute('tabindex')).toBeNull()
+    expect(document.activeElement).toBe(zoomIn)
+  })
+
+  it('⤢ at 8× leaves keyboard focus on + (F2), and so does a Ctrl+scroll back to zoom one from −', async () => {
+    const { svg, zoomButtons } = await setup()
+    const [zoomIn, zoomOut, whole] = zoomButtons()
+    for (let i = 0; i < 3; i++) fireEvent.click(zoomIn)
+    expect(zoomIn.disabled).toBe(true)
+    act(() => whole.focus())
+    fireEvent.click(whole)
+    expect(whole.disabled).toBe(true)
+    expect(zoomIn.disabled).toBe(false)
+    expect(document.activeElement).toBe(zoomIn)
+    // − has focus at 2×; a Ctrl+scroll (or a pinch) zooms back to one: focus moves to +
+    fireEvent.click(zoomIn)
+    act(() => zoomOut.focus())
+    const ctrl = new WheelEvent('wheel', { deltaY: 1000, bubbles: true, cancelable: true })
+    Object.defineProperty(ctrl, 'ctrlKey', { value: true })
+    act(() => void svg.dispatchEvent(ctrl))
+    expect(zoomOut.disabled).toBe(true)
+    expect(document.activeElement).toBe(zoomIn)
+    // + has focus at 4×; a Ctrl+scroll to 8×: focus moves to −
+    fireEvent.click(zoomIn)
+    fireEvent.click(zoomIn)
+    act(() => zoomIn.focus())
+    const deep = new WheelEvent('wheel', { deltaY: -1000, bubbles: true, cancelable: true })
+    Object.defineProperty(deep, 'ctrlKey', { value: true })
+    act(() => void svg.dispatchEvent(deep))
+    expect(zoomIn.disabled).toBe(true)
+    expect(document.activeElement).toBe(zoomOut)
+  })
+
+  it('the open card survives the block moving to another column (a remount), but a later visit starts closed', async () => {
+    const onShowBook = vi.fn()
+    const view = render(
+      <div>
+        <BooksWorldMapCard books={shelf} onShowBook={onShowBook} />
+      </div>,
+    )
+    const svg = await screen.findByRole('group', { name: /^World map/ }, { timeout: 10000 })
+    fireEvent.click(svg.querySelector('path.world-country[data-country="France"]')!)
+    expect(document.querySelector('.world-pick h3')!.textContent).toBe('France')
+    // the dashboard crosses its one/two-column width: the block lands in another parent and remounts
+    view.rerender(
+      <section>
+        <BooksWorldMapCard books={shelf} onShowBook={onShowBook} />
+      </section>,
+    )
+    await screen.findByRole('group', { name: /^World map/ }, { timeout: 10000 })
+    expect((await screen.findByRole('heading', { level: 3, name: 'France' })).closest('.world-pick')).not.toBeNull()
+    // leaving the dashboard and coming back later: the card is closed
+    view.unmount()
+    await act(async () => {})
+    render(<BooksWorldMapCard books={shelf} onShowBook={onShowBook} />)
+    await screen.findByRole('group', { name: /^World map/ }, { timeout: 10000 })
+    expect(document.querySelector('.world-pick')).toBeNull()
   })
 })
