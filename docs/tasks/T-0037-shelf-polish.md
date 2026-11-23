@@ -242,6 +242,78 @@ Hanna wasn't asked anything (night mode). The architect took these:
 
 No design before the build (small task). The UX designer reviews the screenshots after.
 
+## Review after building (2026-11-23)
+
+(UX designer, night mode, Hanna not asked. Looked at `git diff main...HEAD -- src` and all 15
+shots of the 7 sets in `T-0037-screens/`, compared with *Done when* and with
+`T-0026-screens/open-zoom3-panned-390-lavender.jpg`.)
+
+**Verdict: matches *Done when*. Nothing must be fixed before the tester.**
+
+**The shots, set by set:**
+1. `sheet-top-390-*` [x]: the sheet stops at about 44 % from the top (373 px of 844). Title 28
+   stands whole between the header and the sheet, its clip below the tab buttons, on lavender and
+   midnight. The case behind is about as large as with the sheet at its default: no step back you
+   can see.
+2. `sheet-top-zoom3-panned-390-lavender` [x]: Title 1's red clip ends just below the tab buttons.
+   In T-0026's shot it ran under them.
+3. `reduced-close-390-lavender-1/2/3` [x]: in 1 (0.12 s) the book is on its way home and no
+   larger than when it was open. In 2 (0.31 s) the book looks home already and the shelf is still
+   at its stepped-back size. In 3 (1.8 s) the view is back at zoom 3 with the same pan. There is
+   no moment where the book looks too large, which was the point of F2.
+4. `sideways-844-*`, `sideways-844-zoom3-lavender`, `sideways-800x360-lavender` [x]: the book
+   with its clip stands whole left of the panel, below the toolbar and above the bottom edge,
+   centred in that free space. The room is dimmed. It is small (the toolbar takes half the
+   height), but it is whole and recognisable, which beats half under the panel as on `main`.
+5. `open-1280-lavender` [x]: looks like `main` (the developer's pixel comparison: 5 pixels).
+   The clip reaches up into the toolbar there, as it does on `main` (see deviation 2).
+6. `parallax-390-lavender-before/after` [x]: the two can't be told apart by eye. The ‹ ›, the
+   spines and the koala line up.
+7. `ridges-dnf-390/1280-lavender` [x]: Title 3 (did not finish, read before) has its medal with
+   no ridges across it, like Title 4 (read). Title 5 (never read) keeps its 4 ridges.
+
+**The developer's deviations:**
+1. **A clipped book's cover sits about 12 px lower** (the book and its clip are centred
+   together, not the cover alone). Accepted. Nobody will see 12 px at the top of a sheet that
+   moves. Centring the cover alone would make every clipped book smaller and step the camera
+   back past the 0.45 m that *Done when* allows. The clip staying clear of the header (shots 1
+   and 2) is what she will notice.
+2. **The sideways framing is triggered by the panel or the sheet, not the header.** Accepted.
+   The task contradicts itself here: with the header counted, 1280 × 800 and larger would not
+   "look as today", because on `main` the centred book (and its clip) already reaches the
+   two-row header band there. The trigger the developer chose picks exactly the screens the task
+   names. Once a book is moved, it is framed below the header, as asked. **Follow-up for the
+   architect, not this task:** on the computer the clip of an open book still touches the
+   toolbar (shot 5, the same as on `main`). If Hanna minds, that is a small new task.
+3. **At 667 × 375 the sheet opens lower** (its cap is 0.318, below the default 0.45, because
+   the header takes 43 % of that screen). Accepted. It is the F1 rule applied honestly: a lower
+   sheet that she can scroll, rather than a book squeezed to a sliver. That screen is a small
+   phone held sideways, not Hanna's usual view. Note for the tester and the morning: opening a
+   book there also saves the lower height as her preference, so her upright phone then opens the
+   sheet at about a third until she drags it up again. That follows the task's own rule ("what
+   is remembered becomes what she last saw"), so it is not a defect. Morning question 1 already
+   asks about the sheet's height.
+4. **The mid-rotation preference fix** (the clamped height is saved once, when the panel opens;
+   a resize or header change only applies the cap). Accepted, and needed. Without it, turning
+   the phone once lowered her remembered sheet height for good (0.558 → 0.333). The code saves
+   only when the panel is opened, and the panel is mounted again for each book, so the next book
+   still saves what she last saw.
+5. **The reduced-motion shot 3 at 1.8 s instead of 1.5 s.** Accepted. The camera waits for
+   the task's own "home" threshold (`progress` < 0.001), which comes at about 1.55 s. Shot 2
+   shows the book visually home by about 0.3 s, so with reduced motion the view stays back about
+   a second longer than the book appears to need, then jumps once. That is calm, not motion, so
+   it doesn't hold this task. If Hanna finds the pause long, a looser threshold is a one-line
+   follow-up.
+6. **The shelf in the sideways shots** (Titles 30–55 seeded as being read so a clipped book is
+   reachable under the 844 × 390 toolbar). Accepted. It is test data and changes nothing about
+   what is checked.
+
+**For the tester:** drag the sheet up while a book is open, and while turning the phone. Turn
+the phone 390 × 844 → 844 × 390 → back several times and check the remembered height. Open and
+close quickly with reduced motion, also opening a second book while the first flies home. Do a
+swipe that lifts off the canvas (the parallax must still ease back). Check the ridges on DNF
+books with and without a past read.
+
 # Build notes
 
 - **F1, the cap:** `sheetCap(header) = min(SHEET_MAX, 1 − header − MIN_BOOK_SPACE)` with
@@ -344,3 +416,6 @@ No design before the build (small task). The UX designer reviews the screenshots
   space at each step (found and fixed the saved-share bug, see *Build notes*); dragging the sheet
   follows the finger up to the cap; no console errors; no horizontal scroll at any size. Handed to
   the **UX designer** for the review after the build.
+- 2026-11-23 ux-designer: reviewed: matches *Done when*, nothing must be fixed (all 7 shot sets
+  checked; deviations 1–6 accepted, see *Review after building*; follow-up for the architect:
+  the clip on the computer still touches the toolbar, as on `main`). Handed to the **tester**.
