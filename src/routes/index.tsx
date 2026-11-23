@@ -26,6 +26,8 @@ import { Dashboard } from '#/components/Dashboard'
 import { BadgeToasts } from '#/components/NewBlocks'
 import { QuickUpdate } from '#/components/QuickUpdate'
 import { SparkleLayer, sparkle } from '#/components/Sparkles'
+import { ConfettiLayer } from '#/components/Confetti'
+import { useChallengeExtras } from '#/components/useChallengeExtras'
 import { WishCard } from '#/components/WishCard'
 import { RoomPanel, useRoom } from '#/components/RoomPanel'
 import { ChallengesPage } from '#/components/ChallengesPage'
@@ -162,6 +164,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
    */
   const books = useMemo(() => shelfBooks(allBooks), [allBooks])
   const wishes = useMemo(() => wishBooks(allBooks), [allBooks])
+  /** her own challenges, bingo swaps and goals, for the challenges-N medals (D-0060 §6) */
+  const badgeExtras = useChallengeExtras(account?.id ?? null)
   /** the wish she just bought, while the follow-up asks how she has it (T-0072) */
   const [bought, setBought] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -608,8 +612,9 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
         )}
       </main>
 
-      <BadgeToasts books={books} accountId={account?.id ?? null} ready={loaded} />
+      <BadgeToasts books={books} accountId={account?.id ?? null} ready={loaded} extras={badgeExtras} />
       <SparkleLayer />
+      <ConfettiLayer />
       {wishing && (
         <WishCard
           books={books}

@@ -1,46 +1,22 @@
 import type { Book } from './library'
 import { localDay } from './library'
-import { LETTERS, alphabetYear } from './alphabet'
 import { bingoYear } from './bingo'
-import { challengeCalendar } from './monthChallenge'
-import { periodStats } from './stats'
 
 /**
- * The trophy row on the Challenges page: what Hanna completed in a year,
- * one short line per challenge she took part in.
+ * What the Challenges page says about a year, besides the challenges
+ * themselves.
+ *
+ * Until D-0060 this was a row of trophy lines, one per challenge. The ring row
+ * at the top of the page now says the same thing in one picture — name,
+ * progress and done — so the lines are gone and only the one thing that is not
+ * a challenge with a goal is left: how many bingo cards she filled that year.
  */
-export interface Trophy {
-  id: 'goal' | 'bingo' | 'alphabet' | 'alphabetAuthors' | 'monthly'
-  label: string
-  /** completed */
-  done: boolean
-}
 
-export function yearTrophies(books: Book[], year: number, goal: number | null, today = localDay()): Trophy[] {
-  const out: Trophy[] = []
-  const read = periodStats(books, { kind: 'year', year }).books
-  if (goal) {
-    out.push({
-      id: 'goal',
-      label: read >= goal ? `Goal reached · ${read} of ${goal}` : `Goal · ${read} of ${goal}`,
-      done: read >= goal,
-    })
-  }
-  const full = bingoYear(books, year, today).finished.length
-  if (full > 0) out.push({ id: 'bingo', label: full === 1 ? '1 full bingo card' : `${full} full bingo cards`, done: true })
-  for (const [id, kind, name] of [
-    ['alphabet', 'title', 'A–Z titles'],
-    ['alphabetAuthors', 'author', 'A–Z authors'],
-  ] as const) {
-    const n = alphabetYear(books, year, today, kind).done.size
-    if (n > 0) out.push({ id, label: `${name} · ${n}/${LETTERS.length}`, done: n === LETTERS.length })
-  }
-  const months = challengeCalendar(books, year, today).filter((m) => m.item)
-  if (months.length > 0) {
-    const done = months.filter((m) => m.item?.doneOn).length
-    out.push({ id: 'monthly', label: `Monthly · ${done} of ${months.length} months`, done: done === months.length })
-  }
-  return out
+/** "1 full bingo card" / "3 full bingo cards" for a year, or null when none. */
+export function fullCardsLine(books: Book[], year: number, today = localDay(), swaps?: ReadonlyMap<string, string>): string | null {
+  const full = bingoYear(books, year, today, swaps).finished.length
+  if (full === 0) return null
+  return full === 1 ? '1 full bingo card' : `${full} full bingo cards`
 }
 
 /** The years the Challenges page can show: from the first year with a finish to this one. */

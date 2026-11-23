@@ -1,16 +1,24 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { Book } from '#/lib/library'
 import {
-  MAX_TARGET,
   RULE_LABELS,
+  RULES,
+  UNITS,
+  UNIT_LABELS,
+  andRules,
+  canCombine,
   challengeBooks,
+  challengeDone,
   cleanChallenges,
+  doneText,
+  maxTarget,
   needsValue,
   newChallengeId,
   ruleOptions,
   ruleText,
+  unitOf,
 } from '#/lib/ownChallenges'
-import type { OwnChallenge, RuleKind } from '#/lib/ownChallenges'
+import type { GoalUnit, OwnChallenge, RuleKind } from '#/lib/ownChallenges'
 import { loadChallenges, saveChallenges } from '#/server/shelf'
 
 const localKey = (accountId: string | null) => `hannas-reading-list:own-challenges:${accountId ?? 'local'}`
@@ -93,9 +101,7 @@ export function useOwnChallenges(accountId: string | null) {
   return [list, save] as const
 }
 
-const RULES = Object.keys(RULE_LABELS) as RuleKind[]
-
-/** Making (or changing) a challenge: a name, how many books, and what counts. */
+/** Making (or changing) a challenge: a name, how many books, pages or hours, and what counts. */
 export function NewChallengeForm({
   books,
   year,
@@ -115,12 +121,36 @@ export function NewChallengeForm({
 }) {
   const [name, setName] = useState(start?.name ?? preset?.name ?? '')
   const [target, setTarget] = useState(String(start?.target ?? preset?.target ?? 5))
+  const [unit, setUnit] = useState<GoalUnit>(unitOf(start ?? preset ?? {}))
   const [rule, setRule] = useState<RuleKind>(start?.rule ?? preset?.rule ?? 'any')
   const [value, setValue] = useState(start?.value ?? preset?.value ?? '')
+  // the second rule (D-0062 §3): '' means she has not added one
+  const [and, setAnd] = useState<RuleKind | ''>(start?.and ?? '')
+  const [andValue, setAndValue] = useState(start?.andValue ?? '')
   const options = useMemo(() => ruleOptions(rule, books), [rule, books])
+  const andOptions = useMemo(() => (and ? ruleOptions(and, books) : []), [and, books])
+  const formId = useId()
+  const second = useRef<HTMLSelectElement>(null)
+  const addAnd = useRef<HTMLButtonElement>(null)
   const n = Number(target)
+  const ruleOk = (r: RuleKind, v: string, list: Array<{ value: string }>) => !needsValue(r) || list.some((o) => o.value === v)
   const ok =
-    name.trim() !== '' && Number.isInteger(n) && n >= 1 && n <= MAX_TARGET && (!needsValue(rule) || options.some((o) => o.value === value))
+    name.trim() !== '' &&
+    Number.isInteger(n) &&
+    n >= 1 &&
+    n <= maxTarget(unit) &&
+    ruleOk(rule, value, options) &&
+    (!and || ruleOk(and, andValue, andOptions))
+
+  const pickRule = (next: RuleKind) => {
+    setRule(next)
+    setValue('')
+    // no rule twice, and Any book / Finish a series take no second rule
+    if (and && (!canCombine(next) || !andRules(next).includes(and))) {
+      setAnd('')
+      setAndValue('')
+    }
+  }
 
   return (
     <form
@@ -136,6 +166,9 @@ export function NewChallengeForm({
           year,
           rule,
           ...(needsValue(rule) && { value }),
+          ...(unit !== 'books' && { unit }),
+          ...(and && { and }),
+          ...(and && needsValue(and) && { andValue }),
         })
       }}
     >
@@ -145,30 +178,36 @@ export function NewChallengeForm({
           <span className="muted small-text">Name</span>
           <input className="input" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} placeholder="e.g. Fantasy year" autoFocus />
         </label>
-        <label>
-          <span className="muted small-text">Books</span>
-          <input
-            className="input"
-            type="number"
-            min={1}
-            max={MAX_TARGET}
-            inputMode="numeric"
-            value={target}
-            onChange={(e) => setTarget(e.target.value)}
-          />
-        </label>
+        {/* not one wrapping label: the number and the unit are two controls with two names */}
+        <div className="goal-amount">
+          <label className="muted small-text" htmlFor={`${formId}-amount`}>
+            How many
+          </label>
+          <span className="goal-amount-row">
+            <input
+              id={`${formId}-amount`}
+              className="input"
+              type="number"
+              min={1}
+              max={maxTarget(unit)}
+              inputMode="numeric"
+              value={target}
+              onChange={(e) => setTarget(e.target.value)}
+            />
+            <select className="input" value={unit} aria-label="Unit" onChange={(e) => setUnit(e.target.value as GoalUnit)}>
+              {UNITS.map((u) => (
+                <option key={u} value={u}>
+                  {UNIT_LABELS[u]}
+                </option>
+              ))}
+            </select>
+          </span>
+        </div>
       </div>
       <div className="field-row">
         <label>
           <span className="muted small-text">What counts</span>
-          <select
-            className="input"
-            value={rule}
-            onChange={(e) => {
-              setRule(e.target.value as RuleKind)
-              setValue('')
-            }}
-          >
+          <select className="input" value={rule} onChange={(e) => pickRule(e.target.value as RuleKind)}>
             {RULES.map((r) => (
               <option key={r} value={r}>
                 {RULE_LABELS[r]}
@@ -190,6 +229,69 @@ export function NewChallengeForm({
           </label>
         )}
       </div>
+      {canCombine(rule) &&
+        (and === '' ? (
+          <button
+            type="button"
+            className="btn small"
+            ref={addAnd}
+            onClick={() => {
+              const first = andRules(rule)[0]
+              setAnd(first)
+              setAndValue('')
+              window.setTimeout(() => second.current?.focus(), 0)
+            }}
+          >
+            ＋ and also
+          </button>
+        ) : (
+          <fieldset className="field-row and-row" aria-label="What else counts">
+            <label>
+              <span className="muted small-text">And also</span>
+              <select
+                className="input"
+                ref={second}
+                value={and}
+                onChange={(e) => {
+                  setAnd(e.target.value as RuleKind)
+                  setAndValue('')
+                }}
+              >
+                {andRules(rule).map((r) => (
+                  <option key={r} value={r}>
+                    {RULE_LABELS[r]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {needsValue(and) && (
+              <label>
+                <span className="muted small-text">Which</span>
+                <select className="input" aria-label="Which, second rule" value={andValue} onChange={(e) => setAndValue(e.target.value)}>
+                  <option value="">Pick one…</option>
+                  {andOptions.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <button
+              type="button"
+              className="btn icon small"
+              aria-label="Remove the second rule"
+              title="Remove the second rule"
+              onClick={() => {
+                setAnd('')
+                setAndValue('')
+                window.setTimeout(() => addAnd.current?.focus(), 0)
+              }}
+            >
+              ×
+            </button>
+          </fieldset>
+        ))}
       <p className="muted small-text">Sleep reads don't count.</p>
       <div className="dashboard-bar-actions">
         <button type="button" className="btn small" onClick={onCancel}>
@@ -222,7 +324,7 @@ export function OwnChallengeCard({
 }) {
   const [editing, setEditing] = useState(false)
   const counted = useMemo(() => challengeBooks(c, books), [c, books])
-  const done = counted.length
+  const done = useMemo(() => challengeDone(c, counted), [c, counted])
   const share = Math.min(1, done / c.target)
 
   if (editing)
@@ -263,7 +365,7 @@ export function OwnChallengeCard({
       </div>
       <p className="muted small-text">{ruleText(c, books)}</p>
       <p>
-        <span className="own-challenge-count">{done}</span> <span className="muted">of {c.target}</span>
+        <span className="own-challenge-count">{doneText(c, done)}</span>
         {done >= c.target && <span> · Done! 🎉</span>}
       </p>
       <div className="progress-bar" role="progressbar" aria-valuemin={0} aria-valuemax={c.target} aria-valuenow={Math.min(done, c.target)}>

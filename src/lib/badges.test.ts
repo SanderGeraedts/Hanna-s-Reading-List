@@ -350,7 +350,7 @@ describe('the twelve new badges (T-0043)', () => {
     })
   const logged = (list: string[]) => book('log', { status: 'reading', pages: 300, readingLog: Object.fromEntries(list.map((d) => [d, 0.01])) })
 
-  it('are all there with their ids, icons and names; 75 in all, 13 secret', () => {
+  it('are all there with their ids, icons and names; 78 in all, 13 secret', () => {
     const all = badges([read('a', '2026-01-02')], '2026-11-20')
     const table: Array<[string, string, string]> = [
       ['streak-365', '🌞', '365-day streak'],
@@ -367,7 +367,7 @@ describe('the twelve new badges (T-0043)', () => {
       ['birthday', '🎂', 'Birthday book'],
     ]
     for (const [id, icon, name] of table) expect(find(all, id), id).toMatchObject({ id, icon, name, earned: false })
-    expect(all).toHaveLength(75)
+    expect(all).toHaveLength(78)
     expect(all.filter((b) => b.secret)).toHaveLength(13)
     const bday = find(all, 'birthday')
     expect(bday).toMatchObject({ secret: true, riddle: 'Turn the last page on the one day a year the candles are all for you.' })
@@ -383,7 +383,10 @@ describe('the twelve new badges (T-0043)', () => {
     after('library-10', 'kinds-3')
     after('ebooks-10', 'library-10')
     after('audiobooks-10', 'ebooks-10')
-    after('spooky-season', 'monthly')
+    after('challenges-1', 'monthly')
+    after('challenges-5', 'challenges-1')
+    after('challenges-10', 'challenges-5')
+    after('spooky-season', 'challenges-10')
     after('summer-10', 'spooky-season')
     after('winter-warmer', 'summer-10')
     after('birthday', 'home-sweet-home')

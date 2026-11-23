@@ -14,7 +14,8 @@ import {
   yearReview,
 } from '#/lib/insightsMore'
 import type { HeatDay } from '#/lib/insightsMore'
-import { SQUARES, bingoLines, bingoYear, rememberCard } from '#/lib/bingo'
+import { SQUARES, SQUARE_IDS, bingoLines, bingoYear, rememberCard } from '#/lib/bingo'
+import type { BingoSwaps } from '#/lib/bingoSwap'
 import { drawSuggestion, suggestible, suggestionPool } from '#/lib/bingoSuggest'
 import { StarRating } from './StarRating'
 import { ShareButton } from './ShareButton'
@@ -379,6 +380,8 @@ export function BingoCard({
   compact = false,
   onOpen,
   onShowBook,
+  swaps,
+  onSwap,
 }: {
   books: Book[]
   onUpdate: (id: string, patch: (book: Book) => Partial<Book>) => void
@@ -389,10 +392,14 @@ export function BingoCard({
   onOpen?: () => void
   /** opens a suggested book in the book panel (T-0017) */
   onShowBook?: (id: string) => void
+  /** her own swaps (D-0063): the card is drawn with them everywhere */
+  swaps?: BingoSwaps
+  /** saves a swap; without it (the dashboard) no Swap is offered */
+  onSwap?: (slot: number, square: string) => void
 }) {
   const thisYear = new Date().getFullYear()
   const year = forYear ?? thisYear
-  const b = useMemo(() => bingoYear(books, year), [books, year])
+  const b = useMemo(() => bingoYear(books, year, undefined, swaps), [books, year, swaps])
   // suggestions for the empty squares of the card being played (T-0017)
   const playing = year === thisYear
   const suggestId = useId()
@@ -407,13 +414,18 @@ export function BingoCard({
   const suggested = pool?.find((c) => c.book.id === currentId)?.book
   const open = (id: string) => {
     setChosen(id)
+    setSwapping(false)
     setShown(drawSuggestion(suggestionPool(id, books, year) ?? [])?.shown ?? [])
     setFocusTick((n) => n + 1)
   }
+  // her own swap (D-0063): only on the card being played, while nothing is ticked
+  const [swapping, setSwapping] = useState(false)
+  const canSwap = playing && !!onSwap && b.squares.every((s) => !s.ticked)
   const close = (toSquare: boolean) => {
     const id = chosen
     setChosen(null)
     setShown([])
+    setSwapping(false)
     if (toSquare && id) squareRefs.current.get(id)?.focus()
   }
   const another = () => {
@@ -499,8 +511,9 @@ export function BingoCard({
       <div className="bingo" role="group" aria-label={`Book bingo ${year}, card ${b.card}`}>
         {b.squares.map((s) => {
           const how = s.ticked ? (s.book ? `Done: ${s.book.title}` : 'Done') : 'Ticks itself when a finished book fits'
-          // an empty square of the card being played suggests a book from her pile (T-0017)
-          if (playing && !s.ticked && suggestible(s.id)) {
+          // an empty square of the card being played suggests a book from her pile (T-0017),
+          // and on an untouched card it can be swapped for another one (T-0093, D-0063)
+          if (playing && !s.ticked && (suggestible(s.id) || canSwap)) {
             const isChosen = chosen === s.id
             return (
               <button
@@ -511,8 +524,8 @@ export function BingoCard({
                   else squareRefs.current.delete(s.id)
                 }}
                 className={`bingo-square tappable${isChosen ? ' chosen' : ''}`}
-                title="Suggest a book"
-                aria-label={`${s.label}, suggest a book`}
+                title={suggestible(s.id) ? 'Suggest a book' : 'Swap this square'}
+                aria-label={`${s.label}, ${suggestible(s.id) ? 'suggest a book' : 'swap this square'}`}
                 aria-expanded={isChosen}
                 aria-controls={isChosen ? suggestId : undefined}
                 onClick={() => (isChosen ? close(false) : open(s.id))}
@@ -552,7 +565,32 @@ export function BingoCard({
               {chosenSquare.label}
             </h3>
           </div>
-          {suggested ? (
+          {swapping ? (
+            <div className="bingo-swap">
+              <p className="muted small-text" id={`${suggestId}-swap`}>
+                Pick another square
+              </p>
+              <div className="bingo-swap-list" role="group" aria-label="Pick another square">
+                {SQUARE_IDS.filter((id) => !b.squares.some((s) => s.id === id)).map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className="btn small"
+                    onClick={() => {
+                      const slot = b.squares.findIndex((s) => s.id === chosenSquare.id)
+                      if (slot >= 0) onSwap?.(slot, id)
+                      close(true)
+                    }}
+                  >
+                    {SQUARES[id]?.label ?? id}
+                  </button>
+                ))}
+              </div>
+              <button type="button" className="btn small" onClick={() => setSwapping(false)}>
+                Cancel
+              </button>
+            </div>
+          ) : suggested ? (
             <div className="next-book">
               <Cover book={suggested} />
               <div>
@@ -584,6 +622,18 @@ export function BingoCard({
             </div>
           ) : (
             <p className="muted">No book on your shelf fits this one yet.</p>
+          )}
+          {canSwap && !swapping && (
+            <button
+              type="button"
+              className="btn small bingo-swap-start"
+              aria-label="Swap this square"
+              aria-expanded={false}
+              aria-controls={suggestId}
+              onClick={() => setSwapping(true)}
+            >
+              <span aria-hidden>⇄</span> Swap
+            </button>
           )}
           {/* last in tab order (after Open and Another one), drawn top right */}
           <button type="button" className="btn icon small bingo-suggest-close" aria-label="Close" onClick={() => close(true)}>

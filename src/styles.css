@@ -7094,3 +7094,260 @@ button.today-item:hover {
     min-height: var(--tap);
   }
 }
+
+/* ---- the challenges: rings, confetti, the four new cards and the bingo swap ----
+   T-0090 … T-0093 (D-0060, D-0061, D-0063). */
+
+/* the ring row at the top of the Challenges page (D-0060) */
+.challenge-rings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-card);
+  background: var(--surface-sunken);
+}
+.challenge-ring {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  width: 3.4rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+}
+.challenge-ring svg {
+  width: var(--tap);
+  height: var(--tap);
+  display: block;
+}
+.challenge-ring .ring-track,
+.challenge-ring .ring-fill {
+  fill: none;
+  stroke-width: 5;
+}
+.challenge-ring .ring-track {
+  stroke: rgba(255, 255, 255, 0.12);
+}
+.challenge-ring .ring-fill {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.6s ease-out;
+}
+.challenge-ring .ring-disc {
+  fill: var(--accent);
+  stroke: none;
+}
+.challenge-ring .ring-number {
+  fill: var(--text);
+  font-family: var(--serif);
+  font-size: 13px;
+  font-weight: 600;
+}
+.challenge-ring.done .ring-number {
+  fill: var(--accent-ink);
+  font-size: 15px;
+}
+.challenge-ring.done {
+  color: var(--text);
+}
+.challenge-ring-name {
+  font-size: var(--fs-tiny);
+  max-width: 5.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (min-width: 900px) {
+  .challenge-ring {
+    width: 4rem;
+  }
+  .challenge-ring svg {
+    width: 52px;
+    height: 52px;
+  }
+}
+
+/* the confetti for a finished challenge (D-0060 §4) */
+.confetti-layer {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 60;
+}
+.confetti-bit {
+  position: absolute;
+  top: -20px;
+  width: var(--w);
+  height: var(--h);
+  border-radius: 1px;
+  animation: confetti-fall 1600ms cubic-bezier(0.25, 0.6, 0.4, 1) forwards;
+}
+@keyframes confetti-fall {
+  from {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(var(--drift), var(--fall), 0) rotate(var(--spin));
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .confetti-layer {
+    display: none;
+  }
+}
+
+/* around the world */
+.world-countries {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* seasonal */
+.season-rows,
+.series-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.season-row,
+.series-row {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, 8rem) 1fr auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-small);
+  border: 1px solid transparent;
+}
+.season-row.current {
+  border-color: var(--accent-line);
+}
+.season-name,
+.series-name {
+  font-size: var(--fs-small);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.season-row.done .season-name,
+.series-row.done .series-name {
+  color: var(--text);
+}
+.season-count,
+.series-count {
+  min-width: 4.5rem;
+  text-align: right;
+}
+
+/* minutes a day: a month grid that fills up */
+.minutes-weekdays,
+.minutes-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-top: var(--space-2);
+  max-width: 17rem;
+}
+.minutes-weekdays {
+  font-size: var(--fs-tiny);
+  color: var(--muted);
+  text-align: center;
+}
+.minutes-day {
+  aspect-ratio: 1;
+  border-radius: var(--radius-small);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+}
+.minutes-day.on {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+}
+.minutes-day.future {
+  background: none;
+  border: 0;
+  position: relative;
+}
+.minutes-day.future::after {
+  content: '';
+  position: absolute;
+  inset: calc(50% - 1.5px);
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+.minutes-day.today {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.minutes-month {
+  font-family: var(--serif);
+  font-size: var(--fs-body);
+  min-width: 5.5rem;
+  text-align: center;
+}
+
+/* read the series */
+.series-add {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.series-add label {
+  display: grid;
+  gap: 0.3rem;
+}
+
+/* her own challenges: the unit next to the number, and the second rule */
+.own-challenge-form .goal-amount {
+  display: grid;
+  gap: 0.3rem;
+  align-content: start;
+}
+.goal-amount-row {
+  display: grid;
+  grid-template-columns: 1fr 6.5rem;
+  gap: var(--space-2);
+}
+.own-challenge-form .and-row {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  padding: var(--space-2);
+  margin: 0;
+}
+
+/* swapping a bingo square (D-0063) */
+.bingo-swap {
+  display: grid;
+  gap: var(--space-2);
+}
+.bingo-swap-list {
+  display: grid;
+  gap: var(--space-2);
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.bingo-swap-list .btn {
+  min-height: var(--tap);
+  text-align: left;
+}
+.bingo-swap-start {
+  margin-top: var(--space-2);
+}
+@media (min-width: 900px) {
+  .bingo-swap-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

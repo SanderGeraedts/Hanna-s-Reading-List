@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalS
 import type { FormEvent, KeyboardEvent } from 'react'
 import type { Book } from '#/lib/library'
 import { badges } from '#/lib/badges'
-import type { Badge, Tier } from '#/lib/badges'
+import type { Badge, BadgeOptions, Tier } from '#/lib/badges'
 import { birthdayOf, clearBirthday, daysInMonth, readBirthday, subscribeBirthday, writeBirthday } from '#/lib/birthday'
 import { rhythm, WEEKDAY_NAMES } from '#/lib/rhythm'
 import { sleepReadIds } from '#/lib/sleepSeries'
@@ -18,9 +18,9 @@ const dayText = (day: string) =>
  * (newest first, bronze/silver/gold rim), then locked (grey, closest to done first), then
  * hidden (a dark "?"). Tapping a medal opens one card under the grid.
  */
-export function BadgesCard({ books }: { books: Book[] }) {
+export function BadgesCard({ books, extras }: { books: Book[]; extras?: BadgeOptions }) {
   const birthday = useBirthday()
-  const all = useMemo(() => badges(books, undefined, { birthday }), [books, birthday])
+  const all = useMemo(() => badges(books, undefined, { birthday, ...extras }), [books, birthday, extras])
   // like Steam: unlocked first (newest on top), then the locked ones closest to done;
   // secret badges stay hidden until unlocked: a "?" medal at the end, with a riddle when tapped
   const earned = all.filter((b) => b.earned).sort((a, b) => (b.on ?? '').localeCompare(a.on ?? ''))
@@ -452,11 +452,14 @@ const share = (b: Badge) => (b.progress ? b.progress.done / b.progress.goal : 0)
  * which badges it has already shown; the very first time it shows none (so
  * the badges she already had don't all pop up at once).
  */
-export function BadgeToasts({ books, accountId, ready }: { books: Book[]; accountId: string | null; ready: boolean }) {
+export function BadgeToasts({ books, accountId, ready, extras }: { books: Book[]; accountId: string | null; ready: boolean; extras?: BadgeOptions }) {
   const key = `hannas-reading-list:badges-shown:${accountId ?? 'local'}`
   const [queue, setQueue] = useState<Badge[]>([])
   const birthday = useBirthday()
-  const earnedIds = useMemo(() => (ready ? badges(books, undefined, { birthday }).filter((b) => b.earned) : null), [books, ready, birthday])
+  const earnedIds = useMemo(
+    () => (ready ? badges(books, undefined, { birthday, ...extras }).filter((b) => b.earned) : null),
+    [books, ready, birthday, extras],
+  )
 
   useEffect(() => {
     if (!earnedIds) return
