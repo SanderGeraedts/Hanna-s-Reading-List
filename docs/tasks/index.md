@@ -6,7 +6,9 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 
 ## Open
 
-None.
+- [T-0060 Pick the cover before a book is added, and guess its series afterwards](T-0060-pick-the-cover-and-the-series-when-adding.md): Tapping a search result opens a row of covers from every edition of that work, best first, with 📷 Take a photo of her own copy, and she picks one before the book is added; after adding, a Part of a series? step guesses the series from her own shelf and from numbers in the title, with no AI, which she confirms with one tap or types herself.
+- [T-0061 Scan a pile of books in one go and add them together](T-0061-batch-scan-a-pile-of-books.md): The barcode scanner stays open and drops each book it reads into a list with its cover; at the end one How I have it covers the whole pile (changeable per book), each book has its own price field under D-0024's rules, and Add all puts them on the shelf, with the same ISBN counted once and a book already on the shelf or the wishlist marked.
+- [T-0062 A wishlist of books she wants to buy, kept off the shelf and out of every count](T-0062-wishlist.md): Books she wants get their own list — a Wishlist dashboard block and Add to wishlist in + Add — each with a cover, title, price and a link to buy it; a wish is a Book with a wish flag (D-0044) that syncs with her shelf but is counted nowhere, and I bought it › moves it to the shelf and asks how she has it and what it cost.
 
 ## Doing
 
