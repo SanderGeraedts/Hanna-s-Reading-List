@@ -24,7 +24,7 @@ How to use it:
   characters (T-0048), the reading garden (T-0060 … T-0065, agreed 23 November 2026 and never
   part of this queue), the bookcases & filters, book poses and cosy room extras
   (T-0051, T-0052, T-0053), and the Stats tab with year compare and the year wrap-up story
-  (T-0070 and T-0071, taken off this queue on 23 November 2026 and built together on one
+  (T-0080 and T-0081, taken off this queue on 23 November 2026 and built together on one
   branch, because the wrap-up's entry point sits on the Stats page).
 
 ## The queue

@@ -322,7 +322,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     select(null)
     navigate({ search: { view: 'garden' } })
   }, [navigate, select])
-  /** "Open ›" on My year: the Stats page (T-0070) */
+  /** "Open ›" on My year: the Stats page (T-0080) */
   const openStats = useCallback(() => {
     select(null)
     navigate({ search: { view: 'stats' } })

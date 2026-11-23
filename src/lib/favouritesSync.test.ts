@@ -232,7 +232,7 @@ describe('favourites follow the account (#182)', () => {
     expect(writes().map((w) => w.body)).toEqual([
       { add: ['myyear'], remove: [] },
       { add: ['calendar'], remove: [] },
-      // an unstar also clears the ids My year used to be saved under (T-0070, D-0060),
+      // an unstar also clears the ids My year used to be saved under (T-0080, D-0060),
       // so an old star can't come back on the next read
       { add: [], remove: ['myyear', 'count', 'goal', 'heatmap', 'months', 'flower', 'rhythm', 'breakdown', 'records'] },
     ])

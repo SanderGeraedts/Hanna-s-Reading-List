@@ -14,7 +14,7 @@ import { WrappedCard } from './DashboardMore'
 import { YearStory } from './YearStory'
 
 /**
- * The Stats page (T-0070, D-0060): everything about how much Hanna read, for
+ * The Stats page (T-0080, D-0060): everything about how much Hanna read, for
  * one year at a time, with another year's value beside each number.
  *
  * One year picker and one "compare with" picker at the top drive every block
@@ -41,7 +41,7 @@ export function StatsPage({ books, accountId, onShowBook, onOpenGoal }: Props) {
   const years = useMemo(() => readingYears(books), [books])
   const [year, setYear] = useState<StatsYear>(years[0])
   const [compare, setCompare] = useState<number | null>(null)
-  // the wrap-up story she opened with ▶ Play (T-0071); null: no story open
+  // the wrap-up story she opened with ▶ Play (T-0081); null: no story open
   const [storyYear, setStoryYear] = useState<number | null>(null)
   const others = compareChoices(years, year)
   // a compare year stays what she set it to, even when she then looks at that year itself

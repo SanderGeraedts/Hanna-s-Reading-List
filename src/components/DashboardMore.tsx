@@ -297,7 +297,7 @@ export function SpiceCard({ books, onShowBook, switcher }: Props & { switcher?: 
 // ---- year in review ----------------------------------------------------------------
 
 /**
- * "Year in review" (T-0071, D-0061): the year, its headline numbers and one
+ * "Year in review" (T-0081, D-0061): the year, its headline numbers and one
  * ▶ Play button that opens the full-screen story. On the dashboard it has its
  * own year select; on the Stats page the page's picker says which year, so the
  * select is left out. Nothing opens until she presses Play (D-0013).

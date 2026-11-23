@@ -8,7 +8,7 @@ import { periodStats } from './stats'
 import { cleanRating } from './ratings'
 
 /**
- * The year wrap-up story (T-0071, D-0061): her year as a handful of slides she
+ * The year wrap-up story (T-0081, D-0061): her year as a handful of slides she
  * taps through, for this year so far or any past year. One slide is one fact;
  * a fact the year has nothing for is left out, so a quiet year is short rather
  * than full of zeros. The last slide sums it up and is the one she shares.

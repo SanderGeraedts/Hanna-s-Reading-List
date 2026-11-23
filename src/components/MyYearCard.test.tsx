@@ -26,7 +26,7 @@ vi.mock('#/server/favourites', () => ({ loadFavourites: async () => ({ kept: fal
 const { Dashboard } = await import('./Dashboard')
 
 /**
- * "My year" on the dashboard (T-0070, D-0060): the one block about her reading
+ * "My year" on the dashboard (T-0080, D-0060): the one block about her reading
  * left there, and the blocks that moved to the Stats page are gone.
  */
 

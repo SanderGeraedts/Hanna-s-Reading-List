@@ -24,7 +24,7 @@ vi.mock('#/server/favourites', () => ({ loadFavourites: async () => ({ kept: fal
 const { StatsPage } = await import('./StatsPage')
 
 /**
- * The Stats page (T-0070): the year picker and "Compare with" drive every
+ * The Stats page (T-0080): the year picker and "Compare with" drive every
  * number on the page, All time has nothing to compare with, and a year with
  * no books says so instead of showing zeros everywhere.
  */

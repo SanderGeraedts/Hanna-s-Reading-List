@@ -21,7 +21,7 @@ const isBlock = (id: unknown): id is BlockId => typeof id === 'string' && Object
 
 /**
  * A saved list made safe: only known blocks, each once, in her order, at most
- * one per block. A star on a block that became another one (T-0070, D-0060)
+ * one per block. A star on a block that became another one (T-0080, D-0060)
  * reads as that block, so a star she set before a move is not lost.
  */
 export function cleanFavourites(raw: unknown): BlockId[] {
@@ -32,7 +32,7 @@ export function cleanFavourites(raw: unknown): BlockId[] {
 /**
  * What an unstar sends to the account: the block, and the ids it used to be
  * saved under. Without them an old id would sit on the account for ever and
- * star the block again on the next read (T-0070).
+ * star the block again on the next read (T-0080).
  */
 export const unstarIds = (remove: readonly BlockId[]): string[] => [
   ...new Set(remove.flatMap((id) => [id as string, ...oldNamesOf(id)])),

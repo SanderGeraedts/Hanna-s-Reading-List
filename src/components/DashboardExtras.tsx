@@ -127,7 +127,7 @@ export function GoalCard({
   year?: number
   /** on the dashboard and the Stats page: open the Challenges page */
   onOpen?: () => void
-  /** on the Stats page (T-0070): shown only; the goal is set on the Challenges page */
+  /** on the Stats page (T-0080): shown only; the goal is set on the Challenges page */
   readOnly?: boolean
 }) {
   const today = new Date()
@@ -385,7 +385,7 @@ export function MonthlyChart({
   books: Book[]
   year: number
   bare?: boolean
-  /** another year, drawn behind in the quiet tone (the Stats page, T-0070) */
+  /** another year, drawn behind in the quiet tone (the Stats page, T-0080) */
   compare?: number
 }) {
   const counts = useMemo(() => monthlyCounts(books, year), [books, year])

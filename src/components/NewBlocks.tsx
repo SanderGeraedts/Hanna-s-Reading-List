@@ -551,7 +551,7 @@ export function CoverWallCard({ books, onShowBook }: { books: Book[]; onShowBook
 
 /**
  * When I read most: reading days per weekday and per month. On the dashboard
- * that was the last twelve months and this year; on the Stats page (T-0070)
+ * that was the last twelve months and this year; on the Stats page (T-0080)
  * both follow the year she picked, or all of her reading for All time.
  */
 export function RhythmCard({ books, year: forYear }: { books: Book[]; year?: StatsYear }) {

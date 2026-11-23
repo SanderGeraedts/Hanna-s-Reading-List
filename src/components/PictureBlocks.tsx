@@ -22,7 +22,7 @@ export const PETAL_COLOURS = ['#e8a0b4', '#f2c46d', '#9fc9e6', '#b8d98f', '#c9a6
 
 /**
  * Your genres as a flower (reading in pictures, part 2). On the Stats page
- * (T-0070) the page's own year picker says which year, so the card's switch
+ * (T-0080) the page's own year picker says which year, so the card's switch
  * is left out and a compare year puts the other year's count beside each
  * genre in the legend.
  */
@@ -101,7 +101,7 @@ export function GenreFlowerCard({ books, year: forYear, compare }: { books: Book
 /**
  * Pages (or listening hours) per month, one year next to another (reading in
  * pictures, part 3). On the dashboard that was always this year next to last
- * year; on the Stats page (T-0070) it is the year she picked next to the year
+ * year; on the Stats page (T-0080) it is the year she picked next to the year
  * she compares with, and only one year's bars when she compares with nothing.
  */
 export function PagesPerMonthCard({ books, year: forYear, compare }: { books: Book[]; year?: number; compare?: number }) {

@@ -9,7 +9,7 @@ import { ShareButton } from './ShareButton'
 import { StarRating } from './StarRating'
 
 /**
- * The year wrap-up story (T-0071, D-0061): her year full screen, one fact per
+ * The year wrap-up story (T-0081, D-0061): her year full screen, one fact per
  * slide, tapped through at her own pace. It opens only from ▶ Play, nothing
  * advances by itself, and the last slide is the one she shares as a picture
  * (drawn by the existing shareImage code).

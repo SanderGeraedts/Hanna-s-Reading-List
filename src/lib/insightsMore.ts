@@ -118,7 +118,7 @@ export interface Heatmap {
  * doesn't make every other day pale.
  *
  * Without a year it covers the last twelve months, as the dashboard showed it.
- * With one (the Stats page, T-0070) it covers that whole year, up to today for
+ * With one (the Stats page, T-0080) it covers that whole year, up to today for
  * the year she is in.
  */
 export function heatmap(books: Book[], now = new Date(), year?: number): Heatmap {

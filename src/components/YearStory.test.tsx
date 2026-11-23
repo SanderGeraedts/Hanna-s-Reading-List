@@ -26,7 +26,7 @@ const { YearStory } = await import('./YearStory')
 const { Dashboard } = await import('./Dashboard')
 
 /**
- * The year wrap-up story (T-0071): ▶ Play opens it and nothing else does
+ * The year wrap-up story (T-0081): ▶ Play opens it and nothing else does
  * (D-0013), a tap or a key moves one slide on, the last slide stays put until
  * she chooses, and Escape gives the focus back to ▶ Play.
  */

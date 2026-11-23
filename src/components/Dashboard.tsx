@@ -108,7 +108,7 @@ interface DashboardProps extends Props {
   onOpenCreatures?: (step?: 'choose' | 'hatch' | 'duplicate') => void
   /** "Open ›" on the Garden block: the Garden tab (T-0065) */
   onOpenGarden?: () => void
-  /** "Open ›" on My year: the Stats page (T-0070) */
+  /** "Open ›" on My year: the Stats page (T-0080) */
   onOpenStats?: () => void
 }
 
@@ -163,7 +163,7 @@ type Drag = { id: BlockId; dx: number; dy: number } & (
 
 export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChallenges, onOpenCalendar, onAdd, onOpenCreatures, onOpenGarden, onOpenStats }: DashboardProps) {
   const open = (section: ChallengeSection) => (onOpenChallenges ? () => onOpenChallenges(section) : undefined)
-  // the year wrap-up story she opened with ▶ Play (T-0071); null: no story open
+  // the year wrap-up story she opened with ▶ Play (T-0081); null: no story open
   const [storyYear, setStoryYear] = useState<number | null>(null)
   const [layout, setLayout] = useDashboardLayout(accountId)
   const [arranging, setArranging] = useState(false)

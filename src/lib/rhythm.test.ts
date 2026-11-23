@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { rhythm } from './rhythm'
 
-describe('the Stats page’s scope (T-0070)', () => {
+describe('the Stats page’s scope (T-0080)', () => {
   const books = [
     { id: 'a', title: 'A', authors: [], status: 'read', color: '#000', addedAt: 0, readingLog: { '2025-06-02': 1, '2026-06-01': 1, '2026-06-08': 1 } },
   ] as unknown as Parameters<typeof rhythm>[0]

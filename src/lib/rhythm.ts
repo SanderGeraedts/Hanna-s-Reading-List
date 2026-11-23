@@ -6,7 +6,7 @@ import { localDay } from './library'
  * has days with reading.
  *
  * On the dashboard it was weekdays over the last twelve months and months of
- * this year (`scope: 'recent'`). On the Stats page (T-0070) both follow the
+ * this year (`scope: 'recent'`). On the Stats page (T-0080) both follow the
  * year she picked, or all of her reading for All time (`scope: 'period'`).
  */
 

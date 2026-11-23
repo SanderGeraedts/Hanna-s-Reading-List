@@ -231,7 +231,7 @@ describe('the Creatures block (T-0029)', () => {
   })
 })
 
-describe('the blocks that moved to the Stats page (T-0070, D-0060)', async () => {
+describe('the blocks that moved to the Stats page (T-0080, D-0060)', async () => {
   const { MERGED_INTO, favouriteColumns } = await import('./dashboardLayout')
   const MOVED = ['count', 'goal', 'heatmap', 'months', 'flower', 'rhythm', 'breakdown', 'records'] as const
 

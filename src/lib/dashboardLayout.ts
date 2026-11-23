@@ -92,7 +92,7 @@ const HOME = Object.fromEntries(
 ) as Record<BlockId, SectionId>
 
 /**
- * Blocks that became another block (T-0070, D-0060). A saved layout or a
+ * Blocks that became another block (T-0080, D-0060). A saved layout or a
  * starred favourite that names one of these keeps working: it reads as the
  * block that took its place, and the duplicates fold into one.
  *

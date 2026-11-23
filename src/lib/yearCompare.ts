@@ -3,7 +3,7 @@ import type { Period } from './stats'
 import { periodStats } from './stats'
 
 /**
- * The Stats page's year picker and its "compare with" year (T-0070, D-0060).
+ * The Stats page's year picker and its "compare with" year (T-0080, D-0060).
  *
  * One year (or all time) drives every number and chart on the page; a second
  * year, when she picks one, is shown beside each number as "↑ 12 vs 2025".

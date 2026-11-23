@@ -6,7 +6,7 @@ import { useYearGoal } from './useYearGoal'
 import { OpenLink } from './OpenLink'
 
 /**
- * "My year" (T-0070, D-0060): the one block about her reading that stays on
+ * "My year" (T-0080, D-0060): the one block about her reading that stays on
  * the dashboard. Books, pages, hours and the goal ring for this year, and
  * "Open ›" to the Stats page, where the charts now live. "Books read" and
  * "Reading goal" became part of it; the goal is still set on the Challenges
