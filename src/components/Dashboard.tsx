@@ -67,6 +67,8 @@ import { TropesCard, tropesBlock } from './TropesCard'
 import { badges, newBadges } from '#/lib/badges'
 import { CreaturesCard } from './CreaturesCard'
 import { useCreatures } from './creatures/CreaturesContext'
+import { useGarden } from './garden/useGarden'
+import { GardenCard } from './GardenCard'
 
 const BADGES_SEEN = 'hannas-reading-list:badges-seen'
 /** the month whose wrap-up was opened or put away under Waiting for you (yyyy-mm) */
@@ -107,6 +109,8 @@ interface DashboardProps extends Props {
    * oldest egg, `duplicate`: the choice for a duplicate (a Hatch or Choose button)
    */
   onOpenCreatures?: (step?: 'choose' | 'hatch' | 'duplicate') => void
+  /** "Open ›" on the Garden block: the Garden tab (T-0065) */
+  onOpenGarden?: () => void
 }
 
 export interface PeriodPick {
@@ -158,7 +162,7 @@ type Drag = { id: BlockId; dx: number; dy: number } & (
   | { place: 'favourites'; drop: FavDrop | null }
 )
 
-export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChallenges, onOpenCalendar, onAdd, onOpenCreatures }: DashboardProps) {
+export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChallenges, onOpenCalendar, onAdd, onOpenCreatures, onOpenGarden }: DashboardProps) {
   const open = (section: ChallengeSection) => (onOpenChallenges ? () => onOpenChallenges(section) : undefined)
   const now = new Date()
   // the period picked under "Books read"; the charts and records follow it
@@ -258,6 +262,8 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
     : undefined
   // her creature (T-0029): the welcome egg and the newest level-up wait here too, never in a pop-up
   const creatures = useCreatures(books)
+  // her garden (T-0065): the block shows this year's, and keeps out of the way before the first plant
+  const garden = useGarden(books)
   const hatchEgg = onOpenCreatures ? () => onOpenCreatures('choose') : undefined
   const creatureEgg = creatures.c.egg && hatchEgg ? { onHatch: hatchEgg } : undefined
   // milestone eggs and duplicates waiting for her choice (T-0030), only once she has her first pet
@@ -317,6 +323,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
         onHatchMilestone={hatchMilestone}
       />
     ),
+    garden: <GardenCard garden={garden.garden} onOpen={onOpenGarden} />,
     badges: <BadgesCard books={books} />,
     tropes: <TropesCard books={books} onShowBook={onShowBook} />,
     covers: <CoverWallCard books={books} onShowBook={onShowBook} />,
@@ -371,6 +378,7 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
     !(
       (id === 'waiting' && nothingWaiting) ||
       (id === 'creatures' && !creatures.c.pet && !creatures.c.egg) ||
+      (id === 'garden' && garden.garden.plants === 0) ||
       (id === 'tropes' && noTropes)
     )
   const columnsOf = (section: SectionId): BlockId[][] =>
