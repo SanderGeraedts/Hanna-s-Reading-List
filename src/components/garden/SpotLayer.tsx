@@ -4,6 +4,7 @@ import { HOLD_MS, SPOTS_PER_BED } from '#/lib/garden/numbers'
 import { plantLabel, putHereLabel, spotLabel } from '#/lib/garden/words'
 import { stepSpot } from '#/lib/garden/tend'
 import type { Spot } from '#/lib/garden/spots'
+import type { Newness } from '#/lib/garden/seen'
 
 /**
  * The buttons she tends with (T-0063 §1), over either drawing: one per spot, at
@@ -27,9 +28,13 @@ export interface SpotLayerProps {
   onCancel: () => void
   /** a touch screen: a plant lifts after a short press instead of at once */
   coarse?: boolean
+  /** the plants that are new or have grown since she last looked (T-0066) */
+  news?: ReadonlyMap<string, Newness>
+  /** the plant she has just found by searching */
+  found?: string | null
 }
 
-export function SpotLayer({ year, place, picked, onPick, onDrop, onCancel, coarse }: SpotLayerProps) {
+export function SpotLayer({ year, place, picked, onPick, onDrop, onCancel, coarse, news, found }: SpotLayerProps) {
   const layer = useRef<HTMLDivElement>(null)
   const drag = useRef<{ id: string; timer: ReturnType<typeof setTimeout> | null; lifted: boolean; from: { x: number; y: number } } | null>(null)
 
@@ -101,13 +106,28 @@ export function SpotLayer({ year, place, picked, onPick, onDrop, onCancel, coars
             const at: Spot = { bed, spot }
             const plant = year.plants.find((p) => p.bed === bed && p.spot === spot) ?? null
             const { left, top } = place(bed, spot)
-            const label = picked ? putHereLabel(picked, bed, spot) : plant ? plantLabel(plant) : spotLabel(bed, spot)
+            const fresh = plant ? news?.get(plant.id) : undefined
+            // what a screen reader hears: the glow is a picture, these words are the same news
+            const label = picked
+              ? putHereLabel(picked, bed, spot)
+              : plant
+                ? `${plantLabel(plant)}${fresh === 'new' ? ' · new' : fresh === 'grown' ? ' · grown since you last looked' : ''}`
+                : spotLabel(bed, spot)
             return (
               <button
                 key={spot}
                 type="button"
                 data-spot={`${bed}:${spot}`}
-                className={`garden-spot${plant ? ' has-plant' : ''}${picked?.id === plant?.id && plant ? ' picked' : ''}${picked ? ' choosing' : ''}`}
+                className={[
+                  'garden-spot',
+                  plant ? 'has-plant' : '',
+                  picked?.id === plant?.id && plant ? 'picked' : '',
+                  picked ? 'choosing' : '',
+                  fresh ? `fresh-${fresh}` : '',
+                  plant && found === plant.id ? 'found' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
                 style={{ left: `${left}%`, top: `${top}%` }}
                 aria-label={label}
                 aria-pressed={plant && picked?.id === plant.id ? true : undefined}

@@ -12,6 +12,7 @@ import {
   BUTTERFLY_PER_BLOOM,
   EARLIER_YEAR,
   GARDEN_ITEMS,
+  itemSpec,
   GROWN_FROM,
   GROW_READING_DAYS,
   REREAD_CAP,
@@ -103,6 +104,8 @@ export interface Garden {
   /** finished books all time, which is what unlocks the garden items */
   finished: number
   unlocked: GardenItemId[]
+  /** the unlocked items that show right now: a seasonal one only in its own season (T-0066) */
+  available: GardenItemId[]
   /** the next item to unlock, or null when she has them all */
   next: NextUnlock | null
 }
@@ -235,7 +238,12 @@ export function deriveGarden(books: readonly Book[], log: readonly ChoiceEvent[]
   years.sort((a, b) => (a.year === EARLIER_YEAR ? 1 : b.year === EARLIER_YEAR ? -1 : b.year - a.year))
 
   const finished = first.size
-  const unlocked = GARDEN_ITEMS.filter((i) => finished >= i.books).map((i) => i.id)
+  const unlocked: GardenItemId[] = GARDEN_ITEMS.filter((i) => finished >= i.books).map((i) => i.id)
+  // a seasonal item is unlocked for good, but only stands in the garden in its own season
+  const available = unlocked.filter((id) => {
+    const season_ = itemSpec(id).season
+    return season_ === null || season_ === season
+  })
   const nextItem = GARDEN_ITEMS.find((i) => finished < i.books)
   return {
     today,
@@ -244,6 +252,7 @@ export function deriveGarden(books: readonly Book[], log: readonly ChoiceEvent[]
     plants: first.size,
     finished,
     unlocked,
+    available,
     next: nextItem ? { item: nextItem.id, name: nextItem.name, books: nextItem.books, toGo: nextItem.books - finished } : null,
   }
 }

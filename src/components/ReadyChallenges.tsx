@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import type { Book } from '#/lib/library'
+import { ChallengeFits } from './ChallengeFits'
+import { seasonFits, seasonNone, worldFits, worldNone } from '#/lib/challengeFits'
 import { localDay } from '#/lib/library'
 import { worldChallenge } from '#/lib/worldChallenge'
 import { seasonChallenge, seasonsDone } from '#/lib/seasonChallenge'
@@ -25,8 +27,9 @@ function Bar({ done, goal, label }: { done: number; goal: number; label: string 
 
 // ---- around the world ---------------------------------------------------------------
 
-export function WorldChallengeCard({ books, year }: { books: Book[]; year: number }) {
+export function WorldChallengeCard({ books, year, onShowBook }: { books: Book[]; year: number; onShowBook?: (id: string) => void }) {
   const w = useMemo(() => worldChallenge(books, year), [books, year])
+  const fits = useMemo(() => worldFits(books, year), [books, year])
   return (
     <section className="dash-card world-challenge" aria-labelledby="challenge-world-title">
       <div className="dash-card-head">
@@ -45,15 +48,28 @@ export function WorldChallengeCard({ books, year }: { books: Book[]; year: numbe
           ))}
         </ul>
       )}
+      {!w.complete && <ChallengeFits fits={fits} none={worldNone(w.goal - w.done)} onShowBook={onShowBook} />}
     </section>
   )
 }
 
 // ---- seasonal -----------------------------------------------------------------------
 
-export function SeasonChallengeCard({ books, year, today = localDay() }: { books: Book[]; year: number; today?: string }) {
+export function SeasonChallengeCard({
+  books,
+  year,
+  today = localDay(),
+  onShowBook,
+}: {
+  books: Book[]
+  year: number
+  today?: string
+  onShowBook?: (id: string) => void
+}) {
   const seasons = useMemo(() => seasonChallenge(books, year, today), [books, year, today])
   const done = seasonsDone(seasons)
+  const fits = useMemo(() => seasonFits(books, year, today), [books, year, today])
+  const short = seasons.filter((s) => !s.complete).map((s) => s.label.toLowerCase())
   return (
     <section className="dash-card season-challenge" aria-labelledby="challenge-season-title">
       <div className="dash-card-head">
@@ -74,6 +90,7 @@ export function SeasonChallengeCard({ books, year, today = localDay() }: { books
           )
         })}
       </ul>
+      {done < 4 && <ChallengeFits fits={fits} none={seasonNone(short)} onShowBook={onShowBook} />}
     </section>
   )
 }

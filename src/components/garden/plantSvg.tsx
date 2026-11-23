@@ -116,10 +116,12 @@ function Tree({ kind, h, leaf, season, flowers, flowerColour, compact }: ShapePr
       ) : kind.id === 'birch' ? (
         <ellipse cx={0} cy={round(crownY - crownH * 0.52)} rx={round(w * 0.42)} ry={round(crownH * 0.55)} fill={leaf} />
       ) : (
+        // the two side blobs reach down to the top of the trunk, so the crown
+        // sits on the tree instead of hovering over a gap
         [
-          { x: 0, y: crownY - crownH * 0.68, r: w * 0.46 },
-          { x: -w * 0.33, y: crownY - crownH * 0.4, r: w * 0.34 },
-          { x: w * 0.33, y: crownY - crownH * 0.42, r: w * 0.34 },
+          { x: 0, y: crownY - crownH * 0.62, r: w * 0.5 },
+          { x: -w * 0.33, y: crownY - crownH * 0.3, r: w * 0.38 },
+          { x: w * 0.33, y: crownY - crownH * 0.32, r: w * 0.38 },
         ].map((c, i) => <circle key={i} cx={round(c.x)} cy={round(c.y)} r={round(c.r)} fill={leaf} />)
       )}
       {!compact && leaf !== null && flowers && season === 'spring' && (

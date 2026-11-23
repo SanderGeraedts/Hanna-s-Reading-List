@@ -46,10 +46,10 @@ describe('how long a book is', () => {
 })
 
 describe('what a book becomes', () => {
-  it('makes a thick fantasy book an oak and a shorter one a sapling', () => {
+  it('makes a thick fantasy book an oak, a middling one a sapling and a short one bluebells', () => {
     expect(kindOf(book({ genres: ['Fantasy'], pages: 700 })).id).toBe('oak')
     expect(kindOf(book({ genres: ['Fantasy'], pages: 300 })).id).toBe('sapling')
-    expect(kindOf(book({ genres: ['Fantasy'], pages: 120 })).id).toBe('sapling')
+    expect(kindOf(book({ genres: ['Fantasy'], pages: 120 })).id).toBe('bluebells')
   })
 
   it('makes a romance a rose, climbing when it is long and wild when it is short', () => {
@@ -60,9 +60,10 @@ describe('what a book becomes', () => {
 
   it('makes a thriller, a crime story and a horror book dark and thorny', () => {
     expect(kindOf(book({ genres: ['Thriller'], pages: 600 })).id).toBe('bramble')
-    expect(kindOf(book({ genres: ['Crime'], pages: 300 })).id).toBe('thornbush')
-    expect(kindOf(book({ genres: ['Horror'], pages: 150 })).id).toBe('thornbush')
+    expect(kindOf(book({ genres: ['Crime'], pages: 300 })).id).toBe('blackthorn')
+    expect(kindOf(book({ genres: ['Horror'], pages: 150 })).id).toBe('toadstools')
     expect(kindOf(book({ genres: ['Mystery'], pages: 300 })).thorns).toBe(true)
+    expect(kindOf(book({ genres: ['Thriller'], pages: 600 })).thorns).toBe(true)
   })
 
   it('makes a short book a small flower', () => {
@@ -73,7 +74,7 @@ describe('what a book becomes', () => {
 
   it('follows the first genre the catalogue knows, not the first genre on the book', () => {
     // "Fiction" is not a shelf genre the catalogue maps; Romance decides
-    expect(kindOf(book({ genres: ['Adventure', 'Romance'], pages: 300 })).id).toBe('sunflower')
+    expect(kindOf(book({ genres: ['Adventure', 'Romance'], pages: 300 })).id).toBe('juniper')
     expect(kindOf(book({ genres: ['Fiction' as string, 'Romance'], pages: 300 })).id).toBe('rose')
   })
 

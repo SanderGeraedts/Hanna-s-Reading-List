@@ -1,3 +1,5 @@
+import type { Season } from './seasons'
+
 /**
  * Every number of the reading garden in one place (T-0060, D-0050 §3, §4, §7,
  * §8, D-0051 §6). Tunable here without a new decision; the rules around them
@@ -44,23 +46,60 @@ export const LONG_PAGES = 450
 
 // ---- garden items (D-0050 §8) -------------------------------------------------------------
 
+/**
+ * A garden item. `season` is null for an item that stands all year; a seasonal
+ * item is unlocked by reading like any other and is never lost, but only shows
+ * in its own season.
+ */
+export interface GardenItemSpec {
+  readonly id: string
+  readonly name: string
+  readonly books: number
+  readonly season: Season | null
+}
+
+/** In order of what unlocks first: `next` reads this list from the front. */
 export const GARDEN_ITEMS = [
-  { id: 'path', name: 'Path', books: 5 },
-  { id: 'bench', name: 'Bench', books: 10 },
-  { id: 'birdbath', name: 'Birdbath', books: 15 },
-  { id: 'pond', name: 'Pond', books: 25 },
-  { id: 'lanterns', name: 'Lanterns', books: 35 },
-  { id: 'greenhouse', name: 'Greenhouse', books: 50 },
-] as const
+  { id: 'path', name: 'Path', books: 5, season: null },
+  { id: 'bench', name: 'Bench', books: 10, season: null },
+  { id: 'birdbath', name: 'Birdbath', books: 15, season: null },
+  { id: 'seedlings', name: 'Seed tray', books: 20, season: 'spring' },
+  { id: 'pond', name: 'Pond', books: 25, season: null },
+  { id: 'parasol', name: 'Parasol', books: 30, season: 'summer' },
+  { id: 'lanterns', name: 'Lanterns', books: 35, season: null },
+  { id: 'leaves', name: 'Leaf pile', books: 40, season: 'autumn' },
+  { id: 'greenhouse', name: 'Greenhouse', books: 50, season: null },
+  { id: 'snowman', name: 'Snowman', books: 60, season: 'winter' },
+  { id: 'fountain', name: 'Fountain', books: 75, season: null },
+  { id: 'arch', name: 'Rose arch', books: 100, season: null },
+  { id: 'swing', name: 'Tree swing', books: 150, season: null },
+  { id: 'dovecote', name: 'Dovecote', books: 200, season: null },
+  { id: 'gate', name: 'Garden gate', books: 300, season: null },
+] as const satisfies readonly GardenItemSpec[]
 
 export type GardenItemId = (typeof GARDEN_ITEMS)[number]['id']
 
 export const ITEM_IDS: readonly GardenItemId[] = GARDEN_ITEMS.map((i) => i.id)
 
-/** Slots an item can stand in, along the bottom of a year garden. */
+export const itemSpec = (id: GardenItemId): GardenItemSpec => GARDEN_ITEMS.find((i) => i.id === id) ?? GARDEN_ITEMS[0]
+
+/**
+ * Places an item can stand in, along the bottom of a year garden: six in a
+ * small garden, one more per bed after the first, up to fourteen. A big
+ * reading year holds more furniture; a small one stays uncluttered (T-0066).
+ */
 export const ITEM_SLOTS = 6
+export const MAX_ITEM_SLOTS = 14
+export const itemSlotsFor = (beds: number) => Math.max(ITEM_SLOTS, Math.min(MAX_ITEM_SLOTS, ITEM_SLOTS - 1 + Math.max(1, beds)))
 
 export const isItemId = (x: unknown): x is GardenItemId => typeof x === 'string' && (ITEM_IDS as readonly string[]).includes(x)
+
+// ---- the cover signs (T-0066) ---------------------------------------------------------------
+
+/** A plant finished within this many days gets a little sign with the book's cover. */
+export const SIGN_DAYS = 30
+/** Never more than this many signs in one garden, so a busy month stays fast. */
+export const SIGN_MAX = 8
 
 // ---- visitors (D-0050 §9, T-0063 §3) -------------------------------------------------------
 

@@ -1,5 +1,5 @@
 import type { ChoiceEvent } from '../creatures/choices'
-import { EARLIER_YEAR, ITEM_SLOTS, SPOTS_PER_BED, isItemId } from './numbers'
+import { EARLIER_YEAR, MAX_ITEM_SLOTS, SPOTS_PER_BED, isItemId } from './numbers'
 import type { GardenItemId } from './numbers'
 
 /**
@@ -72,7 +72,8 @@ export function savedItems(log: readonly ChoiceEvent[]): Map<number, Map<GardenI
     if (!Number.isInteger(year) || year < 0 || !isItemId(item)) continue
     if (num((e as { off?: unknown }).off) === 1) continue
     const slot = num((e as { slot?: unknown }).slot)
-    if (slot === null || !Number.isInteger(slot) || slot < 0 || slot >= ITEM_SLOTS) continue
+    // the widest strip any garden can have: a slot is checked against the year's own width where it is used
+    if (slot === null || !Number.isInteger(slot) || slot < 0 || slot >= MAX_ITEM_SLOTS) continue
     let year_ = out.get(year)
     if (!year_) out.set(year, (year_ = new Map()))
     year_.set(item, slot)

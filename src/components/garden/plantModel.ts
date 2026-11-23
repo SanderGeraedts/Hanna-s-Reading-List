@@ -171,22 +171,32 @@ function plantParts(look: PlantLook, q: Quality): Part[] {
       const w = Math.max(0.24, Math.min(1.05, crown * 0.72))
       add(cylinder(q), kind.stem, place(0, trunk / 2, 0, 0.12 + h * 0.03, trunk, 0.12 + h * 0.03))
       if (leaf === null) {
-        // winter: bare branches
-        for (const [dx, dz, rz] of [
-          [0.18, 0, 0.5],
-          [-0.16, 0.1, -0.5],
-          [0, -0.16, 0.2],
-        ])
-          add(cylinder(q), kind.stem, place(dx * w, trunk + crown * 0.3, dz * w, 0.05, crown * 0.7, 0.05, 0, rz))
+        // winter: bare branches, each one starting at the top of the trunk (a
+        // branch is rotated about its middle, so its foot has to be worked back)
+        for (const [dz, rz] of [
+          [0.1, 0.5],
+          [-0.12, -0.5],
+          [0, 0.2],
+        ]) {
+          const len = crown * 0.75
+          const half = len / 2
+          add(
+            cylinder(q),
+            kind.stem,
+            place(-half * Math.sin(rz), trunk + half * Math.cos(rz) - 0.04, dz * w * 0.3, 0.05, len, 0.05, 0, rz),
+          )
+        }
       } else if (kind.id === 'pine') {
         for (let i = 0; i < (look.simple ? 1 : 3); i++)
           add(cone(q), leaf, place(0, trunk + (crown * (i + 0.5)) / 3, 0, w * (1 - i * 0.2), crown * 0.62, w * (1 - i * 0.2)))
       } else if (look.simple) {
         add(sphere(q), leaf, place(0, trunk + crown * 0.5, 0, w, crown, w))
       } else {
-        add(sphere(q), leaf, place(0, trunk + crown * 0.66, 0, w * 0.95, crown * 0.8, w * 0.95))
-        add(sphere(q), leaf, place(-w * 0.3, trunk + crown * 0.4, 0.05, w * 0.6, crown * 0.5, w * 0.6))
-        add(sphere(q), leaf, place(w * 0.3, trunk + crown * 0.42, -0.05, w * 0.6, crown * 0.5, w * 0.6))
+        // the crown is as tall as the crown itself and centred over its middle,
+        // so its underside reaches the top of the trunk rather than floating above it
+        add(sphere(q), leaf, place(0, trunk + crown * 0.5, 0, w * 0.95, crown * 1.04, w * 0.95))
+        add(sphere(q), leaf, place(-w * 0.3, trunk + crown * 0.38, 0.05, w * 0.6, crown * 0.56, w * 0.6))
+        add(sphere(q), leaf, place(w * 0.3, trunk + crown * 0.4, -0.05, w * 0.6, crown * 0.56, w * 0.6))
       }
       if (!look.simple && leaf !== null && look.blooming)
         for (const [dx, dy, dz] of [
@@ -241,9 +251,10 @@ function plantParts(look: PlantLook, q: Quality): Part[] {
     case 'fern': {
       const w = Math.max(0.3, h * 1.2)
       const colour = leaf ?? kind.leaf
+      add(cylinder(q), kind.stem, place(0, h * 0.26, 0, 0.07, h * 0.52, 0.07))
       for (let i = 0; i < (look.simple ? 2 : 4); i++) {
         const a = (i / 4) * Math.PI * 2
-        add(sphere(q), colour, place(Math.cos(a) * w * 0.25, h * 0.6, Math.sin(a) * w * 0.25, w * 0.45, h * 0.5, 0.12, 0, Math.cos(a) * 0.5))
+        add(sphere(q), colour, place(Math.cos(a) * w * 0.25, h * 0.55, Math.sin(a) * w * 0.25, w * 0.45, h * 0.5, 0.12, 0, Math.cos(a) * 0.5))
       }
       add(sphere(q), kind.stem, place(0, 0.04, 0, 0.14, 0.06, 0.14))
       return parts
@@ -327,6 +338,62 @@ export function buildItem(item: GardenItemId, season: Season, q: Quality = 'low'
     case 'greenhouse':
       add(box(), '#cfe3e6', place(0, 0.35, 0, 1.2, 0.7, 0.8))
       add(cone(q), '#dceaec', place(0, 0.85, 0, 1.3, 0.35, 0.95))
+      break
+    case 'seedlings':
+      add(box(), '#8a6440', place(0, 0.08, 0, 1.1, 0.16, 0.6))
+      add(box(), '#5b4433', place(0, 0.16, 0, 1.02, 0.04, 0.54))
+      for (const x of [-0.34, 0, 0.34])
+        for (const z of [-0.14, 0.14]) {
+          add(cylinder(q), '#6f9a58', place(x, 0.24, z, 0.04, 0.14, 0.04))
+          add(sphere(q), '#86ab6b', place(x, 0.32, z, 0.14, 0.07, 0.1))
+        }
+      break
+    case 'parasol':
+      add(cylinder(q), '#8a7a66', place(0, 0.38, 0, 0.05, 0.76, 0.05))
+      add(cone(q), '#e5a06a', place(0, 0.92, 0, 1.3, 0.3, 1.3))
+      break
+    case 'leaves':
+      for (const { x, z, r, c } of [
+        { x: 0, z: 0, r: 0.62, c: '#b9742f' },
+        { x: -0.22, z: 0.12, r: 0.42, c: '#cf9040' },
+        { x: 0.24, z: -0.1, r: 0.4, c: '#a6632c' },
+      ])
+        add(sphere(q), c, place(x, 0.1, z, r, 0.22, r * 0.72))
+      break
+    case 'snowman':
+      add(sphere(q), '#f2f5fb', place(0, 0.2, 0, 0.5))
+      add(sphere(q), '#f7f9fd', place(0, 0.52, 0, 0.36))
+      add(sphere(q), '#fbfcff', place(0, 0.76, 0, 0.26))
+      add(cone(q), '#e8963f', place(0, 0.76, 0.14, 0.06, 0.16, 0.06, Math.PI / 2, 0))
+      add(cylinder(q), '#4a3a2c', place(0, 0.9, 0, 0.26, 0.1, 0.26))
+      break
+    case 'fountain':
+      add(cylinder(q), '#9aa0a8', place(0, 0.06, 0, 1.2, 0.12, 1.2))
+      add(cylinder(q), snow ? '#dfe6f2' : '#7fa8c4', place(0, 0.13, 0, 1, 0.04, 1))
+      add(cylinder(q), '#b4bac2', place(0, 0.3, 0, 0.16, 0.44, 0.16))
+      add(cylinder(q), '#b4bac2', place(0, 0.54, 0, 0.5, 0.08, 0.5))
+      break
+    case 'arch':
+      for (const x of [-0.4, 0.4]) add(cylinder(q), '#8a6440', place(x, 0.4, 0, 0.09, 0.8, 0.09))
+      add(box(), '#8a6440', place(0, 0.84, 0, 0.95, 0.09, 0.14))
+      if (!snow) for (const x of [-0.3, 0.1, 0.36]) add(sphere(q), '#e07f94', place(x, 0.86, 0.02, 0.16))
+      break
+    case 'swing':
+      add(cylinder(q), '#6b4a32', place(0, 0.5, -0.2, 0.16, 1, 0.16))
+      for (const x of [-0.22, 0.22]) add(cylinder(q), '#9a8a74', place(x, 0.5, 0.05, 0.03, 0.56, 0.03))
+      add(box(), '#8a6440', place(0, 0.22, 0.05, 0.56, 0.06, 0.22))
+      break
+    case 'dovecote':
+      add(cylinder(q), '#8a7a66', place(0, 0.4, 0, 0.12, 0.8, 0.12))
+      add(box(), '#efe9dc', place(0, 0.92, 0, 0.56, 0.34, 0.48))
+      add(cone(q), '#8a6440', place(0, 1.18, 0, 0.72, 0.22, 0.66))
+      add(box(), '#5b4433', place(0, 0.92, 0.25, 0.14, 0.14, 0.04))
+      break
+    case 'gate':
+      for (const x of [-0.52, 0.52]) add(cylinder(q), '#6f4f32', place(x, 0.34, 0, 0.12, 0.68, 0.12))
+      for (const x of [-0.3, -0.1, 0.1, 0.3]) add(cylinder(q), '#8a6440', place(x, 0.26, 0, 0.05, 0.52, 0.05))
+      add(box(), '#8a6440', place(0, 0.44, 0, 0.9, 0.06, 0.06))
+      add(box(), '#8a6440', place(0, 0.14, 0, 0.9, 0.06, 0.06))
       break
   }
   const mesh = new THREE.Mesh(mergeParts(parts), gardenMaterial)

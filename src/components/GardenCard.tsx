@@ -4,6 +4,8 @@ import { countLine, gardenSentence, nextLine, seasonChip } from '#/lib/garden/wo
 import { GardenFlat } from './garden/GardenFlat'
 import { gardenLayout } from '#/lib/garden/view'
 import { useReducedMotion } from './creatures/pose'
+import { useSeen } from './garden/useSeen'
+import { newsLine } from '#/lib/garden/seen'
 import { OpenLink } from './OpenLink'
 
 /**
@@ -15,6 +17,7 @@ import { OpenLink } from './OpenLink'
 
 export function GardenCard({ garden, onOpen }: { garden: Garden; onOpen?: () => void }) {
   const reduce = useReducedMotion()
+  const news = newsLine(useSeen(garden, false))
   const year = yearOf(garden, startYear(garden))
   if (!year) return null
   // the block draws at most two beds, side by side and with no item strip
@@ -32,6 +35,7 @@ export function GardenCard({ garden, onOpen }: { garden: Garden; onOpen?: () => 
       <p className="garden-counts">
         <span className="garden-season">{seasonChip(garden.season)}</span> <span>{countLine(year)}</span>
       </p>
+      {news && <p className="small-text garden-news">{news}</p>}
       <p className="small-text garden-next">{nextLine(garden)}</p>
     </section>
   )

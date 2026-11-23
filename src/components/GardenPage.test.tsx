@@ -201,7 +201,7 @@ describe('garden items', () => {
 
   it('says what is next to unlock', () => {
     tab(many(19))
-    expect(screen.getByText('Next: a pond at 25 books (6 to go)')).toBeTruthy()
+    expect(screen.getByText('Next: a seed tray at 20 books (1 to go)')).toBeTruthy()
   })
 })
 

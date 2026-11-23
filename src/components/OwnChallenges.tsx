@@ -1,4 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { ChallengeFits } from './ChallengeFits'
+import { ownFits, ownNone } from '#/lib/challengeFits'
 import type { Book } from '#/lib/library'
 import {
   RULE_LABELS,
@@ -371,6 +373,7 @@ export function OwnChallengeCard({
       <div className="progress-bar" role="progressbar" aria-valuemin={0} aria-valuemax={c.target} aria-valuenow={Math.min(done, c.target)}>
         <span style={{ width: `${share * 100}%` }} />
       </div>
+      {done < c.target && <ChallengeFits fits={ownFits(books, c)} none={ownNone(c.name)} onShowBook={onShowBook} />}
       {counted.length > 0 && (
         <ul className="own-challenge-books">
           {counted.map((b) => (

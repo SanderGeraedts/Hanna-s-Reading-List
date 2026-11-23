@@ -6889,6 +6889,186 @@ button.today-item:hover {
   }
 }
 
+/* ---- the garden's tools: finding, tidying, the news and the cover signs
+   (T-0066) ---------------------------------------------------------------- */
+.garden-news {
+  color: var(--ink-soft);
+  font-size: var(--fs-small);
+}
+.garden-find {
+  position: relative;
+  margin-bottom: var(--space-2);
+}
+.garden-find .input {
+  width: 100%;
+  max-width: 320px;
+}
+.garden-find-hits {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  max-width: 100%;
+}
+.garden-find-hits .btn {
+  text-align: left;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.garden-find-none {
+  color: var(--ink-soft);
+}
+.garden-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
+}
+.garden-tidy {
+  margin: 0;
+}
+.garden-item.off-season {
+  opacity: 0.55;
+}
+
+/* a plant that is new or has grown since she last looked: a quiet ring, never a pop-up */
+.garden-spot.fresh-new::after,
+.garden-spot.fresh-grown::after,
+.garden-spot.found::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  pointer-events: none;
+  border: 2px solid var(--gold, #e8c15a);
+}
+.garden-spot.fresh-grown::after {
+  border-color: #8fbf7a;
+  opacity: 0.8;
+}
+.garden-spot.fresh-new::after {
+  animation: garden-fresh 3.2s ease-in-out infinite alternate;
+}
+.garden-spot.found::after {
+  border-width: 3px;
+}
+@keyframes garden-fresh {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* the little signs with a cover, over either drawing */
+.garden-signs {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.garden-sign {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.3));
+}
+.garden-sign-board {
+  background: #8a6440;
+  border: 1px solid #6f4f32;
+  border-radius: 3px;
+  padding: 2px;
+  line-height: 0;
+}
+.garden-sign-board img,
+.garden-sign-blank {
+  display: block;
+  width: 22px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 1px;
+  background: #e8e0d2;
+}
+.garden-sign-post {
+  width: 2px;
+  height: 10px;
+  background: #6f4f32;
+}
+@media (max-width: 720px) {
+  .garden-sign-board img,
+  .garden-sign-blank {
+    width: 16px;
+    height: 23px;
+  }
+  .garden-sign-post {
+    height: 7px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .garden-spot.fresh-new::after {
+    animation: none;
+  }
+}
+
+/* a sign for the book she is reading: its spot is waiting, nothing is planted yet */
+.garden-sign.reading .garden-sign-board {
+  background: transparent;
+  border-style: dashed;
+}
+.garden-sign.reading .garden-sign-post {
+  opacity: 0.6;
+}
+
+/* ---- books on her shelf that fit a challenge (T-0066) ------------------- */
+.challenge-fits {
+  margin-top: var(--space-1);
+}
+.challenge-fits-none {
+  margin-top: var(--space-1);
+}
+.challenge-fits-list {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: var(--space-1) 0 0;
+  padding: 0;
+}
+.challenge-fits-list button {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  width: 64px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+}
+.challenge-fits-list button[disabled] {
+  cursor: default;
+}
+.challenge-fits-list img,
+.challenge-fits-list .cover-chip {
+  width: 40px;
+  height: 58px;
+  object-fit: cover;
+  border-radius: 3px;
+  display: block;
+}
+.challenge-fits-why {
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+  text-align: center;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
 /* ---- Pick the cover before the book is added (T-0070) ---------------- */
 .cover-step {
   gap: var(--space-2);

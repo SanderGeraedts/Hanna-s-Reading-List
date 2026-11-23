@@ -4,7 +4,7 @@ import { localDay } from '#/lib/library'
 import { deriveGarden } from '#/lib/garden/garden'
 import type { Garden, Plant, YearGarden } from '#/lib/garden/garden'
 import type { GardenItemId } from '#/lib/garden/numbers'
-import { freeItemSlot, movePlant, placeItem, removeItem } from '#/lib/garden/tend'
+import { freeItemSlot, movePlant, placeItem, removeItem, tidyYear } from '#/lib/garden/tend'
 import type { PlaceEvent, Tended } from '#/lib/garden/tend'
 import type { Spot } from '#/lib/garden/spots'
 import { useCreaturesApi } from '../creatures/CreaturesContext'
@@ -22,6 +22,10 @@ export interface GardenHandle {
   move: (year: YearGarden, plantId: string, to: Spot) => Tended
   place: (year: number, item: GardenItemId) => Tended
   takeAway: (year: number, item: GardenItemId) => Tended
+  /** puts a year garden in reading order; the answer carries the events that undo it */
+  tidy: (year: YearGarden) => Tended
+  /** writes a set of events back as they are: the way Undo puts the old spots back */
+  apply: (events: PlaceEvent[]) => void
 }
 
 export function useGarden(books: Book[], opts: { phone?: boolean; today?: string } = {}): GardenHandle {
@@ -68,7 +72,16 @@ export function useGarden(books: Book[], opts: { phone?: boolean; today?: string
     [garden, write],
   )
 
-  return { garden, move, place, takeAway }
+  const tidy = useCallback(
+    (year: YearGarden) => {
+      const r = tidyYear(year)
+      if (r.ok) write(r.events)
+      return r
+    },
+    [write],
+  )
+
+  return { garden, move, place, takeAway, tidy, apply: write }
 }
 
 export type { Plant }
