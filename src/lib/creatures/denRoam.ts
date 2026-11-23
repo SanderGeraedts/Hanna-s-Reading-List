@@ -117,24 +117,35 @@ export interface RoamRange {
 }
 /** The den's floor for her other pets (T-0032 Design §3). */
 export const ROAM_RANGE: RoamRange = { x: 1.0, zMin: -0.25, zMax: 0.9 }
-/** The current pet is drawn much larger, so it keeps to the middle of the room (T-0046 §3). */
-export const CURRENT_RANGE: RoamRange = { x: 0.6, zMin: -0.2, zMax: 0.5 }
-/** The phone's small patch around the cushion: never out of frame, never past the bowl. */
-export const GENTLE_RANGE: RoamRange = { x: 0.3, zMin: -0.1, zMax: 0.3 }
+/**
+ * The current pet is drawn much larger, so it keeps to the middle of the room
+ * (T-0046 §3, widened by T-0050 §4). The old ±0.6 × (−0.2 … 0.5) lay almost
+ * entirely inside the bed's own footprint, so the pet had nowhere legal to
+ * stand; this leaves a ring of rug round the bed on every side and still shows
+ * the whole pet at 16:10 (`denProps.test.ts` checks that against `denCamera`).
+ */
+export const CURRENT_RANGE: RoamRange = { x: 0.95, zMin: -0.25, zMax: 0.3 }
+/**
+ * The phone's small patch around the cushion: never out of frame, never past the
+ * bowl. Widened by 0.2 in x (T-0050 §4) so one stroll — D-0040 §3 caps it at 4 s,
+ * and 0.08 u/s makes that 0.32 units — carries the pet from the middle of its
+ * cushion down onto the rim and the rug beside it, instead of stopping halfway up
+ * the slope. D-0040 §3's own numbers are untouched.
+ */
+export const GENTLE_RANGE: RoamRange = { x: 0.5, zMin: -0.15, zMax: 0.35 }
 
-/** Where a pet walks to, inside its walkable rectangle; deterministic per counter. */
+/**
+ * Where a pet walks to, inside its walkable rectangle; deterministic per counter.
+ * The target is only seeded here: the caller repairs it against the den's props
+ * with `clearTarget` (D-0043), which is why this no longer carries a hard-coded
+ * bowl circle of its own — the one it used to carry pointed at the bowl's
+ * pre-T-0031 spot and so avoided an empty patch of rug.
+ */
 export function roamTarget(petId: string, session: number, counter: number, range: RoamRange = ROAM_RANGE): { x: number; z: number } {
   const rx = roamRandom(petId, session, counter * 2 + 1)
   const rz = roamRandom(petId, session, counter * 2 + 2)
-  // by default x ∈ [−1.0, 1.0], z ∈ [−0.25, 0.9], avoiding the bowl footprint (circle r 0.12 around (0.55, 0.15))
-  let x = -range.x + rx * range.x * 2
-  let z = range.zMin + rz * (range.zMax - range.zMin)
-  const dx = x - 0.55
-  const dz = z - 0.15
-  if (dx * dx + dz * dz < 0.12 * 0.12) {
-    // nudge away, staying inside the rectangle
-    x = Math.max(-range.x, x - 0.2)
-  }
+  const x = -range.x + rx * range.x * 2
+  const z = range.zMin + rz * (range.zMax - range.zMin)
   return { x, z }
 }
 
@@ -146,7 +157,7 @@ export function gentleTarget(petId: string, session: number, counter: number): {
   const rx = roamRandom(petId, session, counter * 2 + 1)
   const rz = roamRandom(petId, session, counter * 2 + 2)
   const side = rx < 0.5 ? -1 : 1
-  const x = side * (0.2 + (rx % 0.5) * 0.2)
+  const x = side * (0.3 + (rx % 0.5) * 0.4)
   const z = GENTLE_RANGE.zMin + rz * (GENTLE_RANGE.zMax - GENTLE_RANGE.zMin)
   return { x, z }
 }
