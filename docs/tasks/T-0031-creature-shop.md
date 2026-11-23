@@ -62,7 +62,7 @@ result: [https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/255]
    390 (300 px and 180 px canvases) and 1280; the window's sky and weather follow a test clock and
    month as Design §8 says, still on a phone.
 9. (UX) A bought decoration appears in the 🎨 panel and on the 3D shelf on a second device after
-   sync, switched on at the end; hiding it on one device doesn't hide it on the other; decorations not
+   sync, switched on at the top of the list (so it always has a shelf; review after building); hiding it on one device doesn't hide it on the other; decorations not
    bought appear nowhere.
 10. (UX) Keyboard only: every buy, put on, take off, place, put away, habitat and show/hide can be
     done; the live-region words of Design §14 are announced; the fullest den on `low` stays at or
@@ -619,6 +619,88 @@ option and list it here for the UX review and the tester.
   `room-panel-1280-lav` the shelf behind the panel hadn't finished drawing under headless software
   WebGL (it also happens without any purchase); the panel's list is the subject.
 
+## Review after building (2026-11-23)
+
+UX designer, daytime; Hanna not asked (her question is in the hand-over). Looked at: the diff
+(`git diff origin/main...HEAD -- src`, mainly `Shop.tsx`, `shopModels.ts`, `DenScene.tsx`,
+`room.ts`, `shelfLayout.ts`, `weather.ts`), all 36 screenshots, the 36 shop pictures side by
+side, and the outfit contact sheet rendered again at full size
+(`pnpm run render:creatures -- --outfit-sheet`, 200 px a tile).
+
+**Verdict: changes needed.** The shop matches the Design almost everywhere; three things must be
+fixed before the tester takes it.
+
+### Design checks
+
+| Done when | Seen | |
+|---|---|---|
+| 5. Den / Shop switch, 7 categories, 41 items and prices, category in the URL | `switch-*`, every category shot; prices as §2; `?view=creatures&shop=` | ✓ |
+| 6. Four card states, "N 🍪 more", inline confirm, food on the tap | `outfits-*` (all four), `poor-390-lav` (−4: "44 🍪 more" on 40), `confirm-*`, `food-*` | ✓ |
+| 7. Outfits on the anchors, Dress row, dashboard block, contact sheet | `outfits-*`, `dress-other-1280-lav`, `block-dressed-*`, contact sheet | ✓ (deviations accepted below) |
+| 8. Home, toy, habitat at once; six spots in view; window by clock and month | `home-*`, `toys-390-mid`, habitat shots, `window-*` | ✗ the rain (must-fix 2); feet in the bed (must-fix 1) |
+| 9. Bought decoration in the 🎨 panel and on the 3D shelf | `room-*` | ✗ it joins where it has no shelf (must-fix 3) |
+| 10. Keyboard and screen reader, budget | `Shop.tsx`: tablist / tab / tabpanel, the radio group "Dress", the §12 labels, Escape, focus moves; budget low 38 calls / 4,879 triangles | ✓ (the tester confirms with a keyboard) |
+
+What matches: the switch and its gold outline on both wallpapers; the sticky den (180 px at 390,
+16:10 at 1280); chips, h2s, card order and every §14 word I checked; the four states, the
+missing amount below 0, "Give to Biscuit", the inline confirm with Buy and Cancel, the egg's
+"🥚 Waiting in your eggs · Hatch"; both strips (two columns at 390); the window's day, night
+(crescent and stars) and snow; the four habitats, with the polar bear still readable on the beach
+and the ice; the dashboard block dressed; the 36 pictures, which match §2's looks (small
+differences, like the dragon plush's cream rather than gold wings, are fine).
+
+### The developer's deviations
+
+1. **Camera pulled back the full 10 %, look point lowered** — accepted. That is inside what §8
+   allows, and all six spots show at 390 (Shop view) and at 1280 (`home-*`). The window sits at
+   the left of the back wall rather than in the middle; also accepted, because in the middle it
+   would sit behind her pet's head.
+2. **Rugs wider than the phone den** — accepted. The plum rug was always like that, and a rug
+   going off the edge still reads as a rug (`home-390-lav`: only the star's lower tip is cut).
+3. **Hat and neck sizes** — accepted. The hats sit between the ears as little hats and read well
+   on every species; on the penguin and the koala they look a bit small, but nothing sinks or
+   floats. The neck pieces at 1.45 × read as worn, not as rings in the air. The book dragon's
+   cape sits under its wings, the same as its backpack does (an accepted case).
+4. **No cross-fade in the Dress row** — accepted. The switch is instant, the strip's heading and
+   the buttons change with it, and nothing jumps around the den. Not worth the extra code.
+5. **One decoration per shelf, so a bought one may have no shelf** — **not accepted** (must-fix
+   3). She pays 60–100 🍪, the card says "✓ In the room", and on a normal shelf nothing appears
+   until she finds the ↑ buttons in the 🎨 panel. That breaks the promise of the purchase.
+
+### Must fix
+
+1. **The creature stands on top of its bed, not in it (this also fixes F14).** `DenScene.tsx`
+   puts the creature and the egg at `SEAT = 0.1`, but the gold cushion's top is at about 0.18
+   (unchanged from main, so the shop didn't make the gold cushion worse: that is F14). The new
+   **cloud cushion** makes it worse: its middle puff's top is at about 0.22, so her pet's feet
+   sink about 40 % deeper than they do now (the basket bed's cream is at about 0.14, a little
+   too). Fix: the seat height per bed (gold cushion, cloud cushion, basket bed), taken from each
+   bed's own top where the feet are. The creature and the egg go to that height, and a new bed
+   changes it at once. Check the egg and a grown-up on each bed in a screenshot, and that the six
+   spots still pass the projection test. This is a small change, so do it here and close F14 with
+   it (say so in the PR).
+2. **The rain has to be visible, and all weather stays inside the pane.** In
+   `window-rain-1280-lav` the window looks like a plain day sky: 40 pale `#dbe9f5` dots of 0.02
+   on a `#9cc3e6`–`#b9d6ee` pane barely show, and they are dots, not streaks. It is November, so
+   this is what Hanna sees first. Fix: (a) a rain-day sky a little greyer (e.g. `#8fa9bf` to
+   `#a9bccb`), and (b) thin streaks that read on it: short slanted lines in white at about 0.8
+   opacity, still one draw call, held still on a phone. Also, the scatter fills a rectangle
+   `W × 0.92` up to `H + 0.8 R`, but the arch narrows at the top, so drops land on the wall
+   outside the frame (one shows top right in that shot). Keep every rain and snow point inside
+   the pane's shape. New screenshot: `window-rain-1280-lav.jpg`, plus a 390 one.
+3. **A bought decoration always gets a shelf.** Replace §11's "joins at the end" with "joins
+   switched on **at the top** of the decorations list". `computeLayout` always makes room for
+   the first decoration, and the others move one place down. This applies on this device and on
+   every other device the first time it sees the purchase (`cleanRoom`, the shop's Buy). Reset
+   keeps its order rule. Done when 9 is updated to match. Redo `room-3d-1280-lav` and
+   `room-3d-390-mid` without moving anything by hand, plus `room-panel-1280-lav` showing it at the
+   top.
+
+**Not required** (polish, the developer's choice): in the den strip at 390, rows without a Put
+away button are shorter than rows with one (`toys-390-mid`), so the two columns don't line up;
+the "Dress" label of the radio group is only for screen readers; and at 1280 the chips wrap
+"Room" onto a second row. Leave each as it is if it costs more than a line or two of CSS.
+
 # Test
 
 # Log
@@ -648,3 +730,9 @@ option and list it here for the UX review and the tester.
   `pnpm run build` ✓; `harness check` ✓ (tasks, decisions, engineers, generated files). Dev server on
   3165 stopped, port free. Draft PR #255. Remaining: the UX review, the tester, and Hanna's look at the shop on the
   live site.
+- 2026-11-23 ux-designer: reviewed: changes needed. Accepted: the camera pull-back, rugs wider
+  than the phone den, hat and neck sizes, no cross-fade in the Dress row. Must fix: (1) the
+  creature on top of each bed (the cloud cushion swallows its feet deeper; fixes F14 too), (2) rain
+  visible and all weather inside the pane, (3) a bought decoration joins at the top of the list so
+  it always has a shelf (Done when 9 updated). Back to the developer. Remaining: the fixes, the
+  tester, and Hanna's look at the shop on the live site.
