@@ -4,7 +4,6 @@ import { formatDuration } from '#/lib/listening'
 import { amountText } from '#/lib/readingLog'
 import { cleanSpice, ratingText } from '#/lib/ratings'
 import { readingYears } from '#/lib/stats'
-import { medalLine, yearMedals } from '#/lib/medals'
 import {
   favouriteAuthors,
   finishEstimates,
@@ -19,6 +18,8 @@ import type { BingoSwaps } from '#/lib/bingoSwap'
 import { drawSuggestion, suggestible, suggestionPool } from '#/lib/bingoSuggest'
 import { StarRating } from './StarRating'
 import { ShareButton } from './ShareButton'
+import { CompareNote } from './CompareNote'
+import { compareLine } from '#/lib/yearCompare'
 import { OpenLink } from './OpenLink'
 import { BookLine } from './DashboardExtras'
 import { Cover, PeriodSelect, PeriodTabs, monthName, periodLabel, toPeriod } from './Dashboard'
@@ -108,14 +109,28 @@ function heatTitle(d: HeatDay) {
   return `${dayText(d.day, true)}: ${what}${d.books > 1 ? ` in ${d.books} books` : ''}`
 }
 
-export function HeatmapCard({ books }: { books: Book[] }) {
-  const h = useMemo(() => heatmap(books), [books])
+export function HeatmapCard({
+  books,
+  year,
+  compareDays,
+  compareYear,
+}: {
+  books: Book[]
+  /** one year (the Stats page); none: the last twelve months, as the dashboard showed it */
+  year?: number
+  /** the compare year's reading days, beside this year's */
+  compareDays?: number
+  compareYear?: number
+}) {
+  const h = useMemo(() => heatmap(books, undefined, year), [books, year])
+  const days = compareLine(h.readingDays, compareDays, compareYear)
   const scroller = useRef<HTMLDivElement>(null)
-  // the newest weeks are on the right: start there
+  // the last twelve months: the newest weeks are on the right, so start there.
+  // One year: start in January, where the year starts.
   useLayoutEffect(() => {
     const el = scroller.current
-    if (el) el.scrollLeft = el.scrollWidth
-  }, [h.weeks.length])
+    if (el) el.scrollLeft = year === undefined ? el.scrollWidth : 0
+  }, [h.weeks.length, year])
   const W = LEFT + h.weeks.length * STEP
   const H = TOP + 7 * STEP
   const summary = [
@@ -127,8 +142,16 @@ export function HeatmapCard({ books }: { books: Book[] }) {
   return (
     <section className="dash-card" aria-labelledby="heatmap-title">
       <div className="dash-card-head">
-        <h2 id="heatmap-title">A year of reading</h2>
-        <span className="muted small-text">{plural(h.readingDays, 'reading day')}</span>
+        <h2 id="heatmap-title">{year === undefined ? 'A year of reading' : `${year}: a year of reading`}</h2>
+        <span className="muted small-text">
+          {plural(h.readingDays, 'reading day')}
+          {days && (
+            <>
+              {' '}
+              <CompareNote line={days} />
+            </>
+          )}
+        </span>
       </div>
       <div className="heatmap-scroll" ref={scroller}>
         <svg
@@ -137,7 +160,7 @@ export function HeatmapCard({ books }: { books: Book[] }) {
           height={H}
           viewBox={`0 0 ${W} ${H}`}
           role="img"
-          aria-label={`Reading days over the last twelve months: ${plural(h.readingDays, 'day')} with reading${summary ? `, ${summary}` : ''}.`}
+          aria-label={`Reading days ${year === undefined ? 'over the last twelve months' : `in ${year}`}: ${plural(h.readingDays, 'day')} with reading${summary ? `, ${summary}` : ''}.`}
         >
           {h.months.map((m) => (
             <text key={`${m.column}-${m.month}`} className="axis" x={LEFT + m.column * STEP} y={9}>
@@ -274,30 +297,22 @@ export function SpiceCard({ books, onShowBook, switcher }: Props & { switcher?: 
 
 // ---- year in review ----------------------------------------------------------------
 
-export function WrappedCard({ books, onShowBook }: Props) {
-  const [year, setYear] = useState(() => reviewYear())
+/**
+ * "Year in review" (T-0081, D-0061): the year, its headline numbers and one
+ * ▶ Play button that opens the full-screen story. On the dashboard it has its
+ * own year select; on the Stats page the page's picker says which year, so the
+ * select is left out. Nothing opens until she presses Play (D-0013).
+ */
+export function WrappedCard({ books, year: forYear, onPlay }: Props & { year?: number; onPlay?: (year: number) => void }) {
+  const [ownYear, setYear] = useState(() => reviewYear())
+  const year = forYear ?? ownYear
   const r = useMemo(() => yearReview(books, year), [books, year])
-  // medals won this year: a book's for each finish, a series' when its last book needed is finished
-  const medals = useMemo(() => {
-    const m = yearMedals(books, year)
-    return [
-      ['Medals', medalLine(m.books)],
-      ['Series medals', medalLine(m.series)],
-    ].filter(([, line]) => line)
-  }, [books, year])
-  const bookBtn = (b: Book) => (
-    <button className="link-btn" onClick={() => onShowBook(b.id)}>
-      {b.title}
-    </button>
-  )
-  const facts: Array<[string, React.ReactNode]> = []
-  if (r.topRated) facts.push(['Top-rated', bookBtn(r.topRated)])
-  if (r.spiciest) facts.push(['Spiciest', bookBtn(r.spiciest)])
-  if (r.genre) facts.push(['Favourite genre', r.genre])
-  if (r.busiest)
-    facts.push(['Busiest month', `${monthName(r.busiest.month)} (${plural(r.busiest.books, 'book')})`])
-  if (r.streak > 1) facts.push(['Longest streak', plural(r.streak, 'day')])
-  if (r.bingoCards > 0) facts.push(['Bingo cards', `${r.bingoCards} full 🎉`])
+  const numbers = [
+    plural(r.books, 'book'),
+    r.pages > 0 && `${r.pages.toLocaleString('en-GB')} pages`,
+    r.minutes > 0 && `${hours(r.minutes).replace(' h', '')} hours listened`,
+  ].filter(Boolean) as string[]
+
   return (
     <section className="dash-card wrapped-card" aria-labelledby="wrapped-title">
       <div className="dash-card-head">
@@ -305,66 +320,24 @@ export function WrappedCard({ books, onShowBook }: Props) {
           <span aria-hidden>✨ </span>
           {year} in books
         </h2>
-        <YearSelect books={books} year={year} onYear={setYear} />
+        {forYear === undefined && <YearSelect books={books} year={year} onYear={setYear} />}
       </div>
       {r.books === 0 ? (
         <p className="muted">No books finished in {year} yet. The year's story starts with the first one.</p>
       ) : (
         <>
-          <p className="story-line">Once upon a time…</p>
-          <div className="wrapped-numbers">
-            <p>
-              <strong>{r.books}</strong>
-              <span>{r.books === 1 ? 'book' : 'books'}</span>
-            </p>
-            {r.pages > 0 && (
-              <p>
-                <strong>{r.pages.toLocaleString('en-GB')}</strong>
-                <span>pages</span>
-              </p>
-            )}
-            {r.minutes > 0 && (
-              <p>
-                <strong>{hours(r.minutes).replace(' h', '')}</strong>
-                <span>hours listened</span>
-              </p>
-            )}
+          <p className="wrapped-line">{numbers.join(' · ')}</p>
+          <div className="wrapped-actions">
+            <button
+              type="button"
+              className="btn primary play-btn"
+              aria-label={`Play your ${year} in books`}
+              disabled={!onPlay}
+              onClick={() => onPlay?.(year)}
+            >
+              <span aria-hidden>▶ </span>Play
+            </button>
           </div>
-          {r.topRated && (
-            <div className="wrapped-top">
-              <button className="cover-btn" aria-label={r.topRated.title} onClick={() => onShowBook(r.topRated!.id)}>
-                <Cover book={r.topRated} />
-              </button>
-              <div>
-                <p className="muted small-text">Book of the year</p>
-                <p className="next-title">{r.topRated.title}</p>
-                <StarRating value={r.topRated.rating} size="small" />
-              </div>
-            </div>
-          )}
-          {facts.length > 0 && (
-            <dl className="records">
-              {facts.map(([k, v]) => (
-                <div key={k}>
-                  <dt>{k}</dt>
-                  <dd>{v}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-          {medals.length > 0 && (
-            <dl className="records">
-              {medals.map(([k, v]) => (
-                <div key={k}>
-                  <dt>{k}</dt>
-                  <dd>{v}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-          <p className="story-line end">
-            {year < new Date().getFullYear() ? '…and she read happily ever after.' : '…and the story continues.'}
-          </p>
         </>
       )}
     </section>

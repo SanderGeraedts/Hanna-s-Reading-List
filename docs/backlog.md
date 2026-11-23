@@ -23,41 +23,17 @@ How to use it:
   shelf polish, the country spellings, the book panel tabs (T-0047), tropes &
   characters (T-0048), the reading garden (T-0060 … T-0065, agreed 23 November 2026 and never
   part of this queue), the bookcases & filters, book poses and cosy room extras
-  (T-0051, T-0052, T-0053), and all of better adding — covers & series (T-0070), batch scan
-  (T-0071) and the wishlist (T-0072), and the better challenges (T-0090 … T-0093,
-  agreed 22 November 2026 and taken out of this queue on 23 November 2026).
+  (T-0051, T-0052, T-0053), all of better adding — covers & series (T-0070), batch scan
+  (T-0071) and the wishlist (T-0072) — the Stats tab with year compare and the year wrap-up
+  story (T-0080 and T-0081, taken off this queue on 23 November 2026 and built together on one
+  branch, because the wrap-up's entry point sits on the Stats page), and the better challenges
+  (T-0090 … T-0093, taken off this queue on 23 November 2026 and built together on one branch,
+  because all four are the Challenges page).
 
 ## The queue
 
-### 1. Stats tab with year compare (ST1)
-
-*Agreed 22 November 2026.*
-
-- A new **Stats** tab, the fifth page tab next to Bookshelf, Dashboard, Challenges and
-  Calendar.
-- A year picker (every year with data, plus **All time**) and **compare with** another
-  year: every number and chart is for the chosen year, with the other year's value next to
-  it (for example "48 books ↑ 12 vs 2025").
-- The big charts move here from the dashboard: the heatmap ("A year of reading"), pages per
-  month, the genre flower, when I read most (rhythm), what I read (breakdown), and records.
-- The dashboard gets one compact **My year** block (books, pages, hours, goal ring) with
-  **Open ›** to Stats. "Books read" and "Reading goal" become part of it.
-- Blocks she starred stay in Favourites.
-- Check the dashboard layout migration (`dashboardLayout`): saved layouts and favourites
-  that refer to removed blocks must keep working.
-
-### 2. Year wrap-up story (ST2)
-
-*Agreed 22 November 2026.*
-
-- A year wrap-up she can play **any time**: "this year so far" or a past year.
-- Full-screen slides she taps through: top book, author, genre, longest book, busiest
-  month, pages, hours listened, new authors, the map, and so on.
-- It ends in a summary picture she can share (reuse `shareImage`).
-- Entry: the **Year in review** block becomes **▶ Play**, on the dashboard and on the
-  Stats page.
-- It opens only when she taps it (fits D-0013, no pop-ups).
-- The monthly wrap-up stays as it is.
+Empty: everything Hanna agreed on 22 November 2026 has been taken off it and built. The
+small follow-ups below are what is left.
 
 ## Small follow-ups found by the team
 

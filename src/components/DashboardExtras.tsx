@@ -119,17 +119,22 @@ export function GoalCard({
   accountId,
   year: forYear,
   onOpen,
+  readOnly = false,
 }: {
   books: Book[]
   accountId: string | null
   /** another year than this one, on the Challenges page: shown, not changed */
   year?: number
-  /** on the dashboard: open the Challenges page */
+  /** on the dashboard and the Stats page: open the Challenges page */
   onOpen?: () => void
+  /** on the Stats page (T-0080): shown only; the goal is set on the Challenges page */
+  readOnly?: boolean
 }) {
   const today = new Date()
   const year = forYear ?? today.getFullYear()
   const past = year < today.getFullYear()
+  // the Stats page shows the ring; the goal itself is set on the Challenges page (D-0060)
+  const locked = past || readOnly
   // a past year is judged at its last day
   const now = past ? new Date(year, 11, 31, 23) : today
   const key = goalKey(accountId, year)
@@ -196,7 +201,7 @@ export function GoalCard({
     </form>
   )
 
-  if (past && !goal) {
+  if (locked && !goal) {
     return (
       <section className="dash-card goal-card" aria-labelledby="goal-title">
         <h2 id="goal-title">Reading goal {year}</h2>
@@ -205,7 +210,7 @@ export function GoalCard({
     )
   }
 
-  if (!goal || (editing && !past)) {
+  if (!goal || (editing && !locked)) {
     return (
       <section className="dash-card goal-card" aria-labelledby="goal-title">
         <h2 id="goal-title">Reading goal</h2>
@@ -236,7 +241,7 @@ export function GoalCard({
       <div className="dash-card-head">
         <h2 id="goal-title">Reading goal {year}</h2>
         <OpenLink onOpen={onOpen} label="Reading goal" />
-        {!past && (
+        {!locked && (
           <button className="btn small" onClick={() => setEditing(true)}>
             Change
           </button>
@@ -371,10 +376,22 @@ export function SeriesCard({ books, onShowBook }: Props) {
 
 // ---- books per month -------------------------------------------------------------
 
-export function MonthlyChart({ books, year, bare = false }: { books: Book[]; year: number; bare?: boolean }) {
+export function MonthlyChart({
+  books,
+  year,
+  bare = false,
+  compare,
+}: {
+  books: Book[]
+  year: number
+  bare?: boolean
+  /** another year, drawn behind in the quiet tone (the Stats page, T-0080) */
+  compare?: number
+}) {
   const counts = useMemo(() => monthlyCounts(books, year), [books, year])
+  const was = useMemo(() => (compare === undefined ? null : monthlyCounts(books, compare)), [books, compare])
   const [hover, setHover] = useState<number | null>(null)
-  const max = Math.max(...counts)
+  const max = Math.max(...counts, ...(was ?? []))
   const top = Math.max(4, Math.ceil(max / 2) * 2)
   const ticks = [0, top / 2, top]
   const W = 360
@@ -415,8 +432,12 @@ export function MonthlyChart({ books, year, bare = false }: { books: Book[]; yea
             const h = (n / top) * plotH
             const r = Math.min(4, h / 2, barW / 2)
             const base = 8 + plotH
+            const before = was ? (was[i] / top) * plotH : 0
             return (
               <g key={i}>
+                {was && was[i] > 0 && (
+                  <rect className="bar-was" x={x} y={base - before} width={barW} height={before} rx={2} />
+                )}
                 {n > 0 && (
                   <path
                     className={`bar${hover === i ? ' active' : ''}`}
@@ -453,6 +474,11 @@ export function MonthlyChart({ books, year, bare = false }: { books: Book[]; yea
           </div>
         )}
       </div>
+      {compare !== undefined && (
+        <p className="months-key small-text">
+          <span className="months-swatch now" aria-hidden /> {year} <span className="months-swatch last" aria-hidden /> {compare}
+        </p>
+      )}
       <details className="table-view">
         <summary className="muted small-text">Show as a table</summary>
         <table>
@@ -461,6 +487,7 @@ export function MonthlyChart({ books, year, bare = false }: { books: Book[]; yea
               <tr key={i}>
                 <th scope="row">{monthName(i + 1)}</th>
                 <td>{n}</td>
+                {was && <td>{was[i]}</td>}
               </tr>
             ))}
           </tbody>
