@@ -239,15 +239,15 @@ All of them were taken.
 
 ```
 $ pnpm test
- Test Files  159 passed | 2 skipped (161)
-      Tests  2053 passed | 22 skipped (2075)
+ Test Files  172 passed | 2 skipped (174)
+      Tests  2194 passed | 22 skipped (2216)
 
 $ pnpm run build
-✓ built in 852ms
+✓ built in 831ms
 
 $ pnpm exec harness check
-✓ tasks: 60 tasks, index in step
-✓ decisions: 54 records, index complete, 3 overrules valid
+✓ tasks: 63 tasks, index in step
+✓ decisions: 55 records, index complete, 3 overrules valid
 ✓ engineers: 2 listed
 ✓ generated files: current
 ```
@@ -354,3 +354,8 @@ none of them touches her books.
   Added the gap tests in `src/components/StatsPage.break.test.tsx` (empty shelf, finishes with no
   date, the pickers thrown about, nonsense in a saved layout, visible beating hidden, the unstar
   clearing the old ids). Nothing left for a human.
+- 2026-11-23 developer: merged main after the add-a-book work (#265) landed first; it had taken
+  T-0070 … T-0072, so these tasks were renumbered to T-0080 and T-0081. Resolved the registries,
+  the backlog, `Dashboard.tsx`, `routes/index.tsx`, `styles.css` and the layout test by hand,
+  retook the screenshots, and re-ran everything: 172 files, 2194 tests passed, 22 skipped;
+  `pnpm run build` ✓; `pnpm exec harness check` ✓.

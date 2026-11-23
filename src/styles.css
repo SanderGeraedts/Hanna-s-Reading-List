@@ -7092,6 +7092,9 @@ button.today-item:hover {
   .wish-actions .btn,
   .wish-row .icon-btn {
     min-height: var(--tap);
+  }
+}
+
 /* ---- the Stats page, My year and the year story (T-0080, T-0081) ------ */
 .stats-page {
   max-width: 68rem;

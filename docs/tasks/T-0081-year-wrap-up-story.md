@@ -181,15 +181,15 @@ The same run as T-0080 (one branch, one pull request):
 
 ```
 $ pnpm test
- Test Files  159 passed | 2 skipped (161)
-      Tests  2053 passed | 22 skipped (2075)
+ Test Files  172 passed | 2 skipped (174)
+      Tests  2194 passed | 22 skipped (2216)
 
 $ pnpm run build
-✓ built in 852ms
+✓ built in 831ms
 
 $ pnpm exec harness check
-✓ tasks: 60 tasks, index in step
-✓ decisions: 54 records, index complete, 3 overrules valid
+✓ tasks: 63 tasks, index in step
+✓ decisions: 55 records, index complete, 3 overrules valid
 ✓ engineers: 2 listed
 ✓ generated files: current
 ```
@@ -265,3 +265,5 @@ these calls. All of them are small changes this evening.
 - 2026-11-23 tester: passed. Added the gap tests in `src/components/YearStory.break.test.tsx` (a
   bare book, a very long title, 200 keys held down, a tap on the last slide, Enter on a button,
   the share picture's spec, and all three ways of closing it). Nothing left for a human.
+- 2026-11-23 developer: merged main (#265) in and renumbered from T-0071 to T-0081; everything
+  re-run green afterwards (172 files, 2194 tests).
