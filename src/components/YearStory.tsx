@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { Book } from '#/lib/library'
 import type { ShareSpec } from '#/lib/shareImage'
 import { storySubtitle, yearStory } from '#/lib/yearStory'
@@ -67,7 +68,8 @@ export function YearStory({
     tiles: story.books.slice(0, 12).map((b) => ({ label: '', caption: b.title, cover: b.coverUrl, color: b.color, on: true })),
   })
 
-  return (
+  // straight on the page, not inside the dashboard: the story covers the header too
+  return createPortal(
     <div
       className="story-backdrop"
       // a tap anywhere moves on, except on the last slide, where only the buttons do
@@ -169,6 +171,7 @@ export function YearStory({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

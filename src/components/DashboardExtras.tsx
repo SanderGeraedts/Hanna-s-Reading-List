@@ -119,17 +119,22 @@ export function GoalCard({
   accountId,
   year: forYear,
   onOpen,
+  readOnly = false,
 }: {
   books: Book[]
   accountId: string | null
   /** another year than this one, on the Challenges page: shown, not changed */
   year?: number
-  /** on the dashboard: open the Challenges page */
+  /** on the dashboard and the Stats page: open the Challenges page */
   onOpen?: () => void
+  /** on the Stats page (T-0070): shown only; the goal is set on the Challenges page */
+  readOnly?: boolean
 }) {
   const today = new Date()
   const year = forYear ?? today.getFullYear()
   const past = year < today.getFullYear()
+  // the Stats page shows the ring; the goal itself is set on the Challenges page (D-0060)
+  const locked = past || readOnly
   // a past year is judged at its last day
   const now = past ? new Date(year, 11, 31, 23) : today
   const key = goalKey(accountId, year)
@@ -196,7 +201,7 @@ export function GoalCard({
     </form>
   )
 
-  if (past && !goal) {
+  if (locked && !goal) {
     return (
       <section className="dash-card goal-card" aria-labelledby="goal-title">
         <h2 id="goal-title">Reading goal {year}</h2>
@@ -205,7 +210,7 @@ export function GoalCard({
     )
   }
 
-  if (!goal || (editing && !past)) {
+  if (!goal || (editing && !locked)) {
     return (
       <section className="dash-card goal-card" aria-labelledby="goal-title">
         <h2 id="goal-title">Reading goal</h2>
@@ -236,7 +241,7 @@ export function GoalCard({
       <div className="dash-card-head">
         <h2 id="goal-title">Reading goal {year}</h2>
         <OpenLink onOpen={onOpen} label="Reading goal" />
-        {!past && (
+        {!locked && (
           <button className="btn small" onClick={() => setEditing(true)}>
             Change
           </button>

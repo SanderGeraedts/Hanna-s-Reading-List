@@ -131,7 +131,7 @@ export function StatsPage({ books, accountId, onShowBook, onOpenGoal }: Props) {
 
         <div className="stats-grid">
           <div className="dash-column">
-            {year !== 'all' && <GoalCard books={books} accountId={accountId} year={year} onOpen={onOpenGoal} />}
+            {year !== 'all' && <GoalCard books={books} accountId={accountId} year={year} onOpen={onOpenGoal} readOnly />}
             <HeatmapCard books={books} year={year === 'all' ? undefined : year} compareDays={other?.readingDays} compareYear={against} />
             {year !== 'all' && <MonthlyChart books={books} year={year} compare={against} />}
             <GenreFlowerCard books={books} year={year} compare={against} />

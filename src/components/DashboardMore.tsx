@@ -124,11 +124,12 @@ export function HeatmapCard({
   const h = useMemo(() => heatmap(books, undefined, year), [books, year])
   const days = compareLine(h.readingDays, compareDays, compareYear)
   const scroller = useRef<HTMLDivElement>(null)
-  // the newest weeks are on the right: start there
+  // the last twelve months: the newest weeks are on the right, so start there.
+  // One year: start in January, where the year starts.
   useLayoutEffect(() => {
     const el = scroller.current
-    if (el) el.scrollLeft = el.scrollWidth
-  }, [h.weeks.length])
+    if (el) el.scrollLeft = year === undefined ? el.scrollWidth : 0
+  }, [h.weeks.length, year])
   const W = LEFT + h.weeks.length * STEP
   const H = TOP + 7 * STEP
   const summary = [
