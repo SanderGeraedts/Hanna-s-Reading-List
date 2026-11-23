@@ -2,12 +2,12 @@
 id: T-0027
 title: "Design the base 3D look of the 20 book creatures, each once by a Fable agent"
 description: "First step of the book creatures (D-0033): the species list with rarity, IUCN Red List category and source in the code, and one cute low-poly 3D base model per creature, designed once per animal by an agent on the Fable model; shown on the unlinked /style page; nothing in the app links to them yet."
-status: Doing
+status: Done
 size: full
 depends_on: []
 decisions: [D-0002, D-0017, D-0020, D-0022, D-0033]
 raised_on: 2026-11-22
-done_on: ""
+done_on: "2026-11-23"
 result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/241"]
 ---
 
@@ -848,6 +848,10 @@ a person to check them on iucnredlist.org (the site refuses automated reading), 
 the cited sources. Once that is done and noted here, it is ready to go: mark it ready and it
 merges itself when green.
 
+**Update, 2026-11-23 (about 03:30):** Hanna OKs the cited sources (no check on iucnredlist.org
+by hand needed) and keeps the looks as they are. Nothing remains: the task is Done and the PR
+marked ready.
+
 # Log
 
 - 2026-11-22 architect: wrote the task from Hanna's agreed brief; picked the 20 creatures and
@@ -881,3 +885,4 @@ merges itself when green.
 - 2026-11-23 developer: must-fix 1–5 from *Review after building* applied exactly, no Fable: bookmark-fox side ribbons up beside the head; bookmark-fox shiny ribbons `#9a5fb5` / `#5f86d9` in `species.ts`; starlight-unicorn mane down its left side, nostrils removed (nose slot unused), `hat` at (0, 0.348, −0.08) with `rotation.x = −0.35`, top comment updated; capybara longer snout, wider darker top, nose forward, ears set back; african-penguin chest spots below the band. The two optional tweaks were left alone. Check: `vitest run src/components/creatures src/lib/creatures` 2 files, 110 tests passed; `model bookmark-fox: 2000 / 1000 tris, 9 / 9 calls, 0.82 wide × 1.08 tall × 0.76 deep`; `model starlight-unicorn: 2864 / 1288 tris, 9 / 9 calls, 0.71 wide × 1.11 tall × 0.68 deep`; `model capybara: 2296 / 1056 tris, 7 / 7 calls, 0.72 wide × 0.97 tall × 0.80 deep`; `model african-penguin: 2608 / 1156 tris, 8 / 8 calls, 0.65 wide × 0.97 tall × 0.68 deep` (all as the review expected); `tsc --noEmit` clean. All 16 screenshots re-taken with the same script on `vite dev --port 3141` (no errors, all 20 tiles render), vite stopped and the port checked free. Lesson added to `docs/lessons.md`. Remaining: a quick UX look at the four changed tiles, the Red List check by hand, and the tester.
 - 2026-11-23 ux-designer: reviewed: pass. Re-review of must-fix 1–5 (commit 11382ff, new screenshots): bookmark fox ribbons and shiny ribbons, unicorn mane, muzzle and hat anchor, capybara snout and ears, African penguin chest spots all as specified and readable at 120 px on both wallpapers. Hand-over to the tester. Remaining: the Red List check by hand on iucnredlist.org, and the tester.
 - 2026-11-23 tester: passed. CI green on the first attempt; tests, build and `harness check` re-run here; 62 new tests in `creatures.stress.test.ts` (all stages × qualities × plain/shiny, leaks over 200 builds, unknown id, colour writes); /style seen at 390 and 1280 on both wallpapers with no page errors; creature code only in the /style chunk. Not marked ready: it waits for the Red List check. Remaining: a person opens the 15 wild animals on iucnredlist.org by hand (or Hanna OKs the cited sources) and notes the date here; then mark PR #241 ready and it merges itself.
+- 2026-11-23 tester: Hanna answered (about 03:30): the cited Red List sources are good enough, so nobody needs to check iucnredlist.org by hand, and she keeps the looks as they are. That resolves the open item; nothing remains for a person. Done; PR #241 marked ready.
