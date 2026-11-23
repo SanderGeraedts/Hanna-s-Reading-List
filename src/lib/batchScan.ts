@@ -6,7 +6,7 @@ import { asksPrice, parsePrice } from './price'
 import type { PriceProblem } from './price'
 
 /**
- * Scanning a pile of books in one go (T-0061, AD2). The camera never stops:
+ * Scanning a pile of books in one go (T-0071, AD2). The camera never stops:
  * each barcode it reads drops into this list, and at the end one **How I have
  * it** covers the whole pile (changeable per book), each book gets its own
  * price field under D-0024's rules, and **Add all** puts them on the shelf.

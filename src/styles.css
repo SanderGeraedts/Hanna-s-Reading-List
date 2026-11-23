@@ -538,7 +538,7 @@ textarea.input {
 }
 .tabs {
   display: flex;
-  /* six tabs (Search … Wishlist, T-0062) don't fit on one line at 390 px: they wrap */
+  /* six tabs (Search … Wishlist, T-0072) don't fit on one line at 390 px: they wrap */
   flex-wrap: wrap;
   gap: 0.25rem;
   border-bottom: 1px solid var(--border);
@@ -6775,7 +6775,7 @@ button.today-item:hover {
   .garden-spot {
     min-width: 44px;
     min-height: 44px;
-/* ---- Pick the cover before the book is added (T-0060) ---------------- */
+/* ---- Pick the cover before the book is added (T-0070) ---------------- */
 .cover-step {
   gap: var(--space-2);
 }
@@ -6818,7 +6818,7 @@ button.today-item:hover {
   flex-wrap: wrap;
 }
 
-/* ---- Scanning a pile of books in one go (T-0061) --------------------- */
+/* ---- Scanning a pile of books in one go (T-0071) --------------------- */
 .batch-scan {
   gap: var(--space-2);
 }
@@ -6914,7 +6914,7 @@ button.today-item:hover {
   }
 }
 
-/* ---- The wishlist (T-0062, D-0044) ----------------------------------- */
+/* ---- The wishlist (T-0072, D-0044) ----------------------------------- */
 .wish-row {
   display: grid;
   grid-template-columns: 40px 1fr auto;

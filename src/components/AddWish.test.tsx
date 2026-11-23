@@ -101,7 +101,7 @@ beforeEach(() => {
   ol.covers.mockResolvedValue([11, 12])
 })
 
-describe('Add to wishlist, in + Add (T-0062)', () => {
+describe('Add to wishlist, in + Add (T-0072)', () => {
   it('is the sixth tab of the add dialog', () => {
     setup()
     expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual([

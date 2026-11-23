@@ -56,7 +56,7 @@ beforeEach(() => {
   shrinkImage.mockResolvedValue(PHOTO)
 })
 
-describe('the cover step, pushed harder (T-0060)', () => {
+describe('the cover step, pushed harder (T-0070)', () => {
   it('a photo she takes goes first, picked, and is the cover the book is added with', async () => {
     const state = await setup()
     expect(tiles()).toHaveLength(2)

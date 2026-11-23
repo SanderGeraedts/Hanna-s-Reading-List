@@ -23,7 +23,7 @@ const percy = () => [
 
 const names = (gs: ReturnType<typeof seriesGuesses>) => gs.map((g) => g.name)
 
-describe('the rule-based series guess (T-0060, D-0017: no AI)', () => {
+describe('the rule-based series guess (T-0070, D-0017: no AI)', () => {
   it('reads the series and its number out of the title, first of all', () => {
     const gs = seriesGuesses({ title: 'Dune Messiah (Dune Chronicles, #2)', authors: ['Frank Herbert'] }, [])
     expect(gs[0]).toEqual({ name: 'Dune Chronicles', index: 2, from: 'title' })

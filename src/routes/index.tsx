@@ -159,7 +159,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
    */
   const books = useMemo(() => shelfBooks(allBooks), [allBooks])
   const wishes = useMemo(() => wishBooks(allBooks), [allBooks])
-  /** the wish she just bought, while the follow-up asks how she has it (T-0062) */
+  /** the wish she just bought, while the follow-up asks how she has it (T-0072) */
   const [bought, setBought] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   // the 3D shelf: zoomed in (1 is the whole case) and what a search lights up

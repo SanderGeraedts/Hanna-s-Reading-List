@@ -21,7 +21,7 @@ type Step = 'have' | 'series' | 'link'
 
 /**
  * The step after a book is added (T-0016): "How I have it", "What did it
- * cost?" for a bought copy, "Part of a series?" (T-0060) and the link for a
+ * cost?" for a bought copy, "Part of a series?" (T-0070) and the link for a
  * free e-book. The book is on the shelf already; every answer patches it at
  * once, so closing midway loses nothing that was valid.
  */
@@ -41,7 +41,7 @@ export function AddFollowUp({
   onUpdate: (id: string, patch: Partial<Book>) => void
   onDone: () => void
   handle: Ref<FollowUpHandle>
-  /** rule-based series guesses to confirm with one tap (T-0060, D-0017: no AI) */
+  /** rule-based series guesses to confirm with one tap (T-0070, D-0017: no AI) */
   seriesGuesses?: SeriesGuess[]
   /** whether the "Part of a series?" step is asked at all */
   askSeries?: boolean
@@ -327,7 +327,7 @@ export function AddFollowUp({
 }
 
 /**
- * The step after a book is added **to the wishlist** (T-0062): what it will
+ * The step after a book is added **to the wishlist** (T-0072): what it will
  * cost and where to buy it, both of which she may leave empty. One step, not
  * two: a wish has only these two things to ask.
  */

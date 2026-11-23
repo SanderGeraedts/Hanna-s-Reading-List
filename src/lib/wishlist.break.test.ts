@@ -17,7 +17,7 @@ const wish = (extra: Partial<Book> = {}): Book => ({
   ...extra,
 })
 
-describe('the wishlist, pushed harder (T-0062)', () => {
+describe('the wishlist, pushed harder (T-0072)', () => {
   it('a wish of €0 keeps its price (the row shows €0.00) but adds nothing to the total', () => {
     const free = wish({ price: 0 })
     // the row shows a price whenever one is set, so €0.00 is shown, not hidden

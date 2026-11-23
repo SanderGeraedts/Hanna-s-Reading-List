@@ -63,7 +63,7 @@ const seriesField = () => screen.queryByLabelText('Series name') as HTMLInputEle
 const price = () => screen.queryByLabelText('What did it cost? (euros)') as HTMLInputElement | null
 const chips = () => screen.getByRole('group', { name: 'Part of a series?' })
 
-describe('the "Part of a series?" step after adding (T-0060)', () => {
+describe('the "Part of a series?" step after adding (T-0070)', () => {
   it('comes after How I have it, with the guesses as chips, best first', () => {
     const { state } = setup()
     expect(seriesField()).toBeNull()

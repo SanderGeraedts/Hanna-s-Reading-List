@@ -51,7 +51,7 @@ function setup(initial: Book[]) {
 
 const rows = () => screen.queryAllByRole('listitem')
 
-describe('the Wishlist block (T-0062)', () => {
+describe('the Wishlist block (T-0072)', () => {
   it('is empty before she wishes for anything, and says so', () => {
     setup([])
     expect(screen.getByRole('heading', { name: 'Wishlist' })).toBeTruthy()

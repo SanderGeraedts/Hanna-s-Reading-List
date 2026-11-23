@@ -60,7 +60,7 @@ function scan(rows: ScanRow[], isbn: string, outcome?: IsbnLookup | null | 'erro
   return settleScan(a.rows, isbn, outcome === 'error' ? { ok: false } : { ok: true, result: outcome })
 }
 
-describe('the batch-scan list (T-0061)', () => {
+describe('the batch-scan list (T-0071)', () => {
   it('turns a scanned ISBN Open Library knows into a row with its book', () => {
     const { rows, event } = scan([], NIGHT, found(NIGHT, 'The Night Circus'))
     expect(rows).toHaveLength(1)

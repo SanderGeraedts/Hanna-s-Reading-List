@@ -23,7 +23,7 @@ const BABEL: Book = {
 }
 
 /**
- * The block and the follow-up as the page wires them (T-0062): "I bought it ›"
+ * The block and the follow-up as the page wires them (T-0072): "I bought it ›"
  * clears the flag, dates the book today, and opens "How I have it" with the
  * wish's price already in the field.
  */
@@ -74,7 +74,7 @@ function setup(initial: Book[] = [BABEL]) {
 
 const price = () => screen.queryByLabelText('What did it cost? (euros)') as HTMLInputElement | null
 
-describe('"I bought it ›" moves a wish to the shelf (T-0062, D-0044)', () => {
+describe('"I bought it ›" moves a wish to the shelf (T-0072, D-0044)', () => {
   it('clears the flag, dates the book today, and asks how she has it with the wish’s price', () => {
     const state = setup()
     fireEvent.click(screen.getByRole('button', { name: 'I bought Babel' }))

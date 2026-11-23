@@ -23,7 +23,7 @@ const book = (id: string, extra: Partial<Book> = {}): Book => ({
   ...extra,
 })
 
-describe('the wishlist, and how it is kept apart from the shelf (T-0062, D-0044)', () => {
+describe('the wishlist, and how it is kept apart from the shelf (T-0072, D-0044)', () => {
   it('splits the library into her shelf and her wishes, and nothing is lost', () => {
     const library = [
       book('1'),

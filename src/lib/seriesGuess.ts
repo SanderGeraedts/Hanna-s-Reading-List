@@ -3,7 +3,7 @@ import { seriesFromTitle, seriesGroups } from './series'
 import { authorKey } from './sleepSeries'
 
 /**
- * Guessing a new book's series from rules alone (T-0060, AD1). **No AI**
+ * Guessing a new book's series from rules alone (T-0070, AD1). **No AI**
  * (D-0017) and no second book API (D-0018): everything here is read from the
  * title she already has and from the series already standing on her shelf.
  *

@@ -45,7 +45,7 @@ interface Props {
 const defaultLookup = (isbn: string) => lookupIsbn({ data: { isbn } })
 
 /**
- * Scanning a pile of books in one go (T-0061). The camera never stops: each
+ * Scanning a pile of books in one go (T-0071). The camera never stops: each
  * barcode drops into the list below it, and at the end one **How I have it**
  * covers the pile, every book has its own price field (D-0024) and **Add all**
  * puts them on the shelf. The list's rules live in `lib/batchScan.ts`.

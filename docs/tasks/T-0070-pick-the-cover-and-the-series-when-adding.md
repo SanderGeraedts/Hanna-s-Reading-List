@@ -1,5 +1,5 @@
 ---
-id: T-0060
+id: T-0070
 title: "Pick the cover before a book is added, and guess its series afterwards"
 description: "Tapping a search result opens a row of covers from every edition of that work, best first, with 📷 Take a photo of her own copy, and she picks one before the book is added; after adding, a Part of a series? step guesses the series from her own shelf and from numbers in the title, with no AI, which she confirms with one tap or types herself."
 status: Doing
@@ -97,8 +97,8 @@ her own shelf and from the title she already has.
   which is exactly what `seriesQuestions` already honours, so the two never ask twice.
 - No hint text under either step (D-0014). The empty state ("Open Library has no covers for
   this book") is an empty-block message, which D-0014 keeps.
-- The barcode scanner needs a camera: tests and screenshots stub it (see T-0061). This task
-  touches the Search tab; the Scan tab's cover handling is T-0061's.
+- The barcode scanner needs a camera: tests and screenshots stub it (see T-0071). This task
+  touches the Search tab; the Scan tab's cover handling is T-0071's.
 
 # Choices made while Hanna was at work
 
@@ -247,7 +247,7 @@ handle for `.dialog`.
 
 ## 7. Screenshots the designer will review
 
-In `docs/tasks/T-0060-screens/`. A dialog is opaque (`--surface-solid`), so the wallpaper
+In `docs/tasks/T-0070-screens/`. A dialog is opaque (`--surface-solid`), so the wallpaper
 cannot be seen in a shot cropped to the dialog: the two wallpapers are covered by one
 full-page shot each instead.
 
@@ -281,10 +281,10 @@ measurements taken in the page.
 
 **One thing was sent back to the developer during this review and fixed:**
 
-- **The tab row did not fit.** With the sixth tab (*Wishlist*, T-0062) the row overflowed at
+- **The tab row did not fit.** With the sixth tab (*Wishlist*, T-0072) the row overflowed at
   390 px and *Storytel* and *Wishlist* were cut off — the design says it wraps. Fixed with
   `flex-wrap: wrap` on `.tabs`; measured again at 79 px high (two lines) at 390 and 38 px
-  (one line) at 1280. `wishlist-tab-390.jpg` in T-0062's screens shows the wrapped row.
+  (one line) at 1280. `wishlist-tab-390.jpg` in T-0072's screens shows the wrapped row.
 
 **Differences that stay, none of them blocking:**
 
@@ -379,9 +379,9 @@ re-exported from there) and `recommend.test.ts` all pass unchanged.
 # Log
 
 - 2026-11-23 architect: wrote the task from backlog item AD1 (covers & series), size **full**;
-  numbered T-0060 because T-0001–T-0048 and T-0050 are taken and the Reading Garden and
+  numbered T-0070 because T-0001–T-0048 and T-0050 are taken and the Reading Garden and
   bookcases branches are taking numbers in the 0049–0059 range at the same time. Records
-  D-0044 only for the wishlist (T-0062); this task needs no new decision — it follows D-0017
+  D-0044 only for the wishlist (T-0072); this task needs no new decision — it follows D-0017
   (no AI) and D-0018 (no Google Books) as they stand. Handed to the UX designer.
 - 2026-11-23 ux-designer: designed the cover step and the series step (390 and 1280, both
   wallpapers, keyboard and screen reader, exact wording, eight screenshots). Handed to the

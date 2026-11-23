@@ -3,7 +3,7 @@ import { buyHref, wishCountText, wishOrder } from '#/lib/wishlist'
 import { coverAtSize } from '#/lib/cover'
 
 /**
- * The **Wishlist** block (T-0062, D-0044): the books Hanna wants to buy, newest
+ * The **Wishlist** block (T-0072, D-0044): the books Hanna wants to buy, newest
  * first, with their price and where to buy them. They are not on the shelf and
  * are counted nowhere — this block is given the wishes, everything else is
  * given her shelf.
@@ -22,7 +22,7 @@ export function WishlistCard({
   return (
     <section className="dash-card" aria-labelledby="wishlist-title">
       {/* focusable so that closing the "I bought it ›" follow-up can come back here: the row it
-          was pressed on has gone to the shelf (T-0062) */}
+          was pressed on has gone to the shelf (T-0072) */}
       <h2 id="wishlist-title" tabIndex={-1}>
         Wishlist
       </h2>

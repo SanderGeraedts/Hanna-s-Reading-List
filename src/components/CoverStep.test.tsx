@@ -52,7 +52,7 @@ beforeEach(() => {
   getCoverChoices.mockResolvedValue([11, 12, 13])
 })
 
-describe('picking the cover before the book is added (T-0060)', () => {
+describe('picking the cover before the book is added (T-0070)', () => {
   it('heads the step with the book she tapped and lists every edition’s cover', async () => {
     await setup()
     expect(screen.getByRole('heading', { level: 3 }).textContent).toBe('The Night Circus')

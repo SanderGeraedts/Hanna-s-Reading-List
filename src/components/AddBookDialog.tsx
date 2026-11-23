@@ -23,7 +23,7 @@ import { PriceInput } from './PriceField'
 
 export type Tab = 'search' | 'scan' | 'isbn' | 'manual' | 'storytel' | 'wish'
 
-/** The tabs that ask "Part of a series?" after adding (T-0060); a batch and an import don't. */
+/** The tabs that ask "Part of a series?" after adding (T-0070); a batch and an import don't. */
 const ASKS_SERIES: Tab[] = ['search', 'isbn', 'manual']
 
 export { buildBook }
@@ -206,7 +206,7 @@ function alreadyThere(existing: Book[]): Map<string, 'shelf' | 'wish'> {
 
 /**
  * Search Open Library, then **pick the cover before the book is added**
- * (T-0060). `mode: 'wish'` adds to the wishlist instead of the shelf (T-0062);
+ * (T-0070). `mode: 'wish'` adds to the wishlist instead of the shelf (T-0072);
  * everything else about the search is the same, so there is one search to fix
  * and one to test.
  */
@@ -320,7 +320,7 @@ function SearchTab({
 }
 
 /**
- * **Add to wishlist** (T-0062): the same search, adding a wish instead of a
+ * **Add to wishlist** (T-0072): the same search, adding a wish instead of a
  * shelf book, with a small *By hand* form under it for a book Open Library
  * doesn't have (a pre-order, a small press).
  */

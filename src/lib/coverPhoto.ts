@@ -5,7 +5,7 @@
  * (the shelf's send limit is 5.5 MB, see library.ts).
  *
  * Shared by the "Change cover" dialog (CoverPicker) and the cover step in the
- * add dialog (CoverStep, T-0060).
+ * add dialog (CoverStep, T-0070).
  */
 
 export const UPLOAD_MAX_HEIGHT = 560

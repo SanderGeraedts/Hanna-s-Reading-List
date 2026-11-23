@@ -3,7 +3,7 @@ import type { SearchResult } from '#/server/openLibrary'
 import { analyzeCover, colorFromString, coverUrlForId, coverUrlForIsbn } from './cover'
 import { guessLanguage } from './languages'
 
-/** The cover fields of a book about to be added, once a cover has been chosen (T-0060). */
+/** The cover fields of a book about to be added, once a cover has been chosen (T-0070). */
 export interface PickedCover {
   coverUrl?: string
   coverAspect?: number

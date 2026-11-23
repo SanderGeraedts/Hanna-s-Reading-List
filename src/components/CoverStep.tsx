@@ -23,7 +23,7 @@ interface Props {
 type Choice = { key: string; url: string; label: string; photo?: true }
 
 /**
- * Pick the cover **before** the book is added (T-0060, AD1). Every edition of
+ * Pick the cover **before** the book is added (T-0070, AD1). Every edition of
  * the work she tapped, best first, plus 📷 Take a photo of her own copy. The
  * 3D shelf takes a book's spine colour and its shape from this picture, so
  * picking it first saves fixing it afterwards.

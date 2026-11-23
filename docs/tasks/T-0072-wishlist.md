@@ -1,10 +1,10 @@
 ---
-id: T-0062
+id: T-0072
 title: "A wishlist of books she wants to buy, kept off the shelf and out of every count"
 description: "Books she wants get their own list — a Wishlist dashboard block and Add to wishlist in + Add — each with a cover, title, price and a link to buy it; a wish is a Book with a wish flag (D-0044) that syncs with her shelf but is counted nowhere, and I bought it › moves it to the shelf and asks how she has it and what it cost."
 status: Doing
 size: full
-depends_on: [T-0060]
+depends_on: [T-0070]
 decisions: [D-0002, D-0009, D-0013, D-0014, D-0017, D-0018, D-0020, D-0024, D-0044]
 raised_on: 2026-11-23
 done_on: ""
@@ -71,7 +71,7 @@ no migration, nothing in `src/lib/shelfMerge.ts`, `src/server/shelf.ts`, `deploy
    - the total line reads `3 books · €41.48` and leaves priceless wishes out of the sum.
 6. New tests in `src/components/AddWish.test.tsx` show the + Add flow:
    - the add dialog has a sixth tab **Wishlist**;
-   - searching and tapping a result opens T-0060's cover step, and picking a cover adds a
+   - searching and tapping a result opens T-0070's cover step, and picking a cover adds a
      **wish** (`wish: true`), not a shelf book;
    - after adding, the wish follow-up asks **What will it cost?** and **Where to buy it** and
      saves both, and **Skip** saves neither;
@@ -210,7 +210,7 @@ The **Wishlist** tab is the Search tab in wish mode:
 1. The same search box and the same result rows, with the button reading **Add to wishlist**.
 2. A result already on the shelf reads **On shelf**; one already on the wishlist reads
    **On your wishlist**. Both are disabled.
-3. Tapping it opens **T-0060's cover step**, unchanged except that its primary button reads
+3. Tapping it opens **T-0070's cover step**, unchanged except that its primary button reads
    **Add to wishlist**.
 4. Then the **wish follow-up** (below).
 5. Under the results, a `<details>` disclosure labelled **By hand** with **Title \***,
@@ -300,7 +300,7 @@ grid, which carries no colour. Nothing new to add to the colour test.
 ## Review after the build
 
 Written by the UX designer, 2026-11-23, from the built app on the no-backend dev server at
-port 3175 and the screenshots in `docs/tasks/T-0062-screens/`.
+port 3175 and the screenshots in `docs/tasks/T-0072-screens/`.
 
 | What the design asks | What is there | Verdict |
 | --- | --- | --- |
@@ -339,7 +339,7 @@ port 3175 and the screenshots in `docs/tasks/T-0062-screens/`.
 
 # Test
 
-Written by the tester, 2026-11-23. The checks and the repeated runs are in T-0060's *Test*
+Written by the tester, 2026-11-23. The checks and the repeated runs are in T-0070's *Test*
 section; they cover all three tasks, which ship in one pull request.
 
 ## The one that matters: a wish is counted nowhere
@@ -402,7 +402,7 @@ in **By hand** has no key and searching for it again offers **Add to wishlist** 
 # Log
 
 - 2026-11-23 architect: wrote the task from backlog item AD3 (wishlist), size **full**,
-  numbered T-0062, and recorded **D-0044** for how a wish is stored and kept out of every
+  numbered T-0072, and recorded **D-0044** for how a wish is stored and kept out of every
   count. Checked the storage question the backlog raises: a flag on `Book` needs **no** server
   change, so this is guardrail group 1 and nothing waits for Sander. Choices made while Hanna
   was at work, all the reversible ones: a wish's row opens no book panel; **I bought it ›**
@@ -421,7 +421,7 @@ in **By hand** has no key and searching for it again offers **Add to wishlist** 
   and in real Chrome. Sent one thing back (focus fell to `<body>` when the follow-up closed),
   which the developer fixed and covered with a test. Two differences recorded and accepted.
   **Passed.** Handed to the tester.
-- 2026-11-23 tester: ran the checks and the new tests independently (output in T-0060's
+- 2026-11-23 tester: ran the checks and the new tests independently (output in T-0070's
   *Test*), three repeated runs with no retry, and spent most of the time on the one thing that
   matters — that a wish is counted nowhere — checking fifteen counters one by one, and on the
   awkward wishes: no price, €0, €9,999.99 twelve times, a drifted price, "I bought it" twice, a

@@ -34,7 +34,7 @@ const scan = (rows: ScanRow[], isbn: string, out?: IsbnLookup | null) => {
   return settleScan(a.rows, isbn, { ok: true, result: out }).rows
 }
 
-describe('the batch-scan list, pushed harder (T-0061)', () => {
+describe('the batch-scan list, pushed harder (T-0071)', () => {
   it('only a real book barcode becomes a scan at all', () => {
     // the scanner itself refuses anything that is not a 978/979 EAN-13 with a right check digit
     expect(isbnFromBarcode('9780099554790')).toBe('9780099554790')

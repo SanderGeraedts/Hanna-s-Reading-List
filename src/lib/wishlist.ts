@@ -3,7 +3,7 @@ import { cleanEbookLink, ebookHref } from './ebookLink'
 import { priceCents } from './price'
 
 /**
- * The wishlist (T-0062, D-0044): books Hanna wants to buy. A wish is an
+ * The wishlist (T-0072, D-0044): books Hanna wants to buy. A wish is an
  * ordinary `Book` with `wish: true`, so it is saved, merged and synced by
  * exactly the code her shelf already uses — no new collection, no migration,
  * nothing on the server at Sander's home.

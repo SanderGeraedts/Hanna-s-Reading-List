@@ -93,7 +93,7 @@ beforeEach(() => {
   analyzeCover.mockResolvedValue(ANALYSIS)
 })
 
-describe('scanning a pile of books in one go (T-0061)', () => {
+describe('scanning a pile of books in one go (T-0071)', () => {
   it('keeps the camera running and shows a row per book', async () => {
     setup()
     await scan(NIGHT)

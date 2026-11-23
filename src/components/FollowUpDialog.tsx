@@ -5,7 +5,7 @@ import type { FollowUpHandle } from './AddFollowUp'
 
 /**
  * The after-adding steps on their own, for a book that joined the shelf from
- * somewhere other than the add dialog: a wish she has just bought (T-0062,
+ * somewhere other than the add dialog: a wish she has just bought (T-0072,
  * "I bought it ›"). It asks exactly what the add dialog asks — how she has it
  * and what it cost — with the wish's price already in the field.
  *

@@ -1,10 +1,10 @@
 ---
-id: T-0061
+id: T-0071
 title: "Scan a pile of books in one go and add them together"
 description: "The barcode scanner stays open and drops each book it reads into a list with its cover; at the end one How I have it covers the whole pile (changeable per book), each book has its own price field under D-0024's rules, and Add all puts them on the shelf, with the same ISBN counted once and a book already on the shelf or the wishlist marked."
 status: Doing
 size: full
-depends_on: [T-0060]
+depends_on: [T-0070]
 decisions: [D-0002, D-0013, D-0014, D-0017, D-0018, D-0020, D-0024, D-0044]
 raised_on: 2026-11-23
 done_on: ""
@@ -94,7 +94,7 @@ Backlog item AD2, agreed 22 November 2026:
   she has them and what they cost. A batch therefore does not open `AddFollowUp`, and the
   free-e-book link step (D-0024) does not apply — a scanned barcode is a paper book. Noted as
   a choice in the Log.
-- The series step of T-0060 does not run per scanned book either; a batch of twenty would be
+- The series step of T-0070 does not run per scanned book either; a batch of twenty would be
   twenty questions. Those books keep `seriesAsked` unset, so the dashboard's *Waiting for
   you* asks about them one at a time, which is exactly what D-0013 is for.
 - Hanna's phone is the only device that can scan (Chrome on Android); keep the list cheap —
@@ -111,7 +111,7 @@ easy-to-undo option.
 1. **A batch opens no after-adding follow-up.** The summary has already asked how she has them
    and what they cost, so there is nothing left to ask. *To change:* `BatchScan` would call
    `addFrom('scan')` again instead of `onAdd`.
-2. **A batch asks no "Part of a series?" per book** (see T-0060's list).
+2. **A batch asks no "Part of a series?" per book** (see T-0070's list).
 3. **The list holds 40 books; the 41st is refused out loud** instead of pushing the oldest book
    off. Nothing she scanned is ever lost silently. *To change:* `MAX_ROWS`.
 4. **The pile starts at Paperback**, because a barcode on the back of a book nearly always is
@@ -241,7 +241,7 @@ half-way: either every addable row goes on the shelf or none does.
 
 ## 7. Screenshots the designer will review
 
-In `docs/tasks/T-0061-screens/`. The camera in every one of them is Chrome's **fake** media
+In `docs/tasks/T-0071-screens/`. The camera in every one of them is Chrome's **fake** media
 stream (the green test pattern) with a stubbed `BarcodeDetector` reading barcodes out of a
 queue; no hardware was asked for.
 
@@ -295,7 +295,7 @@ port 3175 with a faked camera, and the screenshots above.
 
 # Test
 
-Written by the tester, 2026-11-23. The checks and the repeated runs are in T-0060's *Test*
+Written by the tester, 2026-11-23. The checks and the repeated runs are in T-0070's *Test*
 section; they cover all three tasks, which ship in one pull request.
 
 ## Trying to break it
@@ -323,7 +323,7 @@ section; they cover all three tasks, which ship in one pull request.
 # Log
 
 - 2026-11-23 architect: wrote the task from backlog item AD2 (batch scan), size **full**,
-  numbered T-0061. Depends on T-0060 only because both rewrite `AddBookDialog.tsx` and ship
+  numbered T-0071. Depends on T-0070 only because both rewrite `AddBookDialog.tsx` and ship
   in the same pull request. Two choices made while Hanna was at work, both the cautious ones:
   a batch opens **no** after-adding follow-up (the summary has already asked), and a batch
   asks **no** series question per book (the dashboard's *Waiting for you* does that one at a
@@ -342,7 +342,7 @@ section; they cover all three tasks, which ship in one pull request.
   fixed with `min-width: 0` and a per-row **How I have it** button that opens that row's chips.
   One design point dropped (the new-row highlight) and written down. **Passed.** Handed to the
   tester.
-- 2026-11-23 tester: ran the checks and the new tests independently (output in T-0060's
+- 2026-11-23 tester: ran the checks and the new tests independently (output in T-0070's
   *Test*), three repeated runs with no retry, and tried to break the list: twenty books, the
   same ISBN twice (both spellings, and during its own lookup), the forty-first book, an ISBN
   Open Library answers 404 for, a barcode that is not a book, a failed lookup and its retry, a
