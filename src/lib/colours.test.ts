@@ -136,6 +136,18 @@ describe('colour check: everything stays readable', () => {
     ['header helper text on the band (midnight)', mid('header-muted'), midBand, 4.5],
     ['text on a header button over the band (midnight)', mid('pill-ink'), midBand.map(headerButton), 4.5],
   )
+  // the badge medals (T-0042, D-0038): the rims are outlines (3:1) on a card and on the earned
+  // face over a card; a hidden medal's "?" is text (4.5:1) on its dark face over a card
+  for (const [wallpaper, cards] of [
+    ['lavender', cardsOnWall],
+    ['midnight', midCards],
+  ] as const) {
+    for (const tier of ['gold', 'silver', 'bronze']) {
+      cases.push([`${tier} medal rim on a card (${wallpaper})`, c(`medal-${tier}`), cards, 3])
+      cases.push([`${tier} medal rim on an earned medal's face (${wallpaper})`, c(`medal-${tier}`), cards.map((card) => over(c('surface-raised'), card)), 3])
+    }
+    cases.push([`the "?" on a hidden medal (${wallpaper})`, c('muted'), cards.map((card) => over(c('medal-hidden'), card)), 4.5])
+  }
   it('reads the midnight wallpaper’s own colours', () => {
     expect(midStart).toBeGreaterThan(0)
     expect(mid('header-ink')).not.toEqual(c('header-ink'))

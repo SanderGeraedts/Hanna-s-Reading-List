@@ -114,7 +114,7 @@ describe('travel badges (T-0040, D-0037)', () => {
       ['countries-10', '✈️', 'Frequent flyer'],
       ['countries-25', '🧳', 'World traveller'],
       ['countries-50', '🌐', 'Around the world'],
-      ['continent-europe', '🗼', 'Postcard from Europe'],
+      ['continent-europe', '🏰', 'Postcard from Europe'],
       ['continent-asia', '🏯', 'Postcard from Asia'],
       ['continent-africa', '🦒', 'Postcard from Africa'],
       ['continent-north-america', '🗽', 'Postcard from North America'],
@@ -299,5 +299,44 @@ describe('when I read most', () => {
     expect(r.line).toBe('You read most on Sundays.')
     expect(r.months[10]).toBe(3)
     expect(rhythm([], 2026, '2026-11-20').line).toBeUndefined()
+  })
+})
+
+describe('medal tiers by family (T-0042, D-0038)', () => {
+  const all = badges([read('a', '2026-01-02')], '2026-11-20')
+
+  it('gives every badge a tier', () => {
+    for (const b of all) expect(['bronze', 'silver', 'gold'], b.id).toContain(b.tier)
+  })
+
+  it('follows the family rule over the whole list: lowest bronze, highest gold, the rest silver, alone gold', () => {
+    const families = new Map<string, Array<{ n: number; tier: string; id: string }>>()
+    for (const b of all) {
+      const m = b.id.match(/^(.*)-(\d+)$/)
+      const family = m ? m[1] : b.id
+      families.set(family, [...(families.get(family) ?? []), { n: m ? Number(m[2]) : 0, tier: b.tier, id: b.id }])
+    }
+    for (const [family, group] of families) {
+      if (group.length === 1) {
+        expect(group[0].tier, family).toBe('gold')
+        continue
+      }
+      const sorted = [...group].sort((a, b) => a.n - b.n)
+      expect(sorted.map((b) => b.tier), family).toEqual(sorted.map((_, i) => (i === 0 ? 'bronze' : i === sorted.length - 1 ? 'gold' : 'silver')))
+    }
+  })
+
+  it('spot checks', () => {
+    const tier = (id: string) => find(all, id).tier
+    expect(tier('books-1')).toBe('bronze')
+    for (const n of [5, 10, 25, 50, 100]) expect(tier(`books-${n}`)).toBe('silver')
+    expect(tier('books-250')).toBe('gold')
+    expect([tier('genres-5'), tier('genres-10')]).toEqual(['bronze', 'gold'])
+    expect([tier('listen-10'), tier('listen-100'), tier('listen-1000')]).toEqual(['bronze', 'silver', 'gold'])
+    expect([tier('series-1'), tier('series-10')]).toEqual(['bronze', 'gold'])
+    expect([tier('streak-3'), tier('streak-100')]).toEqual(['bronze', 'gold'])
+    expect(find(all, 'reread-3').secret).toBe(true)
+    expect([tier('reread-3'), tier('reread-5')]).toEqual(['bronze', 'gold'])
+    for (const id of ['continent-europe', 'continents-6', 'bingo', 'author-5', 'home-sweet-home']) expect(tier(id), id).toBe('gold')
   })
 })
