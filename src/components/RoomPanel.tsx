@@ -1,25 +1,39 @@
 import { useEffect, useState } from 'react'
 import { DECOR_NAMES, DEFAULT_ROOM, WALLPAPERS, WOODS, cleanRoom, moveDecor, toggleDecor } from '#/lib/room'
 import type { Room, Wallpaper, Wood } from '#/lib/room'
+import type { ShopDecorKind } from '#/lib/shelfLayout'
 
 const KEY = 'hannas-reading-list:room'
+const NONE: readonly ShopDecorKind[] = []
 
 /**
  * Her room (Make the room yours), remembered on this device. The wallpaper
  * goes on <html data-wallpaper>, so every page's CSS can follow it.
+ *
+ * `owned`: the decorations she bought in the creature shop (T-0031 §11, from her choices log, so
+ * the same on every device). One she hasn't seen here yet joins at the end, switched on; whether
+ * it shows stays per device. Reset switches them on again and keeps them.
  */
-export function useRoom() {
-  const [room, setState] = useState<Room>(() => {
+export function useRoom(owned: readonly ShopDecorKind[] = NONE) {
+  const read = () => {
     try {
-      return cleanRoom(JSON.parse(localStorage.getItem(KEY) ?? 'null'))
+      return cleanRoom(JSON.parse(localStorage.getItem(KEY) ?? 'null'), owned)
     } catch {
-      return DEFAULT_ROOM
+      return cleanRoom(DEFAULT_ROOM, owned)
     }
-  })
+  }
+  const [room, setState] = useState<Room>(read)
+  const ownedKey = owned.join(',')
+  // a purchase seen for the first time (here or synced from another device): it joins the room
+  useEffect(() => {
+    setState((prev) => cleanRoom(prev, owned))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownedKey])
   useEffect(() => {
     document.documentElement.dataset.wallpaper = room.wallpaper
   }, [room.wallpaper])
-  const setRoom = (next: Room) => {
+  const setRoom = (raw: Room) => {
+    const next = cleanRoom(raw, owned)
     setState(next)
     try {
       localStorage.setItem(KEY, JSON.stringify(next))

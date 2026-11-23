@@ -10,6 +10,8 @@ import { addDays, daysBetween } from './days'
 import { earnedEggs, eggSpecies, eggTier, nextEgg } from './eggs'
 import type { Egg, NextEgg } from './eggs'
 import { seededHash } from './hash'
+import { deriveShop } from './shop'
+import type { ShopState } from './shop'
 import {
   CREATURES_START,
   EGG_PRICE,
@@ -202,6 +204,8 @@ export interface Creatures {
   spent: number
   /** earned + bonus − spent; may be below zero after a fix to a past day */
   balance: number
+  /** the shop (T-0031): what she owns, wears, placed in the den, her habitat and the eggs she bought */
+  shop: ShopState
   /** earned today */
   earnedToday: number
   week: Week
@@ -230,8 +234,9 @@ export function nameOf(log: readonly ChoiceEvent[], pet: string): string | null 
   return best ? cleanName(best.name) : null
 }
 
-/** Cookies she has given (to any pet). */
-export const spentOf = (log: readonly ChoiceEvent[]) => log.reduce((n, e) => (isFeed(e) ? n + e.amount : n), 0)
+/** Cookies she has given (to any pet) and paid in the shop (the price of each purchase as she paid it, T-0031). */
+export const spentOf = (log: readonly ChoiceEvent[], shop: ShopState = deriveShop(log)) =>
+  log.reduce((n, e) => (isFeed(e) ? n + e.amount : n), 0) + shop.spent
 
 /** By time; on the same millisecond a hatch comes before the choices about it, then by id. */
 const byTime = (a: ChoiceEvent, b: ChoiceEvent) =>
@@ -267,7 +272,12 @@ export function deriveCreatures(books: Book[], log: readonly ChoiceEvent[], now:
   const today = localDay(now)
   const days = readingDays(books, opts.sleep ?? sleepReadIds(books))
   const earned = earnedThrough(days, today)
-  const spent = spentOf(log)
+  const shop = deriveShop(log)
+  const spent = spentOf(log, shop)
+  // a bought egg's tier comes from its purchase (`shop:<purchase id>`), a milestone egg's from its id
+  const shopTier = new Map(shop.eggs.map((e) => [e.id, e.tier]))
+  const tierOf = (egg: string): Tier | null => eggTier(egg) ?? shopTier.get(egg) ?? null
+  const shopEggs: Egg[] = shop.eggs.map((e) => ({ id: e.id, tier: e.tier, kind: 'shop', day: localDay(new Date(e.at)) }))
   const started = today >= CREATURES_START
   const welcome = hatchOf(log, WELCOME_EGG)
   const earnedList = started ? earnedEggs(books, days, today, opts.challenges) : []
@@ -278,7 +288,7 @@ export function deriveCreatures(books: Book[], log: readonly ChoiceEvent[], now:
   if (welcome) firstHatch.set(WELCOME_EGG, welcome)
   for (const e of [...log].sort(byTime)) {
     if (!isHatch(e) || firstHatch.has(e.egg) || e.egg === WELCOME_EGG) continue
-    if (eggTier(e.egg)) firstHatch.set(e.egg, e)
+    if (tierOf(e.egg)) firstHatch.set(e.egg, e)
   }
 
   // what each egg hatched, and whether it was a duplicate: decided by the eggs she hatched before it
@@ -294,7 +304,7 @@ export function deriveCreatures(books: Book[], log: readonly ChoiceEvent[], now:
   const seen = new Set<SpeciesId>()
   const hatched: Hatched[] = []
   for (const [egg, hatch] of firstHatch) {
-    const tier = eggTier(egg)!
+    const tier = tierOf(egg)!
     const species = speciesOf(egg, tier)
     const duplicate = seen.has(species)
     seen.add(species)
@@ -305,6 +315,8 @@ export function deriveCreatures(books: Book[], log: readonly ChoiceEvent[], now:
   // reading days and feeds up to a moment, for a power-up's levels at the time it was used
   const feedsTo = (pet: string, before = Infinity) =>
     log.reduce((n, e) => (isFeed(e) && e.pet === pet && e.at < before ? n + e.amount : n), 0)
+  // food from the shop grows the pet it was given to by its own amount (T-0031 Design §2)
+  const foodTo = (pet: string, before = Infinity) => shop.food.reduce((n, f) => (f.pet === pet && f.at < before ? n + f.growth : n), 0)
   const readingSince = (hatchDay: string, until: string) => dayList.filter((d) => d >= hatchDay && d <= until).length
   const hatchDayOf = (h: Hatched) => localDay(new Date(h.hatch.at))
 
@@ -338,6 +350,7 @@ export function deriveCreatures(books: Book[], log: readonly ChoiceEvent[], now:
         const hatchDay = hatchDayOf(target.h)
         const growth =
           feedsTo(target.h.egg, e.at) * GROWTH_PER_COOKIE +
+          foodTo(target.h.egg, e.at) +
           readingSince(hatchDay, localDay(new Date(e.at))) * GROWTH_PER_READING_DAY +
           target.powerUps
         target.powerUps += growthForLevels(growth, POWER_UP_LEVELS)
@@ -361,7 +374,7 @@ export function deriveCreatures(books: Book[], log: readonly ChoiceEvent[], now:
     const hatchDay = hatchDayOf(h)
     const fed = feedsTo(h.egg)
     const reading = readingSince(hatchDay, today)
-    const growth = fed * GROWTH_PER_COOKIE + reading * GROWTH_PER_READING_DAY + l.powerUps
+    const growth = fed * GROWTH_PER_COOKIE + foodTo(h.egg) + reading * GROWTH_PER_READING_DAY + l.powerUps
     const lvl = levelOf(growth)
     const taken = new Set(pets.filter((p) => p.species === h.species).map((p) => p.name))
     const list = SUGGESTED_NAMES[h.species]
@@ -401,7 +414,8 @@ export function deriveCreatures(books: Book[], log: readonly ChoiceEvent[], now:
     egg: started && !welcome,
     pet,
     pets,
-    eggs: earnedList.filter((e) => !firstHatch.has(e.id)),
+    // bought eggs wait with the milestone eggs, oldest first (on one day, milestones first)
+    eggs: [...earnedList, ...shopEggs].filter((e) => !firstHatch.has(e.id)).sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0)),
     earnedEggs: earnedList,
     waiting: duplicates.filter((d) => pending.has(d.egg)),
     duplicates,
@@ -412,6 +426,7 @@ export function deriveCreatures(books: Book[], log: readonly ChoiceEvent[], now:
     bonus,
     spent,
     balance: earned + bonus - spent,
+    shop,
     earnedToday: earned - earnedThrough(days, addDays(today, -1)),
     week: thisWeek(days, today),
     days,

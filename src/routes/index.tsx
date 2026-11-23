@@ -31,7 +31,9 @@ import { RoomPanel, useRoom } from '#/components/RoomPanel'
 import { ChallengesPage } from '#/components/ChallengesPage'
 import { CalendarPage } from '#/components/CalendarPage'
 import { CreaturesPage } from '#/components/CreaturesPage'
-import { CreaturesProvider } from '#/components/creatures/CreaturesContext'
+import { CreaturesProvider, useCreaturesValue } from '#/components/creatures/CreaturesContext'
+import { isCategory, ownedDecor } from '#/lib/creatures/shop'
+import type { ShopCategory } from '#/lib/creatures/shop'
 import type { ChallengeSection } from '#/components/ChallengesPage'
 import { useStorytelSync } from '#/lib/useStorytelSync'
 import type { Tab } from '#/components/AddBookDialog'
@@ -52,6 +54,7 @@ export const Route = createFileRoute('/')({
     focus?: ChallengeSection
     month?: string
     step?: 'choose' | 'hatch' | 'duplicate'
+    shop?: ShopCategory
   } => {
     const view =
       search.view === 'dashboard' || search.view === 'challenges' || search.view === 'calendar' || search.view === 'creatures'
@@ -63,11 +66,14 @@ export const Route = createFileRoute('/')({
     // &step=choose opens the Creatures tab at "Choose your first creature" (a Hatch button, T-0029);
     // &step=hatch hatches the oldest milestone egg, &step=duplicate opens a duplicate's choice (T-0030)
     const step = search.step === 'choose' || search.step === 'hatch' || search.step === 'duplicate' ? search.step : undefined
+    // &shop=outfits opens the Creatures tab's Shop view at that category (T-0031); none: the Den view
+    const shop = isCategory(search.shop) ? search.shop : undefined
     return {
       ...(view && { view }),
       ...(view === 'challenges' && focus && { focus }),
       ...(view === 'calendar' && month && { month }),
       ...(view === 'creatures' && step && { step }),
+      ...(view === 'creatures' && shop && { shop }),
     }
   },
 })
@@ -250,8 +256,12 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
 
   // what she could read next (#58): Make a wish grants from these; a genre picked at the top starts the wish
   const wishChoices = useMemo(() => readNextChoices(books), [books])
+  // her creature choices once for the whole page: the Creatures tab, the dashboard block and Waiting for you share them
+  const creatures = useCreaturesValue(account?.id ?? null)
+  // decorations she bought in the creature shop join the room on every device (T-0031 §11)
+  const owned = useMemo(() => ownedDecor(creatures.choices.log), [creatures.choices.log])
   // her room: wood, wallpaper and decorations (Make the room yours), on this device
-  const [room, setRoom] = useRoom()
+  const [room, setRoom] = useRoom(owned)
   const [roomOpen, setRoomOpen] = useState(false)
 
   const select = useCallback((id: string | null) => {
@@ -285,6 +295,12 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
       navigate({ search: step ? { view: 'creatures', step } : { view: 'creatures' } })
     },
     [navigate, select],
+  )
+  /** the Shop view (T-0031): switching Den ↔ Shop is a history entry (Back returns), a category change replaces it */
+  const openShop = useCallback(
+    (shop: ShopCategory | null, opts?: { replace?: boolean }) =>
+      navigate({ search: shop ? { view: 'creatures', shop } : { view: 'creatures' }, replace: !!opts?.replace }),
+    [navigate],
   )
   /** the choose step is open: drop &step=choose, so a reload or Back doesn't open it again */
   const choseOpened = useCallback(() => navigate({ search: { view: 'creatures' }, replace: true }), [navigate])
@@ -380,8 +396,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   )
 
   return (
-    // her creature choices once for the whole page: the Creatures tab, the dashboard block and Waiting for you share them
-    <CreaturesProvider accountId={account?.id ?? null}>
+    <CreaturesProvider value={creatures}>
     <div className="app" style={headerPx ? ({ '--header-h': `${headerPx}px` } as React.CSSProperties) : undefined}>
       <header className={offShelf ? 'topbar on-page' : 'topbar'} ref={header}>
         <div className="brand">
@@ -550,6 +565,10 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
               onChooseOpened={choseOpened}
               startStep={search.step === 'hatch' || search.step === 'duplicate' ? search.step : undefined}
               onStepOpened={choseOpened}
+              shop={search.shop ?? null}
+              onShop={openShop}
+              room={room}
+              onRoom={setRoom}
               paused={!!selected || adding !== null || wishing}
             />
           </ClientOnly>

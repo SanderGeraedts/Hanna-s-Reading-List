@@ -3,9 +3,28 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import type { Mood, Stage } from '#/lib/creatures/creature'
 import type { SpeciesId, Tier } from '#/lib/creatures/species'
+import type { DenSlot, HabitatId, OutfitSlot } from '#/lib/creatures/shop'
+import { skyAt, weatherAt } from '#/lib/creatures/weather'
 import { creatureFor, eyeOpen, headTilt, rigOf, usePageVisible } from './pose'
 import { SPARKLE_SPOTS, glowTex, makeEgg, sparkleTexture } from './eggModel'
 import type { Rig } from './pose'
+import type { CreatureQuality } from './model'
+import {
+  DEN_CAMERA,
+  DEN_FILL,
+  DEN_FOV,
+  DEN_LOOK,
+  DEN_SPOTS,
+  DEN_VIEW_H,
+  HABITAT_BACK,
+  buildBowl,
+  denBed,
+  denItem,
+  denRoom,
+  denRug,
+  dressCreature,
+  seatYOf,
+} from './shopModels'
 
 /**
  * The den (T-0029 Design §5): a cosy corner seen about 10° from above and ¾
@@ -26,6 +45,12 @@ export type DenShows =
   | { kind: 'crack'; species: SpeciesId; shiny: boolean; tier?: Tier }
   | { kind: 'creature'; species: SpeciesId; shiny: boolean; stage: Stage; mood: Mood | null }
 
+/** What she bought for the den (T-0031): the habitat and what stands in each spot. */
+export interface DenSetup {
+  habitat: HabitatId
+  placed: Partial<Record<DenSlot, string>>
+}
+
 /** A tap reaction: a new `n` starts it again. */
 export interface Reaction {
   kind: 'feed' | 'levelup'
@@ -43,35 +68,33 @@ interface Props {
   reaction?: Reaction | null
   /** the crack has played (or faded) */
   onCrackDone?: () => void
+  /** what the creature wears, per slot (T-0031) */
+  dress?: Partial<Record<OutfitSlot, string>>
+  /** the habitat and the den's spots (T-0031) */
+  den?: DenSetup
+  /** the device clock, for the window's sky and weather (a test clock in a test) */
+  now?: Date
 }
 
-const WALL = '#3a2c24'
-const SIDE_WALL = '#362c2a'
-const FLOOR = '#5a3f2c'
-const RUG = '#6e4f8f'
-const GOLD = '#d9a85b'
-const COOKIE = '#c98a4b'
-const BOWL = '#7a5236'
+/** Share of the canvas height a creature fills, per stage (Design §5), before the 10 % pull-back of T-0031. */
+const FILL: Record<Stage, number> = DEN_FILL
+const FOV = DEN_FOV
+const VIEW_H = DEN_VIEW_H
+const LOOK = DEN_LOOK
+const CAMERA = DEN_CAMERA
+const NO_DEN: DenSetup = { habitat: 'cosy', placed: {} }
+// Where the creature and the egg sit (world y): each bed has its own, from `seatYOf` in
+// shopModels.ts. The gold cushion is 0.18, the cloud cushion 0.22, the basket bed 0.14
+// (review 2026-11-23; closes backlog F14).
 
-/** Share of the canvas height a creature fills, per stage (Design §5). */
-const FILL: Record<Stage, number> = { grown: 0.6, young: 0.46, baby: 0.33 }
-const FOV = 30
-/** Visible height at the cushion: the grown-up (1 world unit tall) fills 60 % of it. */
-const VIEW_H = 1 / FILL.grown
-const DISTANCE = VIEW_H / (2 * Math.tan(((FOV / 2) * Math.PI) / 180))
-const LOOK = new THREE.Vector3(0, 0.62, 0)
-const DOWN = (10 * Math.PI) / 180
-const TURN = (32 * Math.PI) / 180
-const CAMERA: [number, number, number] = [
-  LOOK.x + DISTANCE * Math.sin(TURN) * Math.cos(DOWN),
-  LOOK.y + DISTANCE * Math.sin(DOWN),
-  LOOK.z + DISTANCE * Math.cos(TURN) * Math.cos(DOWN),
-]
-/** The cushion's top: where the creature stands. */
-const SEAT = 0.1
-
-export function DenScene({ shows, cookies, phone, reduce, paused, reaction, onCrackDone }: Props) {
+export function DenScene({ shows, cookies, phone, reduce, paused, reaction, onCrackDone, dress, den = NO_DEN, now }: Props) {
   const visible = usePageVisible()
+  const q: CreatureQuality = phone ? 'low' : 'high'
+  const wall = HABITAT_BACK[den.habitat]
+  // the clock is read per render: the page re-renders every minute (moods), so the sky follows
+  const clock = now ?? new Date()
+  const sky = skyAt(clock)
+  const weather = weatherAt(clock)
   const stopped = paused || !visible
   // a phone or reduce motion: render on demand (the idle asks for frames itself); a computer: every frame
   const frameloop = stopped ? 'never' : phone || reduce ? 'demand' : 'always'
@@ -85,10 +108,10 @@ export function DenScene({ shows, cookies, phone, reduce, paused, reaction, onCr
       dpr={phone ? [1, 1.5] : [1, 2]}
       camera={{ fov: FOV, position: CAMERA, near: 0.1, far: 30 }}
       gl={{ antialias: !phone, toneMapping: THREE.ACESFilmicToneMapping }}
-      style={{ background: WALL }}
+      style={{ background: wall }}
     >
       <LookAt />
-      <color attach="background" args={[WALL]} />
+      <color attach="background" args={[wall]} />
       <hemisphereLight args={['#ffe8cc', '#4a2f1e', 1.3]} />
       <ambientLight intensity={0.55} color="#ffdcb4" />
       <directionalLight
@@ -103,9 +126,10 @@ export function DenScene({ shows, cookies, phone, reduce, paused, reaction, onCr
         shadow-camera-bottom={-2}
       />
       <directionalLight position={[0, 3, -4]} intensity={0.5} color="#fff3e0" />
-      <Room phone={phone} />
-      <Bowl cookies={cookies} phone={phone} />
-      {shows.kind === 'egg' && <Egg key={shows.tier ?? 'common'} tier={shows.tier ?? 'common'} phone={phone} rock={!phone && !reduce} />}
+      <Room habitat={den.habitat} q={q} phone={phone} />
+      <Spots placed={den.placed} q={q} sky={sky} weather={weather} moving={!phone && !reduce} reduce={reduce} />
+      <Bowl cookies={cookies} q={q} />
+      {shows.kind === 'egg' && <Egg key={shows.tier ?? 'common'} tier={shows.tier ?? 'common'} phone={phone} rock={!phone && !reduce} seat={seatYOf(den.placed.bed)} />}
       {shows.kind === 'crack' && (
         <Crack
           key={`${shows.species}|${shows.tier ?? 'common'}`}
@@ -114,6 +138,7 @@ export function DenScene({ shows, cookies, phone, reduce, paused, reaction, onCr
           tier={shows.tier ?? 'common'}
           phone={phone}
           reduce={reduce}
+          seat={seatYOf(den.placed.bed)}
           onDone={onCrackDone}
         />
       )}
@@ -127,6 +152,8 @@ export function DenScene({ shows, cookies, phone, reduce, paused, reaction, onCr
           phone={phone}
           reduce={reduce}
           reaction={reaction ?? null}
+          dress={dress}
+          seat={seatYOf(den.placed.bed)}
         />
       )}
       {(phone || reduce) && !stopped && <Idle on={!reduce} />}
@@ -154,86 +181,141 @@ function Idle({ on }: { on: boolean }) {
   return null
 }
 
-/** The corner, the rug and the cushion; built once. */
-function Room({ phone }: { phone: boolean }) {
+/**
+ * The corner in her habitat (T-0031 §9; the Cosy den is T-0029's): walls, floor and the habitat's
+ * props, and on a phone a soft dark disc that fakes the creature's shadow. Built once per habitat.
+ */
+function Room({ habitat, q, phone }: { habitat: HabitatId; q: CreatureQuality; phone: boolean }) {
+  const room = useMemo(() => denRoom(habitat, q), [habitat, q])
   return (
     <group>
-      {/* floor and the two walls of the corner */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow={!phone}>
-        <planeGeometry args={[12, 12]} />
-        <meshStandardMaterial color={FLOOR} roughness={0.9} />
-      </mesh>
-      {/* the walls show their own colour, untouched by light and tone mapping (the key light sits
-          behind the left wall's plane, and ACES made both nearly black): the back wall #3a2c24, the
-          left one a little darker but still warm brown */}
-      <mesh position={[0, 3, -1.6]}>
-        <planeGeometry args={[12, 6]} />
-        <meshBasicMaterial color={WALL} toneMapped={false} />
-      </mesh>
-      <mesh position={[-2.2, 3, 0]} rotation={[0, Math.PI / 2, 0]}>
-        <planeGeometry args={[12, 6]} />
-        <meshBasicMaterial color={SIDE_WALL} toneMapped={false} />
-      </mesh>
-      {/* a skirting board where wall meets floor, so the corner reads */}
-      <mesh position={[0, 0.04, -1.58]}>
-        <boxGeometry args={[12, 0.08, 0.04]} />
-        <meshStandardMaterial color="#2c211b" roughness={1} />
-      </mesh>
-      {/* round rug in muted plum */}
-      <mesh position={[0, 0.006, 0.05]} receiveShadow={!phone}>
-        <cylinderGeometry args={[1.05, 1.05, 0.012, phone ? 32 : 48]} />
-        <meshStandardMaterial color={RUG} roughness={1} />
-      </mesh>
-      {/* a soft dark disc fakes the shadow on a phone */}
+      <primitive object={room} />
       {phone && (
         <mesh position={[0.04, 0.014, 0.02]} rotation={[-Math.PI / 2, 0, 0]}>
           <circleGeometry args={[0.62, 32]} />
           <meshBasicMaterial color="#000000" transparent opacity={0.28} depthWrite={false} />
         </mesh>
       )}
-      {/* the round floor cushion */}
-      <mesh position={[0, 0.06, 0]} scale={[1, 0.22, 1]} castShadow={!phone} receiveShadow={!phone}>
-        <sphereGeometry args={[0.55, phone ? 20 : 32, phone ? 10 : 16]} />
-        <meshStandardMaterial color={GOLD} roughness={1} />
-      </mesh>
+    </group>
+  )
+}
+
+/**
+ * The six spots (T-0031 §8): the bed (T-0029's gold cushion unless she placed one), the rug (the
+ * plum one unless she placed one), the wall, the two corners and the toy. A new item fades in
+ * (here: grows from 90 % in 200 ms; at once with reduce motion).
+ */
+function Spots({
+  placed,
+  q,
+  sky,
+  weather,
+  moving,
+  reduce,
+}: {
+  placed: Partial<Record<DenSlot, string>>
+  q: CreatureQuality
+  sky: ReturnType<typeof skyAt>
+  weather: ReturnType<typeof weatherAt>
+  moving: boolean
+  reduce: boolean
+}) {
+  return (
+    <>
+      <Spot key={`bed|${placed.bed ?? '-'}`} slot="bed" id={placed.bed} q={q} reduce={reduce} />
+      <Spot key={`rug|${placed.rug ?? '-'}`} slot="rug" id={placed.rug} q={q} reduce={reduce} />
+      {(['wall', 'left', 'right', 'toy'] as const).map((slot) =>
+        placed[slot] ? (
+          <Spot key={`${slot}|${placed[slot]}`} slot={slot} id={placed[slot]} q={q} sky={sky} weather={weather} moving={moving} reduce={reduce} />
+        ) : null,
+      )}
+    </>
+  )
+}
+
+function Spot({
+  slot,
+  id,
+  q,
+  sky,
+  weather,
+  moving = false,
+  reduce,
+}: {
+  slot: DenSlot
+  id?: string
+  q: CreatureQuality
+  sky?: ReturnType<typeof skyAt>
+  weather?: ReturnType<typeof weatherAt>
+  moving?: boolean
+  reduce: boolean
+}) {
+  const g = useMemo(() => {
+    if (!id) return slot === 'bed' ? denBed(q) : denRug(q)
+    return denItem(id, q, { sky, weather, moving })
+  }, [id, slot, q, sky, weather, moving])
+  const holder = useRef<THREE.Group>(null)
+  const start = useRef<number | null>(null)
+  const { invalidate } = useThree()
+  // only items she placed grow in; the den's own cushion and rug are just there
+  const grow = !!id && !reduce
+  useFrame(({ clock }) => {
+    const h = holder.current
+    if (!h) return
+    if (grow) {
+      if (start.current === null) start.current = clock.elapsedTime
+      const k = Math.min(1, (clock.elapsedTime - start.current) / 0.2)
+      h.scale.setScalar(0.9 + 0.1 * k)
+      if (k < 1) invalidate()
+    }
+    if (!moving) return
+    // on a computer the weather falls or drifts and the fairy lights twinkle slowly (Design §8)
+    const t = clock.elapsedTime
+    g.traverse((o) => {
+      const pts = o as THREE.Points
+      if (pts.isPoints && pts.userData.moving) {
+        const pos = pts.geometry.attributes.position as THREE.BufferAttribute
+        const { bottom, top, width, kind, archTop, archR } = pts.userData as { bottom: number; top: number; width: number; kind: string; archTop: number; archR: number }
+        const speed = kind === 'rain' ? 0.5 : 0.08
+        for (let i = 0; i < pos.count; i++) {
+          let y = pos.getY(i) - speed / 60
+          let x = pos.getX(i)
+          if (y < bottom) y = top
+          // after wrapping to the top, keep inside the arched pane (review 2026-11-23)
+          const dy = y - archTop
+          if (dy > 0) {
+            const limit = Math.sqrt(Math.max(0, archR * archR * 0.9 - dy * dy))
+            if (x > limit) x = limit
+            else if (x < -limit) x = -limit
+          }
+          if (kind === 'snow') x = Math.max(-width / 2, Math.min(width / 2, x + Math.sin(t + i) * 0.0004))
+          pos.setY(i, y)
+          pos.setX(i, x)
+        }
+        pos.needsUpdate = true
+      }
+      const m = o as THREE.Mesh
+      if (m.isMesh && m.userData.twinkle) (m.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.75 + 0.25 * Math.sin(t * 1.3)
+    })
+  })
+  return (
+    <group ref={holder} position={DEN_SPOTS[slot]} scale={grow ? 0.9 : 1}>
+      <primitive object={g} />
     </group>
   )
 }
 
 /** The wooden food bowl beside the cushion, with one cookie per 5 🍪 up to 5 (none at 0 or below). */
-function Bowl({ cookies, phone }: { cookies: number; phone: boolean }) {
+function Bowl({ cookies, q }: { cookies: number; q: CreatureQuality }) {
   const n = Math.max(0, Math.min(5, Math.ceil(cookies / 5)))
-  const spots: Array<[number, number, number, number]> = [
-    [-0.05, 0.1, 0.0, 0.2],
-    [0.05, 0.1, 0.03, -0.3],
-    [0.0, 0.1, -0.05, 0.5],
-    [-0.01, 0.125, 0.0, -0.1],
-    [0.03, 0.145, -0.01, 0.35],
-  ]
-  return (
-    <group position={[0.72, 0, -0.32]}>
-      <mesh position={[0, 0.05, 0]} castShadow={!phone} receiveShadow={!phone}>
-        <cylinderGeometry args={[0.16, 0.11, 0.1, phone ? 16 : 24, 1, true]} />
-        <meshStandardMaterial color={BOWL} roughness={0.8} side={THREE.DoubleSide} />
-      </mesh>
-      <mesh position={[0, 0.005, 0]}>
-        <cylinderGeometry args={[0.11, 0.11, 0.01, phone ? 16 : 24]} />
-        <meshStandardMaterial color={BOWL} roughness={0.8} />
-      </mesh>
-      {spots.slice(0, n).map(([x, y, z, r], i) => (
-        <mesh key={i} position={[x, y - 0.02, z]} rotation={[0.25, r, 0.2]} castShadow={!phone}>
-          <cylinderGeometry args={[0.045, 0.045, 0.018, 12]} />
-          <meshStandardMaterial color={COOKIE} roughness={0.9} />
-        </mesh>
-      ))}
-    </group>
-  )
+  const bowl = useMemo(() => buildBowl(n * 5, q), [n, q])
+  return <primitive object={bowl} />
 }
 
 // ---- the egg ------------------------------------------------------------------------------
 
 /** The egg on the cushion: tilted 6°; on a computer it rocks ±4° for 0.8 s about every 6 s. */
-function Egg({ tier, phone, rock }: { tier: Tier; phone: boolean; rock: boolean }) {
+function Egg({ tier, phone, rock, seat }: { tier: Tier; phone: boolean; rock: boolean; seat: number }) {
   const g = useRef<THREE.Group>(null)
   const egg = useMemo(() => makeEgg(tier, phone), [tier, phone])
   useFrame(({ clock }) => {
@@ -243,7 +325,7 @@ function Egg({ tier, phone, rock }: { tier: Tier; phone: boolean; rock: boolean 
     g.current.rotation.z = (6 * Math.PI) / 180 + r
   })
   return (
-    <group position={[0, SEAT, 0]}>
+    <group position={[0, seat, 0]}>
       <group ref={g} rotation={[0, 0, (6 * Math.PI) / 180]}>
         <primitive object={egg.root} />
       </group>
@@ -271,6 +353,7 @@ function Crack({
   tier,
   phone,
   reduce,
+  seat,
   onDone,
 }: {
   species: SpeciesId
@@ -278,6 +361,7 @@ function Crack({
   tier: Tier
   phone: boolean
   reduce: boolean
+  seat: number
   onDone?: () => void
 }) {
   const egg = useRef<THREE.Group>(null)
@@ -350,7 +434,7 @@ function Crack({
   })
 
   return (
-    <group position={[0, SEAT, 0]}>
+    <group position={[0, seat, 0]}>
       <group ref={egg} scale={BIG}>
         <primitive object={parts.root} />
       </group>
@@ -394,6 +478,8 @@ function setOpacity(obj: THREE.Object3D, opacity: number) {
 
 // ---- the creature -------------------------------------------------------------------------
 
+const OUTFIT_KEYS: readonly OutfitSlot[] = ['head', 'face', 'neck', 'back']
+
 /** Seconds a feed reaction lasts: the happy squint (^ ^). */
 const HAPPY = 0.8
 
@@ -411,6 +497,8 @@ function Creature({
   phone,
   reduce,
   reaction,
+  dress,
+  seat,
 }: {
   species: SpeciesId
   shiny: boolean
@@ -419,8 +507,26 @@ function Creature({
   phone: boolean
   reduce: boolean
   reaction: Reaction | null
+  dress?: Partial<Record<OutfitSlot, string>>
+  seat: number
 }) {
-  const rig = useMemo<Rig>(() => rigOf(creatureFor(species, stage, shiny, phone ? 'low' : 'high')), [species, stage, shiny, phone])
+  const q: CreatureQuality = phone ? 'low' : 'high'
+  const rig = useMemo<Rig>(() => rigOf(creatureFor(species, stage, shiny, q)), [species, stage, shiny, q])
+  // outfits on their anchors (T-0031 §7): a new piece pops in (0.8 → 1 in 200 ms; none with reduce motion)
+  const dressKey = OUTFIT_KEYS.map((s) => dress?.[s] ?? '').join('|')
+  const wore = useRef<Partial<Record<OutfitSlot, string>>>({})
+  const pops = useRef<Array<{ m: THREE.Object3D; base: number; at: number | null }>>([])
+  useLayoutEffect(() => {
+    const before = wore.current
+    const pieces = dressCreature(rig.root, dress ?? {}, q)
+    wore.current = { ...(dress ?? {}) }
+    if (!reduce)
+      pops.current = pieces
+        .filter((m) => before[m.userData.slot as OutfitSlot] !== dress?.[m.userData.slot as OutfitSlot])
+        .map((m) => ({ m, base: m.scale.x, at: null }))
+    invalidate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rig, dressKey, q])
   const scale = (FILL[stage] * VIEW_H) / rig.height
   const holder = useRef<THREE.Group>(null)
   const { invalidate } = useThree()
@@ -470,11 +576,20 @@ function Creature({
       const look = idle && !phone && !mood && c > 6 ? Math.sin(((c - 6) / 2) * Math.PI) * 0.3 : 0
       rig.head.rotation.set(rig.base.head.x + tilt.x, rig.base.head.y + look, rig.base.head.z + tilt.z)
     }
-    if (holder.current) holder.current.position.y = SEAT + bob * scale
+    if (holder.current) holder.current.position.y = seat + bob * scale
+    if (pops.current.length) {
+      for (const p of pops.current) {
+        if (p.at === null) p.at = t
+        const k = Math.min(1, (t - p.at) / 0.2)
+        p.m.scale.setScalar(p.base * (0.8 + 0.2 * k))
+      }
+      pops.current = pops.current.filter((p) => t - (p.at ?? t) < 0.2)
+      invalidate()
+    }
   })
 
   return (
-    <group ref={holder} position={[0, SEAT, 0]} scale={scale}>
+    <group ref={holder} position={[0, seat, 0]} scale={scale}>
       <primitive object={rig.root} />
       {shiny && <Sparkles height={rig.height} twinkle={!phone && !reduce} />}
     </group>

@@ -32,7 +32,8 @@ import type { SpeciesId, Tier } from './species'
  * past day takes the milestone away again (a pet is never lost).
  */
 
-export type EggKind = 'welcome' | 'books' | 'hours' | 'streak' | 'series' | 'challenge' | 'month' | 'bingo'
+/** `shop`: bought in the shop (T-0031), id `shop:<purchase id>`, its tier from the purchase */
+export type EggKind = 'welcome' | 'books' | 'hours' | 'streak' | 'series' | 'challenge' | 'month' | 'bingo' | 'shop'
 
 export interface Egg {
   id: string
@@ -47,7 +48,7 @@ export interface Egg {
 }
 
 /** Order on one day: books, hours, streak, series, challenge, month, bingo. */
-const KIND_ORDER: Record<EggKind, number> = { welcome: 0, books: 1, hours: 2, streak: 3, series: 4, challenge: 5, month: 6, bingo: 7 }
+const KIND_ORDER: Record<EggKind, number> = { welcome: 0, books: 1, hours: 2, streak: 3, series: 4, challenge: 5, month: 6, bingo: 7, shop: 8 }
 
 const booksTier = (n: number): Tier => (n % BOOKS_LEGENDARY === 0 ? 'legendary' : n % BOOKS_RARE === 0 ? 'rare' : 'common')
 const hoursTier = (n: number): Tier => (n % HOURS_RARE === 0 ? 'rare' : 'common')

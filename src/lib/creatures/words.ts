@@ -5,6 +5,10 @@ import { TIERS, speciesById } from './species'
 import type { Species, SpeciesId, Tier } from './species'
 import { minutesText } from './cookies'
 import type { Egg, NextEgg } from './eggs'
+import { theItem } from './shop'
+import type { ShopItem } from './shop'
+import { WEATHER_WORDS } from './weather'
+import type { Weather } from './weather'
 
 /** Every sentence the creatures show (T-0029 Design §13), worked out in one place so tab, block and tests agree. */
 
@@ -123,6 +127,8 @@ export function eggReason(e: Egg): string {
       return `For ${MONTH.format(new Date(`${e.label}-01T00:00:00Z`))}'s challenge`
     case 'bingo':
       return 'For a full bingo card'
+    case 'shop':
+      return 'From the shop'
     default:
       return 'A welcome egg'
   }
@@ -176,3 +182,58 @@ export const shiniesLine = (n: number) => `✨ ${n} ${n === 1 ? 'shiny' : 'shini
 
 /** The den's text during a hatch: "A rare egg on a cushion." */
 export const eggOnCushion = (t: Tier) => `${EggName(t)} on a cushion.`
+
+// ---- T-0031: the shop (Design §14) ----------------------------------------------------------
+
+const left = (n: number) => `${cookieNumber(n)} ${Math.abs(n) === 1 ? 'cookie' : 'cookies'} left.`
+const The = (i: Pick<ShopItem, 'name'>) => `The ${i.name.toLowerCase()}`
+
+/** "Bought the bobble hat. 52 cookies left." */
+export const boughtSay = (i: Pick<ShopItem, 'name'>, balance: number) => `Bought ${theItem(i)}. ${left(balance)}`
+/** "Bought a rare egg. It's waiting in your eggs." */
+export const eggBoughtSay = (t: Tier) => `Bought ${eggName(t)}. It's waiting in your eggs.`
+/** "Biscuit ate the honey cake. 70 cookies left." */
+export const foodSay = (name: string, i: Pick<ShopItem, 'name'>, balance: number) => `${name} ate ${theItem(i)}. ${left(balance)}`
+export const NOT_ENOUGH = 'Not enough cookies any more.'
+/** "Biscuit is wearing the bobble hat." */
+export const wearSay = (name: string, i: Pick<ShopItem, 'name'>) => `${name} is wearing ${theItem(i)}.`
+/** "Took off the bobble hat." */
+export const takeOffSay = (i: Pick<ShopItem, 'name'>) => `Took off ${theItem(i)}.`
+/** "The reading lamp is in the den." or, with a replace, "The slide is in the den. The ball is put away." */
+export const placeSay = (i: Pick<ShopItem, 'name'>, replaced?: Pick<ShopItem, 'name'>) =>
+  `${The(i)} is in the den.${replaced ? ` ${The(replaced)} is put away.` : ''}`
+/** "Put the reading lamp away." */
+export const putAwaySay = (i: Pick<ShopItem, 'name'>) => `Put ${theItem(i)} away.`
+/** "The forest is your habitat now." */
+export const habitatSay = (i: Pick<ShopItem, 'name'>) => `${The(i)} is your habitat now.`
+/** "The snow globe is in your reading room." / "The snow globe is hidden in the room on this device." */
+export const decorSay = (i: Pick<ShopItem, 'name'>, on: boolean) =>
+  on ? `${The(i)} is in your reading room.` : `${The(i)} is hidden in the room on this device.`
+/** "the bobble hat and the reading glasses", "a, b and c". */
+export function andList(parts: readonly string[]): string {
+  if (parts.length <= 1) return parts.join('')
+  return `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`
+}
+
+/**
+ * The den's hidden description with what she sees (Design §12): "Biscuit the house cat, a baby,
+ * wearing the bobble hat and the reading glasses, on the cloud cushion in the forest. In the den:
+ * the window with snow, the mini bookcase and the reading lamp." Short when nothing is bought: as T-0029.
+ */
+export function denShopDescription(
+  pet: Pick<Pet, 'name' | 'species' | 'stage' | 'mood'>,
+  worn: readonly ShopItem[],
+  bed: ShopItem | null,
+  habitat: ShopItem | null,
+  items: readonly ShopItem[],
+  weather: Weather,
+): string {
+  if (!worn.length && !bed && !habitat && !items.length) return denDescription(pet)
+  const word = SPECIES_WORD[pet.species] ?? speciesById(pet.species).name.toLowerCase()
+  const wearing = worn.length ? ` wearing ${andList(worn.map(theItem))},` : ''
+  const seat = bed ? theItem(bed) : 'its cushion'
+  const where = habitat ? ` in ${theItem(habitat)}` : ' in the den'
+  const mood = pet.mood === 'missing' ? ' It misses you.' : pet.mood === 'sleepy' ? ' It is sleepy.' : ''
+  const things = items.map((i) => (i.id === 'weather-window' ? `the window with ${WEATHER_WORDS[weather]}` : theItem(i)))
+  return `${pet.name} the ${word}, ${STAGE_DESCRIPTION[pet.stage]},${wearing} on ${seat}${where}.${things.length ? ` In the den: ${andList(things)}.` : ''}${mood}`
+}

@@ -5960,3 +5960,390 @@ button.today-item:hover {
   font-size: var(--fs-tiny);
   color: var(--muted);
 }
+
+/* ---- the creature shop (T-0031) ------------------------------------------------------------ */
+/* the Den | Shop switch, on the wallpaper: white pills with dark ink, the open one gold-outlined */
+.view-switch {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: calc(var(--space-2) * -1);
+}
+.view-switch-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--tap);
+  padding: var(--space-1) var(--space-4);
+  border: 1px solid rgba(45, 32, 56, 0.2);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--pill-ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+.view-switch-link:hover {
+  background: #fff;
+}
+.view-switch-link.active {
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 2px rgba(217, 168, 91, 0.35);
+  background: #fff;
+}
+.view-switch-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.den-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 var(--space-2);
+}
+.creature-name-row {
+  flex-wrap: wrap;
+}
+.creature-name-row h2 {
+  flex: 1 1 8rem;
+}
+/* a new habitat: the den fades in from a soft dark veil (300 ms) */
+.den-fade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: rgba(20, 14, 10, 0.55);
+  opacity: 0;
+  animation: den-fade 300ms ease-out;
+}
+@keyframes den-fade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .den-fade {
+    animation: none;
+  }
+}
+
+/* the Shop view: the den left (sticky, so what she puts on shows while she scrolls), the shop right */
+.shop-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 40fr) minmax(0, 60fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+.shop-den {
+  position: sticky;
+  top: var(--space-2);
+  z-index: 2;
+  padding: var(--space-3);
+}
+@media (max-width: 860px) {
+  .shop-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* a phone: only the canvas is sticky; the strip scrolls with the page, on its own card */
+  .shop-den {
+    display: contents;
+  }
+  .shop-den > .den-stage {
+    position: sticky;
+    top: var(--space-2);
+    z-index: 2;
+    height: 180px;
+    aspect-ratio: auto;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  }
+  .shop-den > .shop-strip {
+    padding: var(--space-4);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+  }
+}
+
+/* the strips under the den: "Biscuit is wearing" and "In the den" */
+.shop-strip {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.shop-strip h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.strip-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0 var(--space-3);
+}
+.strip-rows li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap);
+  border-top: 1px solid var(--border);
+}
+.strip-rows .muted {
+  flex: 0 0 6.5rem;
+  font-size: var(--fs-small);
+}
+.strip-what {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 860px) {
+  .strip-rows {
+    grid-template-columns: 1fr 1fr;
+  }
+  .strip-rows .muted {
+    flex-basis: auto;
+  }
+  .strip-rows li {
+    flex-wrap: wrap;
+    padding: var(--space-1) 0;
+  }
+}
+.dress-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.dress-pet {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  width: 4.5rem;
+  padding: var(--space-1);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-card);
+  cursor: pointer;
+}
+.dress-pet .still-img,
+.dress-pet .still-missing {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+}
+.dress-pet.picked {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+.dress-pet:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.dress-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-small);
+}
+
+/* the shop card: category chips, then the cards */
+.shop-card h2 {
+  margin: 0 0 var(--space-3);
+}
+.shop-chips {
+  gap: var(--space-2);
+}
+.shop-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--tap);
+  padding: var(--space-1) var(--space-3);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.shop-chip:hover {
+  border-color: var(--accent-line);
+}
+.shop-chip.active {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  font-weight: 600;
+}
+.shop-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.shop-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: var(--space-3);
+}
+@media (max-width: 720px) {
+  .shop-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.shop-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  min-width: 0;
+}
+.shop-item.in-use {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+.shop-pic {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: var(--radius-small);
+  background:
+    radial-gradient(circle at 50% 40%, rgba(255, 236, 200, 0.16), transparent 65%),
+    var(--surface-sunken);
+  overflow: hidden;
+}
+.shop-pic.wide {
+  aspect-ratio: 16 / 10;
+}
+.shop-pic .still-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.shop-pic.wide .still-img {
+  object-fit: cover;
+}
+.shop-state {
+  position: absolute;
+  top: var(--space-1);
+  left: var(--space-1);
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-solid);
+  border: 1px solid var(--accent-line);
+  color: var(--text);
+  font-size: var(--fs-small);
+  font-weight: 600;
+}
+.shop-name {
+  margin: var(--space-1) 0 0;
+  font-size: var(--fs-body);
+  overflow-wrap: anywhere;
+}
+.shop-line {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+.shop-price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: auto 0 0;
+  padding-top: var(--space-1);
+}
+.price-pill {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.shop-more {
+  color: var(--muted);
+  font-size: var(--fs-small);
+  white-space: nowrap;
+}
+.shop-btn {
+  width: 100%;
+  min-height: var(--tap);
+  margin-top: auto;
+  white-space: normal;
+}
+.shop-price + .shop-btn {
+  margin-top: var(--space-1);
+}
+.shop-btn[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.shop-now {
+  margin: auto 0 0;
+  min-height: var(--tap);
+  display: grid;
+  place-items: center;
+}
+.shop-confirm {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+.shop-question {
+  margin: 0;
+  font-size: var(--fs-small);
+  font-weight: 700;
+}
+.shop-confirm-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.shop-confirm-row .btn {
+  flex: 1 1 4rem;
+  min-height: var(--tap);
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
+}
+.shop-egg-line {
+  margin: 0;
+}
+.shop-egg-line a {
+  color: var(--accent);
+  font-weight: 600;
+}
+.still-missing.wide {
+  aspect-ratio: 16 / 10;
+  width: 100%;
+}
+/* a little less padding than other cards, so four cards fit a row at 1280 (Design §4) */
+.shop-card {
+  padding: var(--space-4);
+}
+/* a phone: each strip row is the slot word above the item, with its button beside */
+@media (max-width: 860px) {
+  .strip-rows li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'slot button' 'what what';
+    align-items: center;
+    gap: 2px var(--space-2);
+  }
+  .strip-rows li .muted {
+    grid-area: slot;
+  }
+  .strip-rows li .strip-what {
+    grid-area: what;
+    overflow-wrap: break-word;
+  }
+  .strip-rows li .btn {
+    grid-area: button;
+  }
+}

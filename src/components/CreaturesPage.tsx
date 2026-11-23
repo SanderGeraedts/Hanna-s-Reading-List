@@ -33,6 +33,15 @@ import { Album } from './creatures/Album'
 import { Reveal } from './creatures/Reveal'
 import type { RevealOf } from './creatures/Reveal'
 import { HoldButton, ShinyWarning } from './creatures/bits'
+import { DenStrip, DressStrip, ShopCard, ViewSwitch } from './creatures/Shop'
+import type { ShopActions } from './creatures/Shop'
+import { decorShownSay } from './creatures/CreaturesContext'
+import { shopItem } from '#/lib/creatures/shop'
+import type { DenSlot, OutfitSlot, RoomDecorId, ShopCategory } from '#/lib/creatures/shop'
+import { denShopDescription } from '#/lib/creatures/words'
+import { weatherAt } from '#/lib/creatures/weather'
+import type { Room } from '#/lib/room'
+import { toggleDecor } from '#/lib/room'
 
 /**
  * The Creatures tab (T-0029 Design §2–§7, §10, §12; T-0030 Design §2–§9): her
@@ -55,12 +64,29 @@ interface Props {
   onStepOpened?: () => void
   /** something is over the page (the book panel, a sheet): the den stops rendering */
   paused?: boolean
+  /** the Shop view's category from the URL (`&shop=`), or none for the Den view (T-0031) */
+  shop?: ShopCategory | null
+  /** switching views pushes a history entry (Back returns); changing category replaces it */
+  onShop?: (category: ShopCategory | null, opts?: { replace?: boolean }) => void
+  /** her room on this device: a bought decoration is shown or hidden there (T-0031 §11) */
+  room?: Room
+  onRoom?: (room: Room) => void
 }
 
 type Step = 'egg' | 'choose' | 'crack' | 'hello' | 'home'
 
-export function CreaturesPage({ books, startChoose, onChooseOpened, startStep, onStepOpened, paused }: Props) {
-  const { c, api, feed, choose, release, setCurrent } = useCreatures(books)
+export function CreaturesPage({ books, startChoose, onChooseOpened, startStep, onStepOpened, paused, shop: shopProp, onShop, room, onRoom }: Props) {
+  const { c, api, feed, choose, release, setCurrent, now, buy, wear, place, setHabitat } = useCreatures(books)
+  // the view: from the URL when the page is routed, else kept here (a test)
+  const [ownShop, setOwnShop] = useState<ShopCategory | null>(shopProp ?? null)
+  const shopCat = onShop ? (shopProp ?? null) : ownShop
+  const goShop = (cat: ShopCategory | null, opts?: { replace?: boolean }) => (onShop ? onShop(cat, opts) : setOwnShop(cat))
+  /** the pet being dressed in Outfits (Dress up or the Dress row); the current pet otherwise */
+  const [dressId, setDressId] = useState<string | null>(null)
+  const [hatchNext, setHatchNext] = useState(false)
+  const shopHeading = useRef<HTMLHeadingElement>(null)
+  const stripHeading = useRef<HTMLHeadingElement>(null)
+  const focusShop = useRef<'heading' | 'strip' | null>(null)
   const phone = usePhone()
   const reduce = useReducedMotion()
   const [gl, setGl] = useState(false)
@@ -91,6 +117,12 @@ export function CreaturesPage({ books, startChoose, onChooseOpened, startStep, o
   }, [startChoose, onChooseOpened])
 
   useLayoutEffect(() => {
+    const s = focusShop.current
+    const sel = s === 'heading' ? shopHeading.current : s === 'strip' ? stripHeading.current : null
+    if (sel) {
+      sel.focus()
+      focusShop.current = null
+    }
     const f = focusNext.current
     if (!f) return
     const el = { choose: chooseHeading, hatch: hatchBtn, hello: helloHeading, name: nameHeading, eggs: eggsHeading, reveal: revealHeading }[f].current
@@ -203,6 +235,13 @@ export function CreaturesPage({ books, startChoose, onChooseOpened, startStep, o
     pickTimer.current = setTimeout(flushPick, CURRENT_SAVE_MS)
   }
 
+  // the egg line's Hatch in the shop: to the Den view, then hatch the oldest egg there
+  useEffect(() => {
+    if (!hatchNext || shopCat) return
+    setHatchNext(false)
+    hatchOldest()
+  }, [hatchNext, shopCat, hatchOldest])
+
   if (!c.started) {
     return (
       <div className="dashboard">
@@ -227,10 +266,89 @@ export function CreaturesPage({ books, startChoose, onChooseOpened, startStep, o
           : pet
             ? { kind: 'creature', species: pet.species, shiny: pet.shiny, stage: pet.stage, mood: pet.mood }
             : { kind: 'egg' }
-  const denText = hatching ? (reveal.phase === 'crack' ? eggOnCushion(revealOf.tier) : `${SPECIES_WORD[revealOf.species]}, a baby, sitting on its cushion in the den.`) : pet ? denDescription(pet) : EGG_DESCRIPTION
   const home = !!pet && step === 'home'
+  // the Shop view, from the first pet on (before the welcome hatch `&shop=` shows the Den view)
+  const shopView = home && !!shopCat && !reveal
+  const dressed = (shopCat === 'outfits' && c.pets.find((p) => p.id === dressId)) || pet
+  const denPet = shopView && dressed ? dressed : pet
+  const den = { habitat: c.shop.habitat, placed: c.shop.placed }
+  const dressOf = (p: Pet | null | undefined) => (p ? (c.shop.worn.get(p.id) ?? {}) : {})
+  const shopDenText = denPet
+    ? denShopDescription(
+        denPet,
+        (['head', 'face', 'neck', 'back'] as const).flatMap((s) => (dressOf(denPet)[s] ? [shopItem(dressOf(denPet)[s]!)!] : [])),
+        c.shop.placed.bed ? shopItem(c.shop.placed.bed)! : null,
+        c.shop.habitat === 'cosy' ? null : shopItem(c.shop.habitat)!,
+        (['wall', 'left', 'right', 'toy', 'rug'] as const).flatMap((s) => (c.shop.placed[s] ? [shopItem(c.shop.placed[s]!)!] : [])),
+        weatherAt(now),
+      )
+    : null
+  const denText = hatching ? (reveal.phase === 'crack' ? eggOnCushion(revealOf.tier) : `${SPECIES_WORD[revealOf.species]}, a baby, sitting on its cushion in the den.`) : pet ? (shopDenText ?? denDescription(pet)) : EGG_DESCRIPTION
   const samePets = revealOf ? c.pets.filter((p) => p.species === revealOf.species && p.id !== revealOf.egg) : []
   const newPet = revealOf ? c.pets.find((p) => p.id === revealOf.egg) : undefined
+
+  const denCanvas = (
+    <SceneBoundary onFail={() => setGl(false)}>
+      <DenScene
+        shows={shopView && denPet ? { kind: 'creature', species: denPet.species, shiny: denPet.shiny, stage: denPet.stage, mood: denPet.mood } : shows}
+        cookies={c.balance}
+        phone={phone}
+        reduce={reduce}
+        paused={paused}
+        reaction={reaction}
+        dress={hatching ? undefined : dressOf(denPet)}
+        den={den}
+        now={now}
+        onCrackDone={() => {
+          if (reveal?.phase === 'crack') {
+            focusNext.current = 'reveal'
+            setReveal({ ...reveal, phase: 'reveal' })
+          } else go('hello', 'hello')
+        }}
+      />
+    </SceneBoundary>
+  )
+  // a new habitat cross-fades in (300 ms; at once with reduce motion, by CSS)
+  const habitatFade = <span key={c.shop.habitat} className="den-fade" aria-hidden />
+
+  const shopActions: ShopActions = {
+    buy: (id) => {
+      const it = shopItem(id)
+      if (!it || !pet) return { ok: false }
+      const r = buy(id, it.category === 'food' ? { pet: pet.id } : {})
+      if (r.say) say(r.say)
+      if (r.ok && it.category === 'food') setReaction((prev) => ({ kind: r.levelUp ? 'levelup' : 'feed', n: (prev?.n ?? 0) + 1 }))
+      return r
+    },
+    wear: (slot, id) => {
+      if (!dressed) return
+      const r = wear(dressed.id, slot, id)
+      if (r.ok && r.say) say(r.say)
+    },
+    place: (slot, id) => {
+      const r = place(slot, id)
+      if (r.ok && r.say) say(r.say)
+    },
+    habitat: (id) => {
+      const r = setHabitat(id)
+      if (r.ok) say(r.say)
+    },
+    decor: (id, on) => {
+      const d = room?.decor.find((x) => x.kind === id)
+      if (room && onRoom && d && d.on !== on) onRoom(toggleDecor(room, id as RoomDecorId))
+      say(decorShownSay(id, on))
+    },
+    hatch: () => {
+      goShop(null)
+      setHatchNext(true)
+    },
+  }
+  const decorOn = (id: string) => (room ? !!room.decor.find((d) => d.kind === id)?.on : c.shop.owned.has(id))
+  const openShop = (cat: ShopCategory, dressPet?: string) => {
+    setDressId(dressPet ?? null)
+    focusShop.current = 'heading'
+    goShop(cat)
+  }
 
   return (
     <div className="dashboard">
@@ -242,6 +360,66 @@ export function CreaturesPage({ books, startChoose, onChooseOpened, startStep, o
             {c.earnedToday > 0 && <span className="creatures-today">+{c.earnedToday} today</span>}
           </div>
         </header>
+        {home && (
+          <ViewSwitch
+            shop={shopView}
+            category={shopCat ?? 'food'}
+            onView={(toShop) => {
+              setDressId(null)
+              goShop(toShop ? (shopCat ?? 'food') : null)
+            }}
+          />
+        )}
+        {shopView && pet && dressed && (
+          <div className="shop-layout">
+            <section className={`dash-card den-card shop-den${gl ? '' : ' no-gl'}`} aria-label="The den">
+              {gl && (
+                <div className="den-stage shop-stage">
+                  {denCanvas}
+                  {habitatFade}
+                  <p className="visually-hidden">{shopDenText}</p>
+                </div>
+              )}
+              {shopCat === 'outfits' && (
+                <DressStrip
+                  pets={c.pets}
+                  dressed={dressed}
+                  worn={dressOf(dressed)}
+                  headingRef={stripHeading}
+                  onDress={(p) => setDressId(p.id)}
+                  onTakeOff={(slot: OutfitSlot) => {
+                    focusShop.current = 'strip'
+                    shopActions.wear(slot, 'none')
+                  }}
+                />
+              )}
+              {(shopCat === 'home' || shopCat === 'toys') && (
+                <DenStrip
+                  placed={c.shop.placed}
+                  headingRef={stripHeading}
+                  onPutAway={(slot: DenSlot) => {
+                    focusShop.current = 'strip'
+                    shopActions.place(slot, 'none')
+                  }}
+                />
+              )}
+            </section>
+            <ShopCard
+              c={c}
+              category={shopCat!}
+              onCategory={(cat) => {
+                if (cat !== 'outfits') setDressId(null)
+                goShop(cat, { replace: true })
+              }}
+              dressPet={dressed}
+              current={pet}
+              decorOn={decorOn}
+              actions={shopActions}
+              headingRef={shopHeading}
+            />
+          </div>
+        )}
+        {!shopView && (
         <div className={`creatures-layout${home ? '' : ' no-card'}`}>
           <section ref={denCard} className="dash-card den-card" aria-label={step === 'choose' ? undefined : 'The den'}>
             {step === 'choose' ? (
@@ -258,23 +436,16 @@ export function CreaturesPage({ books, startChoose, onChooseOpened, startStep, o
               <>
                 {gl && (
                   <div className="den-stage">
-                    <SceneBoundary onFail={() => setGl(false)}>
-                      <DenScene
-                        shows={shows}
-                        cookies={c.balance}
-                        phone={phone}
-                        reduce={reduce}
-                        paused={paused}
-                        reaction={reaction}
-                        onCrackDone={() => {
-                          if (reveal?.phase === 'crack') {
-                            focusNext.current = 'reveal'
-                            setReveal({ ...reveal, phase: 'reveal' })
-                          } else go('hello', 'hello')
-                        }}
-                      />
-                    </SceneBoundary>
+                    {denCanvas}
+                    {habitatFade}
                     <p className="visually-hidden">{denText}</p>
+                  </div>
+                )}
+                {home && !reveal && (
+                  <div className="den-actions">
+                    <button type="button" className="btn small" onClick={() => openShop('home')}>
+                      <span aria-hidden>🛋️</span> Arrange
+                    </button>
                   </div>
                 )}
                 {step === 'egg' && (
@@ -328,6 +499,7 @@ export function CreaturesPage({ books, startChoose, onChooseOpened, startStep, o
                 balance={c.balance}
                 canRelease={c.pets.length > 1}
                 nameRef={nameHeading}
+                onDressUp={() => openShop('outfits', pet.id)}
                 onRename={(name) => {
                   api.choices.rename(pet.id, name)
                   say(`Renamed to ${name}.`)
@@ -353,7 +525,8 @@ export function CreaturesPage({ books, startChoose, onChooseOpened, startStep, o
             <WeekCard c={c} phone={phone} />
           </div>
         </div>
-        {home && <Album c={c} />}
+        )}
+        {home && !shopView && <Album c={c} />}
         <p className="visually-hidden" role="status" aria-live="polite">
           {said}
         </p>
@@ -530,9 +703,12 @@ function CreatureCard({
   onRename,
   onFeed,
   onRelease,
+  onDressUp,
 }: {
   pet: Pet
   balance: number
+  /** 👗 Dress up: the Shop view's Outfits, dressing this pet (T-0031 §3) */
+  onDressUp?: () => void
   /** false for her last pet: Release… is shown but disabled (D-0033 §9) */
   canRelease: boolean
   nameRef: React.RefObject<HTMLHeadingElement | null>
@@ -609,6 +785,11 @@ function CreatureCard({
           >
             <span aria-hidden>✏️</span> Rename
           </button>
+          {onDressUp && (
+            <button type="button" className="btn small" onClick={onDressUp}>
+              <span aria-hidden>👗</span> Dress up
+            </button>
+          )}
         </div>
       )}
       <p className="creature-level">

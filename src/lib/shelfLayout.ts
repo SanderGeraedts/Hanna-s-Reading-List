@@ -53,7 +53,9 @@ export interface Slot {
   row: number
 }
 
-export type DecorKind = 'koala' | 'succulent' | 'frame' | 'candle' | 'vase' | 'cat' | 'mug' | 'ivy'
+export type DecorKind = 'koala' | 'succulent' | 'frame' | 'candle' | 'vase' | 'cat' | 'mug' | 'ivy' | ShopDecorKind
+/** Decorations she buys in the creature shop (T-0031): on the shelves only once bought. */
+export type ShopDecorKind = 'dragon-plush' | 'pennant' | 'egg-display' | 'snow-globe'
 
 /** Decorations in placement order (the koala always comes first) and their footprint width. */
 export const DECOR: Array<{ kind: DecorKind; width: number }> = [
@@ -67,6 +69,14 @@ export const DECOR: Array<{ kind: DecorKind; width: number }> = [
   { kind: 'frame', width: 0.15 },
   { kind: 'vase', width: 0.11 },
 ]
+/** The shop's decorations (T-0031 Design §2, each at most 0.16 wide), in shop order. */
+export const SHOP_DECOR: Array<{ kind: ShopDecorKind; width: number }> = [
+  { kind: 'dragon-plush', width: 0.16 },
+  { kind: 'pennant', width: 0.16 },
+  { kind: 'egg-display', width: 0.13 },
+  { kind: 'snow-globe', width: 0.11 },
+]
+const ALL_DECOR = [...DECOR, ...SHOP_DECOR]
 /** at most one decoration per shelf, so the books stay the main thing */
 const DECOR_PER_ROW = 1
 const DECOR_GAP = 0.05
@@ -203,7 +213,7 @@ export function computeLayout(
   /** the decorations she picked, in shelf order (Make the room yours); all of them by default */
   decorKinds: DecorKind[] = DECOR.map((d) => d.kind),
 ): ShelfLayout {
-  const decorList = decorKinds.map((k) => DECOR.find((d) => d.kind === k)!).filter(Boolean)
+  const decorList = decorKinds.map((k) => ALL_DECOR.find((d) => d.kind === k)!).filter(Boolean)
   const dims = new Map<string, BookDims>()
   const placed: Array<{ id: string; row: number; x: number; d: BookDims }> = []
   const sepPlaced: Array<{
