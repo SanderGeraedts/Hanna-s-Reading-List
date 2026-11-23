@@ -2,7 +2,7 @@
 id: T-0039
 title: "Tap a country on the world map to see its covers in a card under the map, and zoom the map with + −, pinch, Ctrl+scroll and dragging"
 description: "In Where your books are set, tapping a country (or its name in the list) opens an inline card under the map with that country's covers, each opening its book (a plain country says No books set here yet.), imaginary-land covers open their book too, and the map zooms with + − buttons, pinch, Ctrl+scroll and drag-to-pan when zoomed, while at zoom 1 the page scrolls as before; still no numbers in the block."
-status: Open
+status: Doing
 size: full
 depends_on: [T-0018, T-0022]
 decisions: [D-0013, D-0014, D-0020, D-0022, D-0026]
@@ -473,6 +473,53 @@ Those in *Done when*, plus three:
 | `controls-390-lavender` (new) | zoom 1: the strip with `−` and `⤢` dimmed |
 | `lands-focus-390-lavender` (new) | the bigger land covers, one focused with the gold ring |
 
+# Build notes
+
+- **Zoom maths:** `src/lib/mapZoom.ts` (`zoomAround`, `panView`, `clampView`, `between`,
+  `MAP_ZOOM_MAX` 8, `MAP_ZOOM_STEP` 2), with `mapZoom.test.ts`. The view is the svg's `viewBox`
+  and always keeps the map's 360 × 142 shape, so the picture never changes size.
+- **`BooksWorldMapCard`** (`PictureBlocks.tsx`): `onShowBook` is now a prop (passed from
+  `Dashboard.tsx`). The map sits in `div.world-map-frame` with the zoom strip (`.world-zoom`,
+  `role="group" aria-label="Zoom"`) under it. The `<svg>` is `role="group"` with the same label,
+  `tabIndex` 0 only when zoomed in, `touch-action: pan-x pan-y` at zoom 1 and `none` when zoomed.
+  Lit countries are drawn after the plain ones, in alphabetical order (their Tab order), as
+  `role="button"` paths with `aria-expanded`/`aria-controls`. The plain countries and the cover
+  patterns are memoised, so zooming only redraws the `viewBox`, the zones and the marks.
+- **Gestures:** native listeners on the svg (non-passive `wheel`; `pointerdown` on the svg,
+  `pointermove`/`pointerup`/`pointercancel` on the window). The 6 px threshold, a second finger
+  makes a pinch, and both set a flag so the click that may follow isn't a tap. A country opens on
+  `click` (delegated through `data-country`), so a tap, a click and a test's `fireEvent.click` go the
+  same way. The buttons glide over 150 ms (ease-out, `requestAnimationFrame`) and jump with reduced
+  motion. Pinch, Ctrl+scroll, drags and arrow keys follow directly.
+- **Tap zones:** the lit countries whose bounding box is under 44 px on screen (box in map units ×
+  the svg's measured width / `view.w`, measured with a `ResizeObserver`) get a `.world-zone` copy
+  with a transparent 44 px non-scaling stroke, largest first.
+- **Card:** `section.bingo-suggest.world-pick` reuses the bingo card's rules (and its
+  `.bingo-suggest-top`, `.bingo-suggest-close`) instead of copying them. `.world-pick` only resets
+  the margin and wraps the heading. Covers are `CoverButton`s (`button.world-cover`, `alt=""`
+  image or a role-less chip, 3 × 4.5 rem), used in the card and in the lands.
+  `.world-land-books` left the shared rule with `.own-challenge-books`.
+- **CSS:** `.world-zoom .btn` was added to the shelf's `.zoom-controls .btn` selectors (colour,
+  hover, 44 px size). Plain borders are `0.3px` with `vector-effect: non-scaling-stroke`. The mark
+  is `.world-marks` (`.world-mark-edge` 5 px `--bg`, `.world-mark` 2.5 px `--accent`, `.focus`
+  dashed `4 3`, `.plain` with the `--accent-soft` fill).
+- **Earlier tests changed by the design:** T-0018's tests looked for the map as `role="img"` and
+  the land covers as images. They now look for the map as `group` and the covers as buttons
+  named by title. What they check is unchanged otherwise.
+- **Developer's call, for the UX designer to review:** a tap zone never takes a tap that lands on
+  another *lit* country's own shape. At zoom 1 the Netherlands' 22 px zone covers the east of the
+  United Kingdom (and at 4× part of Germany), so with zones on top a tap in the middle of the UK
+  opened the Netherlands. This follows the design's "a lit USA never steals a tap meant for
+  Canada". Over the sea or a plain country, the zone still wins (the Netherlands from 15 px off
+  its edge, Belgium only when zoomed in). Covered by a component test.
+- **The Playwright script** (`docs/tasks/T-0039-screens/screens.mjs`, output in
+  `screens-output.txt`): 88 checks, all passing, on `vite dev --port 3155` with no backend. The
+  phone context uses touch emulation and real CDP touch events (`Input.dispatchTouchEvent`) for
+  the tap, the swipe, the pinch and the drag. The page scrolls in `.dashboard` (its `scrollTop`),
+  not on `window`, so the script checks both `scrollY` and `.dashboard` `scrollTop`. Two console
+  messages are filtered out as not this block's: 404s from `/api/cover/` (covers Open Library
+  doesn't have; the spine colour shows, T-0018) and the dev server's missing `favicon.ico`.
+
 # Test
 
 To be written by the tester.
@@ -491,3 +538,14 @@ To be written by the tester.
   screen-reader wording, layouts at 390 and 1280 and the screenshot list. Night mode: two
   questions added for the morning (strip placement, bigger land covers). Handed to the
   **developer**.
+- 2026-11-23 developer: built the tap card, the gold mark, the 44 px tap zones, tap vs drag, the zoom
+  strip (+ − ⤢, ×2 a press, 8× max), pinch, Ctrl+scroll, drag to pan, page scroll at zoom 1,
+  keyboard and screen-reader wording; `src/lib/mapZoom.ts` + test; `onShowBook` passed from the
+  Dashboard (see *Build notes*). One call left to the UX designer's review: a tap zone doesn't take
+  a tap on another lit country's own shape. Checks: `pnpm test` 97 files passed (1040 tests,
+  9 skipped), with `BooksWorldMap.test.tsx` 24 and `mapZoom.test.ts` 8; `pnpm exec tsc --noEmit`
+  clean; `pnpm run build` built; `pnpm exec harness check` ✓ tasks, decisions, engineers,
+  generated files. `node docs/tasks/T-0039-screens/screens.mjs --url=http://localhost:3155`
+  (no backend): "all checks passed" (88 ok, 0 FAIL, at 390 with CDP touch and at 1280,
+  lavender and midnight). All 14 screenshots are in `docs/tasks/T-0039-screens/`. Handed to the
+  **UX designer** for review.
