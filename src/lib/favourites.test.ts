@@ -4,15 +4,15 @@ import { MAX_FAVOURITES, applyChange, cleanFavourites, favouritesChange, meetAcc
 
 describe('favourites kept with the account (#182)', () => {
   it('cleans a saved list: unknown ids dropped, duplicates removed, order kept', () => {
-    expect(cleanFavourites(['reading', 'nonsense', 'goal', 'reading', 42, null, 'calendar', 'goal'])).toEqual([
+    expect(cleanFavourites(['reading', 'nonsense', 'myyear', 'reading', 42, null, 'calendar', 'myyear'])).toEqual([
       'reading',
-      'goal',
+      'myyear',
       'calendar',
     ])
   })
 
   it('treats anything but a list as no favourites', () => {
-    for (const raw of [null, undefined, '', 'goal', { 0: 'goal' }, 7]) expect(cleanFavourites(raw)).toEqual([])
+    for (const raw of [null, undefined, '', 'myyear', { 0: 'myyear' }, 7]) expect(cleanFavourites(raw)).toEqual([])
   })
 
   it('keeps at most one entry per block', () => {
@@ -22,21 +22,21 @@ describe('favourites kept with the account (#182)', () => {
   })
 
   it('does not take ids from the object prototype for blocks', () => {
-    expect(cleanFavourites(['toString', 'constructor', '__proto__', 'goal'])).toEqual(['goal'])
+    expect(cleanFavourites(['toString', 'constructor', '__proto__', 'myyear'])).toEqual(['myyear'])
   })
 
   it('sends what changed, not the whole list', () => {
-    expect(favouritesChange(['goal', 'reading'], ['reading', 'calendar', 'heatmap'])).toEqual({
-      add: ['calendar', 'heatmap'],
-      remove: ['goal'],
+    expect(favouritesChange(['myyear', 'reading'], ['reading', 'calendar', 'badges'])).toEqual({
+      add: ['calendar', 'badges'],
+      remove: ['myyear'],
     })
-    expect(favouritesChange(['goal'], ['goal'])).toEqual({ add: [], remove: [] })
+    expect(favouritesChange(['myyear'], ['myyear'])).toEqual({ add: [], remove: [] })
   })
 
   it('applies a change to what the account has now, keeping stars from other devices', () => {
     // the phone starred "calendar" meanwhile; the laptop unstars "goal" and stars "heatmap"
-    const account: BlockId[] = ['goal', 'reading', 'calendar']
-    expect(applyChange(account, { add: ['heatmap'], remove: ['goal'] })).toEqual(['reading', 'calendar', 'heatmap'])
+    const account: BlockId[] = ['myyear', 'reading', 'calendar']
+    expect(applyChange(account, { add: ['badges'], remove: ['myyear'] })).toEqual(['reading', 'calendar', 'badges'])
     // a block already starred stays where it is
     expect(applyChange(account, { add: ['reading'], remove: [] })).toEqual(account)
     // an empty change leaves the list alone
@@ -45,14 +45,14 @@ describe('favourites kept with the account (#182)', () => {
 
   describe('the first time a device meets the account', () => {
     it("takes the account's favourites when it has any", () => {
-      expect(meetAccount(['goal', 'pace'], ['reading', 'calendar'], false)).toEqual({
+      expect(meetAccount(['myyear', 'pace'], ['reading', 'calendar'], false)).toEqual({
         favourites: ['reading', 'calendar'],
         push: [],
       })
     })
 
     it("saves the device's own to the account when the account has none", () => {
-      expect(meetAccount(['goal', 'pace'], [], false)).toEqual({ favourites: ['goal', 'pace'], push: ['goal', 'pace'] })
+      expect(meetAccount(['myyear', 'pace'], [], false)).toEqual({ favourites: ['myyear', 'pace'], push: ['myyear', 'pace'] })
     })
 
     it('sends nothing when neither has any', () => {
@@ -66,15 +66,15 @@ describe('favourites kept with the account (#182)', () => {
 
   describe('after that', () => {
     it("always takes the account's, also an empty list", () => {
-      expect(meetAccount(['goal', 'pace'], [], true)).toEqual({ favourites: [], push: [] })
-      expect(meetAccount(['goal'], ['reading'], true)).toEqual({ favourites: ['reading'], push: [] })
+      expect(meetAccount(['myyear', 'pace'], [], true)).toEqual({ favourites: [], push: [] })
+      expect(meetAccount(['myyear'], ['reading'], true)).toEqual({ favourites: ['reading'], push: [] })
     })
   })
 })
 
 describe('a move within Favourites worked out against the account (T-0020, D-0028)', async () => {
   const { moveToChanges, orderMoves, cleanUnsent } = await import('./favourites')
-  const [a, b, c, d, e, f] = ['goal', 'reading', 'calendar', 'pace', 'fact', 'bingo'] as BlockId[]
+  const [a, b, c, d, e, f] = ['myyear', 'reading', 'calendar', 'pace', 'fact', 'bingo'] as BlockId[]
   /** the two changes applied one after the other, as the server route does */
   const sent = (account: BlockId[], id: BlockId, before: BlockId[]) =>
     moveToChanges(account, id, before).reduce(applyChange, account)

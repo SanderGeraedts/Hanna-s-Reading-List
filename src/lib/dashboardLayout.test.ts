@@ -34,9 +34,10 @@ describe('dashboard layout with sections', () => {
     })
     // merged blocks (streak, monthly, spice, alphabetAuthors) are gone
     expect(everyBlock(old)).not.toContain('streak')
-    expect(old.sections.challenges).toEqual([['goal', 'alphabet'], ['bingo']])
-    expect(old.sections.stats[0].slice(0, 1)).toEqual(['count'])
-    expect(old.sections.stats[1].slice(0, 1)).toEqual(['records'])
+    expect(old.sections.challenges).toEqual([['alphabet'], ['bingo']])
+    // goal, count and records all read as My year now (D-0060): one block, in the first one's place
+    expect(old.sections.stats[0].slice(0, 1)).toEqual(['myyear'])
+    expect(old.sections.stats[1]).not.toContain('myyear')
     expect(old.sections.fun[0][0]).toBe('fact')
     expect(old.sections.fun[1][0]).toBe('top')
     // Waiting for you first; hidden stays hidden; every block once
@@ -73,9 +74,9 @@ describe('dashboard layout with sections', () => {
   })
 
   it('takes turns between the columns on a narrow screen', () => {
-    expect(singleColumn([['count', 'reading'], ['goal', 'next', 'calendar']])).toEqual([
-      'count',
-      'goal',
+    expect(singleColumn([['myyear', 'reading'], ['pace', 'next', 'calendar']])).toEqual([
+      'myyear',
+      'pace',
       'reading',
       'next',
       'calendar',
@@ -87,30 +88,30 @@ describe('favourites on top', async () => {
   const { favouriteColumns, toggleFavourite } = await import('./dashboardLayout')
 
   it('stars blocks in order, in two columns, and takes the star off again', () => {
-    let l = toggleFavourite(DEFAULT_LAYOUT, 'goal')
+    let l = toggleFavourite(DEFAULT_LAYOUT, 'alphabet')
     l = toggleFavourite(l, 'bingo')
     l = toggleFavourite(l, 'fact')
-    expect(l.favourites).toEqual(['goal', 'bingo', 'fact'])
-    expect(favouriteColumns(l)).toEqual([['goal', 'fact'], ['bingo']])
+    expect(l.favourites).toEqual(['alphabet', 'bingo', 'fact'])
+    expect(favouriteColumns(l)).toEqual([['alphabet', 'fact'], ['bingo']])
     // still in their own sections too
-    expect(placeOf(l, 'goal')?.section).toBe('challenges')
-    expect(toggleFavourite(l, 'bingo').favourites).toEqual(['goal', 'fact'])
+    expect(placeOf(l, 'alphabet')?.section).toBe('challenges')
+    expect(toggleFavourite(l, 'bingo').favourites).toEqual(['alphabet', 'fact'])
   })
 
   it('drops a hidden block from the favourites, and keeps favourites when saved', () => {
     const l = hideBlock(toggleFavourite(DEFAULT_LAYOUT, 'fact'), 'fact')
     expect(l.favourites).toEqual([])
-    const saved = cleanLayout(JSON.parse(JSON.stringify(toggleFold(toggleFavourite(DEFAULT_LAYOUT, 'goal'), 'favourites'))))
-    expect(saved.favourites).toEqual(['goal'])
+    const saved = cleanLayout(JSON.parse(JSON.stringify(toggleFold(toggleFavourite(DEFAULT_LAYOUT, 'alphabet'), 'favourites'))))
+    expect(saved.favourites).toEqual(['alphabet'])
     expect(saved.folded).toEqual(['favourites'])
-    expect(cleanLayout({ ...saved, favourites: ['goal', 'nonsense', 'goal'] }).favourites).toEqual(['goal'])
+    expect(cleanLayout({ ...saved, favourites: ['alphabet', 'nonsense', 'alphabet'] }).favourites).toEqual(['alphabet'])
   })
 
   it('Reset puts the default layout back but leaves the favourites alone (#182)', () => {
-    let l = toggleFavourite(toggleFavourite(DEFAULT_LAYOUT, 'goal'), 'calendar')
+    let l = toggleFavourite(toggleFavourite(DEFAULT_LAYOUT, 'alphabet'), 'calendar')
     l = toggleFold(hideBlock(moveBlock(l, 'pace', 'fun', 1, 0), 'fact'), 'stats')
     const reset = resetLayout(l)
-    expect(reset).toEqual({ ...DEFAULT_LAYOUT, favourites: ['goal', 'calendar'] })
+    expect(reset).toEqual({ ...DEFAULT_LAYOUT, favourites: ['alphabet', 'calendar'] })
     // a copy: changing it later can't change the default
     reset.sections.today[0].push('fact')
     expect(DEFAULT_LAYOUT.sections.today[0]).not.toContain('fact')
@@ -122,7 +123,7 @@ describe('moving within Favourites (T-0020, D-0028)', async () => {
     './dashboardLayout'
   )
   // a, b, c, d, e: columns [a, c, e] / [b, d]
-  const [a, b, c, d, e] = ['goal', 'reading', 'calendar', 'pace', 'fact'] as BlockId[]
+  const [a, b, c, d, e] = ['myyear', 'reading', 'calendar', 'pace', 'fact'] as BlockId[]
   const five: DashboardLayout = { ...structuredClone(DEFAULT_LAYOUT), favourites: [a, b, c, d, e] }
 
   it('a drop in column c before row r is list place 2r + c of the others, or the end', () => {
@@ -188,7 +189,7 @@ describe('moving within Favourites (T-0020, D-0028)', async () => {
   })
 
   it('a favourites move changes only their order; a section move never changes it', () => {
-    const arranged = toggleFold(hideBlock(moveBlock(five, 'bingo', 'today', 1, 0), 'records'), 'stats')
+    const arranged = toggleFold(hideBlock(moveBlock(five, 'bingo', 'today', 1, 0), 'pile'), 'stats')
     const moved = [
       moveFavourite(arranged, e, 0, 0),
       moveFavourite(arranged, a, 0, 2, 1),
@@ -221,11 +222,94 @@ describe('the Creatures block (T-0029)', () => {
     expect(DEFAULT_LAYOUT.sections.today[1].slice(0, 2)).toEqual(['challenge', 'creatures'])
     const before = structuredClone(DEFAULT_LAYOUT)
     before.sections.today[1] = before.sections.today[1].filter((id) => id !== 'creatures')
-    before.favourites = ['goal', 'challenge']
+    before.favourites = ['myyear', 'challenge']
     const loaded = cleanLayout(JSON.parse(JSON.stringify(before)))
     expect(loaded.sections.today[1].slice(0, 2)).toEqual(['challenge', 'creatures'])
-    expect(loaded.favourites).toEqual(['goal', 'challenge'])
+    expect(loaded.favourites).toEqual(['myyear', 'challenge'])
     // and it can be starred like every block
     expect(cleanLayout({ ...loaded, favourites: ['creatures'] }).favourites).toEqual(['creatures'])
+  })
+})
+
+describe('the blocks that moved to the Stats page (T-0070, D-0060)', async () => {
+  const { MERGED_INTO, favouriteColumns } = await import('./dashboardLayout')
+  const MOVED = ['count', 'goal', 'heatmap', 'months', 'flower', 'rhythm', 'breakdown', 'records'] as const
+
+  /** a layout as it was saved before the move: the old default, with her own tweak */
+  const savedBefore = (extra: Record<string, unknown> = {}) => ({
+    sections: {
+      today: [
+        ['waiting', 'reading', 'pace', 'lent', 'again'],
+        ['challenge', 'creatures', 'garden', 'next', 'newforyou', 'recent'],
+      ],
+      challenges: [['goal', 'alphabet'], ['bingo']],
+      stats: [
+        ['count', 'heatmap', 'breakdown', 'flower', 'authors'],
+        ['calendar', 'months', 'records', 'rhythm', 'series', 'pile'],
+      ],
+      fun: [
+        ['badges', 'tropes', 'fact', 'wrapped'],
+        ['covers', 'world', 'top', 'onthisday'],
+      ],
+    },
+    hidden: [],
+    folded: [],
+    favourites: [],
+    ...extra,
+  })
+
+  it('every moved block has somewhere to go, and none of them is a block any more', () => {
+    for (const id of MOVED) {
+      expect(MERGED_INTO[id]).toBe('myyear')
+      expect(Object.keys(BLOCKS)).not.toContain(id)
+    }
+    expect(BLOCKS.myyear).toBe('My year')
+  })
+
+  it('a layout saved before the move loads, with My year once, in the first moved block’s place', () => {
+    const l = cleanLayout(savedBefore())
+    const all = everyBlock(l)
+    expect(all.filter((id) => id === 'myyear')).toHaveLength(1)
+    expect(new Set(all).size).toBe(all.length)
+    expect([...all].sort()).toEqual((Object.keys(BLOCKS) as BlockId[]).sort())
+    // "goal" came first in her saved layout, in Challenges: that is where My year lands
+    expect(l.sections.challenges[0]).toEqual(['myyear', 'alphabet'])
+    expect(l.sections.stats[0]).not.toContain('myyear')
+  })
+
+  it('a star on a moved block becomes a star on My year, once', () => {
+    const l = cleanLayout(savedBefore({ favourites: ['heatmap', 'records', 'bingo', 'flower'] }))
+    expect(l.favourites).toEqual(['myyear', 'bingo'])
+    expect(favouriteColumns(l)).toEqual([['myyear'], ['bingo']])
+  })
+
+  it('a block she could see wins over a hidden one, whichever order they were saved in', () => {
+    // the heatmap and Pages per month hidden, Books read and the goal still on the
+    // dashboard: My year stays where she can see it, and a block she really hid stays hidden
+    const before = savedBefore()
+    for (const s of SECTION_IDS)
+      before.sections[s] = before.sections[s].map((col) =>
+        col.filter((id) => !['heatmap', 'months', 'lent'].includes(id as string)),
+      ) as never
+    const l = cleanLayout({ ...before, hidden: ['heatmap', 'months', 'lent'] })
+    expect(l.hidden).toEqual(['lent'])
+    expect(placeOf(l, 'myyear')).not.toBeNull()
+  })
+
+  it('all eight hidden means My year is hidden', () => {
+    const before = savedBefore()
+    for (const s of SECTION_IDS)
+      before.sections[s] = before.sections[s].map((col) => col.filter((id) => !MOVED.includes(id as never))) as never
+    const l = cleanLayout({ ...before, hidden: [...MOVED] })
+    expect(l.hidden).toEqual(['myyear'])
+    expect(placeOf(l, 'myyear')).toBeNull()
+    // and she can bring it back, into My stats where it belongs
+    expect(placeOf(showBlock(l, 'myyear'), 'myyear')?.section).toBe('stats')
+  })
+
+  it('Year in review keeps its id, so a layout and a star that name it still work', () => {
+    const l = cleanLayout(savedBefore({ favourites: ['wrapped'] }))
+    expect(l.favourites).toEqual(['wrapped'])
+    expect(placeOf(l, 'wrapped')?.section).toBe('fun')
   })
 })

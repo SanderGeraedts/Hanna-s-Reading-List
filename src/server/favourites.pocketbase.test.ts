@@ -71,7 +71,7 @@ describe.skipIf(!URL_)('favourites on a local PocketBase (#182)', () => {
     b = await user(URL_!, 'fav-b@example.com')
     // a fresh account: no shelf yet, so nothing may be written
     expect(await srv.readFavourites(a.token)).toEqual({ kept: false })
-    expect(await srv.changeFavourites(a.token, { add: ['goal'], remove: [] })).toEqual({ kept: false })
+    expect(await srv.changeFavourites(a.token, { add: ['myyear'], remove: [] })).toEqual({ kept: false })
     expect((await api(URL_!, '/api/collections/libraries/records', { token: a.token })).json.items).toEqual([])
     // the first shelf save, as the app does it
     const made = await api(URL_!, '/api/collections/libraries/records', {
@@ -89,18 +89,18 @@ describe.skipIf(!URL_)('favourites on a local PocketBase (#182)', () => {
   })
 
   it('saves stars and unstars on their own and leaves the books alone', async () => {
-    expect(await srv.changeFavourites(a.token, { add: ['goal', 'reading', 'calendar'], remove: [] })).toEqual({
+    expect(await srv.changeFavourites(a.token, { add: ['myyear', 'reading', 'calendar'], remove: [] })).toEqual({
       kept: true,
-      favourites: ['goal', 'reading', 'calendar'],
+      favourites: ['myyear', 'reading', 'calendar'],
     })
     expect(await srv.changeFavourites(a.token, { add: [], remove: ['reading'] })).toEqual({
       kept: true,
-      favourites: ['goal', 'calendar'],
+      favourites: ['myyear', 'calendar'],
     })
     const r = await shelf(URL_!, a.token)
     expect(r.books).toEqual(BOOKS)
     expect(r.arrangement).toBe('title')
-    expect(r.favourites).toEqual(['goal', 'calendar'])
+    expect(r.favourites).toEqual(['myyear', 'calendar'])
   })
 
   it('a shelf save (also from an app that knows nothing of favourites) keeps the favourites', async () => {
@@ -111,19 +111,19 @@ describe.skipIf(!URL_)('favourites on a local PocketBase (#182)', () => {
       body: { books, arrangement: 'author' },
     })
     expect(saved.status).toBe(200)
-    expect(await srv.readFavourites(a.token)).toEqual({ kept: true, favourites: ['goal', 'calendar'] })
+    expect(await srv.readFavourites(a.token)).toEqual({ kept: true, favourites: ['myyear', 'calendar'] })
     // and a favourites save after it keeps the new books
-    await srv.changeFavourites(a.token, { add: ['heatmap'], remove: [] })
+    await srv.changeFavourites(a.token, { add: ['badges'], remove: [] })
     const r = await shelf(URL_!, a.token)
     expect(r.books).toEqual(books)
     expect(r.arrangement).toBe('author')
-    expect(r.favourites).toEqual(['goal', 'calendar', 'heatmap'])
+    expect(r.favourites).toEqual(['myyear', 'calendar', 'badges'])
   })
 
   it("another person can't read or change them", async () => {
     // their own (no shelf) view: nothing, and nothing written
     expect(await srv.readFavourites(b.token)).toEqual({ kept: false })
-    expect(await srv.changeFavourites(b.token, { add: [], remove: ['goal', 'calendar', 'heatmap'] })).toEqual({
+    expect(await srv.changeFavourites(b.token, { add: [], remove: ['myyear', 'calendar', 'badges'] })).toEqual({
       kept: false,
     })
     // straight at the record: not found for them
@@ -135,23 +135,23 @@ describe.skipIf(!URL_)('favourites on a local PocketBase (#182)', () => {
     })
     expect(patch.status).toBe(404)
     // the favourites route: signed out it refuses, and it only ever changes your own shelf
-    const anon = await api(URL_!, '/api/collections/libraries/favourites', { method: 'POST', body: { add: ['goal'] } })
+    const anon = await api(URL_!, '/api/collections/libraries/favourites', { method: 'POST', body: { add: ['myyear'] } })
     expect(anon.status).toBe(401)
     await api(URL_!, '/api/collections/libraries/records', {
       method: 'POST',
       token: b.token,
       body: { owner: b.id, books: [], arrangement: '' },
     })
-    expect(await srv.changeFavourites(b.token, { add: ['rhythm'], remove: ['goal', 'calendar', 'heatmap'] })).toEqual({
+    expect(await srv.changeFavourites(b.token, { add: ['again'], remove: ['myyear', 'calendar', 'badges'] })).toEqual({
       kept: true,
-      favourites: ['rhythm'],
+      favourites: ['again'],
     })
-    expect(await srv.readFavourites(a.token)).toEqual({ kept: true, favourites: ['goal', 'calendar', 'heatmap'] })
+    expect(await srv.readFavourites(a.token)).toEqual({ kept: true, favourites: ['myyear', 'calendar', 'badges'] })
   })
 
   it('keeps every star when saves arrive at the same moment', async () => {
     const shelfBefore = await shelf(URL_!, a.token)
-    const extra = ['rhythm', 'badges', 'covers', 'pile', 'top', 'fact'] as const
+    const extra = ['again', 'badges', 'covers', 'pile', 'top', 'fact'] as const
     let lost = 0
     for (let round = 0; round < 20; round++) {
       await srv.changeFavourites(a.token, { add: [], remove: [...extra] })
@@ -163,25 +163,25 @@ describe.skipIf(!URL_)('favourites on a local PocketBase (#182)', () => {
     expect(lost).toBe(0)
     // a star and an unstar of different blocks at once
     await Promise.all([
-      srv.changeFavourites(a.token, { add: [], remove: ['rhythm'] }),
+      srv.changeFavourites(a.token, { add: [], remove: ['again'] }),
       srv.changeFavourites(a.token, { add: ['wrapped'], remove: [] }),
     ])
     const after = await shelf(URL_!, a.token)
-    expect(after.favourites).not.toContain('rhythm')
+    expect(after.favourites).not.toContain('again')
     expect(after.favourites).toContain('wrapped')
     expect(after.books).toEqual(shelfBefore.books)
     expect(after.arrangement).toBe(shelfBefore.arrangement)
     await srv.changeFavourites(a.token, { add: [], remove: [...extra, 'wrapped'] })
-    expect(await srv.readFavourites(a.token)).toEqual({ kept: true, favourites: ['goal', 'calendar', 'heatmap'] })
+    expect(await srv.readFavourites(a.token)).toEqual({ kept: true, favourites: ['myyear', 'calendar', 'badges'] })
   })
 
   it('cleans what is stored, also when something else wrote junk', async () => {
     await api(URL_!, `/api/collections/libraries/records/${recordId}`, {
       method: 'PATCH',
       token: a.token,
-      body: { favourites: ['goal', 'goal', 'nonsense', 7] },
+      body: { favourites: ['myyear', 'myyear', 'nonsense', 7] },
     })
-    expect(await srv.readFavourites(a.token)).toEqual({ kept: true, favourites: ['goal'] })
+    expect(await srv.readFavourites(a.token)).toEqual({ kept: true, favourites: ['myyear'] })
   })
 
   it('a real star still lands when the list is full of junk', async () => {
@@ -205,7 +205,7 @@ describe.skipIf(!URL_)('favourites on a local PocketBase (#182)', () => {
     await api(URL_!, `/api/collections/libraries/records/${recordId}`, {
       method: 'PATCH',
       token: a.token,
-      body: { favourites: ['goal'] },
+      body: { favourites: ['myyear'] },
     })
     const r = await api(URL_!, '/api/collections/libraries/favourites', {
       method: 'POST',
@@ -213,7 +213,7 @@ describe.skipIf(!URL_)('favourites on a local PocketBase (#182)', () => {
       body: { add: ['finishBy', 'not an id', 'x'.repeat(41)] },
     })
     expect(r.status).toBe(200)
-    expect(r.json.favourites).toEqual(['goal', 'finishBy'])
+    expect(r.json.favourites).toEqual(['myyear', 'finishBy'])
   })
 })
 
@@ -230,7 +230,7 @@ describe.skipIf(!OLD_URL)('favourites on a local PocketBase without the field (#
     expect(made.status).toBe(200)
     const before = await shelf(OLD_URL!, a.token)
     expect(await srv.readFavourites(a.token)).toEqual({ kept: false })
-    expect(await srv.changeFavourites(a.token, { add: ['goal'], remove: [] })).toEqual({ kept: false })
+    expect(await srv.changeFavourites(a.token, { add: ['myyear'], remove: [] })).toEqual({ kept: false })
     const after = await shelf(OLD_URL!, a.token)
     expect(after).toEqual(before) // not even `updated` moved
     expect(after.favourites).toBeUndefined()
@@ -238,7 +238,7 @@ describe.skipIf(!OLD_URL)('favourites on a local PocketBase without the field (#
     const direct = await api(OLD_URL!, '/api/collections/libraries/favourites', {
       method: 'POST',
       token: a.token,
-      body: { add: ['goal'] },
+      body: { add: ['myyear'] },
     })
     expect(direct.status).toBe(404)
   })

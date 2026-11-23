@@ -5,6 +5,7 @@ import { badges } from '#/lib/badges'
 import type { Badge, Tier } from '#/lib/badges'
 import { birthdayOf, clearBirthday, daysInMonth, readBirthday, subscribeBirthday, writeBirthday } from '#/lib/birthday'
 import { rhythm, WEEKDAY_NAMES } from '#/lib/rhythm'
+import type { StatsYear } from '#/lib/yearCompare'
 import { sleepReadIds } from '#/lib/sleepSeries'
 import type { ShareSpec } from '#/lib/shareImage'
 import { Cover, monthName } from './Dashboard'
@@ -548,10 +549,16 @@ export function CoverWallCard({ books, onShowBook }: { books: Book[]; onShowBook
   )
 }
 
-/** When I read most: reading days per weekday (last twelve months) and per month (this year). */
-export function RhythmCard({ books }: { books: Book[] }) {
-  const year = new Date().getFullYear()
-  const r = useMemo(() => rhythm(books, year), [books, year])
+/**
+ * When I read most: reading days per weekday and per month. On the dashboard
+ * that was the last twelve months and this year; on the Stats page (T-0070)
+ * both follow the year she picked, or all of her reading for All time.
+ */
+export function RhythmCard({ books, year: forYear }: { books: Book[]; year?: StatsYear }) {
+  const thisYear = new Date().getFullYear()
+  const year = forYear ?? thisYear
+  const scope = forYear === undefined ? 'recent' : 'period'
+  const r = useMemo(() => rhythm(books, year, undefined, scope), [books, year, scope])
   const [view, setView] = useState<'week' | 'year'>('week')
   const values = view === 'week' ? r.weekdays : r.months
   const labels = view === 'week' ? WEEKDAY_NAMES.map((d) => d.slice(0, 2)) : Array.from({ length: 12 }, (_, i) => monthName(i + 1, 'short').slice(0, 1))
@@ -578,7 +585,11 @@ export function RhythmCard({ books }: { books: Book[] }) {
         ))}
       </div>
       <p className="muted small-text">
-        {view === 'week' ? 'Reading days per weekday, the last twelve months.' : `Reading days per month, ${year}.`}
+        {view === 'week'
+          ? scope === 'recent'
+            ? 'Reading days per weekday, the last twelve months.'
+            : `Reading days per weekday, ${year === 'all' ? 'all time' : year}.`
+          : `Reading days per month, ${year === 'all' ? 'all time' : year}.`}
       </p>
     </section>
   )

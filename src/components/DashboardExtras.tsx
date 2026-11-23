@@ -371,10 +371,22 @@ export function SeriesCard({ books, onShowBook }: Props) {
 
 // ---- books per month -------------------------------------------------------------
 
-export function MonthlyChart({ books, year, bare = false }: { books: Book[]; year: number; bare?: boolean }) {
+export function MonthlyChart({
+  books,
+  year,
+  bare = false,
+  compare,
+}: {
+  books: Book[]
+  year: number
+  bare?: boolean
+  /** another year, drawn behind in the quiet tone (the Stats page, T-0070) */
+  compare?: number
+}) {
   const counts = useMemo(() => monthlyCounts(books, year), [books, year])
+  const was = useMemo(() => (compare === undefined ? null : monthlyCounts(books, compare)), [books, compare])
   const [hover, setHover] = useState<number | null>(null)
-  const max = Math.max(...counts)
+  const max = Math.max(...counts, ...(was ?? []))
   const top = Math.max(4, Math.ceil(max / 2) * 2)
   const ticks = [0, top / 2, top]
   const W = 360
@@ -415,8 +427,12 @@ export function MonthlyChart({ books, year, bare = false }: { books: Book[]; yea
             const h = (n / top) * plotH
             const r = Math.min(4, h / 2, barW / 2)
             const base = 8 + plotH
+            const before = was ? (was[i] / top) * plotH : 0
             return (
               <g key={i}>
+                {was && was[i] > 0 && (
+                  <rect className="bar-was" x={x} y={base - before} width={barW} height={before} rx={2} />
+                )}
                 {n > 0 && (
                   <path
                     className={`bar${hover === i ? ' active' : ''}`}
@@ -453,6 +469,11 @@ export function MonthlyChart({ books, year, bare = false }: { books: Book[]; yea
           </div>
         )}
       </div>
+      {compare !== undefined && (
+        <p className="months-key small-text">
+          <span className="months-swatch now" aria-hidden /> {year} <span className="months-swatch last" aria-hidden /> {compare}
+        </p>
+      )}
       <details className="table-view">
         <summary className="muted small-text">Show as a table</summary>
         <table>
@@ -461,6 +482,7 @@ export function MonthlyChart({ books, year, bare = false }: { books: Book[]; yea
               <tr key={i}>
                 <th scope="row">{monthName(i + 1)}</th>
                 <td>{n}</td>
+                {was && <td>{was[i]}</td>}
               </tr>
             ))}
           </tbody>

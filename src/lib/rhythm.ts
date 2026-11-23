@@ -3,8 +3,11 @@ import { localDay } from './library'
 
 /**
  * When I read most: on which weekdays and in which months the reading log
- * has days with reading. Weekdays look at the last twelve months; months at
- * the chosen year.
+ * has days with reading.
+ *
+ * On the dashboard it was weekdays over the last twelve months and months of
+ * this year (`scope: 'recent'`). On the Stats page (T-0070) both follow the
+ * year she picked, or all of her reading for All time (`scope: 'period'`).
  */
 
 export const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -24,15 +27,22 @@ const readingDays = (books: Book[]) => {
   return days
 }
 
-export function rhythm(books: Book[], year: number, today = localDay()): Rhythm {
+export function rhythm(
+  books: Book[],
+  year: number | 'all',
+  today = localDay(),
+  scope: 'recent' | 'period' = 'recent',
+): Rhythm {
   const days = readingDays(books)
   const from = `${Number(today.slice(0, 4)) - 1}${today.slice(4)}`
+  const prefix = year === 'all' ? '' : `${year}-`
   const weekdays = Array(7).fill(0)
   const months = Array(12).fill(0)
   for (const day of days) {
     const d = new Date(`${day}T12:00:00Z`)
-    if (day > from && day <= today) weekdays[(d.getUTCDay() + 6) % 7]++
-    if (day.startsWith(`${year}-`)) months[d.getUTCMonth()]++
+    const counts = scope === 'period' ? day.startsWith(prefix) : day > from && day <= today
+    if (counts) weekdays[(d.getUTCDay() + 6) % 7]++
+    if (day.startsWith(prefix)) months[d.getUTCMonth()]++
   }
   const best = Math.max(...weekdays)
   if (best === 0) return { weekdays, months }

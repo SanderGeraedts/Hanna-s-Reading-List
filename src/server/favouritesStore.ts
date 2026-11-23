@@ -1,5 +1,5 @@
 import type { BlockId } from '#/lib/dashboardLayout'
-import { cleanFavourites, type FavouritesChange } from '#/lib/favourites'
+import { cleanFavourites, unstarIds, type FavouritesChange } from '#/lib/favourites'
 import { PocketBaseError, pb } from './pocketbase'
 
 /**
@@ -49,7 +49,8 @@ export async function changeFavourites(token: string, change: FavouritesChange):
     const saved = await pb<{ favourites?: unknown }>('/api/collections/libraries/favourites', {
       method: 'POST',
       token,
-      body: { add: change.add, remove: change.remove },
+      // an unstar also clears the ids the block used to be saved under (T-0070)
+      body: { add: change.add, remove: unstarIds(change.remove) },
     })
     return { kept: true, favourites: cleanFavourites(saved.favourites) }
   } catch (err) {

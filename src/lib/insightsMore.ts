@@ -112,19 +112,26 @@ export interface Heatmap {
 }
 
 /**
- * The last twelve months of reading days, like a contribution graph: weeks
- * as columns, Monday on top. A day's shade is how much she read, counting a
- * minute listened as a page (as the shelf does), on a scale set by her own
- * bigger days so one marathon day doesn't make every other day pale.
+ * Reading days like a contribution graph: weeks as columns, Monday on top. A
+ * day's shade is how much she read, counting a minute listened as a page (as
+ * the shelf does), on a scale set by her own bigger days so one marathon day
+ * doesn't make every other day pale.
+ *
+ * Without a year it covers the last twelve months, as the dashboard showed it.
+ * With one (the Stats page, T-0070) it covers that whole year, up to today for
+ * the year she is in.
  */
-export function heatmap(books: Book[], now = new Date()): Heatmap {
+export function heatmap(books: Book[], now = new Date(), year?: number): Heatmap {
   const today = localDay(now)
-  const yearAgo = addDays(today, -364)
-  const first = addDays(yearAgo, -weekday(yearAgo))
+  const from = year === undefined ? addDays(today, -364) : `${year}-01-01`
+  const last = year === undefined ? today : today < `${year}-12-31` ? today : `${year}-12-31`
+  // a year that hasn't started yet: nothing to draw
+  if (last < from) return { weeks: [], months: [], readingDays: 0, pages: 0, minutes: 0 }
+  const first = addDays(from, -weekday(from))
   const byDay = new Map<string, HeatDay & { weight: number }>()
   for (const b of books) {
     for (const [day, amount] of Object.entries(b.readingLog ?? {})) {
-      if (day < first || day > today || !(amount > 0)) continue
+      if (day < first || day > last || !(amount > 0)) continue
       const d = byDay.get(day) ?? { day, share: 0, pages: 0, minutes: 0, books: 0, level: 0, weight: 0 }
       d.share += amount
       d.books++
@@ -141,10 +148,11 @@ export function heatmap(books: Book[], now = new Date()): Heatmap {
   const months: Heatmap['months'] = []
   let pages = 0
   let minutes = 0
-  for (let day = first, col = 0; day <= today; col++) {
+  for (let day = first, col = 0; day <= last; col++) {
     const week: Array<HeatDay | null> = []
     for (let i = 0; i < 7; i++, day = addDays(day, 1)) {
-      if (day > today) {
+      // in a year, the days of the week before 1 January are empty, not grey squares
+      if (day > last || (year !== undefined && day < from)) {
         week.push(null)
         continue
       }
@@ -172,7 +180,7 @@ export function heatmap(books: Book[], now = new Date()): Heatmap {
   return {
     weeks,
     months: cleaned,
-    readingDays: [...byDay.keys()].filter((d) => d >= yearAgo).length,
+    readingDays: [...byDay.keys()].filter((d) => d >= from && d <= last).length,
     pages: Math.round(pages),
     minutes: Math.round(minutes),
   }

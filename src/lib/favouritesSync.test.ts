@@ -206,15 +206,15 @@ describe('favourites follow the account (#182)', () => {
   it('shows blocks starred on one device on the other, and an unstar back on the first', async () => {
     const laptop = new Device().open()
     await settle()
-    await laptop.star('goal')
+    await laptop.star('myyear')
     await laptop.star('reading')
-    expect(server.record!.favourites).toEqual(['goal', 'reading'])
+    expect(server.record!.favourites).toEqual(['myyear', 'reading'])
 
     const phone = new Device().open()
     await settle()
-    expect(phone.favourites).toEqual(['goal', 'reading'])
+    expect(phone.favourites).toEqual(['myyear', 'reading'])
 
-    await phone.star('goal') // takes the star off
+    await phone.star('myyear') // takes the star off
     expect(server.record!.favourites).toEqual(['reading'])
 
     await laptop.comeBack()
@@ -226,13 +226,15 @@ describe('favourites follow the account (#182)', () => {
   it('never touches the books: saves only send stars and unstars, never the shelf', async () => {
     const laptop = new Device().open()
     await settle()
-    await laptop.star('goal')
+    await laptop.star('myyear')
     await laptop.star('calendar')
-    await laptop.star('goal')
+    await laptop.star('myyear')
     expect(writes().map((w) => w.body)).toEqual([
-      { add: ['goal'], remove: [] },
+      { add: ['myyear'], remove: [] },
       { add: ['calendar'], remove: [] },
-      { add: [], remove: ['goal'] },
+      // an unstar also clears the ids My year used to be saved under (T-0070, D-0060),
+      // so an old star can't come back on the next read
+      { add: [], remove: ['myyear', 'count', 'goal', 'heatmap', 'months', 'flower', 'rhythm', 'breakdown', 'records'] },
     ])
     expect(server.record!.books).toEqual(BOOKS)
     expect(server.record!.arrangement).toBe('title')
@@ -242,13 +244,13 @@ describe('favourites follow the account (#182)', () => {
   it('two quick taps on one device keep both stars, sent one at a time', async () => {
     const laptop = new Device().open()
     await settle()
-    laptop.tap('goal')
+    laptop.tap('myyear')
     laptop.tap('reading') // before the first save is back
     await settle()
-    expect(server.record!.favourites).toEqual(['goal', 'reading'])
+    expect(server.record!.favourites).toEqual(['myyear', 'reading'])
     expect(server.mostAtOnce).toBe(1)
     await laptop.comeBack()
-    expect(laptop.favourites).toEqual(['goal', 'reading'])
+    expect(laptop.favourites).toEqual(['myyear', 'reading'])
     laptop.close()
   })
 
@@ -256,40 +258,40 @@ describe('favourites follow the account (#182)', () => {
     const laptop = new Device().open()
     const phone = new Device().open()
     await settle()
-    laptop.tap('goal')
+    laptop.tap('myyear')
     phone.tap('calendar') // neither save has come back yet
     await settle()
-    expect(server.record!.favourites).toEqual(['goal', 'calendar'])
+    expect(server.record!.favourites).toEqual(['myyear', 'calendar'])
     await laptop.comeBack()
-    expect(laptop.favourites).toEqual(['goal', 'calendar'])
+    expect(laptop.favourites).toEqual(['myyear', 'calendar'])
     laptop.close()
     phone.close()
   })
 
   it("a device without favourites doesn't wipe the account's", async () => {
-    server.record!.favourites = ['goal', 'heatmap']
+    server.record!.favourites = ['myyear', 'badges']
     const fresh = new Device().open()
     await settle()
-    expect(fresh.favourites).toEqual(['goal', 'heatmap'])
+    expect(fresh.favourites).toEqual(['myyear', 'badges'])
     expect(writes()).toEqual([])
-    expect(server.record!.favourites).toEqual(['goal', 'heatmap'])
+    expect(server.record!.favourites).toEqual(['myyear', 'badges'])
     fresh.close()
   })
 
   it("the first time, a device's own favourites go up when the account has none", async () => {
     const laptop = new Device()
-    laptop.storage.set(LAYOUT_KEY, withFavourites(['pace', 'goal']))
+    laptop.storage.set(LAYOUT_KEY, withFavourites(['pace', 'myyear']))
     laptop.open()
     await settle()
-    expect(server.record!.favourites).toEqual(['pace', 'goal'])
-    expect(laptop.favourites).toEqual(['pace', 'goal'])
+    expect(server.record!.favourites).toEqual(['pace', 'myyear'])
+    expect(laptop.favourites).toEqual(['pace', 'myyear'])
     laptop.close()
   })
 
   it("the first time, the account's win when it has any", async () => {
     server.record!.favourites = ['reading']
     const laptop = new Device()
-    laptop.storage.set(LAYOUT_KEY, withFavourites(['pace', 'goal']))
+    laptop.storage.set(LAYOUT_KEY, withFavourites(['pace', 'myyear']))
     laptop.open()
     await settle()
     expect(laptop.favourites).toEqual(['reading'])
@@ -300,11 +302,11 @@ describe('favourites follow the account (#182)', () => {
   it('after unstarring everything on one device, another device does not bring its old stars back', async () => {
     const laptop = new Device().open()
     await settle()
-    await laptop.star('goal')
+    await laptop.star('myyear')
     const phone = new Device().open()
     await settle()
-    expect(phone.favourites).toEqual(['goal'])
-    await phone.star('goal')
+    expect(phone.favourites).toEqual(['myyear'])
+    await phone.star('myyear')
     expect(server.record!.favourites).toEqual([])
     await laptop.comeBack()
     expect(laptop.favourites).toEqual([])
@@ -316,15 +318,15 @@ describe('favourites follow the account (#182)', () => {
   it('a star made offline goes up when the server is back, and is not lost', async () => {
     const laptop = new Device().open()
     await settle()
-    await laptop.star('goal')
+    await laptop.star('myyear')
     server.online = false
     await laptop.star('calendar')
     await laptop.comeBack() // still offline
-    expect(laptop.favourites).toEqual(['goal', 'calendar'])
+    expect(laptop.favourites).toEqual(['myyear', 'calendar'])
     server.online = true
     await laptop.comeBack()
-    expect(server.record!.favourites).toEqual(['goal', 'calendar'])
-    expect(laptop.favourites).toEqual(['goal', 'calendar'])
+    expect(server.record!.favourites).toEqual(['myyear', 'calendar'])
+    expect(laptop.favourites).toEqual(['myyear', 'calendar'])
     laptop.close()
   })
 
@@ -345,10 +347,10 @@ describe('favourites follow the account (#182)', () => {
   it('a star made before the first account read returns is kept', async () => {
     server.record!.favourites = ['reading']
     const laptop = new Device().open()
-    laptop.tap('goal') // the account hasn't answered yet
+    laptop.tap('myyear') // the account hasn't answered yet
     await settle()
-    expect(server.record!.favourites).toEqual(['reading', 'goal'])
-    expect(laptop.favourites).toEqual(['reading', 'goal'])
+    expect(server.record!.favourites).toEqual(['reading', 'myyear'])
+    expect(laptop.favourites).toEqual(['reading', 'myyear'])
     laptop.close()
   })
 
@@ -357,25 +359,25 @@ describe('favourites follow the account (#182)', () => {
     server.online = false
     const laptop = new Device().open()
     await settle()
-    await laptop.star('goal')
+    await laptop.star('myyear')
     server.online = true
     await laptop.comeBack()
-    expect(server.record!.favourites).toEqual(['reading', 'goal'])
-    expect(laptop.favourites).toEqual(['reading', 'goal'])
+    expect(server.record!.favourites).toEqual(['reading', 'myyear'])
+    expect(laptop.favourites).toEqual(['reading', 'myyear'])
     laptop.close()
   })
 
   it('Reset while arranging leaves the favourites alone, here and on the account', async () => {
     const laptop = new Device().open()
     await settle()
-    await laptop.star('goal')
+    await laptop.star('myyear')
     await laptop.star('calendar')
     const before = writes().length
     act(() => laptop.hook!.result.current[1](resetLayout(laptop.layout)))
     await settle()
-    expect(laptop.favourites).toEqual(['goal', 'calendar'])
+    expect(laptop.favourites).toEqual(['myyear', 'calendar'])
     expect(writes().length).toBe(before)
-    expect(server.record!.favourites).toEqual(['goal', 'calendar'])
+    expect(server.record!.favourites).toEqual(['myyear', 'calendar'])
     laptop.close()
   })
 
@@ -383,17 +385,17 @@ describe('favourites follow the account (#182)', () => {
     server.hasField = false
     const laptop = new Device().open()
     await settle()
-    await laptop.star('goal')
-    expect(laptop.favourites).toEqual(['goal'])
+    await laptop.star('myyear')
+    expect(laptop.favourites).toEqual(['myyear'])
     expect(writes()).toEqual([])
-    expect(JSON.parse(laptop.storage.get(LAYOUT_KEY)!).favourites).toEqual(['goal'])
+    expect(JSON.parse(laptop.storage.get(LAYOUT_KEY)!).favourites).toEqual(['myyear'])
     laptop.close()
 
     // once the field arrives, the device's own go up the first time
     server.hasField = true
     laptop.open()
     await settle()
-    expect(server.record!.favourites).toEqual(['goal'])
+    expect(server.record!.favourites).toEqual(['myyear'])
     laptop.close()
   })
 
@@ -401,8 +403,8 @@ describe('favourites follow the account (#182)', () => {
     server.record = null
     const laptop = new Device().open()
     await settle()
-    await laptop.star('goal')
-    expect(laptop.favourites).toEqual(['goal'])
+    await laptop.star('myyear')
+    expect(laptop.favourites).toEqual(['myyear'])
     expect(writes()).toEqual([])
     expect(server.record).toBeNull()
     laptop.close()
@@ -411,16 +413,16 @@ describe('favourites follow the account (#182)', () => {
   it('signed out, favourites stay on the device and the server is never asked', async () => {
     const guest = new Device(null).open()
     await settle()
-    await guest.star('goal')
+    await guest.star('myyear')
     await guest.comeBack()
-    expect(guest.favourites).toEqual(['goal'])
+    expect(guest.favourites).toEqual(['myyear'])
     expect(server.requests).toEqual([])
-    expect(JSON.parse(guest.storage.get('hannas-reading-list:dashboard:local')!).favourites).toEqual(['goal'])
+    expect(JSON.parse(guest.storage.get('hannas-reading-list:dashboard:local')!).favourites).toEqual(['myyear'])
     guest.close()
   })
 
   describe('the order she drags them into (T-0020, D-0028)', () => {
-    const FOUR: BlockId[] = ['goal', 'reading', 'calendar', 'pace']
+    const FOUR: BlockId[] = ['myyear', 'reading', 'calendar', 'pace']
 
     it('a reorder on one device is on the account in that order, and the other device shows it after its next pull', async () => {
       server.record!.favourites = [...FOUR]
@@ -429,28 +431,28 @@ describe('favourites follow the account (#182)', () => {
       await settle()
       expect(phone.favourites).toEqual(FOUR)
       laptop.move('pace', 0)
-      expect(laptop.favourites).toEqual(['pace', 'goal', 'reading', 'calendar'])
+      expect(laptop.favourites).toEqual(['pace', 'myyear', 'reading', 'calendar'])
       await settle()
-      expect(server.record!.favourites).toEqual(['pace', 'goal', 'reading', 'calendar'])
+      expect(server.record!.favourites).toEqual(['pace', 'myyear', 'reading', 'calendar'])
       await phone.comeBack()
-      expect(phone.favourites).toEqual(['pace', 'goal', 'reading', 'calendar'])
+      expect(phone.favourites).toEqual(['pace', 'myyear', 'reading', 'calendar'])
     })
 
     it("is not undone by the device's own next pull", async () => {
       server.record!.favourites = [...FOUR]
       const laptop = new Device().open()
       await settle()
-      laptop.move('goal', 2) // [reading, calendar, goal, pace]
+      laptop.move('myyear', 2) // [reading, calendar, goal, pace]
       await laptop.comeBack()
-      expect(laptop.favourites).toEqual(['reading', 'calendar', 'goal', 'pace'])
+      expect(laptop.favourites).toEqual(['reading', 'calendar', 'myyear', 'pace'])
       await laptop.comeBack()
-      expect(laptop.favourites).toEqual(['reading', 'calendar', 'goal', 'pace'])
-      expect(server.record!.favourites).toEqual(['reading', 'calendar', 'goal', 'pace'])
+      expect(laptop.favourites).toEqual(['reading', 'calendar', 'myyear', 'pace'])
+      expect(server.record!.favourites).toEqual(['reading', 'calendar', 'myyear', 'pace'])
       // and the dashboard opened again (a reload) shows it too
       laptop.close()
       laptop.open()
       await settle()
-      expect(laptop.favourites).toEqual(['reading', 'calendar', 'goal', 'pace'])
+      expect(laptop.favourites).toEqual(['reading', 'calendar', 'myyear', 'pace'])
     })
 
     it('a reorder made offline goes up when the server is back', async () => {
@@ -460,12 +462,12 @@ describe('favourites follow the account (#182)', () => {
       server.online = false
       laptop.move('calendar', 0)
       await laptop.comeBack() // still offline
-      expect(laptop.favourites).toEqual(['calendar', 'goal', 'reading', 'pace'])
+      expect(laptop.favourites).toEqual(['calendar', 'myyear', 'reading', 'pace'])
       expect(server.record!.favourites).toEqual(FOUR)
       server.online = true
       await laptop.comeBack()
-      expect(server.record!.favourites).toEqual(['calendar', 'goal', 'reading', 'pace'])
-      expect(laptop.favourites).toEqual(['calendar', 'goal', 'reading', 'pace'])
+      expect(server.record!.favourites).toEqual(['calendar', 'myyear', 'reading', 'pace'])
+      expect(laptop.favourites).toEqual(['calendar', 'myyear', 'reading', 'pace'])
     })
 
     it('a reorder made offline is still sent after the app was closed', async () => {
@@ -478,10 +480,10 @@ describe('favourites follow the account (#182)', () => {
       laptop.close()
       server.online = true
       laptop.open()
-      expect(laptop.favourites).toEqual(['goal', 'calendar', 'pace', 'reading'])
+      expect(laptop.favourites).toEqual(['myyear', 'calendar', 'pace', 'reading'])
       await settle()
-      expect(server.record!.favourites).toEqual(['goal', 'calendar', 'pace', 'reading'])
-      expect(laptop.favourites).toEqual(['goal', 'calendar', 'pace', 'reading'])
+      expect(server.record!.favourites).toEqual(['myyear', 'calendar', 'pace', 'reading'])
+      expect(laptop.favourites).toEqual(['myyear', 'calendar', 'pace', 'reading'])
     })
 
     it('a block unstarred on the other device meanwhile stays unstarred, and the moved block lands where she put it', async () => {
@@ -494,12 +496,12 @@ describe('favourites follow the account (#182)', () => {
       await settle()
       server.online = true
       await phone.star('reading') // takes the star off
-      expect(server.record!.favourites).toEqual(['goal', 'calendar', 'pace'])
+      expect(server.record!.favourites).toEqual(['myyear', 'calendar', 'pace'])
       await laptop.comeBack()
-      expect(server.record!.favourites).toEqual(['pace', 'goal', 'calendar'])
-      expect(laptop.favourites).toEqual(['pace', 'goal', 'calendar'])
+      expect(server.record!.favourites).toEqual(['pace', 'myyear', 'calendar'])
+      expect(laptop.favourites).toEqual(['pace', 'myyear', 'calendar'])
       await phone.comeBack()
-      expect(phone.favourites).toEqual(['pace', 'goal', 'calendar'])
+      expect(phone.favourites).toEqual(['pace', 'myyear', 'calendar'])
     })
 
     it('a block starred on the other device at the same time stays, and no block is in the list twice', async () => {
@@ -513,10 +515,10 @@ describe('favourites follow the account (#182)', () => {
       await laptop.comeBack()
       await phone.comeBack()
       const account = server.record!.favourites as BlockId[]
-      expect([...account].sort()).toEqual(['calendar', 'fact', 'goal', 'pace', 'reading'])
+      expect([...account].sort()).toEqual(['calendar', 'fact', 'myyear', 'pace', 'reading'])
       expect(new Set(account).size).toBe(account.length)
       expect(account[0]).toBe('pace')
-      expect(account.filter((id) => id !== 'fact')).toEqual(['pace', 'goal', 'reading', 'calendar'])
+      expect(account.filter((id) => id !== 'fact')).toEqual(['pace', 'myyear', 'reading', 'calendar'])
       expect(laptop.favourites).toEqual(account)
       expect(phone.favourites).toEqual(account)
     })
@@ -526,11 +528,11 @@ describe('favourites follow the account (#182)', () => {
       const laptop = new Device().open()
       await settle()
       laptop.move('pace', 0)
-      laptop.move('goal', 3) // before the first has gone up
+      laptop.move('myyear', 3) // before the first has gone up
       laptop.move('calendar', 1)
       await settle()
-      expect(laptop.favourites).toEqual(['pace', 'calendar', 'reading', 'goal'])
-      expect(server.record!.favourites).toEqual(['pace', 'calendar', 'reading', 'goal'])
+      expect(laptop.favourites).toEqual(['pace', 'calendar', 'reading', 'myyear'])
+      expect(server.record!.favourites).toEqual(['pace', 'calendar', 'reading', 'myyear'])
       expect(writes().length).toBeGreaterThan(0)
       for (const w of writes()) {
         expect(w.path).toBe('/api/collections/libraries/favourites')
@@ -560,11 +562,11 @@ describe('favourites follow the account (#182)', () => {
       await settle()
       guest.move('pace', 0)
       await guest.comeBack()
-      expect(guest.favourites).toEqual(['pace', 'goal', 'reading', 'calendar'])
+      expect(guest.favourites).toEqual(['pace', 'myyear', 'reading', 'calendar'])
       expect(server.requests).toEqual([])
       expect(JSON.parse(guest.storage.get('hannas-reading-list:dashboard:local')!).favourites).toEqual([
         'pace',
-        'goal',
+        'myyear',
         'reading',
         'calendar',
       ])
@@ -582,16 +584,16 @@ describe('favourites follow the account (#182)', () => {
         laptop.move('pace', 0)
         await settle()
         expect(server.record!.favourites).toEqual(['pace']) // the partial state on the account
-        expect(laptop.favourites).toEqual(['pace', 'goal', 'reading', 'calendar'])
+        expect(laptop.favourites).toEqual(['pace', 'myyear', 'reading', 'calendar'])
         expect(JSON.parse(laptop.storage.get(UNSENT_KEY)!)).toEqual([
-          { add: ['goal', 'reading', 'calendar'], remove: [] },
+          { add: ['myyear', 'reading', 'calendar'], remove: [] },
         ])
         laptop.close() // and the app is closed in between
         server.online = true
         laptop.open()
         await settle()
-        expect(server.record!.favourites).toEqual(['pace', 'goal', 'reading', 'calendar'])
-        expect(laptop.favourites).toEqual(['pace', 'goal', 'reading', 'calendar'])
+        expect(server.record!.favourites).toEqual(['pace', 'myyear', 'reading', 'calendar'])
+        expect(laptop.favourites).toEqual(['pace', 'myyear', 'reading', 'calendar'])
         expect(laptop.storage.get(UNSENT_KEY) ?? '[]').toBe('[]')
       })
 
@@ -606,8 +608,8 @@ describe('favourites follow the account (#182)', () => {
         expect(server.record!.favourites).toEqual(['pace'])
         server.online = true
         await laptop.comeBack()
-        expect(server.record!.favourites).toEqual(['pace', 'goal', 'reading', 'calendar'])
-        expect(laptop.favourites).toEqual(['pace', 'goal', 'reading', 'calendar'])
+        expect(server.record!.favourites).toEqual(['pace', 'myyear', 'reading', 'calendar'])
+        expect(laptop.favourites).toEqual(['pace', 'myyear', 'reading', 'calendar'])
       })
 
       it('another device that pulls between the two saves gets the whole list back after the re-star', async () => {
@@ -624,8 +626,8 @@ describe('favourites follow the account (#182)', () => {
         expect(phone.favourites).toEqual(['pace'])
         await laptop.comeBack() // the re-star goes up (the phone pulls too)
         await phone.comeBack()
-        expect(phone.favourites).toEqual(['pace', 'goal', 'reading', 'calendar'])
-        expect(server.record!.favourites).toEqual(['pace', 'goal', 'reading', 'calendar'])
+        expect(phone.favourites).toEqual(['pace', 'myyear', 'reading', 'calendar'])
+        expect(server.record!.favourites).toEqual(['pace', 'myyear', 'reading', 'calendar'])
       })
 
       it('a star on another device between the two saves stays, once, with every block back', async () => {
@@ -641,9 +643,9 @@ describe('favourites follow the account (#182)', () => {
         await laptop.comeBack()
         await phone.comeBack()
         const account = server.record!.favourites as BlockId[]
-        expect([...account].sort()).toEqual(['calendar', 'fact', 'goal', 'pace', 'reading'])
+        expect([...account].sort()).toEqual(['calendar', 'fact', 'myyear', 'pace', 'reading'])
         expect(new Set(account).size).toBe(account.length)
-        expect(account.filter((id) => id !== 'fact')).toEqual(['pace', 'goal', 'reading', 'calendar'])
+        expect(account.filter((id) => id !== 'fact')).toEqual(['pace', 'myyear', 'reading', 'calendar'])
         expect(laptop.favourites).toEqual(account)
         expect(phone.favourites).toEqual(account)
       })
@@ -659,8 +661,8 @@ describe('favourites follow the account (#182)', () => {
         server.online = true
         await phone.star('pace') // takes the star off pace on the phone
         await laptop.comeBack()
-        expect(server.record!.favourites).toEqual(['goal', 'reading', 'calendar'])
-        expect(laptop.favourites).toEqual(['goal', 'reading', 'calendar'])
+        expect(server.record!.favourites).toEqual(['myyear', 'reading', 'calendar'])
+        expect(laptop.favourites).toEqual(['myyear', 'reading', 'calendar'])
         expect(writes().filter((w) => JSON.stringify(w.body).includes('pace'))).toEqual([
           expect.objectContaining({ body: { add: [], remove: ['pace'] } }),
         ])
@@ -673,11 +675,11 @@ describe('favourites follow the account (#182)', () => {
         server.online = false
         laptop.move('pace', 0)
         laptop.move('pace', 3)
-        laptop.move('goal', 2)
+        laptop.move('myyear', 2)
         laptop.move('reading', 0)
         await settle()
         const want = laptop.favourites
-        expect(want).toEqual(['reading', 'calendar', 'goal', 'pace'])
+        expect(want).toEqual(['reading', 'calendar', 'myyear', 'pace'])
         laptop.close()
         server.online = true
         laptop.open()
@@ -688,9 +690,9 @@ describe('favourites follow the account (#182)', () => {
       })
 
       it('a queue in the old format (stars and unstars only) still loads and goes up', async () => {
-        server.record!.favourites = ['goal', 'reading']
+        server.record!.favourites = ['myyear', 'reading']
         const laptop = new Device()
-        laptop.storage.set(LAYOUT_KEY, withFavourites(['goal', 'calendar', 'fact']))
+        laptop.storage.set(LAYOUT_KEY, withFavourites(['myyear', 'calendar', 'fact']))
         laptop.storage.set(MET_KEY, '1')
         // as an app before T-0020 left it, with a junk entry in between
         laptop.storage.set(
@@ -699,15 +701,15 @@ describe('favourites follow the account (#182)', () => {
         )
         laptop.open()
         await settle()
-        expect(server.record!.favourites).toEqual(['goal', 'calendar', 'fact'])
-        expect(laptop.favourites).toEqual(['goal', 'calendar', 'fact'])
+        expect(server.record!.favourites).toEqual(['myyear', 'calendar', 'fact'])
+        expect(laptop.favourites).toEqual(['myyear', 'calendar', 'fact'])
         expect(laptop.storage.get(UNSENT_KEY) ?? '[]').toBe('[]')
       })
 
       it('the old queue and a new move together: the stars go first, then the move, in her order', async () => {
-        server.record!.favourites = ['goal', 'reading']
+        server.record!.favourites = ['myyear', 'reading']
         const laptop = new Device()
-        laptop.storage.set(LAYOUT_KEY, withFavourites(['goal', 'reading', 'fact']))
+        laptop.storage.set(LAYOUT_KEY, withFavourites(['myyear', 'reading', 'fact']))
         laptop.storage.set(MET_KEY, '1')
         laptop.storage.set(UNSENT_KEY, JSON.stringify([{ add: ['fact'], remove: [] }]))
         server.online = false
@@ -717,8 +719,8 @@ describe('favourites follow the account (#182)', () => {
         await settle()
         server.online = true
         await laptop.comeBack()
-        expect(server.record!.favourites).toEqual(['fact', 'goal', 'reading'])
-        expect(laptop.favourites).toEqual(['fact', 'goal', 'reading'])
+        expect(server.record!.favourites).toEqual(['fact', 'myyear', 'reading'])
+        expect(laptop.favourites).toEqual(['fact', 'myyear', 'reading'])
       })
     })
 
@@ -730,16 +732,16 @@ describe('favourites follow the account (#182)', () => {
       await settle()
       laptop.move('pace', 0)
       await laptop.comeBack()
-      expect(laptop.favourites).toEqual(['pace', 'goal', 'reading', 'calendar'])
+      expect(laptop.favourites).toEqual(['pace', 'myyear', 'reading', 'calendar'])
       expect(writes()).toEqual([])
     })
   })
 
   it('ignores junk the server sends back', async () => {
-    server.record!.favourites = ['goal', 'goal', 'nonsense', 5]
+    server.record!.favourites = ['myyear', 'myyear', 'nonsense', 5]
     const laptop = new Device().open()
     await settle()
-    expect(laptop.favourites).toEqual(['goal'])
+    expect(laptop.favourites).toEqual(['myyear'])
     laptop.close()
   })
 })

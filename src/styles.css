@@ -6886,3 +6886,239 @@ button.today-item:hover {
     min-height: 44px;
   }
 }
+
+/* ---- the Stats page, My year and the year story (T-0070, T-0071) ------ */
+.stats-page {
+  max-width: 68rem;
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-4);
+}
+.stats-head {
+  flex-wrap: wrap;
+}
+.stats-head h1 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: var(--fs-heading);
+}
+.stats-pickers {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.stats-field {
+  display: grid;
+  gap: 0.15rem;
+  font-size: var(--fs-small);
+}
+.stats-field select:disabled {
+  opacity: 0.5;
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+  align-items: start;
+}
+.stats-numbers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-4);
+}
+.stats-number {
+  display: grid;
+  gap: 0.1rem;
+  margin: 0;
+  min-width: 6rem;
+}
+.stats-number strong {
+  font-family: var(--serif);
+  font-size: var(--fs-heading);
+  line-height: 1.1;
+}
+/* the compare year's value next to a number: the arrow is decoration, the words are for readers */
+.compare-note {
+  font-size: var(--fs-small);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.compare-note.up {
+  color: var(--accent);
+}
+.compare-note.big {
+  font-size: var(--fs-body);
+}
+.hbars .compare-note {
+  grid-column: 2 / -1;
+}
+.flower-legend .compare-note {
+  margin-left: auto;
+}
+/* the compare year's bars behind this year's, in the quiet gold the months chart uses */
+.bar-chart .bar-was {
+  fill: rgba(217, 168, 91, 0.32);
+}
+
+/* My year: the one reading block left on the dashboard */
+.myyear-body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.myyear-body .goal-ring {
+  width: 5.5rem;
+  height: 5.5rem;
+  flex: none;
+}
+.myyear-numbers {
+  margin: 0;
+  font-size: var(--fs-large);
+  min-width: 0;
+}
+
+/* Year in review: the numbers and ▶ Play */
+.wrapped-line {
+  margin: 0;
+  font-size: var(--fs-large);
+}
+.wrapped-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-2);
+}
+
+/* the year wrap-up story: full screen, one fact per slide */
+.story-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--bg);
+  display: flex;
+  cursor: pointer;
+}
+.story {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: var(--space-3);
+  padding: var(--space-3) 1rem calc(var(--space-4) + env(safe-area-inset-bottom));
+  background: var(--surface-solid);
+  color: var(--text);
+}
+.story:focus-visible {
+  outline: none;
+}
+.story-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.story-progress {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 3px;
+  flex: 1;
+}
+.story-progress li {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--surface-sunken);
+}
+.story-progress li.done {
+  background: var(--accent);
+}
+.story-slide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--space-2);
+  width: min(34rem, 100%);
+  margin: 0 auto;
+  min-height: 0;
+}
+.story-heading {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: var(--fs-large);
+  color: var(--muted);
+  font-weight: 400;
+}
+.story-value {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(2.5rem, 14vw, 4.5rem);
+  line-height: 1.05;
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+.story-label {
+  margin: 0;
+  font-size: var(--fs-large);
+}
+.story-places {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-1) var(--space-2);
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.story-book {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 0;
+}
+.story-book .dash-cover {
+  max-height: 40vh;
+  width: auto;
+}
+.story-title {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: var(--fs-large);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.story-summary {
+  width: 100%;
+  overflow-y: auto;
+}
+.story-summary .records {
+  text-align: left;
+}
+.story-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: auto;
+}
+
+@media (max-width: 860px) {
+  .stats-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .stats-pickers {
+    width: 100%;
+  }
+  .stats-field {
+    flex: 1;
+    min-width: 8rem;
+  }
+}

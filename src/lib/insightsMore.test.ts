@@ -179,3 +179,46 @@ describe('goal pace', () => {
     expect(goalPaceText(goalPace(1, 3, 2026, new Date(2026, 11, 25)))).toBe('2 books to go, 7 days left: about one every 4 days')
   })
 })
+
+describe('heatmap for one year (T-0070)', async () => {
+  const { heatmap } = await import('./insightsMore')
+  const books = [
+    {
+      id: 'a',
+      title: 'A',
+      authors: [],
+      status: 'read',
+      color: '#000',
+      addedAt: 0,
+      pages: 300,
+      readingLog: { '2025-12-31': 0.2, '2026-01-01': 0.3, '2026-06-15': 0.5, '2027-01-01': 0.4 },
+    },
+  ] as unknown as Parameters<typeof heatmap>[0]
+  const NOW = new Date('2026-11-23T12:00:00')
+
+  it('covers 1 January to today for the year she is in, and leaves the days before out', () => {
+    const h = heatmap(books, NOW, 2026)
+    expect(h.readingDays).toBe(2)
+    const days = h.weeks.flat().filter(Boolean).map((d) => d!.day)
+    expect(days[0]).toBe('2026-01-01')
+    expect(days.at(-1)).toBe('2026-11-23')
+    expect(days).not.toContain('2025-12-31')
+    expect(days).not.toContain('2026-11-24')
+  })
+
+  it('covers a whole past year', () => {
+    const h = heatmap(books, NOW, 2025)
+    const days = h.weeks.flat().filter(Boolean).map((d) => d!.day)
+    expect(days[0]).toBe('2025-01-01')
+    expect(days.at(-1)).toBe('2025-12-31')
+    expect(h.readingDays).toBe(1)
+  })
+
+  it('draws nothing for a year that hasn’t started', () => {
+    expect(heatmap(books, NOW, 2030)).toEqual({ weeks: [], months: [], readingDays: 0, pages: 0, minutes: 0 })
+  })
+
+  it('still covers the last twelve months without a year', () => {
+    expect(heatmap(books, NOW).readingDays).toBe(3)
+  })
+})
