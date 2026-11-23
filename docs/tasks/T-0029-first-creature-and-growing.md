@@ -570,6 +570,35 @@ and `block-*` screenshots, then the re-review.
 | — | The den looks warm and cosy (§5) | ✗ must-fix 1 |
 | — | Starts with no cookies on the live start day (D-0033 §3) | ✗ must-fix 3 |
 
+### Re-review (2026-11-23)
+
+**Verdict: pass. Hand over to the tester.** Checked on commit `e920c02`: the retaken shots
+(`tab-egg-*`, `tab-*`, `tab-390-lav-card`, `block-*`, the new `block-egg-*`, `waiting-egg-*`), the
+diff, and my own pixel samples.
+
+1. **Den walls: fixed.** In `tab-1280-lav`, `tab-390-mid` and `tab-egg-390-lav` I sampled the back
+   wall at `#3a2b24` and the left wall at `#362c2a`. Both are within the target, warm, with
+   R > G > B. The corner still reads, thanks to the skirting board and the floor line. Floor, rug,
+   cushion and creature are unchanged. On midnight the den is now a warm room inside the dark card,
+   not a hole.
+2. **Egg spots: fixed.** They are round gold dots lying flat on the shell, and none sticks out past
+   the outline, both in the den and at 96 px in the block (`block-egg-390-lav`). It reads as an egg.
+3. **`CREATURES_START`: fixed.** It is one constant (`2026-11-24`) with a clear note to set it to
+   the merge day, and the tests work relative to it. The egg shots on the go-live clock show
+   🍪 9 / "+9 today" / *This week · +9*: only that day's reading, as D-0033 §3 wants.
+4. **This week at 390: fixed.** "📗 The Hobbit" and "🌙 30 min" now wrap as whole parts
+   (`tab-390-lav-card`).
+
+**The older shots** (`stages-*`, `missing-*`, `sleepy-*`, `back-*`, `fed-*`, `negative-*`,
+`choose-*`, `hello-*`, `shiny-hello-*`, `rename-*`, `waiting-levelup-*`) still show the old dark
+walls and balances from the old start date. **This doesn't block the hand-over to the tester.**
+What they prove (stage proportions, mood faces and lines, the feed step, the −4 pill, the choose
+and name steps, the level-up line) hasn't changed: the fix touched only the walls, the egg spots,
+the start date and the *This week* wrapping. **But retake them before the PR is marked ready,**
+so `T-0029-screens/` matches what ships (Done when 2). The tester retakes them during the Done
+when 2 run, on the go-live clock, after the rebase that sets `CREATURES_START` to the merge day.
+The den screenshots that `choose-*` and `hello-*` show must have the warm walls.
+
 # Test
 
 Developer's own checks (2026-11-23, night); the tester's independent run goes here too.
@@ -684,3 +713,8 @@ Developer's own checks (2026-11-23, night); the tester's independent run goes he
   Touched tests: 9 files, 114 passed. Lesson added. Still no PR (after #241). Remaining: UX
   re-review; draft PR after #241 with `CREATURES_START` set to the merge day; tester; Hanna's five
   morning questions; Done when 5.
+- 2026-11-23 ux-designer: re-reviewed: pass. Den walls sample `#3a2b24` / `#362c2a`, egg spots
+  lie flat (also at 96 px), `CREATURES_START` is one go-live constant (egg shots show 🍪 9), This
+  week parts wrap whole. The older stage, mood, feed, negative, choose and hello shots don't block
+  the hand-over, but the tester retakes them on the go-live clock before marking the PR ready.
+  Hand-over to the tester (after the draft PR, once #241 is merged).
