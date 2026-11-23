@@ -15,11 +15,11 @@ export const BED_D = BED_ROWS + BED_RIM * 2
 /** Grass between the beds. */
 export const BED_GAP = 1
 /** The item strip along the bottom of the garden. */
-export const STRIP_D = 1.6
+export const STRIP_D = 1.2
 
 /** Straight down (the flat view) and the 3D view's fixed angle, in radians. */
 export const FLAT_ELEVATION = Math.PI / 2
-export const SCENE_ELEVATION = (55 * Math.PI) / 180
+export const SCENE_ELEVATION = (38 * Math.PI) / 180
 
 export interface BedBox {
   bed: number
@@ -39,7 +39,7 @@ export interface GardenLayout {
 }
 
 /** The beds of a year garden, in a grid of `columns` beds across. */
-export function gardenLayout(beds: number, columns = 1): GardenLayout {
+export function gardenLayout(beds: number, columns = 1, strip = true): GardenLayout {
   const cols = Math.max(1, Math.min(columns, beds));
   const rows = Math.ceil(beds / cols)
   const boxes: BedBox[] = []
@@ -49,8 +49,8 @@ export function gardenLayout(beds: number, columns = 1): GardenLayout {
     boxes.push({ bed: b, x: BED_GAP + c * (BED_W + BED_GAP), z: BED_GAP + r * (BED_D + BED_GAP) })
   }
   const width = BED_GAP + cols * (BED_W + BED_GAP)
-  const depth = BED_GAP + rows * (BED_D + BED_GAP) + STRIP_D
-  return { beds: boxes, columns: cols, width, depth, stripZ: depth - STRIP_D }
+  const depth = BED_GAP + rows * (BED_D + BED_GAP) + (strip ? STRIP_D : 0)
+  return { beds: boxes, columns: cols, width, depth, stripZ: depth - (strip ? STRIP_D : 0) }
 }
 
 /** The middle of a spot, in units. */
@@ -108,6 +108,6 @@ export function project(view: ViewBox, layout: GardenLayout, p: { x: number; y?:
 }
 
 /** How tall a spot's plant is drawn, in units, for a plant of `scale` and a kind of `height`. */
-export const plantHeight = (height: number, scale: number) => Math.max(0.12, height * scale * 1.6)
+export const plantHeight = (height: number, scale: number) => Math.max(0.12, Math.min(1.5, height * scale * 1.15))
 
 export { BED_COLUMNS, BED_ROWS, SPOTS_PER_BED }

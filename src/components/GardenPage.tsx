@@ -13,7 +13,7 @@ import { SceneBoundary } from './creatures/SceneBoundary'
 import { GardenFlat } from './garden/GardenFlat'
 import { GardenScene } from './garden/GardenScene'
 import { SpotLayer } from './garden/SpotLayer'
-import { flatPlace, sceneColumns, scenePlace } from './garden/gardenView'
+import { flatPlace, sceneAspect, sceneColumns, scenePlace } from './garden/gardenView'
 import { useGarden } from './garden/useGarden'
 
 /**
@@ -95,7 +95,7 @@ export function GardenPage({ books, paused }: Props) {
               <div
                 ref={stage}
                 className={`garden-stage ${flat ? 'flat' : 'scene'}`}
-                style={flat ? { aspectRatio: `${layout.width} / ${layout.depth}` } : undefined}
+                style={{ aspectRatio: flat ? `${layout.width} / ${layout.depth}` : `${sceneAspect(layout)}` }}
               >
                 {flat ? (
                   <GardenFlat year={current} season={garden.season} columns={1} reduce={reduce} picked={pickedId} />

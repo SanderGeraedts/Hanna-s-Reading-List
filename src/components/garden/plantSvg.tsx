@@ -87,7 +87,7 @@ function Tree({ kind, h, leaf, season, flowers, flowerColour, compact }: ShapePr
   const trunkH = h * (kind.id === 'pine' ? 0.25 : 0.42)
   const crownY = -trunkH
   const crownH = h - trunkH
-  const w = Math.max(0.22, crownH * 0.78)
+  const w = Math.max(0.22, Math.min(1.05, crownH * 0.72))
   return (
     <>
       <path
@@ -140,8 +140,10 @@ function Tree({ kind, h, leaf, season, flowers, flowerColour, compact }: ShapePr
   )
 }
 
-function Shrub({ kind, h, leaf, season, flowers, flowerColour, compact }: ShapeProps) {
-  const w = Math.max(0.26, h * 0.95)
+function Shrub({ kind, h: full, leaf, season, flowers, flowerColour, compact }: ShapeProps) {
+  // bare in winter: a smaller tangle of twigs, never a big brown blob
+  const h = leaf === null ? full * 0.7 : full
+  const w = Math.max(0.26, Math.min(0.95, h * 0.8))
   const body = leaf ?? '#6a5747'
   return (
     <>

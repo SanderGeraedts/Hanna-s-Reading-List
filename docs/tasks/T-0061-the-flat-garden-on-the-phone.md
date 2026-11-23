@@ -103,11 +103,18 @@ the dev server:
 
 - Tab, header, season chip, year chips, beds, spots, plant families, sprouts, night-blooming mark,
   item strip and the empty-garden line are all as designed. **Matches.**
-- Two differences, both accepted: the bed label is `Bed 1` with the count only in the
-  screen-reader label (`Bed 1 of 10`), because `Bed 1 of 10` on 360 px pushed the first spot row
-  down; and the garden sentence names at most three items, because ten items read as a list.
-  Neither changes what she can do.
-- Verdict: **passes**, nothing to fix before the tester.
+- Differences, all accepted:
+  1. The bed's number is only in the screen-reader group label (`Bed 1 of 10`); a printed `Bed 1`
+     over every bed pushed the first row of spots down at 360 px and said nothing the garden
+     didn't.
+  2. The plants are drawn **standing in** their spot rather than seen from straight above — a tree
+     from directly above is a circle, and the garden then reads as a plan, not a garden. The beds
+     and the layout are top-down, as asked.
+  3. The garden sentence names at most three garden items; ten of them read as a list.
+  4. Two sizes were turned down after the first screenshots, because a grown oak swallowed the
+     spot next to it: a plant is at most 1.5 units tall and a crown at most about one spot wide.
+- Verdict: **passes**, nothing to fix before the tester. Screenshots: `T-0061-screens/garden-360.jpg`,
+  `garden-390.jpg`; picked up, `T-0063-screens/picked-360.jpg`, `picked-390.jpg`.
 
 # Test
 

@@ -51,7 +51,7 @@ function gardenOf(n: number, today: string) {
 }
 
 /** The whole scene the garden draws, as `GardenScene` builds it. */
-function build(plants: Plant[], beds: number, season: (typeof SEASONS)[number], items: number, visitors: number) {
+function build(plants: Plant[], beds: number, season: (typeof SEASONS)[number], items: number, visitors: number, front: 'low' | 'high' = 'low') {
   const columns = sceneColumns(beds)
   const layout = gardenLayout(beds, columns)
   const root = new THREE.Group()
@@ -64,7 +64,7 @@ function build(plants: Plant[], beds: number, season: (typeof SEASONS)[number], 
     const at = spotPoint(layout, p.bed, p.spot)
     shadows.push({ x: at.x, z: at.z, r: 0.3 + p.scale * 0.25 })
     if (i < DETAILED_PLANTS) {
-      const mesh = buildPlant(lookOf(p, season), 'low')
+      const mesh = buildPlant(lookOf(p, season), front)
       mesh.position.set(at.x, 0.13, at.z)
       root.add(mesh)
     } else field.push({ look: lookOf(p, season, true), x: at.x, z: at.z })
@@ -122,6 +122,13 @@ describe('the fullest garden', () => {
     })
   }
 
+  it('stays within the den’s computer budget (80 draw calls, 40,000 triangles) with the front plants in full', () => {
+    const year = gardenOf(114, '2026-07-15').years[0]
+    const cost = drawCost(build(year.plants, year.beds, 'summer', GARDEN_ITEMS.length, 6, 'high').root, false)
+    expect(cost.calls).toBeLessThanOrEqual(80)
+    expect(cost.triangles).toBeLessThanOrEqual(40_000)
+  })
+
   it('does not grow its draw calls with every extra plant', () => {
     const small = gardenOf(10, '2026-07-15').years[0]
     const big = gardenOf(114, '2026-07-15').years[0]
@@ -157,7 +164,8 @@ describe('the numbers for the record', () => {
     for (const n of [1, 12, 50, 114]) {
       const year = gardenOf(n, '2026-10-15').years[0]
       const cost = drawCost(build(year.plants, year.beds, 'autumn', GARDEN_ITEMS.length, 6).root, false)
-      rows.push(`${n} plants / ${year.beds} beds: ${cost.calls} draw calls, ${Math.round(cost.triangles)} triangles`)
+      const high = drawCost(build(year.plants, year.beds, 'autumn', GARDEN_ITEMS.length, 6, 'high').root, false)
+      rows.push(`${n} plants / ${year.beds} beds: phone ${cost.calls} draw calls, ${Math.round(cost.triangles)} triangles; computer ${high.calls} / ${Math.round(high.triangles)}`)
     }
     // eslint-disable-next-line no-console
     console.log(`the 3D garden on a phone-grade setting:\n  ${rows.join('\n  ')}`)

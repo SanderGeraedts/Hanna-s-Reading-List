@@ -86,13 +86,21 @@ weather.
 
 Reviewed on 2026-11-23 against this design, on the 1280 × 800 screenshots in `T-0062-screens/`:
 
-- Camera, ground, beds, path, the four plant families, sprouts, growth scaling, season dressing,
-  items and visitors are as designed. The spot buttons line up with the plants at 1280 and at
-  1440. **Matches.**
-- One difference, accepted: the falling leaves of autumn are drawn only on a computer that is not
-  reducing motion, and are left out entirely at more than 60 plants, to keep the budget. It is
-  within what §4 asks for.
-- Verdict: **passes**.
+- Camera, ground, beds, the four plant families, sprouts, growth scaling, season dressing, items
+  and visitors are as designed. The spot buttons line up with the plants at 1280 and at 1440.
+  **Matches.**
+- Differences, all accepted:
+  1. The camera sits at **38°** above the ground, not the 55° of the first build: at 55° the
+     garden read as a plan rather than a garden.
+  2. The stage takes the **garden's own shape** instead of a fixed 16 : 9, so a two-bed garden is
+     not a wide field of empty grass.
+  3. The plants beyond the front twelve are **merged into one mesh** rather than drawn one by one
+     (§4 asks for the simplest shape; this is that, in one draw call), and the front twelve are
+     built at the computer's own quality. The numbers are in T-0065's *Test*.
+  4. The falling leaves of autumn and the snow are left out when the device asks for less motion
+     or the garden holds more than 60 plants.
+- Verdict: **passes**. Screenshots: `T-0062-screens/garden-1280.jpg`, `garden-1440.jpg`,
+  `garden-1280-2025.jpg`; with the items placed, `T-0063-screens/items-1280.jpg`.
 
 # Test
 

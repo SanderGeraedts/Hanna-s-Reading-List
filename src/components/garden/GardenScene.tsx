@@ -98,7 +98,7 @@ function Garden({ year, season, reduce, paused }: GardenSceneProps) {
       shadows.push({ x: at.x, z: at.z, r: 0.3 + p.scale * 0.25 })
       if (i < DETAILED_PLANTS) {
         // the plants at the front: their own mesh, so they can sway
-        const mesh = buildPlant(lookOf(p, season), 'low')
+        const mesh = buildPlant(lookOf(p, season), 'high')
         mesh.position.set(at.x, 0.13, at.z)
         root.add(mesh)
         swaying.push(mesh)

@@ -280,3 +280,41 @@ describe('the flat garden stays light (D-0051 §6)', () => {
     expect(buttons).toBe(10 * SPOTS_PER_BED)
   })
 })
+
+describe('reduce motion and the seasons in the tab', () => {
+  it('holds the visitors still when the device asks for less motion', () => {
+    const real = window.matchMedia
+    // a device that asks for reduce motion (and is not a phone)
+    window.matchMedia = ((q: string) =>
+      ({
+        matches: q.includes('prefers-reduced-motion'),
+        media: q,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      }) as unknown as MediaQueryList) as typeof window.matchMedia
+    try {
+      const books = Array.from({ length: 20 }, (_, i) => finished(`2026-0${(i % 8) + 1}-10`, { genres: ['Romance'], pages: 300 }))
+      const { container } = tab(books)
+      const visitors = container.querySelectorAll('.garden-visitor')
+      expect(visitors.length).toBeGreaterThan(0)
+      for (const v of visitors) expect(v.classList.contains('still')).toBe(true)
+    } finally {
+      window.matchMedia = real
+    }
+  })
+
+  it('names the season of the day the device is on', () => {
+    for (const [day, chip] of [
+      ['2026-04-15', '🌸 Spring'],
+      ['2026-07-15', '☀️ Summer'],
+      ['2026-10-15', '🍂 Autumn'],
+      ['2026-12-15', '❄️ Winter'],
+    ] as const) {
+      vi.setSystemTime(new Date(`${day}T12:00:00`))
+      const view = tab([finished('2026-01-02', { title: 'A book' })])
+      expect(screen.getByText(chip), day).toBeTruthy()
+      view.unmount()
+    }
+    vi.setSystemTime(new Date(`${TODAY}T12:00:00`))
+  })
+})

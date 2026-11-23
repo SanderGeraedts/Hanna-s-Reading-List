@@ -13,8 +13,12 @@ import type { GardenLayout, ViewBox } from '#/lib/garden/view'
 
 /** The stage the percentages are worked out in; its shape is fixed by CSS. */
 export const NOMINAL_W = 1000
-/** The 3D stage's shape (16 : 9), the same as the CSS aspect ratio of `.garden-stage.scene`. */
+/** The 3D stage's shape: the garden's own, so the camera has no wasted green around it. */
 export const SCENE_ASPECT = 16 / 9
+export function sceneAspect(layout: GardenLayout): number {
+  const need = layout.depth * Math.sin(SCENE_ELEVATION) + LIFT * Math.cos(SCENE_ELEVATION)
+  return Math.max(1.1, Math.min(2.2, layout.width / need))
+}
 /** The tallest plant to keep in view, in garden units. */
 const LIFT = 2.4
 
@@ -22,7 +26,7 @@ const LIFT = 2.4
 export const sceneColumns = (beds: number) => Math.max(1, Math.min(3, Math.ceil(Math.sqrt(beds))))
 
 export const sceneView = (layout: GardenLayout): ViewBox =>
-  fitView(layout, NOMINAL_W, NOMINAL_W / SCENE_ASPECT, SCENE_ELEVATION, LIFT)
+  fitView(layout, NOMINAL_W, NOMINAL_W / sceneAspect(layout), SCENE_ELEVATION, LIFT)
 
 export type Place = { left: number; top: number }
 

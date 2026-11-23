@@ -168,7 +168,7 @@ function plantParts(look: PlantLook, q: Quality): Part[] {
     case 'tree': {
       const trunk = h * (kind.id === 'pine' ? 0.25 : 0.42)
       const crown = h - trunk
-      const w = Math.max(0.24, crown * 0.8)
+      const w = Math.max(0.24, Math.min(1.05, crown * 0.72))
       add(cylinder(q), kind.stem, place(0, trunk / 2, 0, 0.12 + h * 0.03, trunk, 0.12 + h * 0.03))
       if (leaf === null) {
         // winter: bare branches
@@ -200,7 +200,8 @@ function plantParts(look: PlantLook, q: Quality): Part[] {
       return parts
     }
     case 'shrub': {
-      const w = Math.max(0.3, h * 1)
+      const h = leaf === null ? look.height * 0.7 : look.height
+      const w = Math.max(0.3, Math.min(0.95, h * 0.8))
       const body = leaf ?? '#6a5747'
       add(cylinder(q), kind.stem, place(0, h * 0.18, 0, 0.08, h * 0.36, 0.08))
       add(sphere(q), body, place(0, h * 0.6, 0, w, h * 0.8, w))
@@ -275,7 +276,7 @@ export function buildBeds(layout: GardenLayout, season: Season): THREE.Instanced
   const g = mergeParts([{ geometry: box(), colour, matrix: place(0, 0, 0, 1, 1, 1) }])
   const mesh = new THREE.InstancedMesh(g, gardenMaterial, Math.max(1, layout.beds.length))
   layout.beds.forEach((bed, i) => {
-    mesh.setMatrixAt(i, place(bed.x + BED_W / 2, 0.04, bed.z + BED_D / 2, BED_W, 0.18, BED_D))
+    mesh.setMatrixAt(i, place(bed.x + BED_W / 2, 0.08, bed.z + BED_D / 2, BED_W, 0.34, BED_D))
   })
   mesh.instanceMatrix.needsUpdate = true
   mesh.name = 'beds'

@@ -37,8 +37,8 @@ export interface GardenFlatProps {
 }
 
 export function GardenFlat({ year, season, columns = 1, compact, reduce, picked }: GardenFlatProps) {
-  const beds = compact ? 1 : year.beds
-  const layout = gardenLayout(beds, columns)
+  const beds = compact ? Math.min(2, year.beds) : year.beds
+  const layout = gardenLayout(beds, compact ? 2 : columns, !compact)
   const ground = GROUND[season]
   const plants = [...year.plants]
     .filter((p) => p.bed < beds)

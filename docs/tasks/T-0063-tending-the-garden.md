@@ -100,11 +100,22 @@ They are not a score and she cannot place them: they come.
 
 Reviewed on 2026-11-23 against this design:
 
-- Drag, tap-then-Move, the keyboard pattern, the swap, the item strip with its locked lines, the
-  next-unlock line and the visitors are all as designed, in both views. **Matches.**
-- One difference, accepted: on a phone a plant is dragged after a short press (250 ms) rather than
-  at once, so scrolling the garden still works. The tap-then-`Move` path is unchanged.
-- Verdict: **passes**.
+- Dragging, the keyboard pattern, the swap, the item strip with its locked lines, the next-unlock
+  line and the visitors are all as designed, in both views. **Matches.**
+- Differences, all accepted:
+  1. On a phone a plant lifts after a short press (250 ms) rather than at once, so the garden can
+     still be scrolled with a finger.
+  2. **One press picks the plant up and shows its details** at the same time, instead of opening a
+     panel with a `Move` button in it: the panel is there (kind, title, stage, re-reads) with
+     `Put back` to change her mind, and the spots light up straight away. It is one step fewer for
+     the thing she will do most, and the keyboard and the pointer then behave the same.
+  3. A garden item goes into the **first free slot** of the strip rather than one she points at.
+     Placing and taking away are both one press; choosing the slot would be a second
+     pick-then-place for a decoration that has six places along one strip. If she asks to arrange
+     the items themselves, the slots are already in the saved choice (`slot`), so it is a small
+     change — written down for her under *Choices made while Hanna was at work*.
+- Verdict: **passes**. Screenshots: `T-0063-screens/picked-390.jpg`, `picked-360.jpg`,
+  `items-card-1280.jpg`, `items-1280.jpg`.
 
 # Test
 

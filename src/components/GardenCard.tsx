@@ -2,6 +2,7 @@ import type { Garden } from '#/lib/garden/garden'
 import { startYear, yearOf } from '#/lib/garden/garden'
 import { countLine, gardenSentence, nextLine, seasonChip } from '#/lib/garden/words'
 import { GardenFlat } from './garden/GardenFlat'
+import { gardenLayout } from '#/lib/garden/view'
 import { useReducedMotion } from './creatures/pose'
 import { OpenLink } from './OpenLink'
 
@@ -16,13 +17,15 @@ export function GardenCard({ garden, onOpen }: { garden: Garden; onOpen?: () => 
   const reduce = useReducedMotion()
   const year = yearOf(garden, startYear(garden))
   if (!year) return null
+  // the block draws at most two beds, side by side and with no item strip
+  const small = gardenLayout(Math.min(2, year.beds), 2, false)
   return (
     <section className="dash-card garden-block" aria-labelledby="garden-title">
       <div className="dash-card-head">
         <h2 id="garden-title">Garden</h2>
         <OpenLink onOpen={onOpen} label="Garden" />
       </div>
-      <div className="garden-block-stage">
+      <div className="garden-block-stage" style={{ aspectRatio: `${small.width} / ${small.depth}` }}>
         <GardenFlat year={year} season={garden.season} compact reduce={reduce} />
       </div>
       <p className="visually-hidden">{gardenSentence(year, garden.season)}</p>

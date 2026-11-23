@@ -43,8 +43,11 @@ export function countLine(year: YearGarden): string {
 export function nextLine(garden: Garden): string {
   if (!garden.next) return 'Every garden item unlocked.'
   const { name, books, toGo } = garden.next
-  return `Next: a ${name.toLowerCase()} at ${books} books (${toGo} to go)`
+  return `Next: ${withArticle(name.toLowerCase())} at ${books} books (${toGo} to go)`
 }
+
+/** "a bench", "lanterns": a plural item takes no article. */
+export const withArticle = (name: string) => (name.endsWith('s') ? name : `a ${name}`)
 
 /** A locked item's line in the strip: "Pond · at 25 books". */
 export const lockedLine = (name: string, books: number) => `${name} · at ${books} books`
