@@ -3237,6 +3237,17 @@ textarea.input {
 .alphabet-behind {
   color: var(--warning);
 }
+/* an empty letter can be tapped for a book from her pile (D-0070) */
+button.alphabet-letter {
+  cursor: pointer;
+}
+button.alphabet-letter:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.alphabet-suggest {
+  margin-top: 0.6rem;
+}
 /* a done letter shows its book's cover (#150); tap it to pick another (#152) */
 .alphabet-letter {
   position: relative;

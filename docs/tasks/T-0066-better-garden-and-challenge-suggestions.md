@@ -33,7 +33,9 @@ against advice.
 - the garden items strip shows the new items, a seasonal one only in its season;
 - a 3D tree's crown sits on its trunk, with no gap;
 - the world, the seasonal and her own challenge cards show up to three books from her shelf
-  with the reason each fits, or a line saying nothing fits.
+  with the reason each fits, or a line saying nothing fits;
+- tapping a letter the A–Z challenge has not got yet suggests a book from her pile, with
+  **Another one** when more than one counts.
 
 # Notes
 
@@ -84,9 +86,9 @@ like is Hanna's to confirm on the live site.
   bare winter branches and the floating fern fronds Hanna reported, and the same smaller gap
   in the flat drawing.
 - 2026-11-23 tester: the checks above run and recorded; passed. #268 merged.
-- 2026-11-23 developer: the A–Z card's "From your pile" list is now the same clickable cover
-  suggestions as the other challenges, at Hanna's request (D-0070). `pnpm test` 2423
-  passed, 22 skipped; `pnpm run build` built in 914 ms.
+- 2026-11-23 developer: the A–Z card's "From your pile" list is gone; an empty letter is now
+  tapped for a book from her pile, in the same panel a bingo square opens, which is what she
+  asked for (D-0070).
   Remaining: Hanna confirms on the live site that Tidy and Undo do what she expects, that the
   cover signs and the re-matched plants look right, and that the suggestions under A–Z, the
   world, the seasonal and her own challenges are useful.
