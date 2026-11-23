@@ -6,7 +6,7 @@ import { sleepReadIds } from './sleepSeries'
 import { foldTrope, tropesOf } from './tropes'
 
 /**
- * Seasonal (D-0061 §2): a target per calendar season, judged by the book's
+ * Seasonal (D-0065 §2): a target per calendar season, judged by the book's
  * genres **and** its tropes (D-0042). The season of a finish comes from
  * `seasonOf`, which is meteorological, northern-hemisphere and already safe
  * around a leap day: a day that does not exist (2027-02-29, from an older
@@ -54,7 +54,7 @@ const targetFor = (season: Season) => SEASON_TARGETS.find((t) => t.season === se
 
 /**
  * Whether a folded text holds a word whole: "Historical romance" holds
- * "romance", "Romantasy" does not (D-0061 §2).
+ * "romance", "Romantasy" does not (D-0065 §2).
  */
 export function holdsWord(text: string, word: string): boolean {
   const haystack = ` ${foldTrope(text)} `

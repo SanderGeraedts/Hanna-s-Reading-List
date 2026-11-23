@@ -3,7 +3,7 @@ import type { Book } from './library'
 import { challengeBooks, challengeDone, cleanChallenges, doneText, ruleOptions, ruleText } from './ownChallenges'
 import type { OwnChallenge } from './ownChallenges'
 
-/** The rules, the units and the AND of her own challenges (T-0092, D-0062). */
+/** The rules, the units and the AND of her own challenges (T-0092, D-0066). */
 
 const book = (id: string, extra: Partial<Book> = {}): Book => ({
   id,

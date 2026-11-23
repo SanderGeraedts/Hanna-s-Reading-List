@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Book } from './library'
 import { CARD_SIZE, SQUARE_IDS, bingoYear, cardSquares, forCard } from './bingo'
 
-/** A card drawn with her own swaps (T-0093, D-0063 §7). */
+/** A card drawn with her own swaps (T-0093, D-0067 §7). */
 
 const book = (id: string, extra: Partial<Book> = {}): Book => ({
   id,
@@ -94,7 +94,7 @@ describe('bingoYear with her swaps', () => {
     const slot = ticked.squares.findIndex((s) => s.ticked)
     expect(slot).toBeGreaterThanOrEqual(0)
     // she can only have swapped this slot while the card was empty (the picker is gone as
-    // soon as one square is ticked, D-0063 §3), so the derivation applies it from the start
+    // soon as one square is ticked, D-0067 §3), so the derivation applies it from the start
     // and the squares are ticked from the finishes again — no tick is invented or kept.
     const withSwap = bingoYear(read, 2026, '2026-11-23', new Map([[`2026:1:${slot}`, spare]]))
     expect(withSwap.squares[slot].id).toBe(spare)

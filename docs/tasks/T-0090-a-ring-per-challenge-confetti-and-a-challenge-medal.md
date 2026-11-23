@@ -2,12 +2,12 @@
 id: T-0090
 title: "Open the Challenges page with a ring per challenge, celebrate a finished one once, and give it a medal"
 description: "A row of small progress rings at the top of the Challenges page, one per challenge for the chosen year, each a button that scrolls to that challenge; the first visit after a challenge is complete draws one short confetti burst (no pop-up, D-0013) and completed challenges count towards a new challenges-1/5/10 badge family."
-status: Open
+status: Done
 size: full
 depends_on: []
-decisions: [D-0013, D-0014, D-0017, D-0020, D-0038, D-0060]
+decisions: [D-0013, D-0014, D-0017, D-0020, D-0038, D-0064]
 raised_on: 2026-11-23
-done_on: ""
+done_on: 2026-11-23
 result: []
 ---
 
@@ -25,7 +25,7 @@ Today the page opens with a flat list of trophy lines (`src/lib/trophies.ts`) th
 some of the challenges and says nothing about how far along the others are, and finishing one
 is marked by nothing at all.
 
-**D-0060** settles how: one summary shape (`challengeRings.ts`) that every challenge reports,
+**D-0064** settles how: one summary shape (`challengeRings.ts`) that every challenge reports,
 the ring row and the trophy row both reading it, the celebration remembered per device like
 the "Badge unlocked" toasts, and **one** badge family rather than one medal per challenge.
 
@@ -104,6 +104,37 @@ Nothing is saved on the server for any of this.
 - No hint text (D-0014): the row explains itself through the rings' names and numbers. The
   page's existing `No challenges in 2026 yet.` stays as the empty line.
 - Don't touch the page tab row: a sibling branch adds a **Stats** tab.
+
+# Choices made while Hanna was at work
+
+Hanna was at work on 23 November 2026 and could not be asked. Each of these took the
+recommended or the most easily undone option; she can change any of them this evening.
+
+1. **The ring row replaces the trophy lines.** The old row said the same thing in words
+   (`Goal reached · 48 of 40`), and showing both would have been eleven rings plus eleven
+   sentences. The one line that is *not* a challenge with a goal — `3 full bingo cards` — is
+   kept under the row. *To change:* bring `yearTrophies` back; it is one function.
+2. **The row sits on the cards' surface, not in a sunken well,** because over the pale
+   lavender wallpaper a translucent well left the names unreadable (see the review).
+3. **A ready-made challenge with a goal of its own (bingo, A–Z, the world, the seasons, the
+   minutes) only gets a ring once she has started it.** Otherwise a brand-new shelf would
+   open with a row of zeroes instead of the page's quiet `No challenges in 2026 yet.` The
+   cards are always on the page, so nothing is hidden. *To change:* one flag in
+   `challengeRings.ts`.
+4. **One medal family (`challenges-1/5/10`), not one medal per challenge** — the same reason
+   D-0042 §7 gives for tropes: a medal per challenge would change the grid every time she
+   invents one.
+5. **The confetti only falls on the Challenges page.** That is where the rings are, and a
+   burst on the shelf would come out of nowhere. *To change:* the layer is already on every
+   page; only the trigger would move.
+6. **The "already celebrated" memory is per device.** Clearing the browser's storage means the
+   next finished challenge is celebrated again. Saving it with her account would mean one more
+   thing to sync for a party trick.
+7. **No confetti when the device asks for less movement,** and never any sound.
+8. **The medal carries no day,** so it never turns up under *Waiting for you* (which is for
+   questions, D-0013).
+9. **The decisions were renumbered.** The Stats branch took D-0060 and D-0061 while this was
+   being built, so these four are **D-0064 … D-0067**. Nothing else changed.
 
 # Design
 
@@ -224,11 +255,112 @@ progress (`3 of 5`) like every other badge with steps.
 7. `rings-focus-390.jpg` — a ring with the keyboard focus outline.
 8. `challenge-medals-390.jpg` — the three new medals in the badge grid, one earned.
 
+## Review after the build
+
+Written by the UX designer, 2026-11-23, from the screenshots in `T-0090-screens/` (a dev
+server with no backend, 390 × 844 and 1280 × 900, both wallpapers).
+
+**Verdict: passes, with one change already made and two notes for Hanna.**
+
+| what | result |
+|---|---|
+| the row sits between the title and the page's content | matches (`rings-390-lavender.jpg`) |
+| one ring per challenge, the done number inside, the short name under | matches |
+| a complete ring is a gold disc with a `✓` and a `--text` label | matches (Goal, Pages, Old) |
+| rings wrap, never scroll sideways | matches: eleven rings are three rows at 390, one row at 1280 |
+| both wallpapers | matches (`rings-390-midnight.jpg`, `rings-1280-midnight.jpg`) |
+| no rings and the page's own line on an empty shelf | matches (`rings-390-none.jpg`) |
+| the confetti is paper in the medal colours, falls once, covers no control | matches (`rings-confetti-390.jpg`) |
+| the focus outline on a ring | matches (`rings-focus-390.jpg`) |
+| the three medals in the badge grid | matches (`challenge-medals-390.jpg`, the 🎖️ is earned) |
+
+**Changed during the build, with my agreement:** the design said the row sits in a sunken
+well (`--surface-sunken`). Over the pale lavender wallpaper that left the ring tracks and the
+short names too faint to read, so the row now uses the cards' own `--surface` with a
+`--border`. It reads as a card, which is honest — it is the page's summary — and it is
+correct on both wallpapers.
+
+**Notes, not blockers:**
+
+1. **The row can get long.** With eight ready-made challenges and three of her own it is
+   three rows at 390. That is still one glance, but if she adds ten challenges it will push
+   the first card well down the page. Worth watching; the fix (a cap with a "+3 more") is a
+   small task if she ever asks.
+2. **`No challenges in 2026 yet.`** sits straight on the wallpaper in `--muted`, which is
+   faint on lavender. That is how the old trophy row's empty line already was, so it is not a
+   regression — but it is worth a small follow-up.
+
+Nothing differs from the design in a way that must be fixed before this passes. To the tester.
+
 # Test
 
-To be written by the tester.
+Written by the tester, 2026-11-23.
+
+## The checks, as run
+
+```
+$ pnpm exec tsc --noEmit
+(no output: clean)
+
+$ pnpm test
+ Test Files  182 passed | 2 skipped (184)
+      Tests  2308 passed | 22 skipped (2330)
+
+$ pnpm run build
+✓ built in 879ms
+
+$ pnpm exec harness check
+✓ tasks: 65 tasks, index in step
+✓ decisions: 57 records, index complete, 3 overrules valid
+✓ engineers: 2 listed
+✓ generated files: current
+```
+
+The new and affected files were run three times over
+(`ChallengesPage.break`, `ChallengesPage.swap`, `BingoSwap`, `ReadyChallenges`,
+`OwnChallenges`, `ChallengeRings`, `Confetti`, `challenges.break`): `80 passed (80)` each
+time, no retries.
+
+## Sent back once, and fixed
+
+**The confetti never fired.** It was scheduled with `window.setTimeout(… , 150)` inside the
+effect that also records what has been celebrated, and the effect's cleanup cleared the
+timer. On the real page the choice log and the reading goals arrive a tick after the first
+render, so the effect re-ran and cancelled the burst — while the memory had already been
+written, so the *next* visit was quiet as well. The burst now fires in the effect itself, and
+`ChallengesPage.break.test.tsx` covers it (first visit quiet, second visit one burst, third
+visit quiet). A line went into `docs/lessons.md`.
+
+## What was tried to break it
+
+| tried | result |
+|---|---|
+| **no challenges at all** (empty shelf, no goal, no picks, no log) | no ring row at all, the page's own `No challenges in 2026 yet.`, no confetti, no crash |
+| a shelf of books with **nothing finished** | no crash, no rings |
+| **a finished challenge** | gold ring with a `✓`, the `challenges-1` medal earned |
+| **two finished at once** | **one** burst, not two; both ids recorded, both counted for the medal |
+| the same visit again | no burst |
+| **storage blocked** (`setItem` throws) | no confetti at all, rather than one every visit |
+| nonsense in the memory (`{"not":"a list"}`) | treated as no memory: records, stays quiet, no crash |
+| the **year switch** | the whole row changes (`Your challenges in 2025`), and an earlier year offers no **＋ New challenge** and no **＋ Add a series** |
+| a ring's click | scrolls `#challenge-<id>` into view and focuses its `h2` |
+| a ring with no block on the page | does nothing, throws nothing |
+| a very long own-challenge name | clipped to one line, full name in the accessible name |
+| one ring and twelve rings | both render; the row wraps, it does not scroll sideways |
+| `prefers-reduced-motion: reduce` | the layer draws nothing; the ring is still gold with a `✓` |
+| `confetti()` with no layer mounted | nothing, no throw |
+| the badge grid | 78 medals (was 75), the three new ones in their family's tiers, grid navigation still lands on the last medal |
+| `badges(books)` with **no** challenges option | the family is there, unearned, no crash |
+
+## Verdict
+
+**Passed.** The *Done when* checks all ran with the output above, the UX designer's review is
+in *Design*, and D-0064 is recorded. Nothing is left for a human.
 
 # Log
 
-- 2026-11-23 architect: wrote CH1 as a full task; recorded D-0060 (one summary shape for every challenge, confetti remembered per device, one badge family). Hand to the UX designer.
+- 2026-11-23 architect: wrote CH1 as a full task; recorded D-0064 (one summary shape for every challenge, confetti remembered per device, one badge family). Hand to the UX designer.
 - 2026-11-23 ux-designer: designed (the ring row and confetti, the four cards, the extra rule fields and the swap flow, each for 390 and 1280 on both wallpapers). Hand to the developer.
+- 2026-11-23 developer: built the ring row (`challengeRings.ts`, `ChallengeRings.tsx`), the confetti (`challengeCelebrate.ts`, `Confetti.tsx`, one `<ConfettiLayer />` in the route) and the `challenges-1/5/10` family in `badges.ts`; the trophy lines are gone, the rings say the same thing (`trophies.ts` now only counts full bingo cards). Checks: `pnpm exec tsc --noEmit` clean; `pnpm test` 180 passed | 2 skipped (182 files), 2284 passed | 22 skipped; `pnpm run build` ✓ built in 869ms; `pnpm exec harness check` all ✓. Screenshots in `T-0090-screens/`.
+- 2026-11-23 ux-designer: reviewed: passes (one change agreed during the build, notes recorded). Hand to the tester.
+- 2026-11-23 tester: passed (sent the confetti back once; see the lesson). Every Done when check ran; the output is in Test.

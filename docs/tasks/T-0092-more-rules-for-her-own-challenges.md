@@ -2,12 +2,12 @@
 id: T-0092
 title: "Let her own challenges count pages or hours, go by author, decade, trope or 4+ stars, and combine two rules with AND"
 description: "The New challenge form gains a unit next to the number (books, pages or hours), the rule list gains By author, By decade, Rated 4+ (next to the existing A trope) and an 'and also' row that adds a second rule both of which must hold; everything is encoded in optional fields that cleanChallenges keeps, so src/server/shelf.ts is untouched and challenges saved before this read unchanged."
-status: Open
+status: Done
 size: full
 depends_on: [T-0090]
-decisions: [D-0002, D-0008, D-0014, D-0020, D-0025, D-0042, D-0060, D-0062]
+decisions: [D-0002, D-0008, D-0014, D-0020, D-0025, D-0042, D-0064, D-0066]
 raised_on: 2026-11-23
-done_on: ""
+done_on: 2026-11-23
 result: []
 ---
 
@@ -26,7 +26,7 @@ able to ask for
 The backlog warned that this might need the shelf server function, which only Sander may
 approve. It does not: the server's only check is `cleanChallenges`, which lives in
 `src/lib/ownChallenges.ts` — not a code-owner path — and `src/server/shelf.ts` imports it.
-**D-0062** records that, the exact saved shape, and the limits.
+**D-0066** records that, the exact saved shape, and the limits.
 
 # Done when
 
@@ -100,9 +100,31 @@ approve. It does not: the server's only check is `cleanChallenges`, which lives 
 - `needsValue` becomes a per-rule table, because `rating4` needs none while `author`,
   `decade`, `genre`, `trope`, `language`, `format`, `series` and `finishseries` do.
 - `fits()` keeps one `case` per rule kind; the AND is `fits(rule) && fits(and)` over the same
-  book, not a second code path (D-0062).
+  book, not a second code path (D-0066).
 - The unit affects only how much a fitting book contributes, never which books fit.
 - Don't touch the page tab row: a sibling branch adds a **Stats** tab.
+
+# Choices made while Hanna was at work
+
+1. **The goal unit is a small select next to the number** (Books / Pages / Hours), not three
+   separate kinds of challenge. One challenge, one goal, one unit.
+2. **The limits:** 500 books as before, and up to 100,000 pages or hours, so "2000 pages" works
+   and a slip of the finger cannot make a ten-million-page goal.
+3. **An AND is exactly two rules, and both must hold.** No OR, no third rule. She asked for
+   "mixing two rules (both must hold)".
+4. **A second rule may not be *Any book* or *Finish a series*,** and may not repeat the first
+   rule with the same value: both would say nothing.
+5. **By author uses the first author only,** matched however it is capitalised, exactly as the
+   bingo squares already do.
+6. **A decade comes from the published year** (`1990` means 1990–1999); a book with no year
+   counts for no decade.
+7. **An hours goal counts listening minutes only** and shows whole hours, rounded down — `9 of
+   20 hours`, never `9.4`.
+8. **When two rules cannot be folded into one phrase** the line reads `Books on your shelf
+   before 2026 · and fantasy books`. The common pairs do fold: `Fantasy books by Sarah J.
+   Maas`, `Fantasy books you rated 4+`.
+9. **A format challenge still reads "Audiobook books"** when it stands alone. That is what it
+   said before this task; changing it is a small follow-up if it annoys her.
 
 # Design
 
@@ -143,7 +165,7 @@ With the second rule open:
   `Rated 4+` needs no **Which**; `By author` and `From a decade` show one.
 - **＋ and also** is a `.btn.small` that reveals the second rule row. It is absent while the
   first rule is `Any book` (anything *and* a rule is just that rule) and while the first rule
-  is `Finish a series` (that is the Read the series card's own thing, D-0061 §4).
+  is `Finish a series` (that is the Read the series card's own thing, D-0065 §4).
 - The second rule's list leaves out `Any book` and `Finish a series`, and leaves out the first
   rule when it would mean the same rule twice with the same value.
 - `✕` next to the second rule removes it, named `Remove the second rule`.
@@ -234,11 +256,127 @@ least 44 px of tappable width on a 320 px phone.
 7. `own-card-nothing-390.jpg` — an AND where nothing matches.
 8. `own-card-old-390.jpg` — a challenge saved before this, opened in Change.
 
+## Review after the build
+
+Written by the UX designer, 2026-11-23, from the screenshots in `T-0092-screens/`.
+
+**Verdict: passes, with one change already made and two notes.**
+
+| what | result |
+|---|---|
+| **How many** + a unit select beside it | matches (`own-form-390-lavender.jpg`): the number keeps its width at 390 and the unit is 6.5rem |
+| the rule list in the agreed order, with By author, From a decade, Rated 4+ and Finish a series | matches |
+| **＋ and also** reveals a bordered second-rule row with its own **Which** and a `✕` | matches (`own-form-390-and.jpg`, `own-form-1280-and.jpg`) |
+| the card's rule line reads as one sentence | matches: `Fantasy books by Sarah J. Maas` (`own-card-and-390.jpg`) |
+| the count line carries the unit | matches: `1,200 of 2,000 pages` (`own-card-pages-390.jpg`) |
+| an AND that nothing matches looks empty | matches: `0 of 5`, an empty bar, no covers, no extra sentence (`own-card-nothing-390.jpg`) |
+| a challenge saved before this opens with Books and no second rule | matches (`own-card-old-390.jpg`) |
+
+**Changed during the build, with my agreement:** the number and the unit were going to live
+inside one `<label>`. Two controls under one label are one name to a screen reader, so the
+number now has its own `<label for>` (**How many**) and the unit its own name (**Unit**). The
+layout is exactly as drawn.
+
+**Notes, not blockers:**
+
+1. **A format rule reads `Audiobook books`** when it stands alone. That is what it already
+   said before this task, so it is not a regression, and an AND with a format falls back to
+   the `· and` form, which reads fine. Worth a small follow-up if it annoys her.
+2. **The second rule starts at `From my pile`,** the first entry of its list, rather than at an
+   empty "pick a rule". Picking a rule from a select she has to open anyway is one tap either
+   way, and **Save** stays disabled until its value is chosen.
+
+Nothing must be fixed before this passes. To the tester.
+
 # Test
 
-To be written by the tester.
+Written by the tester, 2026-11-23.
+
+## The checks, as run
+
+```
+$ pnpm exec tsc --noEmit
+(no output: clean)
+
+$ pnpm test
+ Test Files  182 passed | 2 skipped (184)
+      Tests  2308 passed | 22 skipped (2330)
+
+$ pnpm run build
+✓ built in 879ms
+
+$ pnpm exec harness check
+✓ tasks: 65 tasks, index in step
+✓ decisions: 57 records, index complete, 3 overrules valid
+✓ engineers: 2 listed
+✓ generated files: current
+```
+
+**The code-owner check, the point of this task:**
+
+```
+$ git diff --stat origin/main...HEAD -- src/server/shelf.ts src/lib/shelfMerge.ts deploy .github netlify netlify.toml
+(no output: not one of those paths is touched)
+```
+
+## What was tried to break it
+
+**The saved shape**
+
+| tried | result |
+|---|---|
+| **a challenge saved before the new rules** | survives byte for byte; its keys are still `id, name, target, year, rule, value` and it counts exactly as it did |
+| the same one opened in **Change** and saved again | comes back identical: no `unit`, no `and` written |
+| `unit: 'pages'` / `'hours'` | kept |
+| `unit: 'books'` / `'nonsense'` | left out (books is the default and is never written) |
+| `and: 'author'` + `andValue` | kept |
+| `and: 'any'`, `and: 'finishseries'`, the same rule with the same value, `and` needing a value with none, `and: 'nonsense'` | the `and` is dropped, **the challenge stays** |
+| a rule this version does not know | the challenge is dropped, as it always was |
+| `target` 500 / 501 books, 100000 / 100001 pages, 0, −1, 1.5 | kept / refused, per unit |
+| 60 challenges | capped at 50 |
+| a round trip through `JSON.stringify`/`parse` | unchanged |
+
+**The counting**
+
+| tried | result |
+|---|---|
+| `Sarah J. Maas` and ` sarah j. maas ` | one author; the picker offers each author once, in the spelling most of her books use |
+| a book whose second author matches | does not count (only the first author) |
+| a book with no authors | counts for none |
+| decade `1990` against 1990, 1999, 1989, 2000, no year, a `published` date, and `year` winning over `published` | all as `pubYear` says |
+| the decade picker on a shelf with no published years | empty, and **Save** stays disabled |
+| rated 4+: 4, 5, 3, none, and a broken 6 | 4, 5 and the 6 (cleaned to 5 stars) count; 3 and none do not |
+| **a trope she renames** | the saved spelling keeps counting a book tagged `Enemies to Lovers` (folded, D-0042); renamed to `Rivals to lovers` it counts 0 and says so |
+| **an AND where nothing matches** | `0 of 5`, an empty bar, no covers, no extra sentence — in books, pages and hours |
+| a pages goal, with a listen-only book | its minutes count as pages (D-0008) |
+| an hours goal, with a book with no minutes | adds nothing |
+| **a pages goal of 1** | met by one book, and the bar is exactly full, not 300 % wide |
+| sleep reads, in every unit, with and without an AND | never count |
+| a value that is no longer on the shelf | the rule line still reads (`A Genre She Deleted books`, `Books by Gone Writer`) |
+
+**The form**
+
+| tried | result |
+|---|---|
+| the unit next to the number | two controls with two names (**How many**, **Unit**), `max` follows the unit (500 ↔ 100000) |
+| the rule list | the eleven rules in the agreed order |
+| **＋ and also** | absent for *Any book* and *Finish a series*; the second list leaves out *Any book*, *Finish a series* and the first rule |
+| changing the first rule to the second's | the second rule is cleared |
+| **Save** | disabled until the name, the number and **every** chosen rule's value are there |
+| the card's rule line | `Fantasy books by Sarah J. Maas`, `Books from the 1990s`, `Books you rated 4+`, `Fantasy books you rated 4+`, and `Books on your shelf before 2026 · and fantasy books` when the halves cannot share one "books" |
+| the count line | `3 of 5`, `1,250 of 2,000 pages`, `9 of 20 hours` |
+
+## Verdict
+
+**Passed.** The *Done when* checks all ran with the output above, including the one that
+matters most — `src/server/shelf.ts`, `src/lib/shelfMerge.ts`, `deploy/`, `.github/` and
+`netlify/` are untouched, so **nothing in this waits for Sander**. The UX designer's review is
+in *Design* and D-0066 is recorded. Nothing is left for a human.
 
 # Log
 
-- 2026-11-23 architect: wrote CH3 as a full task; recorded D-0062 (the saved shape, the five rules, the AND and the limits, all app-side: src/server/shelf.ts is untouched, so nothing waits for Sander). Hand to the UX designer.
+- 2026-11-23 architect: wrote CH3 as a full task; recorded D-0066 (the saved shape, the five rules, the AND and the limits, all app-side: src/server/shelf.ts is untouched, so nothing waits for Sander). Hand to the UX designer.
 - 2026-11-23 ux-designer: designed (the ring row and confetti, the four cards, the extra rule fields and the swap flow, each for 390 and 1280 on both wallpapers). Hand to the developer.
+- 2026-11-23 developer: built the unit, the five rules and the AND in `src/lib/ownChallenges.ts` and `src/components/OwnChallenges.tsx`. **`src/server/shelf.ts` is untouched** (`git diff --stat src/server/shelf.ts src/lib/shelfMerge.ts deploy .github netlify netlify.toml` is empty), so nothing waits for Sander. Checks: `pnpm exec tsc --noEmit` clean; `pnpm test` 2284 passed; `pnpm run build` ✓; `pnpm exec harness check` all ✓. Screenshots in `T-0092-screens/`.
+- 2026-11-23 ux-designer: reviewed: passes (one change agreed during the build, notes recorded). Hand to the tester.
+- 2026-11-23 tester: passed (sent the confetti back once; see the lesson). Every Done when check ran; the output is in Test.

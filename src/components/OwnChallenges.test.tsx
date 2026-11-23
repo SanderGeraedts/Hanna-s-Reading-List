@@ -12,7 +12,7 @@ vi.mock('#/server/shelf', () => ({
 const { NewChallengeForm, OwnChallengeCard } = await import('./OwnChallenges')
 type OwnChallenge = import('#/lib/ownChallenges').OwnChallenge
 
-/** The extra rules of her own challenges (T-0092, D-0062). */
+/** The extra rules of her own challenges (T-0092, D-0066). */
 
 const book = (id: string, extra: Partial<Book> = {}): Book => ({
   id,

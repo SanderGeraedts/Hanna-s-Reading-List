@@ -154,12 +154,12 @@ export interface BadgeOptions {
   /** this device's birthday, `MM-DD` (D-0039): for the secret Birthday book */
   birthday?: string
   /**
-   * her own challenges (D-0060 §6): they are not in `books`, so the
+   * her own challenges (D-0064 §6): they are not in `books`, so the
    * `challenges-N` family counts only the ready-made ones without them. Never
    * required, so no caller breaks and no medal is ever wrongly shown as earned.
    */
   challenges?: OwnChallenge[]
-  /** her own bingo swaps (D-0063), so a swapped card is judged as she sees it */
+  /** her own bingo swaps (D-0067), so a swapped card is judged as she sees it */
   swaps?: ReadonlyMap<string, string>
   /** her reading goal per year, for the reading-goal challenge */
   goals?: Record<number, number | null>
@@ -346,7 +346,7 @@ export function badges(books: Book[], today = localDay(), options: BadgeOptions 
   add('alphabet', '🔤', 'A to Z', 'Finish a book for every letter in one year', once(alphabetDays))
   add('monthly', '🗓️', 'Twelve months', 'Finish all 12 monthly challenge books of a year', once(monthlyDays))
 
-  // challenges completed (D-0060 §6): one family, not one medal per challenge.
+  // challenges completed (D-0064 §6): one family, not one medal per challenge.
   // A completed challenge has no day of its own, so these medals carry none.
   const completed = completedChallenges({
     books,

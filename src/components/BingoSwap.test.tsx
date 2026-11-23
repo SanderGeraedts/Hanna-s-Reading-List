@@ -8,7 +8,7 @@ vi.mock('#/server/openLibrary', () => ({ searchBooks: async () => [], getWorkDet
 const { BingoCard } = await import('./DashboardMore')
 const { SQUARES, SQUARE_IDS, cardSquares } = await import('#/lib/bingo')
 
-/** Swapping a bingo square (T-0093, D-0063). */
+/** Swapping a bingo square (T-0093, D-0067). */
 
 const book = (id: string, extra: Partial<Book> = {}): Book => ({
   id,

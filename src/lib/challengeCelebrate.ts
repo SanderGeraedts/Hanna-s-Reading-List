@@ -1,5 +1,5 @@
 /**
- * When a finished challenge is celebrated (D-0060 §4). The device remembers
+ * When a finished challenge is celebrated (D-0064 §4). The device remembers
  * which challenges it has already celebrated, exactly as `BadgeToasts` keeps
  * `badges-shown`: the first time a device sees no memory at all it records
  * everything and celebrates nothing, so a year of finished challenges does not

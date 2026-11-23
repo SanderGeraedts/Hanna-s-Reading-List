@@ -392,7 +392,7 @@ export function BingoCard({
   onOpen?: () => void
   /** opens a suggested book in the book panel (T-0017) */
   onShowBook?: (id: string) => void
-  /** her own swaps (D-0063): the card is drawn with them everywhere */
+  /** her own swaps (D-0067): the card is drawn with them everywhere */
   swaps?: BingoSwaps
   /** saves a swap; without it (the dashboard) no Swap is offered */
   onSwap?: (slot: number, square: string) => void
@@ -418,7 +418,7 @@ export function BingoCard({
     setShown(drawSuggestion(suggestionPool(id, books, year) ?? [])?.shown ?? [])
     setFocusTick((n) => n + 1)
   }
-  // her own swap (D-0063): only on the card being played, while nothing is ticked
+  // her own swap (D-0067): only on the card being played, while nothing is ticked
   const [swapping, setSwapping] = useState(false)
   const canSwap = playing && !!onSwap && b.squares.every((s) => !s.ticked)
   const close = (toSquare: boolean) => {
@@ -512,7 +512,7 @@ export function BingoCard({
         {b.squares.map((s) => {
           const how = s.ticked ? (s.book ? `Done: ${s.book.title}` : 'Done') : 'Ticks itself when a finished book fits'
           // an empty square of the card being played suggests a book from her pile (T-0017),
-          // and on an untouched card it can be swapped for another one (T-0093, D-0063)
+          // and on an untouched card it can be swapped for another one (T-0093, D-0067)
           if (playing && !s.ticked && (suggestible(s.id) || canSwap)) {
             const isChosen = chosen === s.id
             return (

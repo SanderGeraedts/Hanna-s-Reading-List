@@ -7096,16 +7096,19 @@ button.today-item:hover {
 }
 
 /* ---- the challenges: rings, confetti, the four new cards and the bingo swap ----
-   T-0090 … T-0093 (D-0060, D-0061, D-0063). */
+   T-0090 … T-0093 (D-0064, D-0065, D-0067). */
 
-/* the ring row at the top of the Challenges page (D-0060) */
+/* the ring row at the top of the Challenges page (D-0064) */
 .challenge-rings {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
   padding: var(--space-3);
   border-radius: var(--radius-card);
-  background: var(--surface-sunken);
+  /* the cards own surface, not a sunken well: over the pale lavender wallpaper a
+     translucent well leaves the names and the ring tracks too faint to read */
+  background: var(--surface);
+  border: 1px solid var(--border);
 }
 .challenge-ring {
   display: grid;
@@ -7171,7 +7174,7 @@ button.today-item:hover {
   }
 }
 
-/* the confetti for a finished challenge (D-0060 §4) */
+/* the confetti for a finished challenge (D-0064 §4) */
 .confetti-layer {
   position: fixed;
   inset: 0;
@@ -7328,7 +7331,7 @@ button.today-item:hover {
   margin: 0;
 }
 
-/* swapping a bingo square (D-0063) */
+/* swapping a bingo square (D-0067) */
 .bingo-swap {
   display: grid;
   gap: var(--space-2);

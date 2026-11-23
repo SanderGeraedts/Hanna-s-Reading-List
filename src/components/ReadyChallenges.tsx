@@ -9,7 +9,7 @@ import type { OwnChallenge } from '#/lib/ownChallenges'
 import { monthName } from './Dashboard'
 
 /**
- * The four ready-made challenges added in T-0091 (D-0061). Each is an ordinary
+ * The four ready-made challenges added in T-0091 (D-0065). Each is an ordinary
  * `.dash-card` in the Challenges page's grid, so it arranges, hides and anchors
  * like every other challenge. Nothing here opens a dialog or looks anything up.
  */

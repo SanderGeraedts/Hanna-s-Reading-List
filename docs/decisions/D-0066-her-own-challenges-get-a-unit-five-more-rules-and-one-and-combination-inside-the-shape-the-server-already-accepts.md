@@ -1,5 +1,5 @@
 ---
-id: D-0062
+id: D-0066
 title: "Her own challenges get a goal unit, five more rules and one AND combination, all inside the shape the server already accepts"
 description: "A challenge keeps its id, name, target, year, rule and value and gains three optional fields — unit (books, pages or hours), and (a second rule that must hold too) and andValue — all kept by cleanChallenges in src/lib/ownChallenges.ts, which the server function imports, so src/server/shelf.ts and deploy/nas/ are untouched; a challenge saved before this reads as unit books with no second rule."
 status: Accepted
@@ -59,7 +59,7 @@ on a challenge rides along the moment the app deploys: **nothing in this needs S
    this is byte-for-byte what it was, and a challenge made now is a plain books challenge
    unless she chose otherwise (the same rule as D-0042 §1).
 2. **Five more rule kinds:** `author`, `decade`, `rating4`, plus the existing `trope`, and
-   `finishseries` (D-0061 §4). `rating4` needs no value; `author` and `decade` pick from the
+   `finishseries` (D-0065 §4). `rating4` needs no value; `author` and `decade` pick from the
    shelf like `genre` does.
    - `author` matches the book's **first** author, trimmed and lower case, as
      `authorKey` in `bingo.ts` already does, so two spellings of one name are one author.
@@ -68,7 +68,7 @@ on a challenge rides along the moment the app deploys: **nothing in this needs S
    - `rating4` is `cleanRating(book.rating) >= 4`.
 3. **The AND combination is exactly two rules.** `and` may not be `any` (that would say
    nothing), may not equal `rule` with the same value, and may not be `finishseries`
-   (a series challenge is its own card, D-0061 §4). A book counts only when **both** rules
+   (a series challenge is its own card, D-0065 §4). A book counts only when **both** rules
    fit it. There is no OR and no third rule.
 4. **Units.** `books` counts the books that fit, as today. `pages` adds up `thicknessPages`
    of each fitting book (a book she only listens to contributes its minutes as pages, as

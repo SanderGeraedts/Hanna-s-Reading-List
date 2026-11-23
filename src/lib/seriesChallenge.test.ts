@@ -4,7 +4,7 @@ import { newSeriesPick, pickableSeries, seriesDone, seriesPicks, seriesRows } fr
 import type { OwnChallenge } from './ownChallenges'
 import { cleanChallenges } from './ownChallenges'
 
-/** Read the series (T-0091, D-0061 §4). */
+/** Read the series (T-0091, D-0065 §4). */
 
 const book = (id: string, title: string, extra: Partial<Book> = {}): Book => ({
   id,

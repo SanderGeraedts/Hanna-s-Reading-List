@@ -124,7 +124,7 @@ export function NewChallengeForm({
   const [unit, setUnit] = useState<GoalUnit>(unitOf(start ?? preset ?? {}))
   const [rule, setRule] = useState<RuleKind>(start?.rule ?? preset?.rule ?? 'any')
   const [value, setValue] = useState(start?.value ?? preset?.value ?? '')
-  // the second rule (D-0062 §3): '' means she has not added one
+  // the second rule (D-0066 §3): '' means she has not added one
   const [and, setAnd] = useState<RuleKind | ''>(start?.and ?? '')
   const [andValue, setAndValue] = useState(start?.andValue ?? '')
   const options = useMemo(() => ruleOptions(rule, books), [rule, books])

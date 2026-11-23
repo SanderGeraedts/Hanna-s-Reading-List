@@ -271,7 +271,7 @@ function shuffled<T>(list: T[], seed: number): T[] {
  * The squares a card starts with, and the ones waiting to be swapped in by
  * the app after 30 days (`autoSwap` below).
  *
- * `picked` are the swaps Hanna chose herself (D-0063), as slot → square id: a
+ * `picked` are the swaps Hanna chose herself (D-0067), as slot → square id: a
  * swap puts that square in that slot and sends the square that was there back
  * into the spare pile. A swap is ignored when the square is already on the
  * card, so no square is ever on a card twice. Without `picked` this is exactly
@@ -403,7 +403,7 @@ function rememberedCards(books: Book[], year: number): FinishedBingoCard[] {
 
 /**
  * Her own swaps for one card, as slot → square id, out of the whole map keyed
- * `year:card:slot` (D-0063). Lives here, not in `bingoSwap.ts`, so that module
+ * `year:card:slot` (D-0067). Lives here, not in `bingoSwap.ts`, so that module
  * can read this one's square list without a circle.
  */
 export function forCard(picked: ReadonlyMap<string, string> | undefined, year: number, card: number): Map<number, string> {
@@ -419,7 +419,7 @@ export function forCard(picked: ReadonlyMap<string, string> | undefined, year: n
 /**
  * Every card of a year: the ones filled, and the one being played.
  *
- * `picked` are her own swaps (D-0063), as `year:card:slot` → square id; without
+ * `picked` are her own swaps (D-0067), as `year:card:slot` → square id; without
  * them the year is exactly what it was before swapping existed.
  */
 export function bingoYear(books: Book[], year: number, today = localDay(), picked?: ReadonlyMap<string, string>): BingoYear {

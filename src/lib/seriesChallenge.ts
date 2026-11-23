@@ -5,7 +5,7 @@ import { newChallengeId, ruleOptions } from './ownChallenges'
 import type { OwnChallenge } from './ownChallenges'
 
 /**
- * Read the series (D-0061 §4): the series she picks to finish this year, kept
+ * Read the series (D-0065 §4): the series she picks to finish this year, kept
  * as her own challenges with the rule `finishseries` — the challenges list is
  * already saved with her account, so nothing new is stored and nothing waits
  * for Sander.

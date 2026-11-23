@@ -17,7 +17,7 @@ const read = (id: string, title: string, day: string, extra: Partial<Book> = {})
   ...extra,
 })
 
-describe('what the Challenges page says about a year (D-0060: the rings replaced the trophy lines)', () => {
+describe('what the Challenges page says about a year (D-0064: the rings replaced the trophy lines)', () => {
   it('says nothing about full bingo cards when there are none', () => {
     const shelf = [
       read('a', 'Alpha', '2025-02-01'),

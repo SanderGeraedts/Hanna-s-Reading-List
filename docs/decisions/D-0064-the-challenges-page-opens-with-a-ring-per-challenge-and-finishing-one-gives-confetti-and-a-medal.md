@@ -1,5 +1,5 @@
 ---
-id: D-0060
+id: D-0064
 title: "The Challenges page opens with one progress ring per challenge, and finishing a challenge gives a short confetti burst once per device and counts towards one badge family"
 description: "Every challenge on the page — the four ready-made ones, the four new ones and her own — reports the same little summary (done, goal, complete) to a ring row at the top; tapping a ring scrolls to that challenge. The first visit after a challenge is complete fires one confetti burst, never two in a visit, remembered per device exactly like the badge toasts; the medal is one family (challenges-1/5/10) counting completed challenges, not one medal per challenge."
 status: Accepted

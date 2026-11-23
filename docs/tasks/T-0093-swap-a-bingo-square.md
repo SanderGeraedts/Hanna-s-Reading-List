@@ -1,13 +1,13 @@
 ---
 id: T-0093
 title: "Let her swap a bingo square for another one, while nothing on the card is ticked"
-description: "On the card being played, as long as no square is ticked, tapping a square offers Swap next to the book suggestion; Swap lists every square the card hasn't got and puts the chosen one in that slot. The swap is saved as a place event with key b:<year>:<card>:<slot> in the existing choice log (D-0063), so it follows her to every device with no server change."
-status: Open
+description: "On the card being played, as long as no square is ticked, tapping a square offers Swap next to the book suggestion; Swap lists every square the card hasn't got and puts the chosen one in that slot. The swap is saved as a place event with key b:<year>:<card>:<slot> in the existing choice log (D-0067), so it follows her to every device with no server change."
+status: Done
 size: full
 depends_on: [T-0090]
-decisions: [D-0013, D-0014, D-0020, D-0025, D-0034, D-0052, D-0063]
+decisions: [D-0013, D-0014, D-0020, D-0025, D-0034, D-0052, D-0067]
 raised_on: 2026-11-23
-done_on: ""
+done_on: 2026-11-23
 result: []
 ---
 
@@ -19,7 +19,7 @@ with her account.
 
 Bingo saves nothing today — a card's squares are a fixed shuffle of the year and the card
 number — so a swap she chooses is the first bingo choice that has to be remembered.
-**D-0063** settles where: a `place` event in the creatures choice log with a `b:` key, through
+**D-0067** settles where: a `place` event in the creatures choice log with a `b:` key, through
 the route that is already live, so **nothing waits for Sander**. It also settles when swapping
 is offered (only on the card being played, in the current year, while nothing on it is ticked)
 and that a square already on the card can never be swapped in.
@@ -38,7 +38,7 @@ and that a square already on the card can never be swapped in.
      with a `g:` key (the garden, D-0052) and a `home:` key (the den), and ignores a `b:` event
      whose `sq` is not a known square id;
    - the garden's `plantSpots`/`itemSpots` and the den's `deriveShop` ignore a `b:` event —
-     **both directions tested**, as D-0052 §4 and D-0063 §5 require;
+     **both directions tested**, as D-0052 §4 and D-0067 §5 require;
    - two events for the same slot: the newer `at` wins, and on a tie the larger id, exactly as
      the route and `mergeLogs` do.
 4. New tests in `src/lib/bingo.swap.test.ts`:
@@ -96,6 +96,30 @@ and that a square already on the card can never be swapped in.
 - No pop-ups (D-0013): the picker is a list inside the card she opened, not a dialog. No hint
   text (D-0014).
 - Don't touch the page tab row: a sibling branch adds a **Stats** tab.
+
+# Choices made while Hanna was at work
+
+The big one — where a swap is saved — had only one route that both follows her to every device
+and needs nothing from Sander, and it is also the cheapest to undo, so it was taken and
+recorded as **D-0067** rather than parked.
+
+1. **A swap is saved as a `place` event in the choice log her creatures and her garden already
+   use,** with keys `b:<year>:<card>:<slot>`. The route is live, so **nothing in this waits for
+   Sander**, there is no database change and no second pull request. The other routes were a
+   new field on the server at Sander's home (needs him, and a live database deploy) or
+   browser-only storage (would not follow her from phone to computer). *To change:* it would be
+   a new decision and probably a question for Sander.
+2. **Swap is offered only on the card being played, in the current year, while nothing on it is
+   ticked** — her own rule. As soon as one square is ticked, no square on that card offers it.
+3. **The dashboard's bingo block draws the swapped card but offers no Swap.** Swapping belongs
+   on the Challenges page, with the whole card and its history.
+4. **No limit and no confirm.** She can swap a slot as often as she likes while the card is
+   untouched; nothing is ticked yet, so nothing can be lost.
+5. **The picker never offers a square the card already has,** and the derivation refuses such a
+   swap as well, so no square is ever on a card twice.
+6. **On an untouched card every open square is tappable,** including the two that never suggest
+   a book (*3 books in one month*, *5 books in one month*) — she must be able to swap those
+   too. Their name says `swap this square` instead of `suggest a book`.
 
 # Design
 
@@ -167,7 +191,7 @@ Tapping **Swap** replaces the panel's body with the list, keeping the heading:
   the list is in the same place every time), each a full-width `.btn` of at least `--tap`
   height, scrolling inside the panel past six (`max-height: 50vh`).
 - The square she came from is not in the list (swapping a square for itself is nothing), and
-  neither is any square already on the card (D-0063 §4).
+  neither is any square already on the card (D-0067 §4).
 - Picking one swaps at once — no confirm. It is a reversible choice: she can swap the slot
   again as often as she likes, and nothing is ticked yet by definition.
 - The grid behind updates in place; the panel closes and focus returns to that slot's square,
@@ -220,11 +244,124 @@ the Challenges page, with the whole card, its history and the rest of the challe
 5. `swap-390-ticked.jpg` — a card with one square ticked: the panel with **no** Swap.
 6. `swap-390-focus.jpg` — the focus ring on an option in the list.
 
+## Review after the build
+
+Written by the UX designer, 2026-11-23, from the screenshots in `T-0093-screens/`.
+
+**Verdict: passes, with one note.**
+
+| what | result |
+|---|---|
+| **⇄ Swap** on its own line under the suggestion's actions | matches (`swap-390-lavender-panel.jpg`) |
+| the picker keeps the square's heading and reads `Pick another square` | matches (`swap-390-lavender-list.jpg`) |
+| full-width options at tap height, scrolling inside the panel | matches |
+| two columns at 1280 | matches (`swap-1280-midnight-list.jpg`) |
+| the grid shows the new square in that slot afterwards | matches (`swap-390-after.jpg`) |
+| no **Swap** anywhere once a square is ticked | matches (`swap-390-ticked.jpg`: the panel on a card with ticks has only the suggestion and the close) |
+| the focus outline on an option | matches (`swap-390-focus.jpg`) |
+| both wallpapers | matches (`swap-1280-midnight-panel.jpg`) |
+
+**Note, not a blocker:** on an untouched card **every** open square is now a button, including
+the two that never suggested a book (*3 books in one month*, *5 books in one month*). That is
+right — she must be able to swap those too — and their name says `swap this square` instead of
+`suggest a book`, so nothing promises a suggestion that will not come. The panel for such a
+square shows `No book on your shelf fits this one yet.` above **Swap**, which reads as an
+invitation to swap rather than an error.
+
+Nothing must be fixed before this passes. To the tester.
+
 # Test
 
-To be written by the tester.
+Written by the tester, 2026-11-23.
+
+## The checks, as run
+
+```
+$ pnpm exec tsc --noEmit
+(no output: clean)
+
+$ pnpm test
+ Test Files  182 passed | 2 skipped (184)
+      Tests  2308 passed | 22 skipped (2330)
+
+$ pnpm run build
+✓ built in 879ms
+
+$ pnpm exec harness check
+✓ tasks: 65 tasks, index in step
+✓ decisions: 57 records, index complete, 3 overrules valid
+✓ engineers: 2 listed
+✓ generated files: current
+```
+
+**The server check:**
+
+```
+$ git diff --stat origin/main...HEAD -- deploy src/server/shelf.ts src/lib/shelfMerge.ts .github netlify netlify.toml
+(no output: not one of those paths is touched)
+```
+
+## Found and fixed while breaking it
+
+`bingoSwaps` threw a `TypeError` on a log that held `null` or a plain string — possible from
+storage that was written by hand or half-written. It now skips anything that is not an
+object, and `challenges.break.test.ts` feeds it a log of rubbish.
+
+## What was tried to break it
+
+**The event and the log**
+
+| tried | result |
+|---|---|
+| the event | exactly `{ kind: 'place', key: 'b:2026:1:3', sq: 'longlisten' }` |
+| the longest key (four-digit year, three-digit card, two-digit slot) | `b:2026:999:15`, 13 characters, far inside the route's 60 |
+| two events for one slot | the newer `at` wins; on a tie the larger id, exactly as the route and `mergeLogs` do |
+| a `g:` key (the garden) and a `home:` key (the den) | both ignored by bingo |
+| a `b:` key read by the garden's `savedPlants`/`savedItems` and the den's `deriveShop` | ignored by both — **all three directions tested** |
+| a `b:` event with no `sq`, with an unknown square, slot 16, slot −1, card 0, a short key, a key of words | all ignored |
+| a `feed` event | ignored |
+| `null` and `'nonsense'` in the log | ignored, no throw (the fix above) |
+
+**The card**
+
+| tried | result |
+|---|---|
+| a swap into slot 3 | that square in that slot, the other fifteen untouched, no square twice |
+| the square that was there | goes back into the spare pile exactly once, so the 30-day automatic swap still has stock |
+| **a square the card already has** | the swap is ignored, on card 1 and on card 3 |
+| a slot out of range, a fractional slot, a square that does not exist, another year, a card that is not being played | all ignored |
+| no swaps at all / an empty map | `cardSquares` and `bingoYear` give exactly what they gave before |
+| a swapped card that fills up | remembered with its **swapped** squares |
+| a swap for a slot that is already ticked | the square is replaced and the squares are ticked from the finishes again — no tick is invented or kept, and the app never offers the swap (below) |
+
+**The flow**
+
+| tried | result |
+|---|---|
+| an untouched card | **Swap** on every open square, including the two that never suggest a book (their name says `swap this square`, not `suggest a book`) |
+| **a card with one square ticked** | **no Swap anywhere**, on any square — checked on every open square of such a card |
+| a past year | no Swap, and no square is a button |
+| the dashboard's card (no `onSwap`) | no Swap |
+| the picker | every square the card has not got, in `SQUARE_IDS` order; **not one** the card already has |
+| a pick | swaps, closes, and the focus returns to that square, whose name is now the new label |
+| **Cancel** | back to the suggestion step, with Swap again |
+| `Escape` from the picker | closes it and returns focus to the square, in one press |
+| tab order | **Open**, **Another one**, **Swap**, then the close `×` |
+| a swap from the page | one `place` event with a `b:` key; the card redraws with the new square |
+| **swapping the same slot twice** | two writes, one event kept (a `place` event is a setting: the newest per key wins, D-0034 §1), and the newest square is the one shown — nothing is removed by hand |
+| with no account | the swap works and stays in this browser's log |
+| a fresh render from the stored log | the swap is still there |
+
+## Verdict
+
+**Passed.** The *Done when* checks all ran with the output above, `deploy/nas/` and the
+code-owner paths are untouched, the UX designer's review is in *Design*, and D-0067 is
+recorded. Nothing is left for a human.
 
 # Log
 
-- 2026-11-23 architect: wrote CH4 as a full task; recorded D-0063 (a swap is a `place` event with a `b:` key in the live choice log, so nothing waits for Sander; only on an untouched card, never to a square the card already has). Hand to the UX designer.
+- 2026-11-23 architect: wrote CH4 as a full task; recorded D-0067 (a swap is a `place` event with a `b:` key in the live choice log, so nothing waits for Sander; only on an untouched card, never to a square the card already has). Hand to the UX designer.
 - 2026-11-23 ux-designer: designed (the ring row and confetti, the four cards, the extra rule fields and the swap flow, each for 390 and 1280 on both wallpapers). Hand to the developer.
+- 2026-11-23 developer: built the swap (`bingoSwap.ts`, an optional swap map on `cardSquares`/`bingoYear`, the picker in `BingoCard`, the writer on the Challenges page). **Nothing in `deploy/nas/`, `src/server/shelf.ts`, `src/lib/shelfMerge.ts`, `.github/` or `netlify/` is changed.** Checks: `pnpm exec tsc --noEmit` clean; `pnpm test` 2284 passed; `pnpm run build` ✓; `pnpm exec harness check` all ✓. Screenshots in `T-0093-screens/`.
+- 2026-11-23 ux-designer: reviewed: passes (one change agreed during the build, notes recorded). Hand to the tester.
+- 2026-11-23 tester: passed (sent the confetti back once; see the lesson). Every Done when check ran; the output is in Test.

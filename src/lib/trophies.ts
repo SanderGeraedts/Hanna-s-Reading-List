@@ -6,7 +6,7 @@ import { bingoYear } from './bingo'
  * What the Challenges page says about a year, besides the challenges
  * themselves.
  *
- * Until D-0060 this was a row of trophy lines, one per challenge. The ring row
+ * Until D-0064 this was a row of trophy lines, one per challenge. The ring row
  * at the top of the page now says the same thing in one picture — name,
  * progress and done — so the lines are gone and only the one thing that is not
  * a challenge with a goal is left: how many bingo cards she filled that year.

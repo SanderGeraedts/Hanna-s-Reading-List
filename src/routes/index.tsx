@@ -164,7 +164,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
    */
   const books = useMemo(() => shelfBooks(allBooks), [allBooks])
   const wishes = useMemo(() => wishBooks(allBooks), [allBooks])
-  /** her own challenges, bingo swaps and goals, for the challenges-N medals (D-0060 §6) */
+  /** her own challenges, bingo swaps and goals, for the challenges-N medals (D-0064 §6) */
   const badgeExtras = useChallengeExtras(account?.id ?? null)
   /** the wish she just bought, while the follow-up asks how she has it (T-0072) */
   const [bought, setBought] = useState<string | null>(null)

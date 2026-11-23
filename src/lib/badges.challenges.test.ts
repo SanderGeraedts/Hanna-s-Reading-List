@@ -4,7 +4,7 @@ import { badges } from './badges'
 import type { Badge } from './badges'
 import type { OwnChallenge } from './ownChallenges'
 
-/** The challenges-N medal family (T-0090, D-0060 §6). */
+/** The challenges-N medal family (T-0090, D-0064 §6). */
 
 const book = (id: string, day: string, extra: Partial<Book> = {}): Book => ({
   id,

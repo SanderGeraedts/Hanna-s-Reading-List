@@ -1,5 +1,5 @@
 ---
-id: D-0063
+id: D-0067
 title: "A bingo square she swaps is saved as a place event with a b: key in the existing choice log, so the swap follows her to every device with no server change"
 description: "Swapping is placing: which square stands in which slot of which card. It rides in the creatures choice log of D-0034 as a `place` event with key `b:<year>:<card>:<slot>` and the square's id in `sq`, which the live route already accepts and the den's and the garden's readers already ignore. Swapping is offered only on the card being played while nothing on it is ticked, and never to a square already on that card."
 status: Accepted
@@ -69,7 +69,7 @@ the key namespace keeps it apart from the den's and the garden's keys exactly as
 6. **It works without the account** exactly as the creatures and the garden do: the device
    keeps the log in its own storage and sends what the account hasn't got when it can.
 7. **A swap only changes which squares are on a card, never a tick.** Everything that follows
-   from a card — a full card, the `bingo` badge, the trophy row, the rings (D-0060) — is still
+   from a card — a full card, the `bingo` badge, the trophy row, the rings (D-0064) — is still
    worked out from the finishes. Readers that need the swapped card take the swaps as an
    argument; a reader that passes none gets the unswapped card, which is what every caller
    got before.

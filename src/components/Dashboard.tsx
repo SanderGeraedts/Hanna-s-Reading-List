@@ -215,7 +215,7 @@ export function Dashboard({
   })
   // this device's birthday counts here too (D-0039), so the Birthday book can wait for you
   const birthday = useBirthday()
-  // her own challenges, bingo swaps and goals: the challenges-N medals count them (D-0060 §6)
+  // her own challenges, bingo swaps and goals: the challenges-N medals count them (D-0064 §6)
   const badgeExtras = useChallengeExtras(accountId)
   const freshBadges = useMemo(
     () => newBadges(badges(books, undefined, { birthday, ...badgeExtras })).filter((b) => !seenBadges.includes(b.id)),

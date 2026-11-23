@@ -1,5 +1,5 @@
 ---
-id: D-0061
+id: D-0065
 title: "The four new ready-made challenges count from the books alone, except the series she picks, which ride in her own challenges as a finish-series rule"
 description: "Around the world counts the map's countries among the year's finished books (12); Seasonal counts a season's finishes that match that season's genres or tropes; Minutes a day turns the reading log into real minutes — a paper page is 1.5 minutes, a book she only listens to its own minutes, a book with neither counts nothing — and asks for 20 minutes a day; Read the series keeps her picks as own challenges with a new finishseries rule, so nothing new is saved and nothing waits for Sander."
 status: Accepted

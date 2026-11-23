@@ -45,7 +45,7 @@ const DEFAULT_ORDER: TwoColumns<ChallengeId> = {
   hidden: [],
 }
 
-/** What this device has already celebrated with confetti (D-0060 §4). */
+/** What this device has already celebrated with confetti (D-0064 §4). */
 const celebratedKey = (accountId: string | null) => `hannas-reading-list:challenges-done:${accountId ?? 'local'}`
 
 /** The Challenges page's arrangement, remembered on this device for this account. */
@@ -84,7 +84,7 @@ interface Props {
  * back (the dashboard has a compact version of each, with "Open ›"). Earlier
  * years are shown, not changed.
  *
- * Since D-0060 the page opens with a ring per challenge, and the first visit
+ * Since D-0064 the page opens with a ring per challenge, and the first visit
  * after one is finished drops a short burst of confetti.
  */
 export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }: Props) {
@@ -95,12 +95,12 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
   // the order of the challenges, which she arranges like the dashboard (per device)
   const [savedLayout, setLayout] = useChallengeLayout(accountId)
   const [own, setOwn] = useOwnChallenges(accountId)
-  // her choices, for the bingo swaps (D-0063): the same log as the creatures and the garden
+  // her choices, for the bingo swaps (D-0067): the same log as the creatures and the garden
   const choices = useCreatureChoices(accountId)
   const swaps = useMemo(() => bingoSwaps(choices.log), [choices.log])
   // the new-challenge form: empty, or filled in by the Pile challenge button (T-0014)
   const [adding, setAdding] = useState<false | 'new' | 'pile'>(false)
-  // the series picks live in the Read the series card, not as cards of their own (D-0061 §4)
+  // the series picks live in the Read the series card, not as cards of their own (D-0065 §4)
   const ownThisYear = useMemo(() => own.filter((c) => c.year === year && c.rule !== 'finishseries'), [own, year])
   const known = useMemo<ChallengeId[]>(() => [...CHALLENGE_IDS, ...ownThisYear.map((c) => `own:${c.id}` as const)], [ownThisYear])
   const layout = useMemo(() => cleanTwoColumns(savedLayout, known, DEFAULT_ORDER), [savedLayout, known])
@@ -112,7 +112,7 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
   const goal = useYearGoal(accountId, year)
   const rings = useMemo(() => challengeRings({ books, year, goal, own, swaps }), [books, year, goal, own, swaps])
   const fullCards = useMemo(() => fullCardsLine(books, year, undefined, swaps), [books, year, swaps])
-  // the card being played, so a swap is saved under the right card number (D-0063 §2)
+  // the card being played, so a swap is saved under the right card number (D-0067 §2)
   const cardNow = useMemo(() => bingoYear(books, year, undefined, swaps).card, [books, year, swaps])
   const at = years.indexOf(year)
 
@@ -123,7 +123,7 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
 
   /**
    * One short burst for a challenge finished since this device last looked
-   * (D-0060 §4). The first run on a device records everything and fires
+   * (D-0064 §4). The first run on a device records everything and fires
    * nothing; storage blocked means no confetti rather than one every visit.
    */
   const key = celebratedKey(accountId)
@@ -146,9 +146,9 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
       /* storage blocked: no confetti, rather than the same burst every visit */
       return
     }
-    if (!burst) return
-    const t = window.setTimeout(() => confetti(), 150)
-    return () => window.clearTimeout(t)
+    // straight away, not on a timer: the page re-renders as her choices and goals
+    // arrive, and a timer would be cleared by the next run before it ever fired
+    if (burst) confetti()
   }, [complete, key])
 
   /** A Hidden chip was restored (Enter): focus moves to the next chip or to the block's handle (T-0044, F7). */

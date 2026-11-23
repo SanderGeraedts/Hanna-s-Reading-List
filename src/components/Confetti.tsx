@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 /**
- * A short confetti burst when Hanna finishes a challenge (D-0060 §4, §5):
+ * A short confetti burst when Hanna finishes a challenge (D-0064 §4, §5):
  * little paper rectangles in the medal colours falling from the top of the
  * page, once, then gone. `confetti()` can be called from anywhere; the one
  * `<ConfettiLayer />` on the page draws it.
@@ -47,8 +47,8 @@ function makeBurst(id: number): Burst {
     left: Math.round(((i + 0.5) / BITS) * 100 + (Math.random() * 6 - 3)),
     fall: 60 + Math.random() * 15,
     drift: Math.random() * 60 - 30,
-    width: 4 + Math.random() * 5,
-    height: 7 + Math.random() * 5,
+    width: 5 + Math.random() * 6,
+    height: 8 + Math.random() * 6,
     spin: Math.round(Math.random() * 720 - 360),
     delay: Math.round(Math.random() * 260),
     colour: COLOURS[i % COLOURS.length],
@@ -61,7 +61,7 @@ export function ConfettiLayer() {
   useEffect(() => {
     let next = 0
     const on = () => {
-      // no party for anyone who asked for less movement (D-0060 §4)
+      // no party for anyone who asked for less movement (D-0064 §4)
       if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
       const id = next++
       setBursts((list) => [...list, makeBurst(id)])

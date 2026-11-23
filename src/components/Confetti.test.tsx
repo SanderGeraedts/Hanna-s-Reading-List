@@ -2,7 +2,7 @@ import { act, cleanup, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CONFETTI_MS, ConfettiLayer, confetti } from './Confetti'
 
-/** The confetti burst (T-0090, D-0060 §4). */
+/** The confetti burst (T-0090, D-0064 §4). */
 
 const matchReduced = (reduce: boolean) => {
   window.matchMedia = ((query: string) => ({

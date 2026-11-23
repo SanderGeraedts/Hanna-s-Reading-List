@@ -4,7 +4,7 @@ import { placesOf } from './places'
 import { sleepReadIds } from './sleepSeries'
 
 /**
- * Around the world (D-0061 §1): books set in 12 different countries in one
+ * Around the world (D-0065 §1): books set in 12 different countries in one
  * year. The countries are the ones the world map counts — `placesOf` with
  * `MAP_COUNTRY_SET`, the same source as the map (D-0026) and the
  * `countries-N` badges (D-0037) — taken from the books she finished that

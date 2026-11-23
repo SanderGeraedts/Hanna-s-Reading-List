@@ -42,7 +42,7 @@ function readLocalGoals(accountId: string | null): Record<number, number> {
 }
 
 /**
- * Every year's reading goal (D-0060 §6): the badge family counts finished
+ * Every year's reading goal (D-0064 §6): the badge family counts finished
  * challenges over every year, so it needs them all, not only this year's.
  * The server's copy wins, as it does for one year.
  */

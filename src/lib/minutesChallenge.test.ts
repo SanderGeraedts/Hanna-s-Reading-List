@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Book } from './library'
 import { MINUTES_GOAL, MINUTES_MIN_DAYS, MINUTES_PER_PAGE, bookMinutes, daysInMonth, minutesByDay, minutesMonth, minutesYear } from './minutesChallenge'
 
-/** Minutes a day (T-0091, D-0061 §3). */
+/** Minutes a day (T-0091, D-0065 §3). */
 
 const book = (id: string, extra: Partial<Book> = {}): Book => ({
   id,

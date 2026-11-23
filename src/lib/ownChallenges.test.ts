@@ -76,7 +76,7 @@ describe('the Pile challenge button (T-0014)', () => {
   })
 })
 
-describe('the saved shape after D-0062: new fields are optional and left out when they are the default', () => {
+describe('the saved shape after D-0066: new fields are optional and left out when they are the default', () => {
   const old = { id: 'old1', name: 'Fantasy year', target: 5, year: 2026, rule: 'genre' as const, value: 'Fantasy' }
 
   it('keeps a challenge saved before the new rules byte for byte', () => {

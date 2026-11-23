@@ -8,7 +8,7 @@ const { MinutesChallengeCard, SeasonChallengeCard, SeriesChallengeCard, WorldCha
 const { newSeriesPick } = await import('#/lib/seriesChallenge')
 type OwnChallenge = import('#/lib/ownChallenges').OwnChallenge
 
-/** The four new ready-made challenges (T-0091, D-0061). */
+/** The four new ready-made challenges (T-0091, D-0065). */
 
 const book = (id: string, extra: Partial<Book> = {}): Book => ({
   id,

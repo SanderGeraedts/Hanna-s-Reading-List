@@ -5,7 +5,7 @@ import type { ChoiceEvent } from './creatures/choices'
 import { deriveShop } from './creatures/shop'
 import { savedItems, savedPlants } from './garden/spots'
 
-/** A swapped bingo square in the choice log (T-0093, D-0063). */
+/** A swapped bingo square in the choice log (T-0093, D-0067). */
 
 const place = (id: string, at: number, key: string, extra: Record<string, string | number> = {}) =>
   ({ id, at, kind: 'place', key, ...extra }) as unknown as ChoiceEvent
@@ -70,7 +70,7 @@ describe('reading the log', () => {
   })
 })
 
-describe('the three readers never read each other keys (D-0052 §4, D-0063 §5)', () => {
+describe('the three readers never read each other keys (D-0052 §4, D-0067 §5)', () => {
   const swap = place('b', 1, 'b:2026:1:0', { sq: SQUARE_IDS[20] })
 
   it('the garden ignores a bingo swap', () => {

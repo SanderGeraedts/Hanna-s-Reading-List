@@ -12,7 +12,7 @@ import { minutesYear } from './minutesChallenge'
 import { seriesDone, seriesRows } from './seriesChallenge'
 
 /**
- * One summary per challenge (D-0060): the ring row at the top of the
+ * One summary per challenge (D-0064): the ring row at the top of the
  * Challenges page, the trophy lines under it and the `challenges-N` badge
  * family all read this one list, so they can never disagree with the cards.
  *
@@ -41,7 +41,7 @@ export interface RingInput {
   goal: number | null
   /** her own challenges (every year; this filters by year itself) */
   own?: OwnChallenge[]
-  /** her own bingo swaps (D-0063) */
+  /** her own bingo swaps (D-0067) */
   swaps?: ReadonlyMap<string, string>
   today?: string
 }
@@ -50,7 +50,7 @@ export interface RingInput {
 export function challengeRings({ books, year, goal, own = [], swaps, today = localDay() }: RingInput): ChallengeRing[] {
   const out: ChallengeRing[] = []
   /**
-   * A challenge with no goal has no ring (D-0060 §3). The ready-made ones with
+   * A challenge with no goal has no ring (D-0064 §3). The ready-made ones with
    * a goal of their own (bingo, A–Z, the world, the seasons, the minutes) also
    * wait until she has started them, so a brand-new shelf shows an empty page
    * with its own line instead of a row of zeroes. The ones she sets up herself

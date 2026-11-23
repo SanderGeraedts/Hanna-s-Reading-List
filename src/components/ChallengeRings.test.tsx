@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ChallengeRings, goToChallenge } from './ChallengeRings'
 import type { ChallengeRing } from '#/lib/challengeRings'
 
-/** The ring row at the top of the Challenges page (T-0090, D-0060). */
+/** The ring row at the top of the Challenges page (T-0090, D-0064). */
 
 const ring = (id: string, name: string, done: number, goal: number, extra: Partial<ChallengeRing> = {}): ChallengeRing => ({
   id,

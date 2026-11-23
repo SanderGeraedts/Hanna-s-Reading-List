@@ -15,7 +15,7 @@ import { hasTrope, shelfTropes } from './tropes'
  * Maas". Kept on the server with the shelf so every device shows them. Sleep
  * reads never count.
  *
- * D-0062: the goal has a unit (books, pages or hours), there are rules for the
+ * D-0066: the goal has a unit (books, pages or hours), there are rules for the
  * author, the decade published, a 4+ rating and finishing a series, and two
  * rules can be combined with AND. Every new field is optional and left out when
  * it is the default, so a challenge saved before them is byte-for-byte what it
@@ -48,7 +48,7 @@ export interface OwnChallenge {
   rule: RuleKind
   /** the genre, trope, author, decade, language code, format or series key the rule is about */
   value?: string
-  /** what the target counts; left out means 'books' (D-0062 §1) */
+  /** what the target counts; left out means 'books' (D-0066 §1) */
   unit?: 'pages' | 'hours'
   /** a second rule that must hold as well (AND) */
   and?: RuleKind
@@ -91,7 +91,7 @@ const NO_VALUE: readonly RuleKind[] = ['any', 'pile', 'rating4']
 /** rules that need a value picked */
 export const needsValue = (rule: RuleKind) => !NO_VALUE.includes(rule)
 
-/** The rules that may be the second half of an AND (D-0062 §3). */
+/** The rules that may be the second half of an AND (D-0066 §3). */
 export const andRules = (first: RuleKind): RuleKind[] =>
   RULES.filter((r) => r !== 'any' && r !== 'finishseries' && r !== first)
 
@@ -104,7 +104,7 @@ export const UNITS: readonly GoalUnit[] = ['books', 'pages', 'hours']
 export const MAX_CHALLENGES = 50
 /** the most books a challenge can ask for */
 export const MAX_TARGET = 500
-/** the most pages or hours a challenge can ask for (D-0062 §4) */
+/** the most pages or hours a challenge can ask for (D-0066 §4) */
 export const MAX_TARGET_BIG = 100_000
 const MAX_NAME = 60
 
@@ -129,7 +129,7 @@ export function cleanChallenges(raw: unknown): OwnChallenge[] {
     if (!Number.isInteger(year) || (year as number) < 1900 || (year as number) > 3000) continue
     const first = rule as RuleKind
     const firstValue = needsValue(first) ? (value as string).slice(0, 100) : undefined
-    // the second rule: dropped on its own, the challenge stays (D-0062 §3)
+    // the second rule: dropped on its own, the challenge stays (D-0066 §3)
     let second: RuleKind | undefined
     let secondValue: string | undefined
     if (
@@ -211,7 +211,7 @@ export function fits(c: OwnChallenge, book: Book, series: ReturnType<typeof seri
  * The books that count for a challenge: finished in its year, fitting the rule,
  * not a sleep read. Latest first. A `finishseries` challenge is the one
  * exception: she is finishing a series, so every book of it she has ever read
- * counts (D-0061 §4).
+ * counts (D-0065 §4).
  */
 export function challengeBooks(c: OwnChallenge, books: Book[]): Book[] {
   const sleep = sleepReadIds(books)

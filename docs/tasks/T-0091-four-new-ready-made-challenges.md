@@ -2,12 +2,12 @@
 id: T-0091
 title: "Add four ready-made challenges: around the world, seasonal, minutes a day and read the series"
 description: "Four new cards on the Challenges page — 12 countries this year from the map's places, a cosy/beach/spooky target per calendar season judged by genre and trope, a month grid of days that reached 20 minutes (a paper page is 1.5 minutes, a book she only listens to its real minutes), and the series she picks to finish this year with a bar each, kept as own challenges so nothing new is saved."
-status: Open
+status: Done
 size: full
 depends_on: [T-0090]
-decisions: [D-0008, D-0013, D-0014, D-0017, D-0018, D-0020, D-0026, D-0037, D-0042, D-0060, D-0061]
+decisions: [D-0008, D-0013, D-0014, D-0017, D-0018, D-0020, D-0026, D-0037, D-0042, D-0064, D-0065]
 raised_on: 2026-11-23
-done_on: ""
+done_on: 2026-11-23
 result: []
 ---
 
@@ -25,7 +25,7 @@ next to the reading goal, the monthly challenge, bingo and A–Z.
   minutes.
 - **Read the series:** she picks series to finish this year, with progress per series.
 
-**D-0061** settles exactly what each one counts, and that only *Read the series* saves
+**D-0065** settles exactly what each one counts, and that only *Read the series* saves
 anything — her picks, as own challenges with a new `finishseries` rule, so no new field, no
 migration and nothing for Sander.
 
@@ -111,7 +111,7 @@ migration and nothing for Sander.
   (already leap-day safe), `amountUnit` from `src/lib/readingLog.ts`, `foldTrope`/`tropesOf`
   from `src/lib/tropes.ts`, `seriesGroups` from `src/lib/series.ts`, `sleepReadIds` from
   `src/lib/sleepSeries.ts`.
-- `MINUTES_PER_PAGE = 1.5` lives in `minutesChallenge.ts` and nowhere else (D-0061).
+- `MINUTES_PER_PAGE = 1.5` lives in `minutesChallenge.ts` and nowhere else (D-0065).
 - The four block ids are `world`, `season`, `minutes`, `series`. They go at the end of
   `CHALLENGE_IDS` and into `DEFAULT_ORDER`; `cleanTwoColumns` already puts a block that is new
   to a saved layout in its default place, so a layout saved before them keeps working — add
@@ -124,6 +124,35 @@ migration and nothing for Sander.
 - Nothing is looked up for any of these (D-0017, D-0018): *Around the world* reads the places
   already on her books.
 - Don't touch the page tab row: a sibling branch adds a **Stats** tab.
+
+# Choices made while Hanna was at work
+
+1. **The seasonal word lists** are the team's, from her examples ("3 cosy or spooky in autumn,
+   5 beach reads in summer"): spring *romance, contemporary, coming of age, friends to lovers,
+   second chance, slow burn*; summer *romance, beach, holiday, adventure, fake dating, one bed,
+   forced proximity*; autumn *horror, thriller, mystery, gothic, paranormal, academic rivals,
+   locked room, dark academia*; winter *fantasy, classic, historical, found family, quest,
+   redemption arc*. They are a constant and trivial to change.
+2. **A book whose length the app does not know counts 0 minutes.** Guessing would put minutes
+   in her grid that she never read.
+3. **Minutes a day is only "finished" after four clean weeks** (`MINUTES_MIN_DAYS = 28`).
+   Without that, one good day on 1 January would finish the challenge, earn a medal and set off
+   the confetti. *To change:* one constant.
+4. **The minutes count line is the year, the grid is the month.** The ring and the line must
+   agree, and the ring is the year's.
+5. **Sleep reads count for minutes a day** (they do not for every other challenge): she really
+   did read them, and this one is about time on the page.
+6. **Around the world is fixed at 12 countries** (her number), and the country chips open
+   nothing — the world map is where a country is explored.
+7. **The series she picks are stored as her own challenges** with a new `finishseries` rule, so
+   nothing new is saved and nothing waits for Sander. Progress counts every book of the series
+   she has **ever** read: she is finishing a series, not re-reading it in a year.
+8. **A book finished in January counts towards that year's winter,** because winter spans the
+   turn of the year and the card is one year. So one card's winter row holds both ends of the
+   year.
+9. **Where the four cards start:** *Around the world* and *Minutes a day* in the left column,
+   *Seasonal* and *Read the series* in the right, so neither column is all lists. She can
+   arrange them like any block.
 
 # Design
 
@@ -281,11 +310,138 @@ column is all lists.
 9. `challenges-390-all.jpg`, `challenges-1280-all.jpg` — the whole page with all eight
    challenges and the ring row, both widths.
 
+## Review after the build
+
+Written by the UX designer, 2026-11-23, from the screenshots in `T-0091-screens/`.
+
+**Verdict: passes, with three notes.**
+
+| card | result |
+|---|---|
+| **Around the world** | matches: `7 of 12`, the gold bar, the countries as chips, no scroller (`world-390-lavender.jpg`, `world-1280-midnight.jpg`); the empty line reads `No countries yet this year.` with the bar still drawn (`world-390-empty.jpg`) |
+| **Seasonal** | matches: four rows with icon, name, bar and `3 of 3 ✓`, the current season outlined in gold (`season-390-lavender.jpg`); a past year has no outline |
+| **Minutes a day** | matches: the month switch, `37 of 327 days · 20 min a day`, filled / open / future days and today outlined (`minutes-390-lavender.jpg`); February 2028 draws 29 cells (`minutes-390-february-2028.jpg`) |
+| **Read the series** | matches: a bar per series, `3 of 3 ✓`, `✕` per row, `＋ Add a series` and the labelled picker (`series-390-lavender.jpg`, `series-390-add.jpg`, `series-390-empty.jpg`) |
+| both widths, both wallpapers | matches (`challenges-390-all.jpg`, `challenges-1280-all.jpg`) |
+
+**Notes, not blockers:**
+
+1. **A long series name is clipped** (`The Lord of the Rin…`). That is the design (one line with
+   an ellipsis) and the full name is in the bar's accessible name, but at 390 the clip comes
+   early. If it bothers her, letting the name wrap to two lines is a one-line change.
+2. **The floating quick-update button** overlaps the bottom-left corner of whichever card is
+   last on screen. That is the app's own button and it was there before; it never covers a
+   control of these cards, only a corner of the grid.
+3. **The minutes count is for the year while the grid is for the month.** The screenshots show
+   `37 of 327 days` over a November grid, which is exactly what the design asked for, but it
+   is the one place on the page where two time spans sit together. It reads correctly because
+   the month is in the switch and the days are labelled; worth a glance from Hanna.
+
+Nothing must be fixed before this passes. To the tester.
+
 # Test
 
-To be written by the tester.
+Written by the tester, 2026-11-23.
+
+## The checks, as run
+
+```
+$ pnpm exec tsc --noEmit
+(no output: clean)
+
+$ pnpm test
+ Test Files  182 passed | 2 skipped (184)
+      Tests  2308 passed | 22 skipped (2330)
+
+$ pnpm run build
+✓ built in 879ms
+
+$ pnpm exec harness check
+✓ tasks: 65 tasks, index in step
+✓ decisions: 57 records, index complete, 3 overrules valid
+✓ engineers: 2 listed
+✓ generated files: current
+```
+
+The four cards' tests were run three times over with the other new files: `80 passed (80)`
+each time, no retries.
+
+## What was tried to break it
+
+**Around the world**
+
+| tried | result |
+|---|---|
+| twelve countries in a year | complete; eleven is not |
+| the same country on three books | counts once |
+| a book with no `places`, with `places: []`, with only imaginary places | counts nothing each |
+| a sleep read set in a new country | counts nothing |
+| a book finished in another year, and one finished twice | only the challenge year counts, and once |
+| the same shelf twice | the same order both times |
+| an empty shelf | `0 of 12`, the bar still drawn, `No countries yet this year.` |
+
+**Seasonal — the season boundaries**
+
+| tried | result |
+|---|---|
+| 1 September and 30 November | both autumn |
+| 1 December | winter |
+| 28 February 2027 | winter of the 2027 card |
+| **29 February 2028** | winter, no throw |
+| **29 February 2027** (a day that never was, from an older shelf) | ignored everywhere, counted as no season |
+| a finish day of `2026`, `nonsense`, `2026-02-30` | ignored, no crash |
+| `Romance` and the trope `One Bed` | both match spring / summer, folded |
+| `Romantasy` | does **not** match *romance* |
+| a book matching two words of one season | counts once |
+| 2 of 3 autumn, 3 of 3, 6 of 5 summer | not complete, complete, complete |
+| a past year | no season marked as "now" |
+| sleep reads | left out |
+
+**Minutes a day**
+
+| tried | result |
+|---|---|
+| 0.5 of a 300-page paper book | 225 minutes, reached |
+| 0.1 of a 600-minute listen | 60 minutes, reached |
+| 0.5 of a book with no pages and no minutes | 0 minutes, not reached |
+| exactly 20 minutes / 19.9 | reached / not reached |
+| two books on one day | added up over the line |
+| **31 January and 1 February** | in their own months; 31, 28 and 30 cells where they belong |
+| **February 2028 / 2027** | 29 cells / 28 cells |
+| reading logged on `2027-02-29` | left out of every month and of the year |
+| a reading log of `2026-13-45`, `not a day`, `2026-02-30`, a negative share, a zero share | all ignored, no crash |
+| the year score | days reached against the days that have happened |
+| one good day on 1 January | **not** complete: four clean weeks are needed, so no medal and no confetti for a single day |
+| a year nothing happened in | `0 of 365`, no ring |
+
+**Read the series**
+
+| tried | result |
+|---|---|
+| a pick | saved as a `finishseries` challenge with the series size as its target; `cleanChallenges` keeps it and drops one with no series |
+| **a series with one book on the shelf** | never offered (the shelf does not treat it as a series); a saved pick for it shows `0 of 1` and never throws |
+| a pick whose series is gone | its saved name and target, removable |
+| the same series twice | not offered twice |
+| every book of a series read | `3 of 3 ✓` and the card's `1 of 2` |
+| a past year | the rows show, **＋ Add a series** and the `✕` are gone |
+| `✕` then "no" in the confirm | nothing removed |
+
+**The page**
+
+| tried | result |
+|---|---|
+| a layout saved before the four blocks existed | her own order is kept and each new block lands in its default place; nothing is lost (`twoColumns.test.ts`) |
+| all eight ready-made challenges plus three of her own | one column at 390, two at 1280 (`challenges-390-all.jpg`, `challenges-1280-all.jpg`) |
+
+## Verdict
+
+**Passed.** The *Done when* checks all ran with the output above, the UX designer's review is
+in *Design*, and D-0065 is recorded. Nothing is left for a human.
 
 # Log
 
-- 2026-11-23 architect: wrote CH2 as a full task; recorded D-0061 (what each of the four counts, and that only Read the series saves anything, as own challenges). Hand to the UX designer.
+- 2026-11-23 architect: wrote CH2 as a full task; recorded D-0065 (what each of the four counts, and that only Read the series saves anything, as own challenges). Hand to the UX designer.
 - 2026-11-23 ux-designer: designed (the ring row and confetti, the four cards, the extra rule fields and the swap flow, each for 390 and 1280 on both wallpapers). Hand to the developer.
+- 2026-11-23 developer: built the four cards (`worldChallenge.ts`, `seasonChallenge.ts`, `minutesChallenge.ts`, `seriesChallenge.ts`, `ReadyChallenges.tsx`) and the `finishseries` rule; block ids `world`, `season`, `minutes`, `series` with a layout-migration test in `twoColumns.test.ts`. Checks: `pnpm exec tsc --noEmit` clean; `pnpm test` 2284 passed; `pnpm run build` ✓; `pnpm exec harness check` all ✓. Screenshots in `T-0091-screens/`.
+- 2026-11-23 ux-designer: reviewed: passes (one change agreed during the build, notes recorded). Hand to the tester.
+- 2026-11-23 tester: passed (sent the confetti back once; see the lesson). Every Done when check ran; the output is in Test.

@@ -3,7 +3,7 @@ import type { ChoiceEvent } from './creatures/choices'
 import { SETTING_KINDS } from './creatures/choices'
 
 /**
- * A bingo square she swapped herself (D-0063). Swapping is placing: which
+ * A bingo square she swapped herself (D-0067). Swapping is placing: which
  * square stands in which slot of which card. It rides in the creatures choice
  * log (D-0034) as a `place` event with the key `b:<year>:<card>:<slot>` and the
  * square's id in `sq`, through the route that is already live — so no change in
@@ -38,7 +38,8 @@ const newer = (a: ChoiceEvent, b: ChoiceEvent) => a.at > b.at || (a.at === b.at 
 export function bingoSwaps(log: readonly ChoiceEvent[]): Map<string, string> {
   const best = new Map<string, ChoiceEvent>()
   for (const e of log) {
-    if (e.kind !== 'place' || !SETTING_KINDS.includes(e.kind)) continue
+    // a log read from storage can hold anything at all
+    if (!e || typeof e !== 'object' || e.kind !== 'place' || !SETTING_KINDS.includes(e.kind)) continue
     const key = (e as { key?: unknown }).key
     if (typeof key !== 'string' || !key.startsWith(SWAP_KEY_PREFIX)) continue
     const square = (e as { sq?: unknown }).sq

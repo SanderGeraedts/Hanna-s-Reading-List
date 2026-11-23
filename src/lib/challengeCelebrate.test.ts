@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { toCelebrate } from './challengeCelebrate'
 
-/** When a finished challenge is celebrated (T-0090, D-0060 §4). */
+/** When a finished challenge is celebrated (T-0090, D-0064 §4). */
 
 describe('the confetti memory', () => {
   it('records everything and celebrates nothing the first time a device looks', () => {

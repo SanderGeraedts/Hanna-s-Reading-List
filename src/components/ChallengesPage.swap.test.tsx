@@ -26,7 +26,7 @@ const { SQUARES, SQUARE_IDS, cardSquares } = await import('#/lib/bingo')
 const { bingoSwaps } = await import('#/lib/bingoSwap')
 const { cleanLog } = await import('#/lib/creatures/choices')
 
-/** A swap written to the choice log from the page (T-0093, D-0063). */
+/** A swap written to the choice log from the page (T-0093, D-0067). */
 
 const book = (id: string, extra: Partial<Book> = {}): Book => ({
   id,

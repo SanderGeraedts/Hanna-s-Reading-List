@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Book } from './library'
 import { holdsWord, matchesSeason, seasonChallenge, seasonsDone } from './seasonChallenge'
 
-/** Seasonal (T-0091, D-0061 §2). */
+/** Seasonal (T-0091, D-0065 §2). */
 
 const book = (id: string, day: string, extra: Partial<Book> = {}): Book => ({
   id,

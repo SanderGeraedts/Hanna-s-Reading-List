@@ -4,7 +4,7 @@ import { amountUnit } from './readingLog'
 import { realDay } from './garden/seasons'
 
 /**
- * Minutes a day (D-0061 §3): at least 20 minutes read or listened every day,
+ * Minutes a day (D-0065 §3): at least 20 minutes read or listened every day,
  * shown as a month grid that fills up.
  *
  * The reading log holds a *share* of a book per day, so a day's minutes are
@@ -19,7 +19,7 @@ import { realDay } from './garden/seasons'
  * about time on the page, not about which book it was.
  */
 
-/** A paper page is about this many minutes (D-0061). Nowhere else. */
+/** A paper page is about this many minutes (D-0065). Nowhere else. */
 export const MINUTES_PER_PAGE = 1.5
 
 /** The daily target. */
@@ -28,7 +28,7 @@ export const MINUTES_GOAL = 20
 /**
  * How many days of a year must have happened before a clean sheet counts as
  * finished. Without it one good day on 1 January would finish the challenge
- * and set off the confetti (D-0060). Four weeks is the smallest stretch that
+ * and set off the confetti (D-0064). Four weeks is the smallest stretch that
  * feels like a habit; it is a constant, so it is easy to change.
  */
 export const MINUTES_MIN_DAYS = 28

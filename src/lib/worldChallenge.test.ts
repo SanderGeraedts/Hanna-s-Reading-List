@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Book } from './library'
 import { WORLD_GOAL, worldChallenge, worldCountries } from './worldChallenge'
 
-/** Around the world (T-0091, D-0061 §1). */
+/** Around the world (T-0091, D-0065 §1). */
 
 const book = (id: string, extra: Partial<Book> = {}): Book => ({
   id,

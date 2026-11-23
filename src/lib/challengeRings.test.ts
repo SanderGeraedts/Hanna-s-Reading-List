@@ -3,7 +3,7 @@ import type { Book } from './library'
 import { challengeRings, completedChallenges, ringLabel } from './challengeRings'
 import type { OwnChallenge } from './ownChallenges'
 
-/** One summary per challenge (T-0090, D-0060). */
+/** One summary per challenge (T-0090, D-0064). */
 
 const book = (id: string, extra: Partial<Book> = {}): Book => ({
   id,

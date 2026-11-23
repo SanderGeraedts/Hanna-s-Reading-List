@@ -2,7 +2,7 @@ import type { ChallengeRing } from '#/lib/challengeRings'
 import { ringLabel } from '#/lib/challengeRings'
 
 /**
- * The ring row at the top of the Challenges page (D-0060): one small progress
+ * The ring row at the top of the Challenges page (D-0064): one small progress
  * ring per challenge of the chosen year, each a button that scrolls to that
  * challenge and puts the focus on its heading. It changes nothing and opens
  * nothing.
@@ -48,7 +48,7 @@ function Ring({ ring, onGo }: { ring: ChallengeRing; onGo: (id: string) => void 
   )
 }
 
-/** Scrolls to a challenge and moves the focus into it (D-0060 §8). */
+/** Scrolls to a challenge and moves the focus into it (D-0064 §8). */
 export function goToChallenge(id: string) {
   const block = document.getElementById(`challenge-${id}`)
   if (!block) return

@@ -6,7 +6,7 @@ import { useCreatureChoices } from './useCreatureChoices'
 import { useAllGoals } from './useYearGoal'
 
 /**
- * What the badges need beyond her books (D-0060 §6, D-0063): her own
+ * What the badges need beyond her books (D-0064 §6, D-0067): her own
  * challenges, her bingo swaps and her reading goals. All three already sync on
  * their own; this hook only puts them in one object so the `challenges-N`
  * medals count the same on the dashboard as on the Challenges page.
