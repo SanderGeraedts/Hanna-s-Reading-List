@@ -6,6 +6,8 @@ import { SPECIES_WORD } from '#/lib/creatures/numbers'
 import { albumLabel, albumSource, shiniesLine, tierGems, tierWord } from '#/lib/creatures/words'
 import { Still, TierLine } from './bits'
 import { creatureStill } from './stillPaths'
+import { albumShare } from '#/lib/creatures/shareSpec'
+import { shareChallenge } from '#/lib/shareImage'
 
 /**
  * The album (T-0030 Design §6): a card per species in six tier groups, the
@@ -23,6 +25,14 @@ export function Album({ c }: { c: Creatures }) {
           {found} of {SPECIES.length} found
           {shinies > 0 && <span className="album-shinies">{shiniesLine(shinies)}</span>}
         </p>
+        <button
+          type="button"
+          className="btn small album-share-btn"
+          aria-label="Share the whole album"
+          onClick={() => shareChallenge(albumShare(SPECIES, c.found, c.shinyFound))}
+        >
+          Share the album
+        </button>
         <div className="album-bar" aria-hidden>
           <span style={{ width: `${(found / SPECIES.length) * 100}%` }} />
         </div>

@@ -11,6 +11,7 @@ import { earnedEggs, eggSpecies, eggTier, nextEgg } from './eggs'
 import type { Egg, NextEgg } from './eggs'
 import { seededHash } from './hash'
 import { deriveShop } from './shop'
+import { shelfPetId as deriveShelfPetId } from './shelfPet'
 import type { ShopState } from './shop'
 import {
   CREATURES_START,
@@ -44,7 +45,15 @@ export { seededHash }
  */
 
 export type Stage = 'baby' | 'young' | 'grown'
-export type Mood = 'missing' | 'sleepy' | 'back'
+export type Mood = 'missing' | 'sleepy' | 'back' | 'happy'
+
+/** Today's reading minutes (reading + half of sleep listening) for a "happy" mood (T-0032 Design §7). */
+export const HAPPY_MINUTES = 30
+export function minutesReadToday(days: ReadonlyMap<string, { minutes: number; sleepMinutes: number }>, today: string): number {
+  const d = days.get(today)
+  if (!d) return 0
+  return d.minutes + d.sleepMinutes * 0.5
+}
 
 // ---- seeded hashes (D-0033 §7) ----------------------------------------------------------
 
@@ -119,11 +128,13 @@ export const hasStar = (level: number) => level >= STAR_FROM
  * (22:30 to 06:00 on the device), back (today is a reading day and the one
  * before it was 3 or more days earlier). Never saved, never changes anything.
  */
-export function moodOf(readingDayList: readonly string[], hatchDay: string, now: Date): Mood | null {
+export function moodOf(readingDayList: readonly string[], hatchDay: string, now: Date, minutesToday = 0): Mood | null {
   const today = localDay(now)
   const past = readingDayList.filter((d) => d <= today).sort()
   const last = past.at(-1)
   const lastRef = last && last > hatchDay ? last : hatchDay
+  // order: Happy > Missing > Sleepy > Back > Content (T-0032 Design §7)
+  if (minutesToday >= HAPPY_MINUTES) return 'happy'
   if (daysBetween(lastRef, today) >= MISSING_AFTER_DAYS) return 'missing'
   const minutes = now.getHours() * 60 + now.getMinutes()
   if (minutes >= SLEEPY_FROM || minutes < SLEEPY_UNTIL) return 'sleepy'
@@ -210,6 +221,8 @@ export interface Creatures {
   earnedToday: number
   week: Week
   days: Map<string, ReadingDay>
+  /** the favourite creature on the shelf (T-0033), or null (none picked or released) */
+  shelfPetId: string | null
 }
 
 /** The hatch of an egg: the earliest hatch event for it (so two devices that both hatched it agree). */
@@ -272,6 +285,7 @@ export function deriveCreatures(books: Book[], log: readonly ChoiceEvent[], now:
   const today = localDay(now)
   const days = readingDays(books, opts.sleep ?? sleepReadIds(books))
   const earned = earnedThrough(days, today)
+  const minutesToday = minutesReadToday(days, today)
   const shop = deriveShop(log)
   const spent = spentOf(log, shop)
   // a bought egg's tier comes from its purchase (`shop:<purchase id>`), a milestone egg's from its id
@@ -395,7 +409,7 @@ export function deriveCreatures(books: Book[], log: readonly ChoiceEvent[], now:
       growth,
       ...lvl,
       stage: stageOf(lvl.level),
-      mood: moodOf(dayList, hatchDay, now),
+      mood: moodOf(dayList, hatchDay, now, minutesToday),
     })
   }
 
@@ -430,6 +444,7 @@ export function deriveCreatures(books: Book[], log: readonly ChoiceEvent[], now:
     earnedToday: earned - earnedThrough(days, addDays(today, -1)),
     week: thisWeek(days, today),
     days,
+    shelfPetId: deriveShelfPetId(log, new Set(pets.map((p) => p.id)), pets[0]?.id ?? null),
   }
 }
 

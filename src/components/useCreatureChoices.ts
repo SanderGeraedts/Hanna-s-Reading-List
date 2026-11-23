@@ -48,7 +48,7 @@ export interface CreatureChoices {
   /** saves the hatch of a milestone egg, at once (T-0030 Design §3) */
   hatchEgg: (egg: string) => void
   /** saves another choice (a duplicate choice, a release, the current pet, an outfit, a den spot, a habitat), already checked by the caller */
-  record: (event: { kind: 'choose' | 'release' | 'current' | 'wear' | 'place' | 'habitat' } & Record<string, string | number | undefined>) => void
+  record: (event: { kind: 'choose' | 'release' | 'current' | 'wear' | 'place' | 'habitat' | 'shelf' } & Record<string, string | number | undefined>) => void
   /**
    * saves a purchase (T-0031), already checked by the caller; answers false (and saves nothing)
    * when this browser's log already has a once-only item, so two quick taps never buy it twice
