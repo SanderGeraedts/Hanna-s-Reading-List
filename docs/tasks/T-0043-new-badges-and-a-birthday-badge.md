@@ -8,7 +8,7 @@ depends_on: [T-0042]
 decisions: [D-0013, D-0014, D-0020, D-0022, D-0038, D-0039]
 raised_on: 2026-11-23
 done_on: ""
-result: []
+result: [https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/251]
 ---
 
 # Goal
@@ -560,4 +560,6 @@ To be written by the tester.
   1117 tests passed, 9 skipped; `pnpm exec tsc --noEmit` clean; `pnpm run build` built;
   `pnpm exec harness check` all ✓; 11 screenshots in `docs/tasks/T-0043-screens/` (72 medals,
   6 a row at 390, 8 at 1280, row controls 44 px at 390 touch, 0 page errors);
-  `src/routeTree.gen.ts` not committed. Handed to the **UX designer** for the review.
+  `src/routeTree.gen.ts` not committed. Merged main (#241) in and regenerated the index; after
+  the merge `pnpm test` ran 103 files, 1289 tests passed. Draft PR #251. Handed to the **UX
+  designer** for the review.
