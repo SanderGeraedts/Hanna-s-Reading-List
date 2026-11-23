@@ -1686,12 +1686,38 @@ textarea.input {
   display: flex;
   gap: 0.5rem;
 }
+/* the Hidden chips scroll inside an area of two and a half chip rows, so the bar never grows taller
+   than the screen however many blocks are hidden (T-0038). The top half of a third row peeks out:
+   the only (text-free) sign that more chips scroll into view. A row is one .btn.small chip: its
+   text, padding and border, or its finger height on a touch screen (below). The padding (taken
+   back by the margin, so nothing moves) leaves room for a focused chip's outline. */
 .hidden-blocks {
+  --chip-row: calc(var(--fs-small) * 1.25 + 2 * var(--space-1) + 2px);
+  --chip-gap: 0.4rem;
   flex-basis: 100%;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: var(--chip-gap);
   align-items: center;
+  max-height: calc(2.5 * var(--chip-row) + 2 * var(--chip-gap) + 2 * var(--space-1));
+  overflow-y: auto;
+  padding: var(--space-1);
+  margin: calc(-1 * var(--space-1));
+}
+@media (pointer: coarse) {
+  .hidden-blocks {
+    --chip-row: 36px; /* .btn.small's min-height on a touch screen */
+  }
+}
+/* a short screen (a phone held sideways): the arranging bar stays where it is on the page instead
+   of sticking under the header, so a bingo square only has to fit under the header (T-0038) */
+@media (max-height: 500px) {
+  .dashboard-bar.arranging {
+    position: static;
+  }
+  .dashboard:has(.dashboard-bar.arranging) {
+    scroll-padding-top: max(6.5rem, calc(var(--header-h, 0px) + var(--space-3)));
+  }
 }
 .dashboard-empty {
   text-align: center;
