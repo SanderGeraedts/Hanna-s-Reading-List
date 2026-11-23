@@ -2364,6 +2364,53 @@ textarea.input {
   height: 1rem;
   background: var(--accent);
 }
+/* the creatures on the wallpaper (T-0027 Design §9): 3 per row on a phone (≈120 px), 5 on a computer (160 px) */
+.style-creatures {
+  background: var(--wallpaper);
+  color: var(--header-ink);
+  border-radius: var(--radius-card);
+  padding: var(--space-4);
+}
+.style-creatures .small-text {
+  color: var(--header-muted);
+}
+.style-creatures .btn:not(.primary),
+.style-creatures .check span {
+  color: var(--header-ink);
+}
+.creatures-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 120px));
+  justify-content: center;
+  gap: var(--space-3) var(--space-2);
+}
+@media (min-width: 900px) {
+  .creatures-grid {
+    grid-template-columns: repeat(5, 160px);
+    gap: var(--space-4);
+  }
+}
+.creatures-canvas {
+  position: absolute !important;
+  inset: 0;
+  pointer-events: none;
+}
+.creature-tile {
+  margin: 0;
+  display: grid;
+  gap: var(--space-1);
+  text-align: center;
+}
+.creature-square {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+}
+.creature-tile figcaption {
+  display: grid;
+  line-height: 1.25;
+}
 .style-radii {
   display: flex;
   flex-wrap: wrap;

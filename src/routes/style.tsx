@@ -1,6 +1,7 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { ClientOnly, createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { StarRating } from '#/components/StarRating'
+import { CreaturesPreview } from '#/components/creatures/CreaturesPreview'
 
 /**
  * The design system on one page (/style, not linked from the app): every
@@ -178,6 +179,16 @@ function StylePage() {
             <p style={{ color: 'var(--danger)' }}>Something went wrong.</p>
           </section>
         </div>
+      </section>
+
+      <section className="style-creatures">
+        <h2>Creatures</h2>
+        <p className="small-text">
+          The 20 book creatures (T-0027), turning slowly on the wallpaper. Nothing in the app links to them yet.
+        </p>
+        <ClientOnly fallback={<p className="small-text">Building the creatures…</p>}>
+          <CreaturesPreview />
+        </ClientOnly>
       </section>
     </main>
   )
