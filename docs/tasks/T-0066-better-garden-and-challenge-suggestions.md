@@ -60,7 +60,20 @@ says what would.
 
 # Test
 
-Written by the tester.
+`pnpm test`: `Test Files 194 passed | 2 skipped (196)`, `Tests 2423 passed | 22 skipped (2445)`.
+`pnpm run build`: `✓ built in 964ms`. `pnpm exec harness check`: tasks, decisions, overrules and
+generated files all in step. CI on #268: `checks / checks pass 1m33s`.
+
+Tried to break it: a tidy of a garden already in reading order is refused rather than written
+again; Undo replayed through the real choice log puts every plant back on the spot it stood on;
+a search for a book with no plant finds nothing; a sign is refused for a finish day in the
+future and for a plant with no finish day; the reading signs stop when the beds are full and
+never share a spot; a seasonal item stays unlocked out of its season but does not stand in the
+garden; a suggestion is never offered for a book she has finished, and three world suggestions
+are three different countries.
+
+Verdict: passed on the automated checks. What the garden and the challenge cards actually look
+like is Hanna's to confirm on the live site.
 
 # Log
 
