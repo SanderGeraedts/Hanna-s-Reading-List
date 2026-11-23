@@ -5,7 +5,7 @@ description: "A bar above the shelf with a four-way bookcase switch (All, Read, 
 status: Doing
 size: full
 depends_on: []
-decisions: [D-0002, D-0012, D-0014, D-0020, D-0022, D-0042, D-0043, G-0019, G-0031]
+decisions: [D-0002, D-0012, D-0014, D-0020, D-0022, D-0042, D-0046, G-0019, G-0031]
 raised_on: 2026-11-23
 done_on: ""
 result: []
@@ -22,7 +22,7 @@ Today the shelf shows every book, in her Arrange-by order, with one filter: Genr
 in the header on a computer and in the ☰ menu on a phone (D-0012, #41). She wants to be able to
 look at one pile at a time and to narrow it down.
 
-**What this task delivers** (D-0043):
+**What this task delivers** (D-0046):
 
 1. **A bar above the shelf**, between the header and the 3D stage, shown only on the Bookshelf
    view, with two rows:
@@ -30,11 +30,11 @@ look at one pile at a time and to narrow it down.
      the start;
    - **the filter row** — `Genre · Rating · Spice · Year read · Language · Trope`, and
      **Clear**, which is only there while at least one filter is set.
-2. **Four bookcases** (D-0043 §2): All = every book; Read = `status === 'read'`; To read =
+2. **Four bookcases** (D-0046 §2): All = every book; Read = `status === 'read'`; To read =
    `status === 'want'`; Digital = any book whose formats hold `ebook`, `audiobook` or
    `storytel`, whatever its status. A book can be in two bookcases; the three other statuses
    show only under All (and under Digital when digital).
-3. **Six filters** (D-0043 §4), each a single choice with "any" first, each only shown when the
+3. **Six filters** (D-0046 §4), each a single choice with "any" first, each only shown when the
    whole shelf has something to offer for it:
    - **Genre** — moved out of the header toolbar and the ☰ menu with its present words and
      options (*All genres*, each genre with its count, *No genre*);
@@ -48,7 +48,7 @@ look at one pile at a time and to narrow it down.
      `src/lib/tropes.ts` (D-0042 §3), never compared as a raw string.
 4. **They combine with AND** with each other and with the bookcase; **Clear** puts every filter
    back to "any" and leaves the bookcase alone.
-5. **Nothing is remembered** (D-0043 §6): no `localStorage`, no account, no URL. A reload, or
+5. **Nothing is remembered** (D-0046 §6): no `localStorage`, no account, no URL. A reload, or
    coming back from the Dashboard, shows All with no filters.
 6. **Everything else is unchanged:** her Arrange-by order, the wood, wallpaper, decorations,
    nooks, dividers, the shelf creature, zoom, panning, search, Make a wish, taking a book out.
@@ -131,7 +131,7 @@ the four bookcases and the filters do what she expected, and she can still find 
 
 # Notes
 
-- Read first: D-0043 (this task's decision), D-0012 (genre is a filter, and the sort keys that
+- Read first: D-0046 (this task's decision), D-0012 (genre is a filter, and the sort keys that
   may never be removed), D-0042 (folding a trope), T-0034's *Log* (the measured shelf budget),
   D-0014 (no hint texts), D-0020/D-0022 (tokens, both wallpapers).
 - Code: `src/routes/index.tsx` (`genre`, `genreChoices`, `activeGenre`, `shown`, `reorderShelf`,
@@ -155,7 +155,7 @@ the four bookcases and the filters do what she expected, and she can still find 
 
 ## Choices made by the team
 
-Hanna agreed the brief; these follow from D-0043 and are the architect's:
+Hanna agreed the brief; these follow from D-0046 and are the architect's:
 
 1. **Genre moves into the filter row** and leaves the header and the ☰ menu, so there is one
    place for filters. She may want it back in the header; that is one line to change.
@@ -371,7 +371,7 @@ New tests repeated (`--repeat-each=5`, four workers): `shelfFilter.test.ts`,
 
 **Sent back once, and fixed.** On a shelf where **no** book has a genre, the Genre filter still
 appeared, with "All genres" and "No genre (3)" as its only two options — a filter that narrows
-nothing, against D-0043 §4 ("only when the whole shelf has something to offer for it"). The
+nothing, against D-0046 §4 ("only when the whole shelf has something to offer for it"). The
 developer fixed it (the filter exists only when a **real** genre is on the shelf; Language
 already behaved that way) and added the test for the shelf where every book is missing the
 field. A line is in `docs/lessons.md`.
@@ -398,7 +398,7 @@ statuses belong where, and whether it should remember).
 
 # Log
 
-- 2026-11-23 architect: wrote the task from Hanna's backlog item 1 and recorded **D-0043** (four
+- 2026-11-23 architect: wrote the task from Hanna's backlog item 1 and recorded **D-0046** (four
   bookcases, one filter row above the shelf, AND, Clear, nothing remembered, genre moved out of
   the header). Took **T-0051** of T-0051–T-0053: T-0047 and T-0048 are Done, and T-0049 and
   T-0050 are left free for the `roam-around-props` branch and the den-cushion work running in
@@ -456,7 +456,7 @@ statuses belong where, and whether it should remember).
   scroll height instead of going back to the top — which is what the genre filter has always
   done, so I corrected my design rather than the build. Handed to the **tester**.
 - 2026-11-23 tester: sent back once and then passed. Sent back: the Genre filter appeared on a
-  shelf where no book has a genre, with "No genre" as its only real option, against D-0043 §4;
+  shelf where no book has a genre, with "No genre" as its only real option, against D-0046 §4;
   the developer fixed it and added the test, and a line is in `docs/lessons.md`. Passed after
   that: `pnpm test` 1810 passed / 22 skipped (143 files), `tsc --noEmit` clean, `pnpm run build`
   and `pnpm exec harness check` green, the new tests repeated five times with no flakes.

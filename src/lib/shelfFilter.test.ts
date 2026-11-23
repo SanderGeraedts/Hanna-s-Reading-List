@@ -28,7 +28,7 @@ const book = (over: Partial<Book> = {}): Book => ({
 
 const filters = (over: Partial<(typeof START_VIEW)['filters']> = {}) => ({ ...START_VIEW.filters, ...over })
 
-describe('the four bookcases (D-0043 §2)', () => {
+describe('the four bookcases (D-0046 §2)', () => {
   it('is All, Read, To read, Digital, in that order, with her words', () => {
     expect(BOOKCASES.map((b) => b.id)).toEqual(['all', 'read', 'want', 'digital'])
     expect(BOOKCASES.map((b) => b.label)).toEqual(['All', 'Read', 'To read', 'Digital'])

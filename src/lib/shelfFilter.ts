@@ -6,7 +6,7 @@ import { foldTrope, hasTrope, tropeCounts } from './tropes'
 import { NO_GENRE, filterByGenre, genreOptions } from './genreFilter'
 
 /**
- * The four bookcases and the filter row above the shelf (D-0043).
+ * The four bookcases and the filter row above the shelf (D-0046).
  *
  * One pure module owns which books the shelf shows: the bookcase switch
  * (All · Read · To read · Digital), the six filters (genre, a minimum rating, a
@@ -162,7 +162,7 @@ export function filterOptions(books: Book[]): FilterOptions {
   return { genre, rating, spice, year, language, trope }
 }
 
-/** A filter whose value the shelf no longer offers counts as "any" (D-0043 §9). */
+/** A filter whose value the shelf no longer offers counts as "any" (D-0046 §9). */
 export function cleanFilters(filters: ShelfFilters, options: FilterOptions): ShelfFilters {
   const keep = <T extends string | number>(value: T | null, list: FilterOption[]): T | null =>
     value !== null && list.some((o) => o.value !== '' && o.value === String(value)) ? value : null
@@ -204,7 +204,7 @@ export function applyView(books: Book[], view: ShelfView): Book[] {
 /** Is at least one filter set? (The bookcase is not a filter: Clear leaves it alone.) */
 export const isFiltered = (filters: ShelfFilters): boolean => Object.values(filters).some((v) => v !== null)
 
-/** Clears the filters and keeps the bookcase (D-0043 §5). */
+/** Clears the filters and keeps the bookcase (D-0046 §5). */
 export const clearFilters = (view: ShelfView): ShelfView => ({ bookcase: view.bookcase, filters: NO_FILTERS })
 
 /**

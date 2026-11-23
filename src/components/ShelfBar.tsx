@@ -2,7 +2,7 @@ import { BOOKCASES, clearFilters, isFiltered } from '#/lib/shelfFilter'
 import type { BookcaseId, FilterOptions, ShelfFilters, ShelfView } from '#/lib/shelfFilter'
 
 /**
- * The bar above the shelf (D-0043): the bookcase switch and the filter row.
+ * The bar above the shelf (D-0046): the bookcase switch and the filter row.
  *
  * It is rendered as the header's own bottom row, so the header's one measured
  * height keeps the top shelf clear of it on every screen (the bug T-0003 and

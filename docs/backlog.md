@@ -21,7 +21,8 @@ How to use it:
 - Already done or in progress, so not listed: the book creatures, the world map, the
   badges, the hardcovers on phones, the header, the listening hours, the Arrange bar, the
   shelf polish, the country spellings, the book panel tabs (T-0047), tropes &
-  characters (T-0048), and the bookcases & filters, book poses and cosy room extras
+  characters (T-0048), the reading garden (T-0060 … T-0065, agreed 23 November 2026 and never
+  part of this queue), and the bookcases & filters, book poses and cosy room extras
   (T-0051, T-0052, T-0053).
 
 ## The queue

@@ -1430,7 +1430,7 @@ textarea.input {
   box-shadow: 0 0 0 1px var(--accent, #c8963e);
 }
 
-/* ---- the bar above the shelf: bookcases and filters (T-0051, D-0043) ----
+/* ---- the bar above the shelf: bookcases and filters (T-0051, D-0046) ----
    It is the header's own bottom row (flex-basis 100%), so the header's measured
    height keeps the top shelf clear of it and the camera needs no change. */
 .shelf-bar {
@@ -6693,4 +6693,196 @@ button.today-item:hover {
   font: inherit;
   cursor: pointer;
   overflow-wrap: anywhere;
+}
+
+/* ---- the reading garden (T-0061 … T-0065, D-0051) --------------------
+   The flat drawn garden and the cosy 3D one share one stage: the drawing
+   fills it, and the spot buttons she tends with lie over it at the places
+   the view's own projection puts them. */
+.garden-page {
+  max-width: 72rem;
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-4);
+}
+.garden-head {
+  flex-wrap: wrap;
+}
+.garden-state {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.garden-season {
+  white-space: nowrap;
+}
+.garden-total,
+.garden-counts {
+  color: var(--muted);
+  font-size: var(--fs-small);
+  margin: 0;
+}
+.garden-years {
+  margin: 0;
+}
+.garden-years .btn.active {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+}
+.garden-card {
+  padding: var(--space-3);
+  gap: var(--space-2);
+  display: grid;
+}
+.garden-stage {
+  position: relative;
+  border-radius: var(--radius-small);
+  overflow: hidden;
+  /* the garden's own colour while a drawing loads: no spinner */
+  background: #4e6b47;
+}
+.garden-stage.scene {
+  aspect-ratio: 16 / 9;
+}
+.garden-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.garden-stage .garden-canvas {
+  position: absolute !important;
+  inset: 0;
+}
+/* the buttons: one per spot, placed by the view, as wide as a spot */
+.garden-spots {
+  position: absolute;
+  inset: 0;
+}
+.garden-bed-group {
+  display: contents;
+}
+.garden-spot {
+  position: absolute;
+  width: 11%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+.garden-spot.has-plant {
+  cursor: grab;
+}
+.garden-spot:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* while a plant is picked up, every spot shows itself */
+.garden-spot.choosing {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+}
+.garden-spot.picked {
+  background: rgba(217, 168, 91, 0.35);
+}
+.garden-plant.picked {
+  filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.45));
+}
+.garden-picked {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: start;
+  padding: var(--space-2);
+  background: var(--surface-sunken);
+  border-radius: var(--radius-small);
+}
+.garden-picked p {
+  margin: 0;
+}
+.garden-items-card {
+  padding: var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+}
+.garden-items-card h2 {
+  margin: 0;
+}
+.garden-item.locked {
+  opacity: 0.6;
+  cursor: default;
+}
+.garden-item.placed {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+}
+.garden-next {
+  margin: 0;
+  color: var(--muted);
+}
+/* the dashboard block: one bed, small */
+.garden-block-stage {
+  border-radius: var(--radius-small);
+  overflow: hidden;
+  background: #4e6b47;
+}
+.garden-block-stage .garden-svg {
+  max-height: 10rem;
+}
+/* the visitors drift; with reduce motion they sit still (D-0051 §7) */
+.garden-visitor {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.garden-visitor.drift-0 {
+  animation: garden-drift-0 11s ease-in-out infinite alternate;
+}
+.garden-visitor.drift-1 {
+  animation: garden-drift-1 14s ease-in-out infinite alternate;
+}
+.garden-visitor.drift-2 {
+  animation: garden-drift-2 9s ease-in-out infinite alternate;
+}
+@keyframes garden-drift-0 {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(1.4px, -0.9px);
+  }
+}
+@keyframes garden-drift-1 {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(-1.2px, 1.1px);
+  }
+}
+@keyframes garden-drift-2 {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(0.9px, 1.3px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .garden-visitor {
+    animation: none !important;
+  }
+}
+@media (max-width: 720px) {
+  .dashboard:has(> .garden-page) {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .garden-spot {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }

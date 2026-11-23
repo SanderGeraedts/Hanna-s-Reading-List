@@ -1,5 +1,5 @@
 ---
-id: D-0043
+id: D-0046
 title: "The shelf gets four bookcases (All · Read · To read · Digital) and one filter row above it, combined with AND, cleared by one button and never remembered"
 description: "A segmented switch above the shelf picks the bookcase (All, Read = finished, To read = want-to-read, Digital = any e-book or audiobook format), and one row under it holds every filter — genre (moved out of the header), minimum rating, minimum spice, year read, language and trope — which narrow the chosen bookcase together with AND; a Clear button appears as soon as one is set, nothing is saved, and the arrangement, the room and dragging stay as they are."
 status: Accepted

@@ -7,8 +7,9 @@ import type { DenSlot, HabitatId, OutfitSlot } from '#/lib/creatures/shop'
 import { WalkingPets } from './WalkingPets'
 import { DragFeed } from './DragFeed'
 import { skyAt, weatherAt } from '#/lib/creatures/weather'
-import { CURRENT_RANGE, GENTLE_WALK, HOP, WALK, gentleTarget, isHopper, pickCurrentRoam, roamTarget } from '#/lib/creatures/denRoam'
-import type { RoamState } from '#/lib/creatures/denRoam'
+import { CURRENT_RANGE, GENTLE_RANGE, GENTLE_WALK, HOP, WALK, gentleTarget, isHopper, pickCurrentRoam, roamTarget } from '#/lib/creatures/denRoam'
+import type { RoamRange, RoamState } from '#/lib/creatures/denRoam'
+import { bedTopAt, clearTarget, clearanceFor, denFootprints, insideAny, offBed, pushOutOf, stepAround } from '#/lib/creatures/denProps'
 import { creatureFor, eyeOpen, headTilt, rigOf, usePageVisible } from './pose'
 import { SPARKLE_SPOTS, glowTex, makeEgg, sparkleTexture } from './eggModel'
 import type { Rig } from './pose'
@@ -106,8 +107,7 @@ const VIEW_H = DEN_VIEW_H
 const LOOK = DEN_LOOK
 const CAMERA = DEN_CAMERA
 const NO_DEN: DenSetup = { habitat: 'cosy', placed: {} }
-/** The den's floor, where a roaming pet stands (T-0032 Design §3). */
-const FLOOR_Y = 0.01
+// The den's floor, where a roaming pet stands, is `FLOOR_Y` in denProps.ts (T-0032 Design §3).
 // Where the creature and the egg sit (world y): each bed has its own, from `seatYOf` in
 // shopModels.ts. The gold cushion is 0.18, the cloud cushion 0.22, the basket bed 0.14
 // (review 2026-11-23; closes backlog F14).
@@ -181,6 +181,7 @@ export function DenScene({ shows, cookies, phone, reduce, paused, reaction, onCr
           reaction={reaction ?? null}
           dress={dress}
           seat={seatYOf(den.placed.bed)}
+          placed={den.placed}
           petId={currentPetId ?? null}
           roam={!!roamCurrent && !!currentPetId}
           session={session}
@@ -192,6 +193,7 @@ export function DenScene({ shows, cookies, phone, reduce, paused, reaction, onCr
         <WalkingPets
           pets={pets.filter((p) => p.id !== currentPetId)}
           dressOf={dressOf}
+          placed={den.placed}
           session={session}
           onTap={onTap}
           onFeed={(p) => onFeed?.(p.id)}
@@ -542,6 +544,7 @@ function Creature({
   reaction,
   dress,
   seat,
+  placed,
   petId,
   roam = false,
   session = 0,
@@ -556,6 +559,8 @@ function Creature({
   reaction: Reaction | null
   dress?: Partial<Record<OutfitSlot, string>>
   seat: number
+  /** what stands in the den's spots, so the walk can keep out of it (T-0050, D-0043) */
+  placed?: Partial<Record<DenSlot, string>>
   petId?: string | null
   /** this pet roams the den (T-0046, D-0040); never with reduce motion */
   roam?: boolean
@@ -589,6 +594,12 @@ function Creature({
   // roaming (T-0046 Design §2–§4): where the pet stands, which way it faces, and its clock
   const walking = roam && !reduce
   const hop = isHopper(species)
+  // what it walks around, what it walks on, and how far its body keeps clear (T-0050, D-0043)
+  const placedKey = (['bed', 'toy', 'left', 'right'] as const).map((s) => placed?.[s] ?? '').join('|')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const props = useMemo(() => denFootprints(placed ?? {}), [placedKey])
+  const clear = clearanceFor(FILL[stage] * VIEW_H)
+  const range: RoamRange = phone ? GENTLE_RANGE : CURRENT_RANGE
   const roamState = useRef<{ s: RoamState; until: number; target: THREE.Vector3; counter: number } | null>(null)
   const pos = useRef(new THREE.Vector3(0, 0, 0))
   const facing = useRef(0)
@@ -694,40 +705,55 @@ function Creature({
           { petId: petId ?? 'current', session, phone, reduce, current: true, toyFree: false, pairFree: false, mood, hour: new Date().getHours() },
           counter,
         )
-        // `cushion` and `sleep` walk home first; `rest` stays where it is
-        const go =
-          pick.state === 'roam'
-            ? phone
-              ? gentleTarget(petId ?? 'current', session, counter)
-              : roamTarget(petId ?? 'current', session, counter, CURRENT_RANGE)
-            : pick.state === 'rest'
-              ? { x: pos.current.x, z: pos.current.z }
-              : { x: 0, z: 0 }
+        // `cushion` and `sleep` walk home to the middle of the bed; `rest` stays where it is.
+        // A wander's target is repaired against the den's props (T-0050, D-0043): off the bed
+        // when there is floor to go to, and always outside the bowl and the toys.
+        let go: { x: number; z: number }
+        if (pick.state === 'roam') {
+          const seeded = phone ? gentleTarget(petId ?? 'current', session, counter) : roamTarget(petId ?? 'current', session, counter, range)
+          const off = offBed(seeded.x, seeded.z, props.bed, clear, props.hard, range)
+          go = clearTarget(off.x, off.z, props.hard, clear, range)
+        } else if (pick.state === 'rest') {
+          go = { x: pos.current.x, z: pos.current.z }
+        } else {
+          go = { x: props.bed.x, z: props.bed.z }
+        }
         roamState.current = s = { s: pick.state, until: now + pick.secs, target: new THREE.Vector3(go.x, 0, go.z), counter }
         invalidate()
       }
       if (!busy) {
+        const speed = phone ? GENTLE_WALK : hop ? HOP : WALK
+        // she placed a toy where the pet stands: ease it out at its own walking speed
+        if (insideAny(pos.current.x, pos.current.z, props.hard, clear)) {
+          const free = pushOutOf(pos.current.x, pos.current.z, props.hard, clear, speed * d)
+          pos.current.x = free.x
+          pos.current.z = free.z
+          stepping = true
+        }
         const dx = s.target.x - pos.current.x
         const dz = s.target.z - pos.current.z
         const dist = Math.sqrt(dx * dx + dz * dz)
         if (dist > 0.02) {
-          const speed = phone ? GENTLE_WALK : hop ? HOP : WALK
-          const step = Math.min(dist, speed * d)
-          pos.current.x += (dx / dist) * step
-          pos.current.z += (dz / dist) * step
-          const want = Math.atan2(dx, dz)
-          const diff = THREE.MathUtils.euclideanModulo(want - facing.current + Math.PI, Math.PI * 2) - Math.PI
-          facing.current += diff * Math.min(1, 8 * d)
-          stepping = true
-        } else {
+          // the step walks round a prop instead of through it (D-0043 §2)
+          const next = stepAround({ x: pos.current.x, z: pos.current.z }, { x: s.target.x, z: s.target.z }, Math.min(dist, speed * d), props.hard, clear)
+          const wentX = next.x - pos.current.x
+          const wentZ = next.z - pos.current.z
+          pos.current.x = next.x
+          pos.current.z = next.z
+          if (Math.hypot(wentX, wentZ) > 1e-5) {
+            const want = Math.atan2(wentX, wentZ)
+            const diff = THREE.MathUtils.euclideanModulo(want - facing.current + Math.PI, Math.PI * 2) - Math.PI
+            facing.current += diff * Math.min(1, 8 * d)
+            stepping = true
+          }
+        } else if (!stepping) {
           // standing: turn smoothly back to the ¾ view she knows
           facing.current += (0 - facing.current) * Math.min(1, 4 * d)
         }
       }
-      // a pet standing on the cushion's spot is on the cushion, whatever it is doing there;
-      // it steps down to the floor as soon as it walks away (T-0046 Design §4)
-      const home = s.s !== 'roam' && Math.sqrt(pos.current.x * pos.current.x + pos.current.z * pos.current.z) < 0.08
-      lift.current += ((home ? seat : FLOOR_Y) - lift.current) * Math.min(1, 8 * d)
+      // the bed is walked on, not through: the pet's height is the bed's own top under it, so it
+      // climbs onto its cushion and down off it again and its feet are never swallowed (D-0043 §3)
+      lift.current = bedTopAt(Math.hypot(pos.current.x - props.bed.x, pos.current.z - props.bed.z), seat, props.bed.r)
       if (stepping) {
         // arm swing and a hop or a body bob, as `WalkingPets` does (T-0032 §4b)
         const armL = rig.root.getObjectByName('part:armL')

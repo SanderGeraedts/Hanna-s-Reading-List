@@ -29,7 +29,7 @@ function bar(view: ShelfView = START_VIEW, books: Book[] = shelf, empty = false)
   return onView
 }
 
-describe('the bar above the shelf (T-0051, D-0043)', () => {
+describe('the bar above the shelf (T-0051, D-0046)', () => {
   it('shows the four bookcases with All chosen', () => {
     bar()
     const group = screen.getByRole('group', { name: 'Bookcase' })
