@@ -47,6 +47,26 @@ result: []
 3. Phone performance: the den with all home items, a habitat and a dressed pet stays within the
    budget the UX designer sets in *Design* (draw calls, noted in *Test*).
 4. `pnpm run build` and `pnpm exec harness check` pass. **Hanna** confirms the shop on the live site.
+5. (UX) The Creatures tab has a Den | Shop switch from the first pet on; the Shop view has the seven
+   categories of Design §5 with the 41 items and prices of Design §2; the URL keeps the category, and
+   Back returns to the previous view.
+6. (UX) Each card shows the right state of the four (affordable, too expensive with "N 🍪 more",
+   owned, in use) for balances above, at and below the price and below 0; Buy opens the inline
+   confirm in the card (no dialog), Escape cancels, a double tap on the confirm buys once, and food
+   is given on the tap without a confirm.
+7. (UX) An outfit put on a pet shows on its anchor in the den and on the dashboard block, one per
+   slot, for any of her pets via the Dress row, without changing the current pet; the contact sheet
+   (Design §15.7) shows no piece sunk into or floating off any of the five creatures beyond the two
+   accepted cases.
+8. (UX) Home items, a toy and a habitat change the den at once; all six spots are fully in view at
+   390 (300 px and 180 px canvases) and 1280; the window's sky and weather follow a test clock and
+   month as Design §8 says, still on a phone.
+9. (UX) A bought decoration appears in the 🎨 panel and on the 3D shelf on a second device after
+   sync, switched on at the end; hiding it on one device doesn't hide it on the other; decorations not
+   bought appear nowhere.
+10. (UX) Keyboard only: every buy, put on, take off, place, put away, habitat and show/hide can be
+    done; the live-region words of Design §14 are announced; the fullest den on `low` stays at or
+    under 60 draw calls and 20,000 triangles (unit test, plus `renderer.info` noted in *Test*).
 
 # Notes
 
@@ -61,9 +81,455 @@ result: []
 
 # Design
 
-For the UX designer, before the build: the shop (sections, item cards, prices, owned, not enough
-cookies), dressing a pet, the den with home items and habitats, and the new room decorations, phone
-and computer, both wallpapers; a draw-call budget for the den on a phone.
+UX designer, 2026-11-23 (at night: Hanna wasn't asked, I took the recommended option each time, and
+the real questions are at the end under *Questions for Hanna in the morning*). This builds on
+T-0029's and T-0030's Designs and the tab as built (`CreaturesPage.tsx`, `DenScene.tsx`, the
+stills of T-0030 §1), on T-0027 §3 (budget) and §5 (anchors), and on the 🎨 room panel
+(`src/lib/room.ts`, `RoomPanel.tsx`, D-0022). English, British spelling. Examples: Biscuit the
+house cat (current pet) and Kiki the koala, with 82 🍪.
+
+In scope: the shop with seven categories, buying, dressing a pet, placing home items and a toy,
+habitats, the window's weather, bought eggs, bought room decorations. Not here: pets playing with
+toys and tricks (T-0032), the shelf creature (T-0033). No empty placeholders or "coming soon".
+
+## 1. The numbers: earning against prices
+
+D-0033 §2: 1 🍪 per 5 min + 10 per finished book. At 45 minutes a day and about a book a week that
+is **≈ 9 🍪 a day, ≈ 75 🍪 a week** (T-0029's Feed and growth already use some of it). So:
+
+| Price | Takes her about | Used for |
+|---|---|---|
+| 5–25 | today to 3 days | food (bought again and again) |
+| 20–60 | 2 days to a week | outfits, toys, small home items |
+| 60–100 | 1–1½ weeks | big home items, room decorations, cheaper habitats, a common egg |
+| 120–160 | about 2 weeks | the castle library, rare and very rare eggs |
+| 300 | about a month | a legendary egg |
+
+**Everything once** (outfits, home, toys, habitats, decorations: 32 items, food and eggs left out)
+costs **1,730 🍪 ≈ 23 weeks**: something new every few days at first, and the whole shop is a
+half-year goal. One egg of each tier adds 930 🍪. All prices go in
+`src/lib/creatures/numbers.ts` (`SHOP`), as Goal 2 says, and stay inside its ranges.
+
+## 2. The item list (41 items for sale, prices in 🍪)
+
+Ids are the keys in `SHOP` and the still's file name. "Slot" is where it goes.
+
+**Food** (3; bought again and again, given straight to a pet, §6). Bigger food gives more growth per
+cookie than Feed (5 🍪 = 5 growth):
+
+| id | Name | Price | Growth |
+|---|---|---|---|
+| `berry-snack` | Berry snack | 5 | 6 |
+| `honey-cake` | Honey cake | 12 | 15 |
+| `picnic-feast` | Picnic feast | 25 | 35 |
+
+**Outfits & accessories** (12; slot = the anchor of T-0027 §5: head → `hat`, face → `face`, neck
+→ `neck`, back → `back`). Colours from the house palette (plum `#6e4f8f`, gold `#d9a85b`, cream
+`#f3e9d8`, midnight `#1f2a4a`, sage `#a9c4a0`, rose `#e39aa8`):
+
+| id | Name | Slot | Price | Look |
+|---|---|---|---|---|
+| `big-bow` | Big bow | Head | 20 | a rose bow tilted to one side |
+| `bobble-hat` | Bobble hat | Head | 30 | plum knitted hat (ribbed torus brim), gold bobble |
+| `flower-crown` | Flower crown | Head | 40 | a sage ring with five small cream and rose flowers |
+| `little-crown` | Little crown | Head | 60 | a gold crown with five points, satin |
+| `reading-glasses` | Reading glasses | Face | 25 | two round gold rims and a bridge |
+| `heart-glasses` | Heart glasses | Face | 35 | two rose heart frames, dark lenses |
+| `star-glasses` | Star glasses | Face | 40 | two gold star frames |
+| `bow-tie` | Bow tie | Neck | 20 | a plum bow tie |
+| `striped-scarf` | Striped scarf | Neck | 25 | a cream and plum striped ring with one end hanging |
+| `bell-collar` | Bell collar | Neck | 30 | a rose collar with a small gold bell |
+| `little-backpack` | Little backpack | Back | 45 | a sage backpack with a cream flap and two straps |
+| `star-cape` | Star cape | Back | 55 | a midnight-blue cape with a gold star |
+
+**Home** (9; slots in the den, §8): bed and rug replace the den's own gold cushion and plum rug;
+"Put away" brings those back.
+
+| id | Name | Slot | Price |
+|---|---|---|---|
+| `cloud-cushion` | Cloud cushion | Bed | 40 |
+| `basket-bed` | Basket bed | Bed | 60 |
+| `star-rug` | Star rug | Rug | 35 |
+| `fairy-lights` | Fairy lights | Wall | 45 |
+| `weather-window` | Window | Wall | 80 |
+| `potted-plant` | Potted plant | Left corner | 30 |
+| `mini-bookcase` | Mini bookcase | Left corner | 70 |
+| `book-tower` | Book tower | Right corner | 30 |
+| `reading-lamp` | Reading lamp | Right corner | 50 |
+
+**Eggs** (6; bought again and again; D-0033 §6): Common egg 60 · Uncommon egg 90 · Rare egg 120 ·
+Very rare egg 160 · Epic egg 200 · Legendary egg 300 (`EGG_PRICE`, already in `numbers.ts`).
+
+**Toys** (3; one toy stands in the den at a time, slot Toy): `ball` Ball 25 · `yarn` Ball of yarn
+30 · `slide` Slide 50.
+
+**Habitats** (4, plus the free **Cosy den** she has; §9): `forest` Forest 80 · `beach` Beach 100 ·
+`ice` Ice land 120 · `castle-library` Castle library 150.
+
+**Reading room** (4; new `DecorKind`s, built like `Decorations.tsx`, each ≤ 0.16 wide):
+`dragon-plush` Dragon plush 60 (a soft plum dragon with gold book wings, simple, not the creature
+model) · `pennant` Pennant flags 70 (a tiny bunting of plum, gold and cream flags on two sticks,
+within its own width) · `egg-display` Egg display 80 (three tiny eggs, cream, sage and gold, on a
+wooden stand) · `snow-globe` Snow globe 100 (a glass dome on a gold base with a tiny tree and
+still snow).
+
+## 3. Where the shop is: two views in the Creatures tab
+
+The tab already holds den, eggs, creature, pets, week and album; 41 cards under that would be a very
+long page. So the tab gets **two views**, from the first pet on (before the welcome hatch the tab
+stays as T-0029 has it):
+
+- Under the h1 (on the wallpaper, left; the cookie pill stays at the right): a two-part switch
+  **🏡 Den** · **🛍️ Shop**, in the header-pill style (white with `--pill-ink`, as D-0022 says for
+  buttons on the wallpaper), the active one with the gold outline. Each is a link:
+  `?view=creatures` and `?view=creatures&shop=<category>` (e.g. `&shop=outfits`), so the browser's
+  Back works and a reload keeps the place. `aria-current="page"` on the active one.
+- **Den view** = the tab exactly as T-0030 built it, plus two small secondary buttons:
+  **👗 Dress up** in the creature card (after Rename) → Shop view, Outfits, dressing that pet; and
+  **🛋️ Arrange** under the den canvas (right) → Shop view, Home.
+- **Shop view**: the den card (the same live canvas, §10) and the **shop card**.
+- Category in the URL; with none, **Food**. The last category is not remembered beyond the URL.
+
+## 4. Layout
+
+**1280 × 800, Shop view:** two columns, `gap --space-4`.
+- Left (≈ 40 %, ~440 px): the den card, canvas 16:10 (~440 × 275), **sticky** (`top: var(--space-2)`
+  inside `.dashboard`, like the arranging bar), so what she puts on shows while she scrolls the
+  cards. Under the canvas, inside the den card, the **dressing strip** or **den strip** of the open
+  category (§7, §8).
+- Right (≈ 60 %): the shop card (`dash-card`): the category chips, the category heading (h2), then
+  the item grid `repeat(auto-fill, minmax(9.5rem, 1fr))`, gap `--space-3`: **4 per row** (~150 px).
+
+**390 × 844, Shop view:** one column, 16 px gutter.
+- The den card, **sticky** at the top, canvas full width × **180 px** (wider than tall, so the
+  corners still show). Nothing else in the sticky part.
+- Then the strip of the open category (not sticky), the shop card with the chips (they wrap onto two
+  rows, never a sideways scroll), the h2, and the grid, **2 per row** (~160 px).
+- Between 390 and 1280 it just fits more or fewer; the two-column layout starts where the Den view's
+  does.
+
+**Both wallpapers:** only the h1, the cookie pill and the Den/Shop switch sit on the wallpaper (they
+use the tokens D-0022 names); everything else is on walnut cards, so nothing changes per wallpaper.
+Check the switch's gold outline on midnight in the screenshots.
+
+## 5. The shop card
+
+- **Category chips** (`chips`, one row of buttons, `role="tablist"` labelled "Shop"): **🍓 Food**,
+  **🎀 Outfits**, **🛋️ Home**, **🥚 Eggs**, **🧶 Toys**, **🌲 Habitats**, **🎨 Room**. The open one has the
+  gold wash and outline (`--accent-soft`, `--accent-line`), as T-0029's choose tiles.
+- **h2 per category:** Food · Outfits & accessories · Home · Eggs · Toys · Habitats · Reading room.
+- **The grid** is a `<ul>`; each card an `<li>`. Order: by slot, then price (the tables of §2).
+- **Item card** (`--surface-raised`, 1 px `--border`, `--radius-card`), top to bottom:
+  1. **Picture**: a square tile the full card width, `--surface-sunken` with the album's soft
+     spotlight, the item's still (§10). Habitat cards: a 16:10 tile of the empty den in that
+     habitat. A chip top left for the state (below).
+  2. **Name** (bold, `--fs-body`, wraps).
+  3. **One small line** (`--fs-small`, `--muted`): the slot ("Head", "Left corner", "Toy"), for
+     food **"Grows Biscuit by 15"**, for eggs the tier line of T-0030 §6 ("◆◆◆ Rare").
+  4. **Price row:** the price pill **"30 🍪"** (small, gold outline) and, when she can't afford it,
+     **"12 🍪 more"** in `--muted` beside it.
+  5. **The action button**, full card width, 44 px.
+
+**The four states** (food and eggs have only the first two):
+
+| State | Chip on picture | Price row | Button | Card |
+|---|---|---|---|---|
+| **Affordable** | none | 30 🍪 | **Buy** (secondary) | plain |
+| **Too expensive** (balance < price, also when below 0) | none | 30 🍪 · 12 🍪 more | **Buy**, disabled look, stays focusable (`aria-disabled`) | plain; the picture stays in full colour (she should still want it) |
+| **Owned** | **✓ Owned** | (no price) | Outfits **Put on Biscuit** · Home and toys **Place in the den** · Habitats **Use this habitat** · Room **Show in the room** | plain |
+| **In use** | **✓ Wearing** · **✓ In the den** · **✓ Your habitat** · **✓ In the room** | (no price) | **Take off** · **Put away** · (habitat: none, a muted line "Your habitat now") · **Hide in the room** | gold outline and wash |
+
+"Missing amount" = price − balance (with a balance of −4 and a price of 30: "34 🍪 more"). Food's
+button reads **Give to Biscuit** (affordable) instead of Buy; eggs keep **Buy**. The Cosy den card
+is always owned, price "Free" never shown: just ✓ Owned / ✓ Your habitat.
+
+"Owned" for outfits and room decorations is about her, not about a device or a pet; "In use" for
+outfits is about the pet being dressed (§7), for room decorations about this device (§11).
+
+## 6. Buying: an inline confirm, never a pop-up (D-0013)
+
+- **Tap Buy** (affordable, not food): in that card, the price row and the button are replaced by:
+  - **"Buy the bobble hat for 30 🍪?"** (`--fs-small`, bold; `tabIndex=-1`, focus moves here, so a
+    held Enter can't buy by repeat);
+  - **Buy** (primary) and **Cancel** (secondary) side by side (stacked when the card is narrower
+    than 150 px).
+  - Escape = Cancel; Cancel restores the card and focus goes back to its Buy. Only one card is in
+    confirm at a time: opening another closes the first.
+  - Eggs: **"Buy a rare egg for 120 🍪?"**; decorations: "Buy the snow globe for 100 🍪?".
+- **Tap Buy in the confirm:** the `buy` choice `{ item, price }` is saved at once (the price as
+  shown, so later price changes never change it, Goal 3); the button is disabled from the tap until
+  the card has re-rendered as owned, so two quick taps can't buy twice. The pill drops at once,
+  without a count-down animation. Then, per category:
+  - **Outfit:** the card is **Owned**; focus goes to its **Put on Biscuit** button. Not put on by
+    itself.
+  - **Home or toy:** Owned; focus to **Place in the den**.
+  - **Habitat:** Owned; focus to **Use this habitat**.
+  - **Room decoration:** **In the room** straight away (it joins the room switched on, §11); focus
+    to its **Hide in the room**.
+  - **Egg:** the card goes back to affordable/too expensive (eggs can be bought again); under the
+    price row a line **"🥚 Waiting in your eggs · Hatch"**, where Hatch is a link to the Den view
+    that starts the hatch (T-0030 §2, oldest egg first). That line stays until the egg is hatched.
+- **Food: no confirm.** It acts on the tap, like T-0029's Feed (feeding never asks a confirm): the
+  `buy` choice with `{ item, price, pet }` is saved and the growth goes to that pet. In the den the
+  same reaction as Feed (§5 of T-0029); in the Shop view's den too. Quick taps each count (food may
+  be bought again).
+- **Balance changed meanwhile** (a fix to a past day on another device): if at Buy-in-confirm time
+  the balance is below the price, nothing is saved, the confirm turns back into the too-expensive
+  card and the live region says **"Not enough cookies any more."**
+- **Live region** (the page's one polite `role="status"`): **"Bought the bobble hat. 52 cookies
+  left."** · **"Bought a rare egg. It's waiting in your eggs."** · food: **"Biscuit ate the honey
+  cake. 70 cookies left."** (+ T-0029's level-up words when it levels up).
+
+## 7. Dressing a pet
+
+- **Whom she dresses:** in the Outfits category, the den shows the **dressed pet**: the current pet
+  at first, or the pet she came from with 👗 Dress up. With 2 or more pets, the dressing strip
+  starts with a radio group **"Dress"**: a row of her pets' round 48 px pictures (T-0030's stills),
+  each with its name under it (one line, ellipsis); arrow keys move and pick. Picking one shows it
+  in the den (200 ms cross-fade) **without** changing the current pet. Leaving the Outfits category
+  shows the current pet again.
+- **The dressing strip** (in the den card under the canvas), heading **"Biscuit is wearing"**
+  (h3), then four rows, one per slot, in this order: **Head · Face · Neck · Back**. Each row: the
+  slot word (`--muted`), the item name or **"nothing"**, and for a worn item a small **Take off**
+  button. 44 px rows; at 390 the rows are two columns (Head | Face, Neck | Back).
+- **Put on Biscuit** (owned card): saves a `wear` choice (key `<pet id>:<slot>`, e.g.
+  `welcome:head`; pet ids may hold colons, so the slot is after the last one) with the item. One
+  item per slot: whatever was in that slot comes off. The new piece appears on the pet in the den at
+  once (a small pop, scale 0.8 → 1 in 200 ms; none with reduce motion). That card turns **In use**,
+  the card it replaced turns **Owned**.
+- **Take off** (card or strip): a `wear` choice with item `none`.
+- **One item, many pets:** an outfit she owns can be worn by several of her pets at once (each pet
+  has its own four slots). The button always names the dressed pet.
+- **On the pet:** each piece sits on its anchor, sized by the anchor's `userData.size` (made for size
+  1 and scaled), inside the part (so it moves with the head or body and scales with the stage).
+  Head pieces sit on `hat` and follow its tilt; glasses on `face`, centred on the eyes, a little in
+  front so they never sink in; neck pieces around `neck`; backpack and cape on `back`. Accepted
+  where the base model makes it so (T-0027 review): the book dragon's backpack sits under its
+  wings, the unicorn's hat sits behind the horn.
+- **Shown everywhere the pet is drawn live:** the den (Den and Shop views) and the dashboard block's
+  still (rendered again when an outfit changes). The pet rows, Eggs card and album keep T-0030's
+  plain pictures (the album shows the species, not her pet).
+- **Released pet:** its outfits go with it; the items stay hers.
+- **Live region:** **"Biscuit is wearing the bobble hat."** · **"Took off the bobble hat."**
+
+## 8. Placing home items and a toy
+
+- **The den strip** (Home and Toys categories), heading **"In the den"** (h3), six rows: **Bed ·
+  Rug · Wall · Left corner · Right corner · Toy**; each with the item name or the default
+  (**"Gold cushion"**, **"Plum rug"**) or **"nothing"**, and **Put away** for a placed item. At 390
+  two columns.
+- **Place in the den:** saves a `place` choice (key `home:<slot>`: `home:bed`, `home:rug`,
+  `home:wall`, `home:left`, `home:right`, `home:toy`) with the item; one item per slot, the old one
+  goes back to Owned. It appears in the den at once (fade in 200 ms). **Put away:** item `none`;
+  bed and rug go back to the gold cushion and plum rug.
+- **The six spots** (the den of T-0029 seen ¾ from the front right; positions in den units, the
+  cushion at 0, 0, 0): bed = the cushion's spot (the pet sits on it); rug = under it; wall = the
+  back wall centre, above the creature's head height; left corner = back left on the floor; right
+  corner = back right on the floor; toy = the floor in front left (the bowl stays front right). All
+  six must be fully in view at 390 (Den view 300 px and Shop view 180 px) and at 1280; the developer
+  may pull the camera back up to 10 % (the grown-up then fills about 54 % of the height) and nudge
+  the spots. Nothing may stand in front of the pet's face.
+- **The window** (`weather-window`): an arched wooden frame with a cross bar on the back wall. The
+  pane follows the device clock and date only (no outside service):
+  - **Sky:** day 07:00–18:00 soft blue `#9cc3e6`; dawn 05:00–07:00 and dusk 18:00–20:00 peach
+    `#e8b49a` to plum; night midnight `#1f2a4a` with a gold crescent and three tiny gold stars.
+  - **Weather by month:** December–February **snow**, March–April and October–November **rain**,
+    May–September **sun** (a soft round sun in the day pane, nothing extra at night).
+  - Rain: thin pale streaks; snow: small white dots. On a computer they fall/drift (one `Points`
+    of 40 or so); on a phone and with reduce motion they hold still.
+  - At night the room does not get darker; only the pane changes.
+- **Reading lamp:** its shade glows (emissive) with a soft warm glow sprite on the wall; no real
+  extra light on a phone (shadows and lights stay as T-0029 set them).
+- **Fairy lights:** a gently drooping string across the wall with 9 small warm bulbs; on a computer
+  they twinkle slowly, on a phone they hold still.
+- **Live region:** **"The reading lamp is in the den."** · **"Put the reading lamp away."** · with a
+  replace: **"The slide is in the den. The ball is put away."**
+
+## 9. Habitats
+
+- **Use this habitat:** saves a `habitat` choice (key `den`) with the habitat id (`cosy` for the
+  Cosy den). The den cross-fades to it (300 ms; instant with reduce motion). It is the den's
+  background for every pet; home items, toy, bowl and pet stay where they are.
+- **Looks** (each replaces only the back wall, side wall and floor, plus at most four backdrop props,
+  all matte, vertex colours):
+  - **Cosy den** (free): as T-0029 built it.
+  - **Forest:** moss-green walls `#4f6b3f` with three rounded tree trunks `#6b4a32` and leafy
+    crowns `#5f8a4a` against them, a mossy floor `#55703f`, two small mushrooms (cream caps with rose
+    spots) by the left wall.
+  - **Beach:** a sky wall `#9cc9d9` with a sea band `#5e9bb5` at the bottom, a sand floor `#e3cfa1`, a
+    shell and a leaning palm leaf at the right.
+  - **Ice land:** pale icy walls `#bcd6e6` with a few ice crystals, a snow floor `#eef3f7`, three
+    icicles along the top of the wall.
+  - **Castle library:** a stone wall `#6b6470` with two tall arched bookcases full of coloured book
+    blocks, a deep red carpet `#7a2e3a` with a gold edge.
+- The light habitats (beach, ice) must keep the creature readable: check a white-ish creature
+  (polar bear, Adélie penguin) in them; if it washes out, darken the floor near the cushion, not the
+  creature.
+- **Live region:** **"The forest is your habitat now."** (Cosy den: "The cosy den is your habitat
+  now.")
+
+## 10. Phone performance: stills in the shop, one live den
+
+- **One live canvas per page, still.** In the Shop view it is the den (sticky). Every card picture
+  is a plain image: `public/creatures/shop/<id>.webp`, transparent, 192 × 192 (habitats 320 × 200,
+  opaque), rendered in advance by the same dev-only script as T-0030's stills (¾ turned, the house
+  lights), `loading="lazy"`, `decoding="async"`, width and height set. Eggs reuse `egg-<tier>.webp`.
+  A test checks every `SHOP` item has its picture. A picture that fails: the T-0030 "?" tile.
+- Only the open category's pictures load (the panels of other categories aren't rendered).
+- **The den's budget** (the fullest den: a habitat, all six spots filled with the biggest items,
+  the window with weather, a shiny grown-up wearing four pieces, a full bowl):
+  - **phone (`low`): at most 60 draw calls and 20,000 triangles**; computer (`high`): at most 80
+    draw calls and 40,000 triangles.
+  - Per piece: an outfit ≤ 300 triangles on low and 1 draw call (vertex colours in the creature's
+    shared materials where it can); a home item or toy ≤ 800 triangles and ≤ 3 draw calls; a habitat
+    ≤ 3,000 triangles and ≤ 6 draw calls (it replaces the den's walls and floor, not adds to them);
+    the weather 1 draw call; a glow 1.
+  - A unit test builds that fullest den on `low` and `high` and checks the counts (like
+    `models.test.ts`); the tester also notes `renderer.info.render.calls` from the running app on a
+    390 viewport in *Test* (Done when 3).
+- **Movement** (D-0033 §13): on a phone nothing new idles (weather, lights and lamp hold still);
+  only her taps make things pop or fade. Frame loop, dpr, quality and stopping stay as T-0029 §12.
+  Building: each item model is built once and reused.
+
+## 11. Room decorations
+
+- **Unlocked by her purchases** (the choices log, on every device); **shown or hidden per device**
+  in the room settings (D-0022), like the eight there now.
+- A bought decoration **joins the room switched on, at the end of the list** (the lowest shelf
+  spot), on this device and on every other device the first time it sees the purchase. Older saved
+  rooms still load: `cleanRoom` adds missing *owned* decorations at the end switched on, and leaves
+  out decorations she doesn't own.
+- **The 🎨 room panel** lists only owned ones, with the same checkbox and ↑↓ as the others; its names
+  are the §2 names. Not owned: not in the list at all (no locked rows, no "buy in the shop").
+- **The shop card's Show/Hide in the room** flips the same per-device on/off as the panel (the 3D
+  room follows when she next sees the shelf). Its chip says ✓ In the room only when it's on here.
+- **Reset** in the room panel switches owned decorations on again and keeps them.
+- **Live region:** **"The snow globe is in your reading room."** · **"The snow globe is hidden in
+  the room on this device."**
+
+## 12. Keyboard and screen reader
+
+- **Tab order in the Shop view:** Den/Shop switch → den card (canvas skipped) → the strip (Dress
+  radio group, Take off / Put away buttons) → category chips (one stop, arrows move, Enter/Space
+  opens; or automatic activation, the developer's choice, as long as focus stays on the chip) → the
+  cards, each: its one button (or confirm question → Buy → Cancel).
+- **The category chips** are `role="tab"` with `aria-selected` and `aria-controls` on the grid's
+  `role="tabpanel"`, labelled by the h2. Changing category updates the URL (`replace`, not a new
+  history entry per chip).
+- **Cards:** the name is an `h3`; the picture `alt=""` (the text says it all); the state chip text
+  is real text ("Owned", "Wearing").
+- **Labels:**
+  - Buy: **"Buy the bobble hat for 30 cookies"**; too expensive: the same label, `aria-disabled`,
+    described by the "12 🍪 more" text, read as **"12 more cookies needed"**.
+  - Food: **"Give Biscuit a honey cake for 12 cookies"**.
+  - Eggs: "Buy a rare egg for 120 cookies".
+  - Put on: **"Put the bobble hat on Biscuit"** · Take off: "Take the bobble hat off Biscuit" ·
+    Place: "Place the reading lamp in the den" · Put away: "Put the reading lamp away" · Use: "Use
+    the forest as your habitat" · Show/Hide: "Show the snow globe in the room" / "Hide the snow
+    globe in the room".
+  - Price pills: "30 cookies" (🍪 `aria-hidden`).
+- **Focus moves:** Buy → the confirm question; Cancel → back to Buy; confirmed buy → the card's
+  new button (§6); Take off / Put away in a card → the card's new button; in a strip → the strip's
+  heading. Dress up / Arrange → the shop card's h2.
+- **The canvas** stays `aria-hidden` with its hidden description, which now names what she sees:
+  **"Biscuit the house cat, a baby, wearing the bobble hat and the reading glasses, on the cloud
+  cushion in the forest. In the den: the window with snow, the mini bookcase and the reading
+  lamp."** Short when empty: as T-0029.
+- Focus ring: the house gold `:focus-visible` everywhere.
+
+## 13. Empty, error and edge states
+
+- **Before the welcome hatch:** no Den/Shop switch; `&shop=` in the URL shows the Den view.
+- **Nothing owned in a category:** the strip shows its rows with "nothing" / the defaults; no empty
+  message needed (the cards are there to buy).
+- **Balance at or below 0:** every card shows too expensive (food too).
+- **Offline, not signed in, a server without the route:** no difference (D-0034); purchases are
+  kept on the device and sent later.
+- **A purchase or outfit change on another device:** follows on the next sync, without a message.
+  A `wear` or `place` of an item this device thinks she doesn't own yet is ignored until the `buy`
+  arrives.
+- **No WebGL:** the den card is left out (as T-0029); the strips and cards still work; nothing
+  else changes.
+- **Long pet names** wrap inside a card's button ("Put on Hootsworth"), and get an ellipsis in the
+  Dress row; the strip heading ("Hootsworth is wearing") wraps.
+- **An item removed from the shop later:** what she bought stays hers and shown (owned items are
+  never taken away); it just isn't sold any more.
+
+## 14. Wording, all in one place
+
+| Where | Text |
+|---|---|
+| Switch | 🏡 Den · 🛍️ Shop |
+| Den view buttons | 👗 Dress up · 🛋️ Arrange |
+| Chips | 🍓 Food · 🎀 Outfits · 🛋️ Home · 🥚 Eggs · 🧶 Toys · 🌲 Habitats · 🎨 Room |
+| h2 | Food · Outfits & accessories · Home · Eggs · Toys · Habitats · Reading room |
+| Card lines | Head · Face · Neck · Back · Bed · Rug · Wall · Left corner · Right corner · Toy · Grows Biscuit by 15 · ◆◆◆ Rare |
+| Price | 30 🍪 · 12 🍪 more |
+| Buttons | Buy · Give to Biscuit · Put on Biscuit · Take off · Place in the den · Put away · Use this habitat · Show in the room · Hide in the room · Cancel |
+| Chips on pictures | ✓ Owned · ✓ Wearing · ✓ In the den · ✓ Your habitat · ✓ In the room |
+| Habitat in use | Your habitat now |
+| Confirm | Buy the bobble hat for 30 🍪? · Buy a rare egg for 120 🍪? |
+| Egg bought | 🥚 Waiting in your eggs · Hatch |
+| Strips | Dress · Biscuit is wearing · nothing · In the den · Gold cushion · Plum rug |
+| Item names | §2 |
+| Live region | Bought the bobble hat. 52 cookies left. · Bought a rare egg. It's waiting in your eggs. · Biscuit ate the honey cake. 70 cookies left. · Not enough cookies any more. · Biscuit is wearing the bobble hat. · Took off the bobble hat. · The reading lamp is in the den. · Put the reading lamp away. · The slide is in the den. The ball is put away. · The forest is your habitat now. · The snow globe is in your reading room. · The snow globe is hidden in the room on this device. |
+| Waiting for you | a bought egg joins T-0030's egg line; its reason line: **From the shop** |
+
+## 15. Screenshots (in `docs/tasks/T-0031-screens/`)
+
+Demo data with about 400 🍪, three pets (Biscuit current), a few things owned. `390` = 390 × 844,
+`1280` = 1280 × 800; `lav` / `mid` = the wallpaper.
+
+1. `switch-390-lav.jpg`, `switch-1280-mid.jpg`: the tab's head with the Den/Shop switch.
+2. `food-390-lav.jpg`, `food-1280-mid.jpg`: the Food category.
+3. `outfits-390-lav.jpg`, `outfits-390-mid.jpg`, `outfits-1280-lav.jpg`, `outfits-1280-mid.jpg`: the
+   Outfits category with the dressing strip, all four card states visible (one affordable, one too
+   expensive, one owned, one wearing), Biscuit dressed in the den.
+4. `confirm-390-lav.jpg`, `confirm-1280-mid.jpg`: a card in the buy confirm.
+5. `bought-390-lav.jpg`: right after a buy (Owned, Put on Biscuit, pill lower).
+6. `dress-other-1280-lav.jpg`: the Dress row with Kiki picked, Kiki in the den.
+7. `outfits-on-1280-lav.jpg` (from `/style` or a dev page): each of the 12 outfits on the cat, the
+   Adélie penguin, the koala, the book dragon and the unicorn (a contact sheet).
+8. `home-390-lav.jpg`, `home-1280-mid.jpg`: the Home category with the den strip, a den with all six
+   spots filled.
+9. `window-day-1280-lav.jpg`, `window-night-snow-390-mid.jpg`, `window-rain-1280-lav.jpg`: the window
+   (a test clock or a dev seed may set the time and month).
+10. `habitats-390-lav.jpg`, `habitats-1280-mid.jpg`: the Habitats category; `habitat-forest-1280-lav.jpg`,
+    `habitat-beach-1280-mid.jpg`, `habitat-ice-390-lav.jpg`, `habitat-castle-1280-lav.jpg`: the den in
+    each (beach and ice with a light creature).
+11. `eggs-390-lav.jpg`, `eggs-1280-mid.jpg`: the Eggs category, one egg just bought ("Waiting in your
+    eggs").
+12. `toys-390-mid.jpg`: the Toys category with the slide in the den.
+13. `room-390-lav.jpg`, `room-1280-mid.jpg`: the Reading room category; `room-panel-1280-lav.jpg`: the
+    🎨 panel listing a bought decoration; `room-3d-1280-lav.jpg`, `room-3d-390-mid.jpg`: it on the 3D
+    shelf.
+14. `poor-390-lav.jpg`: a balance below 0, every card too expensive.
+15. `block-dressed-390-lav.jpg`, `block-dressed-1280-mid.jpg`: the dashboard block with Biscuit
+    dressed.
+16. `den-arrange-390-lav.jpg`: the Den view with 👗 Dress up and 🛋️ Arrange.
+
+## Questions for Hanna in the morning
+
+I took the recommended option for each tonight; each is easy to change.
+
+1. **The shop's place:** a **Den | Shop** switch at the top of the Creatures tab, rather than the
+   shop as one more long block under the album. *Recommended: the switch.*
+2. **One outfit, several pets:** a hat she bought can be worn by all her pets at the same time.
+   *Recommended: yes.* Or should each piece be on one pet at a time?
+3. **Food without a confirm:** a snack, cake or feast is given on the tap (like Feed); everything
+   else asks "Buy … for … 🍪?" first. *Recommended: as is.*
+4. **The item list and prices** (§2: 12 outfits, 9 home items, 3 toys, 4 habitats, 4 room
+   decorations; all of it once ≈ half a year of reading). Anything to add, drop or make cheaper?
+5. **Weather in the window by month:** snow December–February, rain March–April and
+   October–November, sun May–September. *Recommended: as is.* Or mix weather day by day?
+6. **A bought room decoration** appears switched on at the bottom of her decorations list.
+   *Recommended: as is.*
+7. **A bought egg** joins the eggs in Waiting for you ("From the shop") like a milestone egg.
+   *Recommended: yes*, so it hatches the same way.
+
+## Additions to *Done when* (for the tester)
+
+See items 5 to 10 under *Done when*.
 
 # Test
 
@@ -71,3 +537,9 @@ and computer, both wallpapers; a draw-call budget for the den on a phone.
 
 - 2026-11-22 architect: wrote CR3 from Hanna's brief (food, outfits, home, eggs, toys, habitats,
   room decorations); all item models on normal agents from Fable's anchor points. Size: full.
+- 2026-11-23 ux-designer: designed (Den | Shop switch, seven categories, 41 items with prices
+  balanced at ≈ 75 🍪 a week, card states, inline buy confirm, dressing any pet at the T-0027
+  anchors, six den spots and the weather window, four habitats, room decorations unlocked by
+  purchase and shown per device, stills only with one live den at ≤ 60 draw calls / 20,000
+  triangles on a phone, keyboard and screen reader, wording, screenshots); Done when 5–10 added.
+  Hanna not asked (night): 7 questions for the morning under *Design*. Hand-over to the developer.
