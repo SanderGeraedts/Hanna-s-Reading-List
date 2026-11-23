@@ -59,3 +59,51 @@ describe('the header over the pages (T-0035)', () => {
     expect(prop(rule('.topbar'), 'background')).toMatch(/^linear-gradient\(/)
   })
 })
+
+/** The body of a media block, by its exact query at the start of a line (up to the closing brace at column 0). */
+const media = (query: string): string => {
+  const at = css.indexOf(`\n@media ${query} {`)
+  if (at < 0) throw new Error(`no @media ${query}`)
+  return css.slice(at, css.indexOf('\n}', at))
+}
+/** The body of a rule nested (indented) inside a media block. */
+const nested = (block: string, selector: string): string => {
+  const at = block.indexOf(`\n  ${selector} {`)
+  if (at < 0) throw new Error(`no rule for ${selector} in the media block`)
+  return block.slice(at, block.indexOf('\n  }', at))
+}
+
+describe('the Arrange bar stays small (T-0038)', () => {
+  it('the Hidden chips scroll inside an area of capped height', () => {
+    const chips = rule('.hidden-blocks')
+    expect(prop(chips, 'max-height')).toBeDefined()
+    // two and a half rows: the third row peeks out, the only sign that more chips are hidden
+    expect(prop(chips, 'max-height')).toContain('2.5 * var(--chip-row)')
+    expect(prop(chips, 'overflow-y')).toBe('auto')
+  })
+
+  it('on a touch screen a chip row is as tall as a .btn.small chip there, so the cap still shows 2½ rows', () => {
+    // every `@media (pointer: coarse)` block, and the rule inside them that sets each selector
+    const coarse = css.split('\n@media (pointer: coarse) {').slice(1).map((b) => b.slice(0, b.indexOf('\n}')))
+    const inCoarse = (selector: string) => {
+      for (const block of coarse) {
+        const at = block.search(new RegExp(`\\n  (?:[^{}]*,\\n  )?${selector.replace(/\./g, '\\.')}(?:,|\\s*\\{)`))
+        if (at >= 0) return block.slice(at, block.indexOf('\n  }', at))
+      }
+      throw new Error(`no ${selector} in a pointer: coarse block`)
+    }
+    const row = prop(inCoarse('.hidden-blocks'), '--chip-row')
+    expect(row).toBeDefined()
+    expect(row).toBe(prop(inCoarse('.btn.small'), 'min-height'))
+  })
+
+  it('on a short screen the arranging bar does not stick, and the scroll padding is the header’s own', () => {
+    const short = media('(max-height: 500px)')
+    expect(prop(nested(short, '.dashboard-bar.arranging'), 'position')).toBe('static')
+    const padding = prop(nested(short, '.dashboard:has(.dashboard-bar.arranging)'), 'scroll-padding-top')!
+    expect(padding).toBeDefined()
+    expect(padding).not.toContain('--arrange-h')
+    // the same sum as the plain .dashboard: a focused element only has to clear the header
+    expect(padding).toBe(prop(rule('.dashboard'), 'scroll-padding-top'))
+  })
+})
