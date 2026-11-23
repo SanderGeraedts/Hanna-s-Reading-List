@@ -339,7 +339,9 @@ function HelloStep({ pet, headingRef, onDone }: { pet: Pet; headingRef: React.Re
             setStep(next)
             setName(suggestedName(pet.species, pet.id, next))
             setError(false)
-            requestAnimationFrame(() => field.current?.querySelector('input')?.select())
+            // re-select only when she is in the field: 🎲 never pulls focus away from itself
+            const input = field.current?.querySelector('input')
+            if (input && document.activeElement === input) requestAnimationFrame(() => input.select())
           }}
         >
           <span aria-hidden>🎲</span> Another name
@@ -394,7 +396,7 @@ function CreatureCard({
     <section className="dash-card creature-card" aria-labelledby="creature-name">
       {editing ? (
         <div className="creature-rename">
-          <NameField id="rename-name" value={draft} error={error} onChange={(v) => {
+          <NameField id="rename-name" focusOnMount value={draft} error={error} onChange={(v) => {
             setDraft(v)
             if (error && v.trim()) setError(false)
           }} onEnter={save} onEscape={close} />

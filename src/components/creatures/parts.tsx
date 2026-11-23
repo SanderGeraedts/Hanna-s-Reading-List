@@ -78,9 +78,13 @@ export function FeedButton({ name, balance, onFeed }: { name: string; balance: n
 }
 
 /**
- * The Name field (Design §3d, §5 Rename): filled and all selected, trimmed,
- * 1 to 20 characters; an empty name shows "Give your creature a name." and
- * isn't saved.
+ * The Name field (Design §3d, §5 Rename): filled, trimmed, 1 to 20
+ * characters; an empty name shows "Give your creature a name." and isn't saved.
+ *
+ * `focusOnMount` (Rename): focus goes into the field with the name selected.
+ * Without it (Say hello, where focus belongs on the heading, Design §10) the
+ * field never takes focus by itself: in a browser `select()` also moves focus,
+ * so the name is selected only when she first comes into the field.
  */
 export function NameField({
   id,
@@ -89,6 +93,7 @@ export function NameField({
   error,
   onEnter,
   onEscape,
+  focusOnMount = false,
 }: {
   id: string
   value: string
@@ -96,11 +101,16 @@ export function NameField({
   error: boolean
   onEnter?: () => void
   onEscape?: () => void
+  focusOnMount?: boolean
 }) {
   const input = useRef<HTMLInputElement>(null)
+  const selected = useRef(false)
   useEffect(() => {
-    input.current?.select()
-  }, [])
+    if (!focusOnMount || !input.current) return
+    selected.current = true
+    input.current.focus()
+    input.current.select()
+  }, [focusOnMount])
   return (
     <div className="name-field">
       <label htmlFor={id}>Name</label>
@@ -114,6 +124,12 @@ export function NameField({
         aria-invalid={error || undefined}
         aria-describedby={error ? `${id}-error` : undefined}
         onChange={(e) => onChange(e.target.value)}
+        onFocus={(e) => {
+          // the first time she comes into the field, the whole suggestion is selected
+          if (selected.current) return
+          selected.current = true
+          e.currentTarget.select()
+        }}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && onEnter) {
             e.preventDefault()

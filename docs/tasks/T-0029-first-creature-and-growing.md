@@ -468,6 +468,9 @@ Demo data, the creature a house cat named Biscuit unless said otherwise. `390` =
 
 Taken with the recommended option tonight; each is easy to change in `numbers.ts` or the wording.
 
+**Answered by Hanna on 2026-11-23 at 03:30 (relayed by the coordinator): she kept every pick, 1 to 5,
+as recommended.** Nothing changes.
+
 1. **How fast it grows.** Young after about 6 days and grown-up after about a month at 45 minutes
    a day (Baby levels 1–3, Young 4–9, Grown-up from 10, levels go on after). *Recommended: as is.*
    Faster or slower?
@@ -823,3 +826,17 @@ arrives); the route answers 500 (works on, sends on the next try).
   Retook the older screenshots and added 8 tests for gaps. PR #250 stays a draft. Back to the
   developer; afterwards the tester re-checks the focus fix, its test and CI. Remaining: the focus
   fix; Hanna's five morning questions; Done when 5 (Hanna on the live site).
+- 2026-11-23 developer: fixed the tester's send-back (Done when 11, Design §10). The Name field no
+  longer calls `select()` on mount: in a browser that also moved focus off the "Say hello to your
+  …!" heading. `NameField` now selects the whole suggestion the first time she comes into the
+  field. Only Rename asks for `focusOnMount` (focus into the field with the name selected, as
+  before). 🎲 re-selects only while she is in the field, so it never pulls focus off itself. New
+  test in `CreaturesPage.test.tsx`: `select()` is stubbed to move focus like a browser; focus
+  stays on the heading, nothing is selected on mount, 🎲 keeps focus, coming into the field selects
+  once, and Rename still focuses and selects. It failed without the fix (1 failed | 17 passed) and
+  passes with it (18 passed). Real Chrome on the dev server (port 3146, vite stopped afterwards),
+  `?view=creatures&step=choose`, capybara: focus is on the H2 "Say hello to your capybara!" and Tab
+  then selects the whole name, at 1280 and 390, for the normal crack (WebGL), reduce motion and
+  WebGL off (`--disable-3d-apis`, no canvas): 6/6 PASS. Hanna answered the five morning questions
+  at 03:30 and kept every pick (recorded under the questions). `tsc --noEmit`: no output. Touched
+  tests (CreaturesPage, creatures components, lib/creatures): 9 files, 264 passed. Lesson added. #250 stays a draft. Remaining: tester re-check; Done when 5.

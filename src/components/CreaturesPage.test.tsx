@@ -163,6 +163,55 @@ describe('the welcome flow', () => {
   })
 })
 
+describe('focus after the hatch (tester, Done when 11)', () => {
+  /** like a browser: select() on an input also moves focus there (jsdom/happy-dom's doesn't) */
+  function browserSelect() {
+    const original = HTMLInputElement.prototype.select
+    const calls: string[] = []
+    const spy = vi.spyOn(HTMLInputElement.prototype, 'select').mockImplementation(function (this: HTMLInputElement) {
+      calls.push(this.id)
+      this.focus()
+      original.call(this)
+    })
+    return { calls, restore: () => spy.mockRestore() }
+  }
+
+  it('stays on "Say hello to your …!": the Name field selects nothing and takes no focus by itself', () => {
+    const sel = browserSelect()
+    try {
+      tab(BOOKS, true)
+      fireEvent.click(screen.getAllByRole('radio')[2])
+      fireEvent.click(screen.getByRole('button', { name: 'Hatch the capybara' }))
+      expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Say hello to your capybara!' }))
+      expect(sel.calls).toEqual([])
+      // 🎲 from the keyboard keeps focus on 🎲
+      const dice = screen.getByRole('button', { name: 'Another name' })
+      dice.focus()
+      fireEvent.click(dice)
+      expect(document.activeElement).toBe(dice)
+      // coming into the field selects the whole name, once
+      const field = screen.getByLabelText('Name') as HTMLInputElement
+      fireEvent.focus(field)
+      expect(sel.calls).toEqual(['hello-name'])
+    } finally {
+      sel.restore()
+    }
+  })
+
+  it('Rename still puts focus in the field with the name selected', () => {
+    hatchSaved('cat', 'Biscuit')
+    const sel = browserSelect()
+    try {
+      tab()
+      fireEvent.click(screen.getByRole('button', { name: 'Rename Biscuit' }))
+      expect(document.activeElement).toBe(screen.getByLabelText('Name'))
+      expect(sel.calls).toEqual(['rename-name'])
+    } finally {
+      sel.restore()
+    }
+  })
+})
+
 describe('the home', () => {
   it('feeds 5 cookies: the balance goes down, growth goes up, and it is announced', () => {
     hatchSaved('cat', 'Biscuit')
