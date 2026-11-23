@@ -614,7 +614,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
         )}
         {view === 'garden' && (
           <ClientOnly fallback={null}>
-            <GardenPage books={books} paused={!!selected || adding !== null || wishing} />
+            <GardenPage books={books} paused={!!selected || adding !== null || wishing} onShowBook={showBook} />
           </ClientOnly>
         )}
         {view === 'challenges' && (

@@ -229,13 +229,14 @@ describe('garden items and visitors', () => {
   it('unlocks the items by finished books all time, and never takes one back', () => {
     expect(deriveGarden(many(4), [], { today: TODAY }).unlocked).toEqual([])
     expect(deriveGarden(many(5), [], { today: TODAY }).unlocked).toEqual(['path'])
-    expect(deriveGarden(many(25), [], { today: TODAY }).unlocked).toEqual(['path', 'bench', 'birdbath', 'pond'])
-    expect(deriveGarden(many(50), [], { today: TODAY }).unlocked).toHaveLength(6)
+    expect(deriveGarden(many(25), [], { today: TODAY }).unlocked).toEqual(['path', 'bench', 'birdbath', 'seedlings', 'pond'])
+    expect(deriveGarden(many(50), [], { today: TODAY }).unlocked).toHaveLength(9)
   })
 
   it('says what is next to unlock and how far off it is', () => {
-    expect(deriveGarden(many(19), [], { today: TODAY }).next).toMatchObject({ item: 'pond', books: 25, toGo: 6 })
-    expect(deriveGarden(many(50), [], { today: TODAY }).next).toBeNull()
+    expect(deriveGarden(many(19), [], { today: TODAY }).next).toMatchObject({ item: 'seedlings', books: 20, toGo: 1 })
+    expect(deriveGarden(many(50), [], { today: TODAY }).next).toMatchObject({ item: 'snowman', books: 60, toGo: 10 })
+    expect(deriveGarden(many(300), [], { today: TODAY }).next).toBeNull()
   })
 
   it('shows an item she has placed in that year garden only', () => {

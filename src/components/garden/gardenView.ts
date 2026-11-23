@@ -1,4 +1,4 @@
-import { ITEM_SLOTS } from '#/lib/garden/numbers'
+import { itemSlotsFor } from '#/lib/garden/numbers'
 import { FLAT_ELEVATION, SCENE_ELEVATION, fitView, gardenLayout, project, slotPoint, spotPoint } from '#/lib/garden/view'
 import type { GardenLayout, ViewBox } from '#/lib/garden/view'
 
@@ -36,8 +36,8 @@ export function flatPlace(layout: GardenLayout, bed: number, spot: number): Plac
   return { left: (p.x / layout.width) * 100, top: (p.z / layout.depth) * 100 }
 }
 
-export function flatSlotPlace(layout: GardenLayout, slot: number): Place {
-  const p = slotPoint(layout, slot, ITEM_SLOTS)
+export function flatSlotPlace(layout: GardenLayout, slot: number, beds = 1): Place {
+  const p = slotPoint(layout, slot, itemSlotsFor(beds))
   return { left: (p.x / layout.width) * 100, top: (p.z / layout.depth) * 100 }
 }
 
@@ -49,9 +49,9 @@ export function scenePlace(layout: GardenLayout, bed: number, spot: number): Pla
   return { left: (at.x / view.width) * 100, top: (at.y / view.height) * 100 }
 }
 
-export function sceneSlotPlace(layout: GardenLayout, slot: number): Place {
+export function sceneSlotPlace(layout: GardenLayout, slot: number, beds = 1): Place {
   const view = sceneView(layout)
-  const p = slotPoint(layout, slot, ITEM_SLOTS)
+  const p = slotPoint(layout, slot, itemSlotsFor(beds))
   const at = project(view, layout, { x: p.x, z: p.z, y: 0.2 })
   return { left: (at.x / view.width) * 100, top: (at.y / view.height) * 100 }
 }

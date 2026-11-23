@@ -301,9 +301,9 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
               onSwap={(slot, square) => choices.record(swapEvent(year, cardNow, slot, square))}
             />
           ) : id === 'world' ? (
-            <WorldChallengeCard key={`world-${year}`} books={books} year={year} />
+            <WorldChallengeCard key={`world-${year}`} books={books} year={year} onShowBook={onShowBook} />
           ) : id === 'season' ? (
-            <SeasonChallengeCard key={`season-${year}`} books={books} year={year} />
+            <SeasonChallengeCard key={`season-${year}`} books={books} year={year} onShowBook={onShowBook} />
           ) : id === 'minutes' ? (
             <MinutesChallengeCard key={`minutes-${year}`} books={books} year={year} />
           ) : id === 'series' ? (

@@ -5,7 +5,7 @@ import type { YearGarden } from '#/lib/garden/garden'
 import { DETAILED_PLANTS } from '#/lib/garden/numbers'
 import type { Season } from '#/lib/garden/seasons'
 import { SCENE_ELEVATION, gardenLayout, slotPoint, spotPoint } from '#/lib/garden/view'
-import { ITEM_SLOTS } from '#/lib/garden/numbers'
+import { itemSlotsFor } from '#/lib/garden/numbers'
 import { usePageVisible } from '../creatures/pose'
 import { buildBeds, buildGround, buildItem, buildPlant, buildPlantField, buildShadows, buildVisitors, buildWeather, lookOf } from './plantModel'
 import { sceneColumns, sceneView, NOMINAL_W } from './gardenView'
@@ -111,7 +111,7 @@ function Garden({ year, season, reduce, paused }: GardenSceneProps) {
     if (behind) root.add(behind)
     root.add(buildShadows(shadows))
     for (const [item, slot] of year.items) {
-      const at = slotPoint(layout, slot, ITEM_SLOTS)
+      const at = slotPoint(layout, slot, itemSlotsFor(year.beds))
       const mesh = buildItem(item, season)
       mesh.position.set(at.x, 0, at.z)
       root.add(mesh)

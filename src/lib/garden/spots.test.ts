@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { ChoiceEvent } from '../creatures/choices'
 import { cleanEvent } from '../creatures/choices'
 import { deriveShop } from '../creatures/shop'
-import { ITEM_SLOTS, SPOTS_PER_BED } from './numbers'
+import { MAX_ITEM_SLOTS, SPOTS_PER_BED } from './numbers'
 import { arrange, itemKey, itemPlace, itemRemove, plantKey, plantPlace, savedItems, savedPlants, spotAt, spotIndex } from './spots'
 
 /**
@@ -80,9 +80,9 @@ describe('reading her saved spots', () => {
   it('drops an item, a year or a slot it does not know', () => {
     const items = savedItems(
       log(
-        { key: 'g:i:2026:fountain', slot: 1 },
+        { key: 'g:i:2026:gazebo', slot: 1 },
         { key: 'g:i:-5:bench', slot: 1 },
-        { key: 'g:i:2026:bench', slot: ITEM_SLOTS },
+        { key: 'g:i:2026:bench', slot: MAX_ITEM_SLOTS },
         { key: 'g:i:2026', slot: 1 },
       ),
     )

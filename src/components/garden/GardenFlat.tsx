@@ -1,7 +1,7 @@
 import { Fragment } from 'react'
 import type { Visitors, YearGarden } from '#/lib/garden/garden'
 import type { GardenItemId } from '#/lib/garden/numbers'
-import { ITEM_SLOTS } from '#/lib/garden/numbers'
+import { itemSlotsFor } from '#/lib/garden/numbers'
 import type { Season } from '#/lib/garden/seasons'
 import { BED_D, BED_W, gardenLayout, slotPoint, spotPoint } from '#/lib/garden/view'
 import { PlantShape } from './plantSvg'
@@ -34,9 +34,11 @@ export interface GardenFlatProps {
   reduce?: boolean
   /** the plant she has picked up, drawn lifted */
   picked?: string | null
+  /** the plant she has just found by searching, drawn with a ring (T-0066) */
+  found?: string | null
 }
 
-export function GardenFlat({ year, season, columns = 1, compact, reduce, picked }: GardenFlatProps) {
+export function GardenFlat({ year, season, columns = 1, compact, reduce, picked, found }: GardenFlatProps) {
   const beds = compact ? Math.min(2, year.beds) : year.beds
   const layout = gardenLayout(beds, compact ? 2 : columns, !compact)
   const ground = GROUND[season]
@@ -74,7 +76,7 @@ export function GardenFlat({ year, season, columns = 1, compact, reduce, picked 
       )}
       {!compact &&
         [...year.items].map(([item, slot]) => {
-          const at = slotPoint(layout, slot, ITEM_SLOTS)
+          const at = slotPoint(layout, slot, itemSlotsFor(year.beds))
           return (
             <g key={item} transform={`translate(${at.x} ${at.z})`}>
               <ItemShape item={item} season={season} />
@@ -85,6 +87,7 @@ export function GardenFlat({ year, season, columns = 1, compact, reduce, picked 
         const at = spotPoint(layout, p.bed, p.spot)
         return (
           <g key={p.id} transform={`translate(${at.x} ${at.z + 0.35})`} className={picked === p.id ? 'garden-plant picked' : 'garden-plant'}>
+            {found === p.id && <circle cx={0} cy={0} r={0.5} fill="none" stroke="#e8c15a" strokeWidth={0.1} opacity={0.9} />}
             <ellipse cx={0} cy={0} rx={0.22} ry={0.09} fill="#000" opacity={0.18} />
             <PlantShape plant={p} season={season} compact={compact} />
           </g>
@@ -149,6 +152,86 @@ export function ItemShape({ item, season }: { item: GardenItemId; season: Season
           <rect x={-0.55} y={-0.42} width={1.1} height={0.62} rx={0.06} fill="#cfe3e6" opacity={0.75} stroke="#8fa7aa" strokeWidth={0.05} />
           <path d={`M-0.6 -0.42 L0 -0.72 L0.6 -0.42 Z`} fill="#dceaec" opacity={0.85} stroke="#8fa7aa" strokeWidth={0.05} />
           <path d="M0 -0.42 L0 0.2" stroke="#8fa7aa" strokeWidth={0.04} />
+        </>
+      )
+    case 'seedlings':
+      return (
+        <>
+          <rect x={-0.55} y={-0.16} width={1.1} height={0.3} rx={0.05} fill="#8a6440" />
+          <rect x={-0.5} y={-0.13} width={1} height={0.12} rx={0.04} fill="#5b4433" />
+          {[-0.34, 0, 0.34].map((x, i) => (
+            <Fragment key={i}>
+              <path d={`M${x} -0.1 L${x} -0.3`} stroke="#6f9a58" strokeWidth={0.05} strokeLinecap="round" />
+              <ellipse cx={x} cy={-0.3} rx={0.11} ry={0.06} fill="#86ab6b" />
+            </Fragment>
+          ))}
+        </>
+      )
+    case 'parasol':
+      return (
+        <>
+          <path d="M0 0.24 L0 -0.3" stroke="#8a7a66" strokeWidth={0.05} strokeLinecap="round" />
+          <path d="M-0.62 -0.28 Q0 -0.74 0.62 -0.28 Z" fill="#e5a06a" />
+          <path d="M-0.2 -0.28 Q0 -0.62 0.2 -0.28 Z" fill="#f0bb8d" opacity={0.8} />
+        </>
+      )
+    case 'leaves':
+      return (
+        <>
+          <ellipse cx={0} cy={0} rx={0.6} ry={0.26} fill="#b9742f" />
+          <ellipse cx={-0.22} cy={-0.07} rx={0.3} ry={0.16} fill="#cf9040" />
+          <ellipse cx={0.24} cy={-0.04} rx={0.26} ry={0.14} fill="#a6632c" />
+        </>
+      )
+    case 'snowman':
+      return (
+        <>
+          <circle cx={0} cy={0} r={0.3} fill="#f2f5fb" />
+          <circle cx={0} cy={-0.3} r={0.22} fill="#f7f9fd" />
+          <circle cx={0} cy={-0.56} r={0.16} fill="#fbfcff" />
+          <path d="M0.04 -0.56 L0.2 -0.52 L0.04 -0.5 Z" fill="#e8963f" />
+          <rect x={-0.17} y={-0.76} width={0.34} height={0.08} rx={0.02} fill="#4a3a2c" />
+        </>
+      )
+    case 'fountain':
+      return (
+        <>
+          <ellipse cx={0} cy={0} rx={0.62} ry={0.36} fill="#9aa0a8" />
+          <ellipse cx={0} cy={-0.02} rx={0.5} ry={0.27} fill={snow ? '#dfe6f2' : '#7fa8c4'} />
+          <rect x={-0.07} y={-0.42} width={0.14} height={0.4} fill="#b4bac2" />
+          <ellipse cx={0} cy={-0.44} rx={0.25} ry={0.1} fill="#b4bac2" />
+        </>
+      )
+    case 'arch':
+      return (
+        <>
+          <path d="M-0.42 0.2 L-0.42 -0.36 Q0 -0.78 0.42 -0.36 L0.42 0.2" fill="none" stroke="#8a6440" strokeWidth={0.09} strokeLinecap="round" />
+          {!snow && [-0.3, 0.05, 0.34].map((x, i) => <circle key={i} cx={x} cy={-0.5 + Math.abs(x) * 0.3} r={0.09} fill="#e07f94" />)}
+        </>
+      )
+    case 'swing':
+      return (
+        <>
+          <path d="M-0.3 0.22 L-0.3 -0.5 L0.34 -0.5" stroke="#6b4a32" strokeWidth={0.08} fill="none" strokeLinecap="round" />
+          {[0.1, 0.46].map((x, i) => <path key={i} d={`M${x} -0.48 L${x} -0.1`} stroke="#9a8a74" strokeWidth={0.03} />)}
+          <rect x={0.04} y={-0.12} width={0.48} height={0.07} rx={0.03} fill="#8a6440" />
+        </>
+      )
+    case 'dovecote':
+      return (
+        <>
+          <rect x={-0.06} y={-0.2} width={0.12} height={0.42} fill="#8a7a66" />
+          <rect x={-0.28} y={-0.5} width={0.56} height={0.32} rx={0.04} fill="#efe9dc" stroke="#c9c0ae" strokeWidth={0.03} />
+          <path d="M-0.36 -0.5 L0 -0.72 L0.36 -0.5 Z" fill="#8a6440" />
+          <circle cx={0} cy={-0.36} r={0.07} fill="#5b4433" />
+        </>
+      )
+    case 'gate':
+      return (
+        <>
+          {[-0.5, 0.5].map((x, i) => <rect key={i} x={x - 0.06} y={-0.38} width={0.12} height={0.6} rx={0.04} fill="#6f4f32" />)}
+          {[-0.28, -0.1, 0.1, 0.28].map((x, i) => <rect key={i} x={x - 0.025} y={-0.3} width={0.05} height={0.5} fill="#8a6440" />)}
+          {[-0.22, 0.02].map((y, i) => <rect key={i} x={-0.44} y={y} width={0.88} height={0.05} rx={0.02} fill="#8a6440" />)}
         </>
       )
   }
