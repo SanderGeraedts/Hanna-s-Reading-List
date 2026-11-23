@@ -328,7 +328,52 @@ checking the live WebGL counts come back; and *Detailed books* off with all four
 
 # Test
 
-(Tester.)
+(Tester, 2026-11-23. The commands and their output are in T-0051's *Test*; the three tasks share
+one branch, one suite and one CI run.)
+
+**The task's own checks:** `pnpm test` 1810 passed / 22 skipped (143 files), `tsc --noEmit`
+clean, `pnpm run build` passes, `harness check` all four green, `colours.test.ts` and
+`styles.test.ts` still pass on both wallpapers. `roomExtras.test.ts`, `RoomExtras.test.tsx` and
+`shelfAndRoom.break.test.ts` repeated five times over four workers: no flakes.
+
+**Measurements re-run independently** (built app on port 3173, no `POCKETBASE_URL`, no
+`.netlify` link, the browser's clock pinned):
+
+| 390 × 844, at rest | all four on | all four off | Budget | Result |
+|---|---|---|---|---|
+| Draws/frame, 150 books, 13:00 | 90 | 90 | at most +10 | **+0** ✓ |
+| Draws/frame, 150 books, 21:00 | 90 | 90 | at most +10 | **+0** ✓ |
+| Draws/frame, 400 books, 13:00 | 84 | 84 | at most +10 | **+0** ✓ |
+| Geometry MB | 0.798 | 0.798 | at most +0.5 MB | **+0.000** ✓ |
+| Picture MB | 22.59 | 22.59 | within 5 % | **0 %** ✓ |
+| Extra lights on a phone, day and night | 0 | 0 | 0 | ✓ |
+| Behind the Dashboard / contexts lost | 0 / 0 | 0 / 0 | 0 | ✓ |
+| *Detailed books* off, 150, 21:00 | 89 | 89 | — | ✓ |
+
+1280 × 800 (recorded): 941 on against 926 off at 150 books, 2,209 against 2,199 at 400 — **+15
+and +10 draw calls a frame**, +0.042 MB of geometry, picture bytes identical, day and night
+alike. The developer's numbers to the decimal, every budget met, nothing dropped.
+
+**Tried to break it:**
+
+| What | Result |
+|---|---|
+| Each of the four toggled **ten times** at 1280 with 150 books, at 21:00 | The live WebGL buffer/texture counts come back to **one** value per extra every time it is on again (1,311–1,323 buffers / 162 textures, the small spread being which other extras were on in that round); **no leak, no lost context**. After the forty toggles the shelf is the same picture as before them: **0.07 %** of pixels differ ✓ |
+| All four on at once, phone and computer, day and night | Drawn, no page errors, and on a phone it costs nothing at all because the camera frames the case and they fall outside it ✓ |
+| The turn-over, hour by hour across a whole day | Night starts at 19:00 and ends at 07:00 and nowhere else: 18:59 is 4.8 % from midday (fairy-light twinkle), 19:01 is 86.4 %, and 07:01 is back to 3.2 % ✓ |
+| Across midnight, minute by minute | 23:59 and 00:01 differ by **2.5 %** (twinkle only) and both are night; 23:58, 00:00, 00:01 and 02:30 all night ✓ |
+| The plant with 0 books finished this year | A sprout, never an empty pot, even with 200 unread books on the shelf ✓ |
+| The plant on 31 December against 1 January | Flowering at 23:59 on 31 December, a sprout at 00:00 on 1 January: it is **this** year's reading ✓ |
+| Each of the five plant steps, and 1, 4, 5, 14, 15, 29, 30 and 300 finishes | Each lands on the right step ✓ |
+| Each season, by loading in January, April, July, October and December | Each differs from the one before it (6.6–11.9 % of pixels), so each really shows something; every one of the twelve months falls in exactly one band, and the first and last day of each month agree ✓ |
+| *Detailed books* off with all four extras on | The shelf draws as blocks, the extras are still there, no note, no errors ✓ |
+| A room saved before the extras, and `null` / `"no"` / `1` / `0` / `"false"` / unreadable JSON | All load with the four on and the room's own choices kept; only a real `false` turns one off ✓ |
+| A saved room that names an extra as a decoration | Dropped, so no decoration loses its shelf and `shownDecor` is untouched ✓ |
+
+**Verdict: passed.** What remains for Hanna: the architect's three questions (the hour the room
+dims, the four seasonal bands instead of her three months, and whether all four should start on),
+and the UX review's note that the chair is plainer than the koala and the cat — a small follow-up
+on its shapes if she says so.
 
 # Log
 
@@ -414,3 +459,19 @@ checking the live WebGL counts come back; and *Detailed books* off with all four
   cannot stand beside the case as I wrote. One roughness let through with a note for Hanna: the
   chair is plainer than the koala and the cat, and its shapes are a small follow-up if she says
   so. Handed to the **tester**.
+- 2026-11-23 tester: passed. Ran the task's checks (`pnpm test` 1810 passed / 22 skipped,
+  `tsc --noEmit` clean, `pnpm run build`, `harness check`, `colours.test.ts` and `styles.test.ts`
+  still green, the new tests repeated five times with no flakes) and re-ran the measurements: on
+  a phone the four extras cost **+0 draw calls, +0 MB of geometry and 0 % of picture bytes**, day
+  and night, at 150 and 400 books, with no extra light — every budget met with nothing dropped;
+  on a computer they cost +15 draws a frame and +0.042 MB, recorded.
+  Broke nothing with: toggling each extra ten times (the live WebGL counts come back and the shelf
+  is the same picture, 0.07 % differ, no lost context), the turn-over hour by hour (19:00 and
+  07:00 and nowhere else) and minute by minute across midnight (stays night), the plant with
+  nothing finished this year (a sprout) and across a new year (flowering on 31 December, a sprout
+  on 1 January), all five plant steps, all four seasons and all twelve months, *Detailed books*
+  off with everything on, and every shape of saved room including one that names an extra as a
+  decoration.
+  Remaining: Hanna answers the three questions above (the hour the room dims, the four seasonal
+  bands instead of her three months, whether all four start on) and says whether the chair's
+  shapes need a follow-up.

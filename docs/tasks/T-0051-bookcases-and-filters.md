@@ -349,7 +349,52 @@ only audiobooks under Digital.
 
 # Test
 
-(Tester.)
+(Tester, 2026-11-23. CI's run is on the pull request; the commands below were run again here
+from a clean install on the branch.)
+
+**The checks, as written in *Done when*:**
+
+```
+pnpm install --frozen-lockfile   → already in step
+pnpm test                        → Test Files 141 passed | 2 skipped (143)
+                                   Tests 1810 passed | 22 skipped (1832)
+pnpm exec tsc --noEmit           → (no output)
+pnpm run build                   → ✓ built in 926ms
+pnpm exec harness check          → ✓ tasks: 51 tasks, index in step
+                                   ✓ decisions: 48 records, index complete, 3 overrules valid
+                                   ✓ engineers: 2 listed
+                                   ✓ generated files: current
+```
+
+New tests repeated (`--repeat-each=5`, four workers): `shelfFilter.test.ts`,
+`ShelfBar.test.tsx` and `shelfAndRoom.break.test.ts` pass every run, no flakes.
+
+**Sent back once, and fixed.** On a shelf where **no** book has a genre, the Genre filter still
+appeared, with "All genres" and "No genre (3)" as its only two options — a filter that narrows
+nothing, against D-0043 §4 ("only when the whole shelf has something to offer for it"). The
+developer fixed it (the filter exists only when a **real** genre is on the shelf; Language
+already behaved that way) and added the test for the shelf where every book is missing the
+field. A line is in `docs/lessons.md`.
+
+**Tried to break it** (built app on port 3173, no backend, G-0019; the browser script is in the
+session's scratchpad):
+
+| What | Result |
+|---|---|
+| Every bookcase on a 150-book shelf | All: `150 books · 15 reading · 15 paused · 60 want to read · 45 read · 15 did not finish`; Read: `45 of 150 books · Read`; To read: `60 of 150 books · To read`; Digital: `100 of 150 books · Digital`. The sums are right (45 read, 60 want, and 100 of 150 have a digital format) ✓ |
+| Every filter the shelf offers set at once, then Clear | `10 of 150 books · Fantasy · ★3 and up · 2026 · English`; **Clear** puts the line back to the full status line, disappears, and focus lands on the chosen bookcase button ✓ |
+| Three empty bookcases | A shelf of only reading and paused books gives an empty Read, To read and Digital without throwing, and the summary still names the bookcase ✓ |
+| A shelf of only audiobooks, 40 books | Digital shows `40 of 40 books · Digital`; only the **Year read** filter is offered — no Genre, no Language, no Spice, no Trope, because that shelf has none of them ✓ |
+| A completely empty shelf | No bar (the empty-shelf line stands instead), no filter options, nothing throws ✓ |
+| A filter value she edits off the shelf | Counts as "any" on the next render and every book shows again; the app clears nothing itself ✓ |
+| Dragging a filtered shelf | `reorderShown` still puts the hidden books back in their own places, with two filters set as well as one ✓ (unit test) |
+| The shelf cannot be drawn (`--disable-webgl --disable-3d-apis`) | The note shows with its words unchanged and both buttons (*Try again*, *Show simple books*), and **the bar is still there with its four bookcases**, so she can still change what the shelf would show ✓ |
+| The bar against the shelf | At 360 × 800 and 390 × 844 with 150 books the whole top shelf and the crown are below the filter row; at 1280 the case is framed under the bar; zoomed in on a computer the top row stays clear too ✓ |
+| Page errors | None in any run ✓ |
+
+**Verdict: passed.** One thing remains for Hanna: that the four bookcases and the six filters are
+what she expected, and the architect's three questions (genre moved out of the header, which
+statuses belong where, and whether it should remember).
 
 # Log
 
@@ -410,3 +455,16 @@ only audiobooks under Digital.
   over the dark wood (accepted, it is the smaller fix), and switching bookcase keeps the shelf's
   scroll height instead of going back to the top — which is what the genre filter has always
   done, so I corrected my design rather than the build. Handed to the **tester**.
+- 2026-11-23 tester: sent back once and then passed. Sent back: the Genre filter appeared on a
+  shelf where no book has a genre, with "No genre" as its only real option, against D-0043 §4;
+  the developer fixed it and added the test, and a line is in `docs/lessons.md`. Passed after
+  that: `pnpm test` 1810 passed / 22 skipped (143 files), `tsc --noEmit` clean, `pnpm run build`
+  and `pnpm exec harness check` green, the new tests repeated five times with no flakes.
+  Broke nothing with: every bookcase on a 150-book shelf, every offered filter set at once and
+  Clear, three empty bookcases, a shelf of only audiobooks, an empty shelf, a filter value edited
+  off the shelf, dragging a filtered shelf, and WebGL turned off (the note shows and the bar with
+  its four bookcases is still there). The bar leaves the whole top shelf visible at 360, 390 and
+  1280 and zoomed in. Measurements unchanged by this task.
+  Remaining: Hanna confirms on her own phone that the four bookcases and the filters are what she
+  expected, and answers the three questions above (genre moved out of the top bar, which statuses
+  belong where, and whether it should remember).

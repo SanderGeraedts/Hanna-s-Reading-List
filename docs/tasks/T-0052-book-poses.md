@@ -347,7 +347,53 @@ they are the only way to get it.
 
 # Test
 
-(Tester.)
+(Tester, 2026-11-23. The commands and their output are in T-0051's *Test*; the three tasks share
+one branch, one suite and one CI run.)
+
+**The task's own checks:** `pnpm test` 1810 passed / 22 skipped (143 files), `tsc --noEmit`
+clean, `pnpm run build` passes, `harness check` all four green. The new pose tests
+(`pose.test.ts`, `shelfLayout.poses.test.ts`, `BookMesh.poses.test.ts`,
+`BookPanel.pose.test.tsx`) repeated five times over four workers: no flakes.
+
+**Measurements re-run independently** (`pnpm run measure:shelf`, built app on port 3173, no
+`POCKETBASE_URL`, no `.netlify` link, 390 × 844 DPR 3 / 1280 × 800, 150 and 400 demo books, every
+tenth book posed, 3 s at rest):
+
+| At rest, Detailed on | no poses | 10 % flat | 10 % face-out | Budget | Result |
+|---|---|---|---|---|---|
+| 390, 150 books, draws/frame | 90 | 74 | 71 | flat ≤ none + 5 %; face-out ≤ +1 draw/book in view | ✓ both lower |
+| 390, 400 books, draws/frame | 84 | 67 | 69 | | ✓ |
+| 390, 150, picture MB | 22.59 | 18.69 | 18.66 | within 5 % of T-0034's 23.20 | −2.6 % ✓ |
+| 390, 150, geometry MB | 0.798 | 0.717 | 0.694 | ≤ 2 MB | ✓ |
+| 1280, 150, draws/frame | 926 | 949 | 979 | | +1 draw per face-out book over the two passes ✓ |
+| 1280, 150, picture MB | 123.66 | 123.66 | 160.91 | reported per book | **+2.48 MB per face-out book** |
+| Behind the Dashboard / contexts lost | 0 / 0 | 0 / 0 | 0 / 0 | 0 | ✓ |
+
+I get the developer's numbers to the decimal. I accept the one deviation he flags: the phone's
+no-poses figure is 90 against T-0034's 95, 5.3 % **lower** rather than within 5 %, because
+T-0051's bar leaves two or three fewer books in view. The budget exists to stop the shelf getting
+heavier, and it did not.
+
+**Tried to break it:**
+
+| What | Result |
+|---|---|
+| 400 books with a third posed, on cases 0.5 / 0.75 / 1.6 / 4 m wide | All 400 placed, none past the inner width, none through the shelf above ✓ |
+| A flat run at the very end of a shelf (five different fillings, up to a shelf full of 700-page books) | A stack is never split across two shelves ✓ |
+| A flat run across a series divider | The book a divider introduces starts its own item, so it never joins the stack before it ✓ |
+| Face-out and flat on a case narrower than any cover (0.12 m) | Every book is drawn **standing**, and each book keeps the pose she chose ✓ |
+| The same flat book on a 0.2 m case and on a 1.6 m case | Standing, then flat: the pose comes back by itself on the wider case ✓ |
+| A case just wide enough for a cover, with and without a decoration | With no decoration the pose fits, with one it falls back to standing: the decoration's room is counted ✓ |
+| A shelf of only flat books, and one of only face-out books (30 each) | Laid out, no two books overlap unless they are stacked ✓ |
+| Posing and un-posing | Standing writes **no field at all**, whatever the book had before; the saved JSON has no `pose` key ✓ |
+| A face-out book out and back, 1280 | The panel opens on Reading, Looks shows **Face-out** pressed, Esc puts it back and it lands **in its pose**. With the pointer parked in the same place before and after, the shelf differs **0.46 %**, all of it on the top shelf where the cover is now loaded. (Without parking the pointer it is 5 %, which is the computer's mouse parallax resting somewhere else — the same effect T-0034 measured at 1.2 %, and nothing to do with the pose.) ✓ |
+| *Detailed books* off with a third of the shelf posed, 390 | The shelf draws as blocks, no note, no page errors ✓ |
+| A shelf with no poses at all | Every book has the place, height and depth it had before poses existed (unit test), and the picture is the same as the plain shelf to within 0.60 % ✓ |
+
+**Verdict: passed.** Two things remain for Hanna, both named by the UX review: a **real** cover
+picture face-out (every demo book shows the painted fallback, because the shots run with no
+network), and the architect's three questions (flat lying spine-out, how much room a face-out
+book takes on her phone, and whether a pose that does not fit should say so).
 
 # Log
 
@@ -437,3 +483,16 @@ they are the only way to get it.
   passed to the tester: the flight out and back of a posed book, and a real cover picture
   face-out (the demo shelf has none, so every shot shows the painted fallback). Handed to the
   **tester**.
+- 2026-11-23 tester: passed. Ran the task's checks (`pnpm test` 1810 passed / 22 skipped,
+  `tsc --noEmit` clean, `pnpm run build`, `harness check`, the new pose tests repeated five times
+  with no flakes) and re-ran the measurements independently: the developer's numbers to the
+  decimal, every budget met, with his one deviation accepted (the phone's no-poses figure is
+  5.3 % **lower** than T-0034's, not higher, because T-0051's bar leaves fewer books in view).
+  Broke nothing with: 400 books a third posed on four case widths, a flat run at the very end of
+  a shelf, a flat run across a series divider, poses on a case narrower than any cover (all drawn
+  standing, every chosen pose kept), a shelf of only flat and one of only face-out books, a
+  face-out book taken out and put back (0.46 % of pixels differ with the pointer parked; the 5 %
+  without it is the computer's mouse parallax, as in T-0034), and *Detailed books* off with a
+  third of the shelf posed.
+  Remaining: Hanna confirms a face-out book with a **real** cover picture on her own shelf (every
+  demo book shows the painted fallback), and answers the three questions above.

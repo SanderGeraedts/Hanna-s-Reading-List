@@ -112,7 +112,9 @@ const stars = (n: number) => (Number.isInteger(n) ? `★${n}` : `★${Math.floor
  * the chosen bookcase, so picking one never makes a chosen filter vanish.
  */
 export function filterOptions(books: Book[]): FilterOptions {
-  const genres = genreOptions(books)
+  // a shelf where no book has a genre offers only "No genre", which narrows nothing: no filter
+  const allGenres = genreOptions(books)
+  const genres = allGenres.some((g) => g.value !== NO_GENRE) ? allGenres : []
   const genre = genres.length ? [{ value: '', label: 'All genres' }, ...genres.map((g) => ({ value: g.value, label: `${g.label} (${g.count})` }))] : []
 
   const anyRating = books.some((b) => typeof b.rating === 'number' && b.rating > 0)
