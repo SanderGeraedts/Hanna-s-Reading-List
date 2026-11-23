@@ -28,9 +28,9 @@ ok   a tap 15 px off the Netherlands (on the sea) opens its card (west of a 3.5 
 ok   tapping a cover in the card opens that book’s panel (Pride and Prejudice)
 ok   land covers at least 44 px wide (48)
 ok   tapping a land cover opens its book (Harry Potter and the Prisoner of Azkaban)
-ok   zoom one: a one-finger swipe over the map scrolls the page ({"win":0,"dash":9902} → {"win":0,"dash":10097})
+ok   zoom one: a one-finger swipe over the map scrolls the page ({"win":0,"dash":10932} → {"win":0,"dash":11126})
 ok   the swipe opened no card
-ok   zoom one: a plain wheel over the map scrolls the page, no zoom ({"win":0,"dash":9902} → {"win":0,"dash":10142})
+ok   zoom one: a plain wheel over the map scrolls the page, no zoom ({"win":0,"dash":10932} → {"win":0,"dash":11172})
 ok   one press doubles the zoom, three reach the maximum (+ disabled) (360 → 180 → 45)
 ok   borders and gold outlines as thin at 8× as at zoom one ({"border":"0.3px","bve":"non-scaling-stroke","outline":"1.25px","ove":"non-scaling-stroke"})
 ok   no digit in the block zoomed in
