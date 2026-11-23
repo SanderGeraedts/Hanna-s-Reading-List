@@ -53,8 +53,10 @@ export interface DenSetup {
 
 /** A tap reaction: a new `n` starts it again. */
 export interface Reaction {
-  kind: 'feed' | 'levelup'
+  kind: 'feed' | 'levelup' | 'trick' | 'pet'
   n: number
+  /** which trick when `kind === 'trick'` */
+  trick?: string
 }
 
 interface Props {

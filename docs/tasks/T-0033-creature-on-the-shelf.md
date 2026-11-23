@@ -2,7 +2,7 @@
 id: T-0033
 title: "Let her favourite creature live on the 3D bookshelf: idle life, sleeping at night and reacting to her reading"
 description: "CR4b of the book creatures (D-0033): one creature of her choice in a fixed spot on the 3D shelf that sits, yawns, stretches, sleeps on a pile of books at night, looks at her when tapped, cheers when she finishes a book, sits by the book she's reading and holds a tiny sign on streak days; light on the phone, paused when another page is over the shelf."
-status: Open
+status: Doing
 size: full
 depends_on: [T-0032]
 decisions: [D-0002, D-0011, D-0013, D-0020, D-0022, D-0032, D-0033, D-0034]
@@ -66,7 +66,36 @@ the reading book, streak sign) and the Put/Take off the shelf button are in §8 
 covers keyboard and screen-reader; §12 lists the 6 T-0033 screenshots; §13 adds the extra
 visible promise for the tester.
 
+# Build notes
+
+- **Choice** `src/lib/creatures/shelfPet.ts` + tests: `shelfPetId(log, living, firstPet)` reads
+  the newest `shelf` setting event; empty value = take off → null; a released shelf pet falls
+  back to her first remaining pet (Done when 1 / D-0033 §9). `finishedToday` and `shouldCheer`
+  drive the once-a-day cheer (keyed in localStorage by `hrl:shelf-cheer:<day>`).
+- **Layout** `shelf-pet` added to `DecorKind` and FIRST in `DECOR` (width 0.17) so the pet's
+  reserved footprint always sits at the right-end of the top row (§8a, §13). `DEFAULT_ROOM`
+  excludes it (Make-the-room-yours ignores it). `computeLayout`'s default also excludes it.
+  New test verifies: top row, right half, never overlaps a top-row book for empty / mid / full.
+- **BookshelfScene** takes a `shelfPet` prop; when set, it prepends `'shelf-pet'` to
+  `decorKinds` and wraps `<Decorations>` in `ShelfPetContext.Provider`. SafeBookshelf fallback
+  shows nothing (§8a).
+- **Component** `src/components/creatures/ShelfPet.tsx`: own breath/blink, cheer hop + arms up,
+  night (eyes almost shut + lie-down), book pile under it at night, streak sign at the paw.
+  Phone (via StillDecorations ctx): single-box pile, no yawn/stretch, no sparkles twinkle.
+- **Threading** `src/components/creatures/useShelfPet.ts` composes the one ShelfPetShows from
+  derived creatures + books; wired in `src/routes/index.tsx` and passed to SafeBookshelf.
+- **PetsCard** gets "Put on the shelf ✨" / "Take off the shelf" buttons + chip; records
+  `{ kind: 'shelf', key: 'shelf', pet }`. `useCreatureChoices.record` accepts `'shelf'`.
+- **Words** `shelfOnSay`/`shelfOffSay`, species-verb `petSay` (purrs/chirps/rumbles/hoots/…).
+
 # Test
+
+- `pnpm test --run`: 1582 passed. New tests: `shelfPet.test.ts` (newest wins, take off, release
+  fallback, finish-today only once), `shelfLayout.test.ts` ("the shelf-pet's spot" group — top
+  row right end, never overlaps a top-row book across empty / mid-full / nearly-full shelves).
+- `pnpm exec tsc --noEmit`: clean; `pnpm run build`: ok; `pnpm exec harness check`: green.
+- Screenshots: `docs/tasks/T-0033-screens/` 6 shots (1280 lavender grown, cheer, sits-by-reading,
+  night sleep; 390 phone lavender and phone midnight streak).
 
 # Log
 
@@ -75,3 +104,6 @@ visible promise for the tester.
 - 2026-11-23 ux-designer: combined with T-0032 for one PR (`creatures-alive-and-shelf`); the
   full design (both tasks) lives in T-0032's *Design*. Over to the developer: build both on
   that branch; one commit is fine if the diff stays readable, otherwise T-0032 then T-0033.
+- 2026-11-23 developer: built the shelf pet (fixed top-right spot, idle life, cheer, streak
+  sign, night book-pile), the Put/Take off buttons, the `shelf` log kind, in one branch
+  `creatures-alive-and-shelf` with T-0032. tests 1582 pass, tsc + build + harness check green.

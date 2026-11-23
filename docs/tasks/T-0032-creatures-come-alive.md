@@ -2,7 +2,7 @@
 id: T-0032
 title: "Bring the creatures to life on their page: roaming, playing, petting, feeding by drag, tricks, moods and a share picture"
 description: "CR4a of the book creatures (D-0033): in the den the creatures roam, sleep, sit on cushions and play with toys and each other on the computer (mostly still poses on the phone); tap to pet, drag a cookie to feed, tricks unlocked by level with a Trick! button, moods (happy after a long session, sleepy late at night, missing you); a share picture of a creature card or the album."
-status: Open
+status: Doing
 size: full
 depends_on: [T-0031]
 decisions: [D-0013, D-0014, D-0020, D-0022, D-0033, D-0034]
@@ -522,7 +522,31 @@ review crisp:
   mid-full and a full shelf (covered by a `shelfLayout` test with the new `'shelf-pet'`
   decoration listed first).
 
+# Build notes
+
+- **State machine** `src/lib/creatures/denRoam.ts` + tests: deterministic per `(petId, session)`,
+  with phone/reduce collapsing to `rest`, missing-you limited to rest/cushion, sleepy current pet
+  at night → sleep, happy mood → longer cushion, toy-free and pair-free weights, walkable rectangle.
+- **Tricks** `src/lib/creatures/tricks.ts` + tests: wave at 3, spin at 6, somersault at 10, one
+  per owned toy, bow at grown-up; `newestTrick` is what the Trick! button plays.
+- **Happy mood** extended `moodOf(days, hatchDay, now, minutesToday)` in `creature.ts`; added
+  `HAPPY_MINUTES`, `minutesReadToday` and threaded through `deriveCreatures`.
+- **Share pictures** `src/lib/creatures/shareSpec.ts` + tests build `ShareSpec` for the card
+  (1-tile poster, aspect 1.4) and the album (5 cols desktop / 3 phone, 20 tiles). Both reuse
+  `renderShareImage`/`shareChallenge` unchanged.
+- **UI** `CreatureCard` now carries `Trick!` and `Share` buttons; Album has
+  **Share the album**. Buttons sit in Feed/Trick!/Share tab order on the card.
+- **Reaction type** extended to `trick` and `pet` kinds (DenScene.tsx).
+
 # Test
+
+- `pnpm test --run`: 1582 passed, 0 failed, 22 skipped — includes the new tricks, roam,
+  shareSpec and shelfPet tests.
+- `pnpm exec tsc --noEmit`: clean.
+- `pnpm run build`: ok (dist built, Netlify SSR entry written).
+- `pnpm exec harness check`: tasks, decisions, engineers, generated files — all green.
+- Screenshots: `docs/tasks/T-0032-screens/` 8 shots (1280 roam/moods/pair/trick/drag, 390 phone
+  and share, and the share picture).
 
 # Log
 
@@ -533,3 +557,6 @@ review crisp:
   `creatures-alive-and-shelf`, batch into one commit if the diff stays readable; otherwise
   commit T-0032 first and T-0033 second. Screenshots: 8 for T-0032, 6 for T-0033 (list in
   Design §12).
+- 2026-11-23 developer: built the roam state machine, tricks, happy mood, share pictures and
+  the Trick!/Share/shelf buttons on one branch `creatures-alive-and-shelf`. tests 1582 pass,
+  tsc clean, build ok, harness check green.

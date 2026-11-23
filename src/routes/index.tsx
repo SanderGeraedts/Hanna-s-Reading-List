@@ -32,6 +32,7 @@ import { ChallengesPage } from '#/components/ChallengesPage'
 import { CalendarPage } from '#/components/CalendarPage'
 import { CreaturesPage } from '#/components/CreaturesPage'
 import { CreaturesProvider, useCreaturesValue } from '#/components/creatures/CreaturesContext'
+import { useShelfPet } from '#/components/creatures/useShelfPet'
 import { isCategory, ownedDecor } from '#/lib/creatures/shop'
 import type { ShopCategory } from '#/lib/creatures/shop'
 import type { ChallengeSection } from '#/components/ChallengesPage'
@@ -260,6 +261,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   const creatures = useCreaturesValue(account?.id ?? null)
   // decorations she bought in the creature shop join the room on every device (T-0031 §11)
   const owned = useMemo(() => ownedDecor(creatures.choices.log), [creatures.choices.log])
+  // the favourite creature on the shelf (T-0033): computed from books + log for its reactions
+  const shelfPet = useShelfPet(books, creatures)
   // her room: wood, wallpaper and decorations (Make the room yours), on this device
   const [room, setRoom] = useRoom(owned)
   const [roomOpen, setRoomOpen] = useState(false)
@@ -515,6 +518,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             onRoom={setRoom}
             onPan={setPan}
             panControl={panControl}
+            shelfPet={shelfPet}
           />
         </ClientOnly>
         {!offShelf && !selected && books.length > 0 && <ShelfPanButtons pan={pan} onStep={panStep} />}

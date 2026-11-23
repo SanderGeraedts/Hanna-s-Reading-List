@@ -33,7 +33,8 @@ import type { PanDirection, PanEdges } from '#/lib/shelfPan'
 import { arrangementSeparators } from '#/lib/separators'
 import type { ShelfLayout } from '#/lib/shelfLayout'
 import { BookMesh, CLIP_OUT, RAINBOW, ShelfRidges, hasClip } from './BookMesh'
-import { Decorations, FairyLights, StillDecorations } from './Decorations'
+import { Decorations, FairyLights, ShelfPetContext, StillDecorations } from './Decorations'
+import type { ShelfPetShows } from './creatures/ShelfPet'
 import { BookNooks } from './BookNook'
 import { SeriesDividers } from './SeriesDivider'
 import { sleepReadIds } from '#/lib/sleepSeries'
@@ -61,6 +62,8 @@ export interface BookshelfSceneProps {
   topInset?: number
   /** her room: the wood, the wallpaper and the decorations (Make the room yours) */
   room?: RoomChoice
+  /** the favourite creature on the shelf (T-0033), or null when none is picked */
+  shelfPet?: ShelfPetShows | null
   /** another page lies over the shelf: stop drawing it until it's shown again */
   paused?: boolean
   /** the browser dropped the 3D drawing (WebGL context lost), e.g. when a phone runs out of memory */
@@ -192,6 +195,7 @@ function Scene({
   paused = false,
   onPan,
   panControl,
+  shelfPet = null,
   lite = false,
 }: BookshelfSceneProps & { lite?: boolean }) {
   const [hovered, setHoveredState] = useState<string | null>(null)
@@ -261,7 +265,7 @@ function Scene({
   const room = roomChoice ?? DEFAULT_ROOM
   // the decorations only (not the wood or Detailed books), so switching those moves nothing
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const decorKinds = useMemo(() => shownDecor(room), [room.decor])
+  const decorKinds = useMemo(() => (shelfPet ? (['shelf-pet' as const, ...shownDecor(room)]) : shownDecor(room)), [room.decor, shelfPet])
   const layout = useMemo(() => computeLayout(ordered, fit, separators, decorKinds), [ordered, fit, separators, decorKinds])
   // Detailed books (D-0035): hardcovers, or the simple blocks, on any device
   const detailed = room.detailedBooks
@@ -647,7 +651,9 @@ function Scene({
       <Room wallpaper={room.wallpaper} />
       <Bookcase layout={caseLayout} wood={room.wood} />
       <StillDecorations.Provider value={lite}>
-        <Decorations items={layout.decor} />
+        <ShelfPetContext.Provider value={shelfPet}>
+          <Decorations items={layout.decor} />
+        </ShelfPetContext.Provider>
       <StillDecorations.Provider value={lite}>
         <BookNooks items={layout.nooks} />
       </StillDecorations.Provider>
@@ -843,6 +849,9 @@ function useCameraRig(
 
   return { base, placement }
 }
+
+// ensure re-export for consumers (BookshelfScene.tsx)
+export type { ShelfPetShows } from './creatures/ShelfPet'
 
 /**
  * A cosy reading-room light: warm and soft, with gentle shadows, and a

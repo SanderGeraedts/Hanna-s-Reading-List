@@ -37,6 +37,10 @@ import { DenStrip, DressStrip, ShopCard, ViewSwitch } from './creatures/Shop'
 import type { ShopActions } from './creatures/Shop'
 import { decorShownSay } from './creatures/CreaturesContext'
 import { shopItem } from '#/lib/creatures/shop'
+import { newestTrick } from '#/lib/creatures/tricks'
+import type { Trick } from '#/lib/creatures/tricks'
+import { petCardShare } from '#/lib/creatures/shareSpec'
+import { shareChallenge } from '#/lib/shareImage'
 import type { DenSlot, OutfitSlot, RoomDecorId, ShopCategory } from '#/lib/creatures/shop'
 import { denShopDescription } from '#/lib/creatures/words'
 import { weatherAt } from '#/lib/creatures/weather'
@@ -499,6 +503,21 @@ export function CreaturesPage({ books, startChoose, onChooseOpened, startStep, o
                 balance={c.balance}
                 canRelease={c.pets.length > 1}
                 nameRef={nameHeading}
+                trick={newestTrick(pet, c.shop)}
+                onTrick={() => {
+                  const t = newestTrick(pet, c.shop)
+                  if (!t) return
+                  setReaction((prev) => ({ kind: 'trick', n: (prev?.n ?? 0) + 1, trick: t.id }))
+                  say(`${pet.name} does a ${t.label.toLowerCase()}!`)
+                }}
+                onShare={async () => {
+                  try {
+                    await shareChallenge(petCardShare(pet))
+                    say(`Picture of ${pet.name} ready.`)
+                  } catch {
+                    say(`Could not make the picture.`)
+                  }
+                }}
                 onDressUp={() => openShop('outfits', pet.id)}
                 onRename={(name) => {
                   api.choices.rename(pet.id, name)
@@ -521,7 +540,18 @@ export function CreaturesPage({ books, startChoose, onChooseOpened, startStep, o
                 }}
               />
             )}
-            {home && c.pets.length >= 2 && <PetsCard pets={c.pets} current={pet?.id ?? null} onPick={pick} />}
+            {home && c.pets.length >= 2 && (
+              <PetsCard
+                pets={c.pets}
+                current={pet?.id ?? null}
+                shelfPetId={c.shelfPetId ?? null}
+                onPick={pick}
+                onShelf={(target) => {
+                  api.choices.record({ kind: 'shelf', key: 'shelf', pet: target?.id ?? '' })
+                  say(target ? `${target.name} is on the shelf.` : `Off the shelf.`)
+                }}
+              />
+            )}
             <WeekCard c={c} phone={phone} />
           </div>
         </div>
@@ -700,6 +730,9 @@ function CreatureCard({
   balance,
   canRelease,
   nameRef,
+  trick,
+  onTrick,
+  onShare,
   onRename,
   onFeed,
   onRelease,
@@ -712,6 +745,10 @@ function CreatureCard({
   /** false for her last pet: Release… is shown but disabled (D-0033 §9) */
   canRelease: boolean
   nameRef: React.RefObject<HTMLHeadingElement | null>
+  /** the newest unlocked trick, or null (T-0032 §5b) */
+  trick: Trick | null
+  onTrick: () => void
+  onShare: () => void
   onRename: (name: string) => void
   onFeed: () => void
   /** a confirmed release (held for a shiny); answers whether it was done */
@@ -830,6 +867,14 @@ function CreatureCard({
           <div className="food-bowl">
             <CookiePill n={balance} />
             <FeedButton name={pet.name} balance={balance} onFeed={onFeed} />
+            {trick && (
+              <button type="button" className="btn small trick-btn" aria-label={`Trick: ${trick.label}`} onClick={onTrick}>
+                Trick! ✨
+              </button>
+            )}
+            <button type="button" className="btn small share-btn" aria-label={`Share a picture of ${pet.name}`} onClick={onShare}>
+              Share ✨
+            </button>
           </div>
           <div className="release-row">
             <button

@@ -35,11 +35,35 @@ export function nextLine(pet: Pick<Pet, 'level' | 'into' | 'need'>): string {
 export const growthText = (pet: Pick<Pet, 'level' | 'into' | 'need'>) => `${pet.into} of ${pet.need} to level ${pet.level + 1}`
 
 export function moodLine(name: string, mood: Mood | null): string | null {
+  if (mood === 'happy') return `☀️ Happy from today's reading`
   if (mood === 'missing') return `💤 ${name} misses you`
   if (mood === 'sleepy') return `🌙 ${name} is sleepy`
   if (mood === 'back') return `💛 ${name} is so happy you're back!`
   return null
 }
+
+/** The tap-to-pet species verb (T-0032 Design §6a): "Biscuit purrs." etc. */
+const SPECIES_VERB: Partial<Record<SpeciesId, string>> = {
+  cat: 'purrs',
+  'red-fox': 'yips',
+  'adelie-penguin': 'chirps',
+  'emperor-penguin': 'chirps',
+  'african-penguin': 'chirps',
+  'book-dragon': 'rumbles',
+  'library-owl': 'hoots',
+  koala: 'snuggles',
+  otter: 'squeaks',
+}
+export function petSay(name: string, species: SpeciesId): string {
+  const verb = SPECIES_VERB[species] ?? 'wiggles'
+  return `${name} ${verb}.`
+}
+
+/** Live-region line for the shelf pet reacting to her finishing a book (T-0033 §8d). */
+export const shelfCheerSay = (name: string) => `${name} cheers for a book finished!`
+/** Put on / take off the shelf (T-0033 §8b). */
+export const shelfOnSay = (name: string) => `${name} is on the shelf.`
+export const shelfOffSay = (name: string) => `${name} is off the shelf.`
 
 const STAGE_DESCRIPTION: Record<Stage, string> = { baby: 'a baby', young: 'young', grown: 'all grown up' }
 

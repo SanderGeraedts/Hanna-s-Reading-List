@@ -6,6 +6,11 @@ import { SHELF } from '#/lib/shelfLayout'
 import { toTexture } from './textures'
 import { buildRoomDecor } from './creatures/shopModels'
 import type { RoomDecorId } from '#/lib/creatures/shop'
+import { ShelfPet } from './creatures/ShelfPet'
+import type { ShelfPetShows } from './creatures/ShelfPet'
+
+/** What creature (if any) is on the shelf right now; read by the shelf-pet slot. */
+export const ShelfPetContext = createContext<ShelfPetShows | null>(null)
 
 /** On a phone the decorations sit still (no flicker, steam, breathing or twinkling): less work every frame. */
 export const StillDecorations = createContext(false)
@@ -28,6 +33,7 @@ const FRONT_Z = SHELF.depth / 2 - 0.11
 const BACK_Z = -SHELF.depth / 2 + 0.045
 
 const PLACEMENT: Record<DecorKind, { z: number; rotY: number }> = {
+  'shelf-pet': { z: FRONT_Z, rotY: -0.25 },
   koala: { z: FRONT_Z, rotY: -0.25 },
   succulent: { z: FRONT_Z - 0.02, rotY: 0.4 },
   frame: { z: BACK_Z, rotY: -0.08 },
@@ -57,6 +63,7 @@ function Placed({ slot }: { slot: DecorSlot }) {
   })
   return (
     <group ref={group} position={[slot.x, slot.floorY, z]} rotation={[0, rotY, 0]}>
+      {slot.kind === 'shelf-pet' && <ShelfPetSlot />}
       {slot.kind === 'koala' && <Koala />}
       {slot.kind === 'succulent' && <Succulent />}
       {slot.kind === 'frame' && <PictureFrame />}
@@ -74,6 +81,14 @@ function Placed({ slot }: { slot: DecorSlot }) {
 function ShopDecor({ id }: { id: RoomDecorId }) {
   const g = useMemo(() => buildRoomDecor(id), [id])
   return <primitive object={g} />
+}
+
+/** The favourite creature on the top shelf (T-0033 §8). Driven by the shelf-pet context. */
+function ShelfPetSlot() {
+  const shows = useContext(ShelfPetContext)
+  const still = useContext(StillDecorations)
+  if (!shows) return null
+  return <ShelfPet shows={shows} phone={still} />
 }
 
 /** A mesh that casts and receives shadows. */

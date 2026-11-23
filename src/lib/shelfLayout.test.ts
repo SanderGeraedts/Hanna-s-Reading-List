@@ -103,6 +103,40 @@ describe('the bookcase follows the screen width (#39)', () => {
   })
 })
 
+describe("the shelf-pet's spot (T-0033 §8a, §13)", () => {
+  it('always lands on the top row at the right-hand end', () => {
+    for (const n of [0, 5, 60, 200]) {
+      const books = Array.from({ length: n }, (_, i) => book(`b${i}`, `Book ${i}`))
+      const { decor, innerWidth } = computeLayout(books, {}, new Map(), ['shelf-pet', 'koala', 'cat'])
+      const pet = decor.find((d) => d.kind === 'shelf-pet')
+      expect(pet).toBeDefined()
+      expect(pet!.row).toBe(0)
+      // on the right half of the top row
+      expect(pet!.x).toBeGreaterThan(0)
+      expect(pet!.x).toBeLessThanOrEqual(innerWidth / 2)
+    }
+  })
+
+  it('never overlaps a book on an empty, mid-full and nearly full shelf', () => {
+    for (const n of [0, 30, 150]) {
+      const books = Array.from({ length: n }, (_, i) => book(`b${i}`, `Book ${i}`))
+      const layout = computeLayout(books, {}, new Map(), ['shelf-pet', 'koala'])
+      const pet = layout.decor.find((d) => d.kind === 'shelf-pet')!
+      const petLeft = pet.x - 0.17 / 2
+      const petRight = pet.x + 0.17 / 2
+      for (const b of books) {
+        const slot = layout.slots.get(b.id)!
+        if (slot.row !== 0) continue
+        const d = layout.dims.get(b.id)!
+        const bookRight = slot.x + d.t / 2
+        const bookLeft = slot.x - d.t / 2
+        expect(bookRight).toBeLessThanOrEqual(petLeft + 1e-6)
+        expect(bookLeft).toBeLessThanOrEqual(petRight)
+      }
+    }
+  })
+})
+
 describe('decorations: at most one per shelf, the koala always there', () => {
   it('never puts two decorations on the same shelf', () => {
     for (const n of [0, 5, 30]) {

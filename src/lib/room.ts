@@ -25,6 +25,7 @@ export const WALLPAPERS: Record<Wallpaper, string> = {
 }
 
 export const DECOR_NAMES: Record<DecorKind, string> = {
+  'shelf-pet': 'Favourite creature',
   koala: 'Koala',
   cat: 'Sleeping cat',
   mug: 'Mug of tea',
@@ -54,7 +55,8 @@ export interface Room {
 export const DEFAULT_ROOM: Room = {
   wood: 'walnut',
   wallpaper: 'lavender',
-  decor: DECOR.map((d) => ({ kind: d.kind, on: true })),
+  // 'shelf-pet' is driven by her shelf choice (T-0033), not by Make-the-room-yours
+  decor: DECOR.filter((d) => d.kind !== 'shelf-pet').map((d) => ({ kind: d.kind, on: true })),
   detailedBooks: true,
 }
 
