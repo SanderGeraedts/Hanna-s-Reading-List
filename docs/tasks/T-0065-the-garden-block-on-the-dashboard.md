@@ -8,7 +8,7 @@ depends_on: [T-0060, T-0061, T-0063, T-0064]
 decisions: [D-0013, D-0014, D-0050, D-0051]
 raised_on: 2026-11-23
 done_on: ""
-result: []
+result: ["https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/263"]
 ---
 
 # Goal
