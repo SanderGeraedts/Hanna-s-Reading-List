@@ -2,12 +2,12 @@
 id: T-0042
 title: "Show the badges as a grid of round medals with bronze, silver and gold rims, and a card under the grid when one is tapped"
 description: "The Badges block (BadgesCard) becomes a compact grid of round medals with the emoji in the middle, earned then locked then hidden, with a bronze/silver/gold rim worked out per family in badges.ts (D-0038), grey locked and dark hidden medals, one inline card under the grid with the tapped medal's name, how, day or progress (a hidden one's riddle), the head row kept, and the Europe postcard's icon 🗼 replaced by 🏰."
-status: Doing
+status: Done
 size: full
 depends_on: [T-0040]
 decisions: [D-0013, D-0014, D-0020, D-0022, D-0038]
 raised_on: 2026-11-23
-done_on: ""
+done_on: 2026-11-23
 result: [https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/249]
 ---
 
@@ -460,7 +460,79 @@ Smaller notes, none blocking:
 
 # Test
 
-To be written by the tester.
+Tested by the tester on 2026-11-23 (night), on `better-badges` after the UX review (01ff51d).
+
+**CI's run** (45097786025, on e56cd4e, attempt 1, no retries): `checks / checks` green
+("Test Files 97 passed | 1 skipped (98)", "Tests 1078 passed | 9 skipped (1087)", "✓ built"),
+Netlify deploy preview green; e2e and shards skipped by the workflow as on every PR. The
+cancelled run before it (45097762571) was the earlier push replaced by the next one, not a
+retry.
+
+**The check, run here** after `pnpm install --frozen-lockfile`:
+
+- `pnpm exec vitest run src/lib/badges.test.ts src/components/BadgesCard.test.tsx src/lib/colours.test.ts`:
+  "Test Files 3 passed (3)", "Tests 79 passed (79)", run 5 times in a row, 79 passed every time.
+- `pnpm test` (with the new tests below): "Test Files 98 passed | 1 skipped (99)",
+  "Tests 1084 passed | 9 skipped (1093)".
+- `pnpm exec tsc --noEmit`: clean. `pnpm run build`: "✓ built in 868ms", "✓ built in 670ms".
+- `pnpm exec harness check`: "✓ tasks", "✓ decisions: 39 records, index complete, 3 overrules
+  valid", "✓ engineers", "✓ generated files: current".
+- `src/routeTree.gen.ts` is not in the diff.
+
+**Trying to break it**
+
+- **Every badge has a tier, families right:** dumped all 60 badges by family. books 1 → 250
+  bronze, 5 silver, gold; pages 4 (b s s g); listen 3 (b s g); series 4; streak 5; countries 4;
+  genres, languages, lands, rated, journal pairs bronze/gold with no silver; `reread-3`
+  (secret) bronze under `reread-5` gold; the six Postcards, `continents-6` (not in the
+  `continent-*` family: a different id), bingo, alphabet, monthly and the other 11 secrets
+  (`author-5`, `spice-5`, `home-sweet-home` …) gold. No id with a trailing number that isn't a
+  step. 12 secrets, Europe is 🏰.
+- **Real browser** (Chrome via playwright-core, `vite dev --port 3158` with no backend and no
+  `POCKETBASE_URL`, the demo shelf of `screens.mjs`; server stopped afterwards), at 390 × 844
+  (touch) and 1280 × 800, every line passed, 0 page errors:
+  - 60 medals, **6 a row at 390, 8 at 1280**; one medal with `tabindex="0"`.
+  - → × (columns) from the first runs on into row 2; ← back to the row's end; ↓ straight below;
+    ↑ in the first row stays; Home then ← stays; End goes to the last; → and ↓ on the last stay;
+    at 1280 ↓ from above the short last row (60 = 7 × 8 + 4) goes to the last medal. ↓ ↑ don't
+    scroll the page.
+  - **Enter and Space, real keydown + keyup:** Enter opens, Space on the same closes, Space
+    opens again: each acts **once** (no double toggle from Space's keyup click in Chromium).
+    Holding Enter (5 repeats) toggles once. Focus stays on the medal; Tab goes to "Close",
+    Shift+Tab back to the chosen medal; × and Escape (from ×) close and focus the medal.
+  - A click on another medal switches (one `aria-expanded="true"`), on the same closes.
+  - **Hidden medals:** 12, every one named "Hidden badge", showing only "?" with title
+    "Hidden badge"; opened one by one, each card is "? Hidden badge" + its riddle, and none of
+    the secret names is anywhere in the card's HTML.
+  - **Folding:** with a card open, the fold hides the grid and keeps the count and bar;
+    unfolding shows the plain grid, no card. Folding by keyboard with a card open, then
+    Escape: no error, still one Tab stop afterwards.
+  - **Screen reader** (accessibility tree): `list "Badges"`, `button "5 books, silver,
+    unlocked" [expanded]`, `button "10 books, locked, 6 of 10"`, `button "Postcard from
+    Oceania, locked"`, `button "Close"`, one polite live region.
+  - **Contrast, measured from screen pixels** (rim vs the card just outside it; the "?" vs the
+    hidden face): lavender gold 5.6, silver 7.3, bronze 4.0, "?" 7.5 : 1; midnight gold 7.5,
+    silver 9.7, bronze 5.1–5.2, "?" 8.2–8.3 : 1, the same at both widths. All rims ≥ 3 : 1 and
+    the "?" ≥ 4.5 : 1, as the design's table says. (The grey and dashed rims of locked and
+    hidden medals are 1.2–1.7 : 1, as designed: the emoji or "?" in the middle is what marks
+    them.)
+- **New tests for the gaps**, `src/components/BadgesCard.break.test.tsx` (6 tests, run 5 times
+  with `BadgesCard.test.tsx`: 14 passed every time). jsdom has no layout, so the existing test
+  never checked ↑ ↓; these lay the medals out with a stubbed `offsetTop`:
+  - ↑ ↓ at 6 a row (straight down and up, stay in the first and last row);
+  - ↑ ↓ at 8 a row, and ↓ above the shorter last row goes to the last medal;
+  - **a grid of 75 badges** (15 added after the real ones: a new 11-step family and 4 new
+    secrets): 75 medals, "N of 75 unlocked", newest earned first, the 15 hidden last, End and
+    ↓ reach the 75th, its card shows only the riddle;
+  - focus stays on a medal that moves to the front when it is earned under an open card;
+  - a hidden medal earned under its open card (Binge) turns from the riddle into "Binge" and
+    "Gold · secret · Unlocked";
+  - a badge that disappears closes its card and leaves one Tab stop.
+- **Not tested here:** Space in Firefox (only Chrome is installed); see the UX review's
+  non-blocking follow-up about Space's keyup.
+
+**Verdict: passed.** Nothing left for a human beyond the three morning questions above, which
+are Hanna's taste, not checks.
 
 # Log
 
@@ -485,3 +557,8 @@ To be written by the tester.
 - 2026-11-23 ux-designer: reviewed: passes, no must-fix (12 screenshots and the code match the
   design; Enter/Space in the grid's key handler acceptable, with a non-blocking follow-up to
   also prevent Space's keyup click). Handed to the **tester**.
+- 2026-11-23 tester: passed. CI green on attempt 1; the task tests 5 × 79 passed; in Chrome at
+  390 and 1280 on both wallpapers, arrows, Home/End, Enter/Space once, folding, hidden riddles,
+  screen-reader names and measured contrast all as designed; added
+  `BadgesCard.break.test.tsx` (↑ ↓ by columns, a 75-badge grid, focus and card following a
+  badge). Marked the pull request ready.
