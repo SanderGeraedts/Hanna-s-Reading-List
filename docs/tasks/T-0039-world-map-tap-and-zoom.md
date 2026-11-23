@@ -823,6 +823,66 @@ touch user doesn't see focus, so the design doesn't require it.
 **To pass next time:** Enter on ⤢ at 8× leaves focus on + (with the ring), plus a component test
 for it; CI green on attempt 1.
 
+## Second re-check (2026-11-23)
+
+(Tester, night mode, Hanna not asked. G-0031: F2, and the developer's own change to the coast rule,
+which now measures from where the finger went down.)
+
+**Verdict: sent back to the developer.** F2 is fixed, and so are Ctrl+scroll and pinch to the
+limits with focus on the buttons. The finger-down change is applied to only two of the rule's three
+steps, so a tap can now open a country whose tap zone isn't under the finger at all (F3). The pull
+request stays a draft.
+
+**CI** (`gh pr checks 248`, run 45106461999, head `1480763`): `checks / checks` passed in 1 m 1 s
+on **attempt 1**. Log: *Test Files 110 passed | 1 skipped (111)*, *Tests 1426 passed | 9 skipped
+(1435)*, `✓ tasks: 43 tasks, index in step`, both builds `✓ built`; no retry in the log. `shards`
+and `e2e` skipped as on every PR; Netlify preview ready.
+
+**Local:** `pnpm install --frozen-lockfile` (done), `pnpm exec tsc --noEmit` (clean),
+`pnpm exec harness check` (✓ tasks, ✓ decisions, ✓ engineers, ✓ generated files). `vitest run
+BooksWorldMap.test.tsx mapZoom.test.ts Dashboard`, three times: *Test Files 5 passed (5), Tests 72
+passed (72)* each time.
+
+**In Chrome** on `vite dev --port 3156` with no `POCKETBASE_URL` and no backend (scratch scripts, not
+committed; stopped afterwards):
+
+| Area | What I tried | Result |
+|---|---|---|
+| **F2** | 1280, keyboard: + three times (focus to −), Tab to ⤢, Enter; Space on ⤢ from 8×, 4× and 2×; `-` on ⤢ at 2×; `+` on ⤢ at 4×; Shift+Tab from − at 8× | Enter on ⤢ at 8×: whole map, **focus on + with the 2 px ring** ✓. Space from 8×, 4×, 2×: focus on + ✓. `-` on ⤢ to 1×: + ✓. `+` on ⤢ to 8×: ⤢ stays enabled and keeps focus ✓. Shift+Tab goes back into the map ✓ |
+| Ctrl+scroll to the limits | Focus on +, Ctrl+scroll to 8×; on −, and on ⤢, Ctrl+scroll to 1×; focus on a name in the list, Ctrl+scroll to 1× and 8× | + → − at 8× ✓; − → + and ⤢ → + at 1× ✓; focus on a name is never moved ✓ |
+| Pinch to the limits | Phone, real CDP touch: focus on +, pinch out to 8×; on −, and on ⤢, pinch in to 1× | + → − ✓; − → + ✓; ⤢ → + ✓ |
+| Coast rule, demo shelf | 162 real-touch taps on a 2 px grid around France and the Netherlands (sea or plain land under a zone, not on a lit shape), judged from the finger | **143 / 162** follow the rule measured from the finger (judged at Chrome's click point instead, 112: the finger is the better reading, as the developer says). 10 others are islands (Sardinia, Corsica, Crimea), measured on the main landmass as the re-review accepted. **8 open the Netherlands where its zone isn't under the finger** (F3). Within 8 px of France the Netherlands never opened where France was nearer (46 taps) |
+| Coast rule, only France and the Netherlands lit | 107 real-touch taps, same grid | **103 / 107**. 3 are 7 px off Corsica, where the Netherlands opens (France's mainland is more than 8 px away: the accepted island case). **1, at the finger 217, 480 where only France's zone lies, opens the Netherlands** (F3) |
+| Own shapes, the far case | Taps inside the UK, France, Spain, Germany, Italy, the Netherlands; 15 px north of the Netherlands five times; a 12 px drag then a tap there | Each opens itself; the Netherlands from 15 px north 5 / 5 ✓; the drag opens nothing and the next tap opens the Netherlands (no stale finger-down point) ✓ |
+| Effects | Console, page width | No console errors, no horizontal scroll ✓ |
+
+**F3: the third step of the rule still uses Chrome's moved click.** In `onMapClick` the own-shape
+and nearest-coast steps now use the finger-down point, but when neither applies `name` stays
+`countryAt(e.target)`, and `e.target` is the zone Chrome moved the click onto. Chrome moves a tap's
+click by about 6 px (up to 13 px), often onto the Netherlands' zone, so the "further out, the
+smallest zone" step picks a zone that isn't under the finger. To see it, on the phone at 390 with
+only France and the Netherlands lit: a tap 15 px south-east of mainland France (finger 217, 480,
+only France's zone there) opens the Netherlands; on the demo shelf, 8 taps out in the Bay of
+Biscay and the Mediterranean open the Netherlands where only the UK's, Spain's, France's or
+Greece's zones are. This is the symptom the first send-back was about (the Netherlands taking taps
+by France), back through the fallback. **Expected:** with the finger-down point, the last step is
+the topmost zone under that point (`zonesHere[0]`); the moved click target only when no zone is
+under the finger.
+
+**Design:** the finger-down rule doesn't change the design; it is the faithful reading of "the
+nearest coast within 8 px" (measured from where she touches, not where the browser moved it),
+provided all three steps use it. No design update needed.
+
+**Not blocking:** Ctrl+scroll to 1× with focus on the zoomed map itself (not a button) lost focus to
+the page in all 3 runs of my keyboard-then-scroll sequence, but moved it to + in 3 other runs (the
+same steps alone, and the sequence with focus events logged): likely a timing race between the
+layout effect and Chrome taking focus off the map. Not a keyboard path, so the *Done
+when* line isn't affected.
+
+**To pass next time:** every tap judged from the finger-down point, including the "smallest zone"
+step; a component test where the click lands on a different zone than the finger; CI green on
+attempt 1.
+
 # Log
 
 - 2026-11-23 architect: wrote the task from Hanna's agreed brief ("a better world map", parts 1
@@ -891,3 +951,8 @@ for it; CI green on attempt 1.
   `screens.mjs` in Chrome on 3155: "all checks passed" (104 ok, 0 FAIL), including "Enter on ⤢ at 8×:
   focus moves to +, with the ring (F2)" and "Ctrl+scroll back to zoom one while − has focus: focus
   moves to +". Handed to the **tester**.
+- 2026-11-23 tester: sent back: F2 fixed (⤢ at 8× leaves focus on + with the ring; Ctrl+scroll and
+  pinch to the limits move focus too), but the finger-down coast rule is applied to the own-shape and
+  nearest-coast steps only; the "smallest zone" step still takes Chrome's moved click, so 9 of 269
+  real-touch taps open the Netherlands where its zone isn't under the finger (see *Test*, F3). CI
+  attempt 1 green. #248 stays a draft. Handed back to the **developer**.
