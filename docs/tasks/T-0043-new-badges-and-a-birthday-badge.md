@@ -202,11 +202,242 @@ Hanna wasn't asked anything (night mode). The architect took these:
    visible one for 5 as well (it would give the secret away)?"
 3. "Mix it up: we read it as finishing a paper book, an e-book and an audiobook. Is that what you
    meant, or three formats like paperback, hardcover and library book?"
+4. (UX designer) "The birthday is kept on each device separately. Should the Badges block say so
+   next to it, for example 'Birthday (this device)', or is just 'Birthday' fine? We left the
+   words out because you asked for no explanations under things."
 
 # Design
 
-To be written by the UX designer before the build (the birthday field; the badges follow the
-table and T-0042's medals).
+Written by the UX designer on 2026-11-23, at night: Hanna wasn't asked; the picks are under
+*Choices made by the UX designer*, and one question is added to the morning list above. Looked at
+`BadgesCard` on `main` (T-0042), its 12 screenshots, the period picker's selects on the dashboard
+(`.input` selects, `monthName`), the buttons and tokens at the top of `src/styles.css`, D-0013,
+D-0014, D-0020, D-0022, D-0038 and D-0039.
+
+## The twelve badges in the grid
+
+Nothing new to draw: each one is a T-0042 medal (48 px, its emoji in the middle) and gets its
+place by the block's sorting. Checked the table's rims against D-0038's family rule and the ids
+on `main`:
+
+| id | family on `main` + this task | rim when earned |
+|---|---|---|
+| `streak-365` 🌞 | `streak-3 … streak-100`, now 6 steps | **gold**; `streak-100` 🌠 turns **silver** |
+| `author-10` 🤩 | with the secret `author-5` Loyal fan | **gold**; `author-5` turns **bronze** |
+| `authors-25` 👥, `authors-50` 🦉 | a new family `authors` (not `author`) | **bronze**, **gold** |
+| `summer-10` 🏖️, `kinds-3` 🔀, `library-10` 🪪, `ebooks-10` 📱, `audiobooks-10` 👂 | none: alone in their family | **gold** |
+| `spooky-season` 🎃, `winter-warmer` 🧣, `birthday` 🎂 | no trailing number | **gold** |
+
+- All 12 icons are unused on `main`; all match the table. No `library-*`, `ebooks-*`,
+  `audiobooks-*`, `kinds-*` or `summer-*` id exists yet, so none joins a family by accident.
+- **Locked** new badges are grey medals; the step ones show their progress in the card at 0 too
+  ("0 / 365", "3 / 10"), the one-offs (Spooky season, Winter warmer) say "Locked".
+- **Birthday book** is a hidden "?" medal with its riddle, like the other secrets, birthday set
+  or not. Its 🎂 and name never show before it is earned (D-0038), so **the birthday row below
+  uses neither**: no 🎂, no "Birthday book".
+- **72 badges:** 12 rows of 6 at 390 px, 9 rows of 8 at 1280 px (T-0042 planned for this).
+  13 hidden medals at the end.
+- Accessible names follow T-0042 with no change: "365-day streak, locked, 41 of 365",
+  "Superfan, gold, unlocked", "Hidden badge".
+
+## The birthday row: where it goes
+
+In T-0042's reserved spot: the **last item of the folding body** (`#badges-list`,
+`.badges-body`, the vertical stack with `gap: var(--space-3)`), after the medal card's
+`<section id="badges-card">`, as its sibling (never inside the card's live region). So:
+grid → card (when open) → birthday row. It folds away with the grid; the head row, count and bar
+don't change.
+
+The row starts with a hairline: `border-top: 1px solid var(--border)`, `padding-top:
+var(--space-3)`, so it reads as a small setting under the medals, not a badge. It is not a
+card or a well: no background, no rim.
+
+## The row's three looks
+
+One line of controls in a `flex` row, `flex-wrap: wrap`, `align-items: center`, `gap:
+var(--space-2)`. The label is always first: **"Birthday"**, `small-text`, `--muted` (like the
+other field labels). No sentence under it, no placeholder sentence, no "why" (D-0014).
+
+**1. Empty (no birthday on this device)**
+
+> Birthday  [ Day ▾ ]  [ Month ▾ ]  ( Save )
+
+- **Day:** a `<select class="input">`, first option **"Day"** (value `""`), then 1 … 31.
+- **Month:** a `<select class="input">`, first option **"Month"** (value `""`), then January …
+  December (`monthName(n)`, long), values `01` … `12`.
+- Day before month, as the app writes dates ("3 Jan 2026").
+- **Save:** `btn small` (secondary, not gold: gold stays for the badges).
+- Nothing is saved while she picks: only **Save** stores the birthday. (On Windows a closed
+  select changes value on every arrow key; saving on change would earn and un-earn the badge
+  and fire its toast while she scrolls the months.)
+
+**2. Set**
+
+> Birthday  14 May  ( Change )  ( Clear )
+
+- The day as text, `small-text`, `--text`: day and long month, "14 May", "2 September",
+  "29 February". No year, never.
+- **Change** and **Clear**: `btn quiet small`, in that order, after the date.
+
+**3. Change** (after *Change*)
+
+> Birthday  [ 14 ▾ ]  [ May ▾ ]  ( Save )  ( Cancel )
+
+- The two selects as in *Empty*, already on the saved day and month. **Save** (`btn small`) and
+  **Cancel** (`btn quiet small`).
+- Save stores the new day and goes back to *Set*; Cancel goes back to *Set* with nothing changed.
+
+**Clear** (from *Set*) removes the birthday from this device at once and shows *Empty*. No
+"are you sure": entering it again takes two picks. If Birthday book was earned, it turns back
+into a hidden "?" medal, and the count goes down by one (D-0039).
+
+**Errors** (allowed by D-0014: they say how to fix it). Shown under the controls on their own
+line, `small-text`, `--danger`; the selects get `aria-invalid="true"` and `aria-describedby`
+pointing at it; it goes away on the next change of either select.
+
+- Save with a day or month missing: **"Pick a day and a month."**
+- Save with a day that month never has: **"There is no 31 April."** (the day and long month she
+  picked). 29 February is fine (team choice 8).
+
+**What changes when she saves:** the block works the badges out again at once, without a reload
+(the badge toast, the grid and *Waiting for you* all read the new birthday). With a book already
+finished on that day, Birthday book becomes earned: its medal moves to the front with its gold
+rim, and the usual "Badge unlocked" toast shows once (the toast's shown-list keeps it from
+showing again after a clear and a new save).
+
+**Long text and sizes:** the longest row is "Birthday [Day ▾] [September ▾]" plus two buttons.
+The selects are `width: auto` (not `.input`'s 100%). At 390 (inner width about 332 px) the
+label and selects fit on one line and the buttons wrap onto the next, at its start; at 1280
+(about 484 px) everything fits on one line. The error wraps under it.
+
+**Touch:** under `@media (pointer: coarse)`, both selects and every button in the row get
+`min-height: var(--tap)` (44 px); the buttons also `min-width: var(--tap)`. With a mouse they
+keep today's small sizes.
+
+**Midnight wallpaper:** the row sits on the walnut card, which doesn't change with the
+wallpaper (D-0022), so it looks the same on lavender and midnight. The selects' dropdown lists
+are the system's, dark through the app's existing `color-scheme: dark`. No new colours or
+tokens: `--muted`, `--text`, `--danger` and `--border` on a card are already in
+`colours.test.ts`.
+
+**"Only on this device":** not said. A line like "kept on this device only" is an explanation
+under a control, which D-0014 rules out, and D-0014's guidance is to ask Hanna rather than add
+one. It's question 4 below. (On a second device she simply sees *Empty* there and enters it
+again, which she agreed to in the brief.)
+
+## The birthday row: keyboard and screen reader
+
+- The row is `<div role="group" aria-labelledby="birthday-label">`, the label `<span
+  id="birthday-label">Birthday</span>`. *Empty* and *Change* are a `<form>` whose Save is
+  `type="submit"`, so Enter on Save saves (and the selects behave natively: arrows, type-ahead,
+  Alt+↓ / Space to open).
+- The selects are named **"Day"** and **"Month"** (`aria-label`), so she hears "Birthday, group,
+  Day, combo box, Day" in *Empty* and "Day, combo box, 14" in *Change*.
+- In *Set*, **Change** is "Change birthday" and **Clear** "Clear birthday" (`aria-label`; the
+  visible words stay "Change" and "Clear"); Change has `aria-describedby` on the date text, so it
+  reads "Change birthday, button, 14 May".
+- Tab order: the grid (one stop), the card's × when open, then the row's controls left to right,
+  then the next block. The arrow keys of the grid never reach the row.
+- **Focus moves on purpose, never lost:**
+  - Save (from *Empty* or *Change*) → *Set*, focus on **Change**;
+  - Change → *Change*, focus on the **Day** select;
+  - Cancel → *Set*, focus on **Change**;
+  - Clear → *Empty*, focus on the **Day** select;
+  - a Save with an error keeps focus on Save, and the error line is `role="alert"` so it is read
+    at once.
+- **Escape** in *Change* is Cancel. It's handled by the row and stops there, so it doesn't also
+  close an open medal card; Escape elsewhere in the block still closes the card (T-0042). An
+  Escape that closes an open native dropdown stays the browser's.
+- Folding the block while in *Change* drops the unsaved picks; unfolding shows *Set*.
+
+## Must-do T-0042 follow-ups (F11)
+
+Small fixes to the medal grid that ship in this task's pull request.
+
+1. **Space acts once in every browser.** Keep Enter and Space in the grid's `onKeyDown` (the
+   tests and the "hold Enter toggles once" behaviour stay) and **also handle `keyup` for Space
+   on the grid** (`onKeyUp` on the `<ul>`: `if (e.key === ' ') e.preventDefault()`), so a
+   browser that fires a button's click on Space's keyup (Firefox) doesn't open the card and
+   close it at once. Fix the code comment to say why (the keyup click), not "the same
+   everywhere". A test: `keyDown` + `keyUp` Space on a medal leaves exactly one card open, and
+   `keyUp` Space is `defaultPrevented`.
+2. **A chosen medal that can't pass for a silver rim.** The cream ring outside the rim is the
+   same light colour as a silver rim, so on silver it reads as a thicker rim (T-0042 review,
+   `badges-390-lavender-earned.png`). New chosen state: **a cream ring inside the rim, set off
+   by a dark gap**: `box-shadow: inset 0 0 0 2px var(--surface-solid), inset 0 0 0 4px
+   var(--text)`, face `--surface-hover` as now; the outer `0 0 0 2px var(--text)` ring goes.
+   - Every chosen medal then reads rim → dark → cream: two separate rings, whatever the rim's
+     colour (gold, silver, bronze, grey, dashed). Unchosen medals never have two rings.
+   - It stays inside the 48 px circle (the emoji, `--fs-heading`, has 34 px clear inside it),
+     so nothing moves and the 8 px gap between medals stays free.
+   - Keyboard focus is unchanged: the gold `outline` 3 px outside the rim, so chosen + focused
+     shows the inner cream ring and the outer gold outline together.
+   - `colours.test.ts`: add `--text` on `--surface-solid` at 3 : 1 (it is far above).
+3. **The closed card points at no heading.** `<section id="badges-card">` gets
+   `aria-labelledby="badges-card-title"` **only while a card is open**; closed, it has no
+   label (and so no landmark), and the live region inside it stays in the page as before.
+
+## Done when (added by the UX designer)
+
+- **Birthday row** (in `BadgesCard.test.tsx`, by hand at both widths in the review):
+  - it is the last thing in `#badges-list`, after `#badges-card`, and folds away with the grid;
+  - *Empty*: the label "Birthday", selects named "Day" (Day, 1–31) and "Month" (Month, January –
+    December) and a "Save" button; picking without Save stores nothing;
+  - Save with both → `hannas-reading-list:birthday` is `MM-DD`, the row shows "Birthday 14 May"
+    with "Change" and "Clear", focus is on Change;
+  - Save with one missing shows "Pick a day and a month."; 31 + April shows "There is no 31
+    April."; nothing is stored; 29 + February saves;
+  - Change shows the selects on the saved day, Save stores the new one, Cancel and Escape keep
+    the old one and focus Change; Escape in the row doesn't close an open medal card;
+  - Clear removes the stored value, shows *Empty* and focuses Day; an earned Birthday book turns
+    back into a "?" medal;
+  - nowhere in the row: 🎂, "Birthday book", a year, or a hint sentence;
+  - at 390 × 844 with touch, both selects and every button in the row are at least 44 px high.
+- **Grid with 72 badges:** 6 a row at 390, 8 a row at 1280; `streak-100` silver and
+  `author-5` bronze when earned.
+- **F11:** a `keyUp` Space on a medal is `defaultPrevented` and keyDown + keyUp Space leaves one
+  card open; a chosen medal has the inner cream ring with the dark gap and no outer ring; the
+  closed `#badges-card` has no `aria-labelledby`, the open one points at its heading.
+
+## Screenshots (`docs/tasks/T-0043-screens/`)
+
+Copy T-0042's `screens.mjs` (demo shelf in localStorage, dev server with **no backend**, the
+window as tall as the page). The demo shelf earns some new badges: a finish on 14 May (for the
+birthday), books by one author (Superfan locked with progress, e.g. 4 / 10), a horror book
+finished in October (Spooky season, gold), and enough authors for Wide reader to show progress.
+
+| file | width | wallpaper | state |
+|---|---|---|---|
+| `badges-390-lavender-empty.png` | 390 | lavender | grid, birthday row *Empty* |
+| `badges-1280-midnight-empty.png` | 1280 | midnight | grid, birthday row *Empty* |
+| `badges-390-midnight-set.png` | 390 | midnight | row *Set* "14 May", Birthday book earned at the front |
+| `badges-1280-lavender-set.png` | 1280 | lavender | row *Set*, Birthday book earned |
+| `badges-390-lavender-change.png` | 390 | lavender | row *Change* (selects on 14 May, buttons wrapped) |
+| `badges-1280-midnight-change.png` | 1280 | midnight | row *Change*, one line |
+| `badges-390-midnight-error.png` | 390 | midnight | "There is no 31 April." |
+| `badges-390-lavender-birthday.png` | 390 | lavender | card open on the earned Birthday book: "Gold · secret · Unlocked 14 May 2026" |
+| `badges-1280-lavender-locked.png` | 1280 | lavender | card on a locked new step badge with progress (Superfan "4 / 10") |
+| `badges-390-midnight-silver-chosen.png` | 390 | midnight | F11: a chosen **silver** medal, inner cream ring |
+| `badges-1280-lavender-chosen-focus.png` | 1280 | lavender | F11: a medal opened with Enter, still focused: inner ring + gold outline |
+
+The script prints the medals per row (6 / 8), the medal count (72), the row's control heights at
+390 touch, and the stored `hannas-reading-list:birthday` after each step.
+
+## Choices made by the UX designer
+
+1. **Two selects, not a native date field.** `<input type="date">` always needs a year, and
+   D-0039 says never ask one; there is no native day-and-month field. Day first, as the app
+   writes dates.
+2. **An explicit Save**, no saving on change, so scrolling the months never earns, un-earns or
+   toasts the badge by accident.
+3. **Quiet once set:** one line "Birthday 14 May · Change · Clear"; the selects only come back
+   on Change.
+4. **No 🎂 and no "Birthday book" in the row**, so the secret stays a secret.
+5. **"Only on this device" isn't said** (D-0014); question 4 for the morning.
+6. **Clear has no confirmation:** it is undone with two picks and a Save.
+7. **Chosen medal (F11):** an inner cream ring with a dark gap, instead of the outer cream ring.
+8. **Space (F11):** keep the key handler and also cancel Space's keyup, rather than going back
+   to the button's own click, so the tests and the hold-to-repeat guard stay.
 
 # Test
 
@@ -222,3 +453,9 @@ To be written by the tester.
   made by the team*, three questions for the morning. Size: **full**. Handed to the **UX
   designer** for the birthday field; the developer may build the badge logic and `birthday.ts`
   in the meantime, the field after T-0042 merges.
+- 2026-11-23 ux-designer: designed (the birthday row at the end of the badge block: "Birthday"
+  with Day and Month selects and Save, then "Birthday 14 May" with Change and Clear, 44 px on
+  touch, errors only, no hint text and no 🎂; the 12 new medals and rims checked; F11 as must-dos:
+  Space keyup cancelled, an inner cream ring with a dark gap for a chosen medal, the closed card
+  unlabelled; 11 screenshots). Night mode: eight picks under *Choices made by the UX designer*,
+  question 4 added to the morning list. Handed to the **developer**.
