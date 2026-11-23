@@ -10,6 +10,7 @@ import {
   keyTarget,
   mousePress,
   panEdges,
+  scrollYOnTurn,
 } from './shelfPan'
 import type { ArrowKeyInput, MousePressInput } from './shelfPan'
 
@@ -162,5 +163,23 @@ describe('mousePress', () => {
   it('is still undecided under 6 px, so a click stays a click', () => {
     expect(mousePress({ ...wall, moved: 5.9 })).toBe('undecided')
     expect(mousePress({ ...wall, moved: 0, pending: true })).toBe('undecided')
+  })
+})
+
+describe('scrollYOnTurn (T-0044, F8)', () => {
+  const base = { currentY: 4.2, wasPortrait: true, portrait: true, open: true, top: 9.3 }
+  it('keeps the current Y when the orientation did not change', () => {
+    expect(scrollYOnTurn(base)).toBe(4.2)
+    expect(scrollYOnTurn({ ...base, wasPortrait: false, portrait: false })).toBe(4.2)
+  })
+  it('snaps to the top row when the phone turns with a book open', () => {
+    expect(scrollYOnTurn({ ...base, wasPortrait: false })).toBe(9.3)
+    expect(scrollYOnTurn({ ...base, wasPortrait: true, portrait: false })).toBe(9.3)
+  })
+  it('keeps the current Y when no book is open', () => {
+    expect(scrollYOnTurn({ ...base, open: false, wasPortrait: false })).toBe(4.2)
+  })
+  it('passes through a null Y (first frame, nothing scrolled yet)', () => {
+    expect(scrollYOnTurn({ ...base, currentY: null })).toBeNull()
   })
 })

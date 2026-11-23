@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Book } from '#/lib/library'
 import { challengeYears, yearTrophies } from '#/lib/trophies'
 import type { Trophy } from '#/lib/trophies'
@@ -97,9 +97,22 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
     if (focus) document.getElementById(`challenge-${focus}`)?.scrollIntoView({ block: 'start' })
   }, [focus])
 
+  /** A Hidden chip was restored (Enter): focus moves to the next chip or to the block's handle (T-0044, F7). */
+  const pageRef = useRef<HTMLDivElement>(null)
+  const restoreFocus = useRef<{ nextId: ChallengeId | null; blockId: ChallengeId } | null>(null)
+  useEffect(() => {
+    const r = restoreFocus.current
+    if (!r) return
+    restoreFocus.current = null
+    const q = (sel: string) => pageRef.current?.querySelector<HTMLElement>(sel) ?? null
+    const chip = r.nextId ? q(`.hidden-blocks [data-hidden="${CSS.escape(r.nextId)}"]`) : null
+    if (chip) return chip.focus()
+    q(`.dashboard-grid [data-block="${CSS.escape(r.blockId)}"] .block-handle`)?.focus()
+  }, [layout])
+
   return (
     // the same scrolling layer over the shelf as the dashboard
-    <div className="dashboard">
+    <div className="dashboard" ref={pageRef}>
     <div className="challenges-page">
       <header className="challenges-head">
         <h1>Challenges</h1>
@@ -140,8 +153,16 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
             {layout.hidden.length > 0 && (
               <div className="hidden-blocks">
                 <span className="muted small-text">Hidden:</span>
-                {layout.hidden.map((id) => (
-                  <button key={id} className="btn small" onClick={() => setLayout(showIn(layout, id))}>
+                {layout.hidden.map((id, i) => (
+                  <button
+                    key={id}
+                    data-hidden={id}
+                    className="btn small"
+                    onClick={() => {
+                      restoreFocus.current = { nextId: layout.hidden[i + 1] ?? null, blockId: id }
+                      setLayout(showIn(layout, id))
+                    }}
+                  >
                     + {nameOf(id)}
                   </button>
                 ))}

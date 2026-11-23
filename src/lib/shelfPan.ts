@@ -98,6 +98,26 @@ export function arrowKeyDirection(e: ArrowKeyInput): PanDirection | null {
   return direction
 }
 
+/**
+ * After the phone turns with a book out, the shelf behind snaps back to the top row — the
+ * row she opened the book at. Without this the previous landscape midpoint carried over
+ * to portrait, so the shelf sat a few rows lower (T-0044, F8).
+ *
+ * `currentY` is the camera's shelf-height target so far; `top` is the top of the range for
+ * the new orientation. When the orientation changed and a book is open, snap to `top`;
+ * otherwise keep `currentY`.
+ */
+export function scrollYOnTurn(args: {
+  currentY: number | null
+  wasPortrait: boolean
+  portrait: boolean
+  open: boolean
+  top: number
+}): number | null {
+  if (args.open && args.wasPortrait !== args.portrait) return args.top
+  return args.currentY
+}
+
 export type MousePress = 'undecided' | 'book' | 'wall' | 'none'
 
 export interface MousePressInput {

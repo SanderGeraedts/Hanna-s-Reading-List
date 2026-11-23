@@ -28,6 +28,7 @@ import {
   mousePress,
   panEdges,
   sameEdges,
+  scrollYOnTurn,
 } from '#/lib/shelfPan'
 import type { PanDirection, PanEdges } from '#/lib/shelfPan'
 import { arrangementSeparators } from '#/lib/separators'
@@ -753,6 +754,8 @@ function useCameraRig(
   const wasOpen = useRef<BookDims | null>(null)
   /** reduced motion: the camera was stepped back or held in the last frame */
   const held = useRef(false)
+  /** whether the last frame was portrait: when it changes while a book is out, snap back to the top row (T-0044, F8) */
+  const lastPortrait = useRef(opts.portrait)
   const pointerInput = usePointerInput()
 
   const aspect = size.width / Math.max(1, size.height)
@@ -783,6 +786,10 @@ function useCameraRig(
     // top: clear of the header (on a phone, of its real height: #181)
     s.max = caseHeight - viewH * 0.5 + topGap(viewH, s.worldPerPx, opts.portrait ? opts.topInset : 0)
   }
+  // when the phone turns with a book out, snap the shelf behind back to the top row she opened
+  // the book at (T-0044, F8): the landscape in between could have left `s.y` at the middle
+  s.y = scrollYOnTurn({ currentY: s.y, wasPortrait: lastPortrait.current, portrait: opts.portrait, open: !!opts.open, top: s.max })
+  lastPortrait.current = opts.portrait
   s.y = s.y === null ? s.max : THREE.MathUtils.clamp(s.y, s.min, s.max)
   base.set(0, s.y, base.z)
 

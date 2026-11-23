@@ -1711,6 +1711,8 @@ textarea.input {
   overflow-y: auto;
   padding: var(--space-1);
   margin: calc(-1 * var(--space-1));
+  /* when Tab scrolls a chip into view, leave room above and below for its focus outline (T-0044, F7) */
+  scroll-padding-block: var(--space-1);
 }
 @media (pointer: coarse) {
   .hidden-blocks {

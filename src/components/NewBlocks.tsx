@@ -227,8 +227,9 @@ function BirthdayRow() {
   const focusNext = useRef<'change' | 'day' | null>(null)
   const showForm = !birthday || editing
 
-  // focus moves on purpose after a state change, never lost
-  useEffect(() => {
+  // focus moves on purpose after a state change, never lost: useLayoutEffect runs synchronously
+  // before the browser paints, so there is no frame on which focus is on the page body (T-0044, F12)
+  useLayoutEffect(() => {
     const to = focusNext.current
     focusNext.current = null
     if (to === 'change') changeRef.current?.focus()

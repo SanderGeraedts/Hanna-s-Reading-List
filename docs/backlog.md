@@ -201,18 +201,6 @@ performance in mind.
 Small fixes the testers and UX reviews found. Each can be a small task; pick them up when
 the queue continues.
 
-- **F7 (from T-0038, the Arrange bar):** when Tab scrolls a chip into view, the bottom 4 px
-  of its focus outline are cut off (fix: `scroll-padding-block` on `.hidden-blocks`). After
-  Enter on a chip, focus jumps to the top of the page (also on main): move focus to the
-  restored block or to the next chip.
-- **F8 (from T-0037, the shelf polish):** on the computer the open book's paper clip touches
-  the toolbar (also on main); after turning the phone with a book open, the shelf behind
-  shows lower rows instead of the top row (also on main); opening a book on a small phone
-  held sideways saves a low sheet height that is then used when the phone is upright again.
-- **F12 (from T-0043, the birthday badge):** in the birthday row, focus sometimes dropped
-  to the page after Save or Clear (seen in 4 of 8 early runs, not reproducible later; the
-  tester suggests a small fix in the task's Test section). When the browser blocks storage,
-  there is no message (the design has none).
 - **F13 (from T-0030, eggs and album; a known edge case):** two devices offline with
   different books, both hatching eggs, can reorder the hatches, so a named pet may go back
   to "waiting" (Keep restores it; nothing is lost). The full cure would be storing the hatch
