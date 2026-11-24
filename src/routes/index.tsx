@@ -47,10 +47,12 @@ import { genreSuggestions } from '#/lib/genres'
 import { useBookDetails } from '#/lib/useBookDetails'
 import type { Book } from '#/lib/library'
 import { NO_GENRE, reorderShown } from '#/lib/genreFilter'
-import { START_VIEW, applyView, cleanFilters, filterOptions, isFiltered, viewSummary } from '#/lib/shelfFilter'
+import { START_VIEW, applyView, cleanFilters, filterOptions, viewSummary } from '#/lib/shelfFilter'
 import type { ShelfView } from '#/lib/shelfFilter'
 import { ShelfBar } from '#/components/ShelfBar'
-import { boughtPatch, shelfBooks, wishBooks } from '#/lib/wishlist'
+import { boughtPatch, shelfBooks, wishBooks, wishCountText } from '#/lib/wishlist'
+import { posePatch } from '#/lib/pose'
+import type { BookPose } from '#/lib/pose'
 import { FollowUpDialog } from '#/components/FollowUpDialog'
 
 export const Route = createFileRoute('/')({
@@ -258,7 +260,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
         ? 'Refresh from Storytel'
         : 'Connect Storytel') + (arrangement ? ', and put the books back in order' : '')
 
-  const selected = books.find((b) => b.id === selectedId) ?? null
+  // the whole library, so a wish opened from the Wishlist bookcase gets its panel too (D-0074)
+  const selected = allBooks.find((b) => b.id === selectedId) ?? null
   const seriesMap = useMemo(() => detectSeries(books), [books])
   const selectedSeries = selected ? seriesMap.get(selected.id) : undefined
   // the whole series as a sleep read; new books by a series author are asked about once
@@ -280,12 +283,18 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     () => ({ bookcase: rawShelfView.bookcase, filters: cleanFilters(rawShelfView.filters, filterChoices) }),
     [rawShelfView, filterChoices],
   )
-  const narrowed = shelfView.bookcase !== 'all' || isFiltered(shelfView.filters)
-  const shown = useMemo(() => applyView(books, shelfView), [books, shelfView])
+  /**
+   * What the shelf draws. The whole library goes in and `inBookcase` narrows it, which is
+   * how the Wishlist bookcase gets her wishes and the other four never see one (D-0074 §2-3).
+   * Everything that counts, suggests or draws anything else still gets `books`, her shelf.
+   */
+  const shown = useMemo(() => applyView(allBooks, shelfView), [allBooks, shelfView])
   const summary = useMemo(() => viewSummary(shelfView, filterChoices), [shelfView, filterChoices])
+  // a rearrange on a narrowed shelf is mapped back onto the whole library, so the books it
+  // does not show (another bookcase's, and her wishes) keep the place they had
   const reorderShelf = useCallback(
-    (ids: string[]) => reorder(narrowed ? reorderShown(books.map((b) => b.id), ids) : ids),
-    [reorder, books, narrowed],
+    (ids: string[]) => reorder(reorderShown(allBooks.map((b) => b.id), ids)),
+    [reorder, allBooks],
   )
   // Make a wish starts from a picked genre, as it did when genre lived in the header
   const activeGenre = shelfView.filters.genre
@@ -306,6 +315,9 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     if (id) inspect.current = { rotY: 0, rotX: 0 }
     setSelectedId(id)
   }, [])
+  // the pose the shelf really drew the open book in, so the panel can say when the
+  // bookcase has no shelf with room for the one she picked (D-0073 §3)
+  const [drawnPose, setDrawnPose] = useState<BookPose | null>(null)
 
   // the shelf, the dashboard (#59) or the Challenges page
   const search = Route.useSearch()
@@ -456,7 +468,12 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             <h1>Hanna's Reading List</h1>
           </div>
           <p className="muted">
-            {books.length === 0
+            {/* the Wishlist bookcase counts in its own words: books and what they would cost (D-0074 §4) */}
+            {shelfView.bookcase === 'wish'
+              ? wishes.length
+                ? wishCountText(wishes)
+                : 'Nothing on your wishlist yet'
+              : books.length === 0
               ? 'An empty shelf, waiting for stories'
               : summary.length
                 ? `${shown.length} of ${books.length} books · ${summary.join(' · ')}`
@@ -523,6 +540,9 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             inspect={inspect}
             onSelect={select}
             onReorder={reorderShelf}
+            // dropped on a pile: the book lies down too, the one pose the app sets (D-0073 §4-5)
+            onLayFlat={(id) => updateBook(id, posePatch('flat'))}
+            onPoseDrawn={setDrawnPose}
             // a shelf still arranged by genre or colour from before #41/#45 keeps its order, without those nooks
             arrangement={arrangement && MENU_SORT_KEYS.includes(arrangement) ? arrangement : null}
             sheet={sheet}
@@ -577,14 +597,6 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             onOpenCreatures={openCreatures}
             onOpenGarden={openGarden}
             onOpenStats={openStats}
-            wishes={wishes}
-            onBought={(id) => {
-              // twice in a row (a double tap) moves it once: the second press finds no wish
-              if (!wishes.some((w) => w.id === id)) return
-              updateBook(id, boughtPatch())
-              setBought(id)
-            }}
-            onRemoveWish={removeBook}
           />
         )}
         {view === 'stats' && (
@@ -667,6 +679,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             if (arrangement && RESORT_ON[arrangement]?.some((k) => k in patch)) sortBy(arrangement)
           }}
           detectedSeries={selectedSeries}
+          drawnPose={drawnPose}
           genreOptions={genreOptions}
           onChangeCover={() => setPickingCover(true)}
           shelf={books}
@@ -686,6 +699,13 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             select(null)
             removeBook(selected.id)
           }}
+          {...(selected.wish && {
+            // "I bought it ›" on a wish: onto the shelf today, and the follow-up asks the rest (D-0074 §5)
+            onBought: () => {
+              updateBook(selected.id, boughtPatch())
+              setBought(selected.id)
+            },
+          })}
           onClose={() => select(null)}
           onSheet={onSheet}
           headerPx={headerPx}
@@ -707,8 +727,9 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           book={allBooks.find((b) => b.id === bought) ?? null}
           onUpdate={updateBook}
           onClose={() => setBought(null)}
-          // the row it was pressed on is on the shelf now: focus goes back to the block's heading
-          returnFocusId="wishlist-title"
+          // the wish row it was pressed on is gone, the book is on her shelf: focus goes
+          // back to the open book's title (D-0074 §5)
+          returnFocusId="book-panel-title"
         />
       )}
 

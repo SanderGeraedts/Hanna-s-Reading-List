@@ -1,5 +1,6 @@
 import type { PageEdges } from './edges'
 import type { BookCharacter } from './characters'
+import type { Season } from './garden/seasons'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { loadShelf, saveShelf, type RemoteShelf } from '#/server/shelf'
 import { seriesGroups } from './series'
@@ -119,6 +120,12 @@ export interface Book {
   places?: string[]
   /** story tropes, hers and from the ready list; one spelling per trope (D-0042); see tropes.ts */
   tropes?: string[]
+  /**
+   * the seasons Hanna says this book is for (D-0072); left out or empty means
+   * the season is worked out from its genres and tropes, as it always was.
+   * See seasonChallenge.ts
+   */
+  seasons?: Season[]
   /** the characters of this book; `fav` marks a favourite ♥ (D-0042); see characters.ts */
   characters?: BookCharacter[]
   /** how this book stands on the shelf; left out = standing (D-0044); see pose.ts */

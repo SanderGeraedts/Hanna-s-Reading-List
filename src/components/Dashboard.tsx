@@ -64,7 +64,6 @@ import { TropesCard, tropesBlock } from './TropesCard'
 import { badges, newBadges } from '#/lib/badges'
 import { useChallengeExtras } from './useChallengeExtras'
 import { CreaturesCard } from './CreaturesCard'
-import { WishlistCard } from './WishlistCard'
 import { useCreatures } from './creatures/CreaturesContext'
 import { useGarden } from './garden/useGarden'
 import { GardenCard } from './GardenCard'
@@ -114,11 +113,6 @@ interface DashboardProps extends Props {
   onOpenGarden?: () => void
   /** "Open ›" on My year: the Stats page (T-0080) */
   onOpenStats?: () => void
-  /** her wishlist (D-0053): only the Wishlist block sees these, never anything that counts */
-  wishes?: Book[]
-  /** "I bought it ›": the wish joins the shelf today and the follow-up opens */
-  onBought?: (id: string) => void
-  onRemoveWish?: (id: string) => void
 }
 
 export interface PeriodPick {
@@ -133,8 +127,6 @@ export const toPeriod = ({ kind, year, month }: PeriodPick): Period =>
 export const periodLabel = ({ kind, year, month }: PeriodPick) =>
   kind === 'all' ? 'all time' : kind === 'year' ? `in ${year}` : `in ${monthName(month)} ${year}`
 
-/** a stable empty wishlist, so the Wishlist block doesn't re-render on every dashboard render */
-const EMPTY_WISHES: Book[] = []
 
 const NARROW = '(max-width: 860px)'
 
@@ -184,9 +176,6 @@ export function Dashboard({
   onOpenCreatures,
   onOpenGarden,
   onOpenStats,
-  wishes = EMPTY_WISHES,
-  onBought,
-  onRemoveWish,
 }: DashboardProps) {
   const open = (section: ChallengeSection) => (onOpenChallenges ? () => onOpenChallenges(section) : undefined)
   // the year wrap-up story she opened with ▶ Play (T-0081); null: no story open
@@ -388,9 +377,6 @@ export function Dashboard({
     authors: <AuthorsCard books={books} />,
     wrapped: <WrappedCard books={books} onShowBook={onShowBook} onPlay={setStoryYear} />,
     recent: <RecentCard books={books} onShowBook={onShowBook} />,
-    // the wishlist is not on the shelf and is counted nowhere (D-0053): this is the one
-    // block that is given the wishes instead of her books
-    wishlist: <WishlistCard wishes={wishes} onBought={onBought ?? (() => {})} onRemove={onRemoveWish ?? (() => {})} />,
     alphabet: <AlphabetCard books={books} onShowBook={onShowBook} onUpdate={onUpdate} compact onOpen={open('alphabet')} />,
     bingo: <BingoCard books={books} onUpdate={onUpdate} compact onOpen={open('bingo')} onShowBook={onShowBook} />,
   }

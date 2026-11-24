@@ -28,10 +28,10 @@ const book = (over: Partial<Book> = {}): Book => ({
 
 const filters = (over: Partial<(typeof START_VIEW)['filters']> = {}) => ({ ...START_VIEW.filters, ...over })
 
-describe('the four bookcases (D-0046 §2)', () => {
-  it('is All, Read, To read, Digital, in that order, with her words', () => {
-    expect(BOOKCASES.map((b) => b.id)).toEqual(['all', 'read', 'want', 'digital'])
-    expect(BOOKCASES.map((b) => b.label)).toEqual(['All', 'Read', 'To read', 'Digital'])
+describe('the bookcases (D-0046 §2, D-0074)', () => {
+  it('is All, Read, To read, Digital, Wishlist, in that order, with her words', () => {
+    expect(BOOKCASES.map((b) => b.id)).toEqual(['all', 'read', 'want', 'digital', 'wish'])
+    expect(BOOKCASES.map((b) => b.label)).toEqual(['All', 'Read', 'To read', 'Digital', 'Wishlist'])
   })
 
   it('puts a finished book in All and Read, and a want-to-read book in All and To read', () => {
@@ -216,5 +216,44 @@ describe('combining, clearing and the summary', () => {
     expect(viewSummary(START_VIEW, options)).toEqual([])
     expect(viewSummary({ bookcase: 'read', filters: filters({ rating: 4, trope: 'slow burn' }) }, options)).toEqual(['Read', '★4 and up', 'Slow burn'])
     expect(viewSummary({ bookcase: 'all', filters: filters({ year: 2026 }) }, options)).toEqual(['2026'])
+  })
+})
+
+/** The Wishlist bookcase (D-0074): the one gate between her wishes and her shelf. */
+describe('the Wishlist bookcase', () => {
+  const wish = book({ id: 'w', wish: true, status: 'want', formats: ['ebook'] })
+  const owned = book({ id: 'o', status: 'read', formats: ['ebook'] })
+
+  it('is the last bookcase on the switch', () => {
+    expect(BOOKCASES.map((b) => b.id)).toEqual(['all', 'read', 'want', 'digital', 'wish'])
+    expect(BOOKCASES.at(-1)!.label).toBe('Wishlist')
+  })
+
+  it('holds her wishes and nothing else', () => {
+    expect(inBookcase(wish, 'wish')).toBe(true)
+    expect(inBookcase(owned, 'wish')).toBe(false)
+  })
+
+  it('keeps a wish out of every other bookcase, whatever its status or format', () => {
+    for (const bookcase of ['all', 'read', 'want', 'digital'] as const) {
+      expect(inBookcase(wish, bookcase)).toBe(false)
+      expect(inBookcase({ ...wish, status: 'read' }, bookcase)).toBe(false)
+    }
+  })
+
+  it('narrows the whole library down to the right books, All included', () => {
+    const library = [owned, wish]
+    expect(applyView(library, START_VIEW).map((b) => b.id)).toEqual(['o'])
+    expect(applyView(library, { ...START_VIEW, bookcase: 'wish' }).map((b) => b.id)).toEqual(['w'])
+    // the short cut for All with nothing set still holds for a library with no wish in it
+    const shelfOnly = [owned]
+    expect(applyView(shelfOnly, START_VIEW)).toBe(shelfOnly)
+  })
+
+  it('still lets the filters narrow the wishlist', () => {
+    const cheap = book({ id: 'c', wish: true, genres: ['Fantasy'] })
+    const list = [wish, cheap]
+    const view = { bookcase: 'wish' as const, filters: filters({ genre: 'Fantasy' }) }
+    expect(applyView(list, view).map((b) => b.id)).toEqual(['c'])
   })
 })

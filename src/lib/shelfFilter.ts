@@ -6,29 +6,38 @@ import { foldTrope, hasTrope, tropeCounts } from './tropes'
 import { NO_GENRE, filterByGenre, genreOptions } from './genreFilter'
 
 /**
- * The four bookcases and the filter row above the shelf (D-0046).
+ * The five bookcases and the filter row above the shelf (D-0046, D-0074).
  *
  * One pure module owns which books the shelf shows: the bookcase switch
- * (All · Read · To read · Digital), the six filters (genre, a minimum rating, a
+ * (All · Read · To read · Digital · Wishlist), the six filters (genre, a minimum rating, a
  * minimum spice, the year read, the language and a trope), which options each
  * filter offers for a shelf, and the line that says what is on. Nothing here is
  * saved: the page holds the state and a reload starts fresh.
  */
 
-export type BookcaseId = 'all' | 'read' | 'want' | 'digital'
+export type BookcaseId = 'all' | 'read' | 'want' | 'digital' | 'wish'
 
 export const BOOKCASES: Array<{ id: BookcaseId; label: string }> = [
   { id: 'all', label: 'All' },
   { id: 'read', label: 'Read' },
   { id: 'want', label: 'To read' },
   { id: 'digital', label: 'Digital' },
+  { id: 'wish', label: 'Wishlist' },
 ]
 
 /** The formats that make a book digital: an e-book or an audiobook, however she has it. */
 const DIGITAL_FORMATS = ['ebook', 'audiobook', 'storytel'] as const
 
-/** Is this book in that bookcase? A book can be in two (Digital and one of the others). */
+/**
+ * Is this book in that bookcase? A book can be in two (Digital and one of the others).
+ *
+ * This is also the **only** gate between her wishlist and her shelf (D-0074 §2): a wish is
+ * in the Wishlist bookcase and in no other, and nothing she owns is ever in Wishlist. So
+ * even a page that hands the whole library to the shelf cannot put a wish among her books.
+ */
 export function inBookcase(book: Book, bookcase: BookcaseId): boolean {
+  if (bookcase === 'wish') return !!book.wish
+  if (book.wish) return false
   switch (bookcase) {
     case 'all':
       return true
@@ -195,9 +204,13 @@ export function passesFilters(book: Book, filters: ShelfFilters): boolean {
   return true
 }
 
-/** The books the shelf shows, in shelf order. */
+/**
+ * The books the shelf shows, in shelf order. It may be given the whole library:
+ * `inBookcase` is what keeps the wishes out of the other four bookcases (D-0074 §2),
+ * so the short cut below only holds while there is no wish to keep out.
+ */
 export function applyView(books: Book[], view: ShelfView): Book[] {
-  if (view.bookcase === 'all' && !isFiltered(view.filters)) return books
+  if (view.bookcase === 'all' && !isFiltered(view.filters) && !books.some((b) => b.wish)) return books
   return books.filter((b) => inBookcase(b, view.bookcase) && passesFilters(b, view.filters))
 }
 

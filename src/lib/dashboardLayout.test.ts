@@ -315,41 +315,25 @@ describe('the blocks that moved to the Stats page (T-0080, D-0060)', async () =>
   })
 })
 
-describe('the Wishlist block (T-0072, D-0053)', () => {
-  it('joins Today on a dashboard arranged before it existed, keeping her order, hidden blocks and favourites', () => {
-    expect(BLOCKS.wishlist).toBe('Wishlist')
-    expect(DEFAULT_LAYOUT.sections.today[1].at(-1)).toBe('wishlist')
-    // a layout she saved before the block existed, with her own order and a hidden block
-    const before = structuredClone(DEFAULT_LAYOUT)
-    before.sections.today[1] = ['recent', 'challenge', 'next']
-    // hidden means out of its section too, as hideBlock leaves it (T-0080)
-    before.sections.fun = before.sections.fun.map((col) => col.filter((id) => id !== 'fact')) as typeof before.sections.fun
-    before.hidden = ['fact']
-    before.favourites = ['myyear', 'pile']
-    before.folded = ['fun']
-    const loaded = cleanLayout(JSON.parse(JSON.stringify(before)))
-    expect(loaded.sections.today[1]).toContain('wishlist')
-    // her order is kept, and nothing she had moved around has shifted section
-    expect(loaded.sections.today[1].filter((id) => ['recent', 'challenge', 'next'].includes(id))).toEqual([
-      'recent',
-      'challenge',
-      'next',
-    ])
-    expect(loaded.hidden).toEqual(['fact'])
-    expect(loaded.favourites).toEqual(['myyear', 'pile'])
-    expect(loaded.folded).toEqual(['fun'])
-    // the block appears exactly once, wherever it lands
-    const all = SECTION_IDS.flatMap((s) => loaded.sections[s].flat())
-    expect(all.filter((id) => id === 'wishlist')).toHaveLength(1)
+describe('the Wishlist block is gone (D-0074 §6)', () => {
+  it('is no longer a block at all', () => {
+    expect(Object.hasOwn(BLOCKS, 'wishlist')).toBe(false)
+    expect(SECTION_IDS.flatMap((s) => DEFAULT_LAYOUT.sections[s].flat())).not.toContain('wishlist')
   })
 
-  it('can be hidden, shown again and starred like every other block', () => {
-    const hidden = hideBlock(structuredClone(DEFAULT_LAYOUT), 'wishlist')
-    expect(hidden.hidden).toContain('wishlist')
-    expect(SECTION_IDS.flatMap((s) => hidden.sections[s].flat())).not.toContain('wishlist')
-    const shown = showBlock(hidden, 'wishlist')
-    expect(shown.hidden).not.toContain('wishlist')
-    expect(shown.sections.today.flat()).toContain('wishlist')
-    expect(toggleFavourite(shown, 'wishlist').favourites).toEqual(['wishlist'])
+  it('leaves a layout that still names it working, with everything else of hers kept', () => {
+    const saved = structuredClone(DEFAULT_LAYOUT) as unknown as { sections: Record<string, string[][]>; hidden: string[]; favourites: string[] }
+    saved.sections.today[1] = ['recent', 'wishlist', 'challenge']
+    // hidden means out of its section too, as hideBlock leaves it (T-0080)
+    saved.sections.fun = saved.sections.fun.map((col) => col.filter((id) => id !== 'fact'))
+    saved.hidden = ['fact', 'wishlist']
+    saved.favourites = ['wishlist', 'pile']
+    const loaded = cleanLayout(JSON.parse(JSON.stringify(saved)))
+    const all = SECTION_IDS.flatMap((s) => loaded.sections[s].flat())
+    expect(all).not.toContain('wishlist')
+    expect(loaded.hidden).not.toContain('wishlist')
+    expect(loaded.favourites).toEqual(['pile'])
+    expect(loaded.hidden).toContain('fact')
+    expect(loaded.sections.today[1].filter((id) => ['recent', 'challenge'].includes(id))).toEqual(['recent', 'challenge'])
   })
 })

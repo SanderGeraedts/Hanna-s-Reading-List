@@ -106,12 +106,12 @@ describe('New for you (#186)', () => {
   })
 
   it('stands in Today right after What next?, also on a dashboard arranged before it', () => {
-    expect(DEFAULT_LAYOUT.sections.today[1]).toEqual(['challenge', 'creatures', 'garden', 'next', 'newforyou', 'recent', 'wishlist'])
+    expect(DEFAULT_LAYOUT.sections.today[1]).toEqual(['challenge', 'creatures', 'garden', 'next', 'newforyou', 'recent'])
     const saved = structuredClone(DEFAULT_LAYOUT)
     saved.sections.today[1] = ['challenge', 'next', 'recent']
-    expect(cleanLayout(saved).sections.today[1]).toEqual(['challenge', 'creatures', 'garden', 'next', 'newforyou', 'recent', 'wishlist'])
+    expect(cleanLayout(saved).sections.today[1]).toEqual(['challenge', 'creatures', 'garden', 'next', 'newforyou', 'recent'])
     // moved elsewhere by her: still right after What next?
     saved.sections.today[1] = ['recent', 'next', 'challenge']
-    expect(cleanLayout(saved).sections.today[1]).toEqual(['recent', 'wishlist', 'next', 'newforyou', 'challenge', 'creatures', 'garden'])
+    expect(cleanLayout(saved).sections.today[1]).toEqual(['recent', 'next', 'newforyou', 'challenge', 'creatures', 'garden'])
   })
 })

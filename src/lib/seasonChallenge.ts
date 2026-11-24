@@ -6,8 +6,9 @@ import { sleepReadIds } from './sleepSeries'
 import { foldTrope, tropesOf } from './tropes'
 
 /**
- * Seasonal (D-0065 §2): a target per calendar season, judged by the book's
- * genres **and** its tropes (D-0042). The season of a finish comes from
+ * Seasonal (D-0065 §2): a target per calendar season, judged by the seasons
+ * Hanna gave the book herself (D-0072) or, while she gave it none, by the
+ * book's genres **and** its tropes (D-0042). The season of a finish comes from
  * `seasonOf`, which is meteorological, northern-hemisphere and already safe
  * around a leap day: a day that does not exist (2027-02-29, from an older
  * shelf) is no season at all and counts for nothing.
@@ -62,11 +63,40 @@ export function holdsWord(text: string, word: string): boolean {
   return !!needle && haystack.includes(` ${needle} `)
 }
 
-/** Whether a book matches a season's words, by genre or by trope. */
+/**
+ * The seasons Hanna picked for this book herself (D-0072), in season order.
+ * Anything that is not one of the four seasons is ignored, so a shelf saved by
+ * a newer app — or a `null`, a number or a misspelling — still reads cleanly.
+ */
+export function seasonsOf(book: Pick<Book, 'seasons'> | undefined | null): Season[] {
+  const raw = (book as { seasons?: unknown } | undefined | null)?.seasons
+  if (!Array.isArray(raw)) return []
+  return SEASONS.filter((s) => raw.includes(s))
+}
+
+/**
+ * Whether a book is for this season. **Her own pick wins** (D-0072 §3): once she
+ * has given a book any season, those are its seasons and nothing else is, so a
+ * Christmas book counts for winter and a book can also be taken out of a season
+ * it was wrongly guessed into. With the field empty it is the guess as it always
+ * was: the season's words against the book's genres and tropes.
+ */
 export function matchesSeason(book: Book, season: Season): boolean {
+  const picked = seasonsOf(book)
+  if (picked.length) return picked.includes(season)
   const { words } = targetFor(season)
   const texts = [...(book.genres ?? []), ...tropesOf(book)]
   return texts.some((t) => words.some((w) => holdsWord(t, w)))
+}
+
+/**
+ * The patch that gives a book these seasons. An empty pick clears the field
+ * (never writes `[]`), so a book she filled in and emptied again is
+ * byte-for-byte the book she never touched (D-0072 §1).
+ */
+export function seasonsPatch(seasons: readonly Season[]): Pick<Book, 'seasons'> {
+  const clean = SEASONS.filter((s) => seasons.includes(s))
+  return { seasons: clean.length ? clean : undefined }
 }
 
 export interface SeasonProgress {
