@@ -2,12 +2,12 @@
 id: Q-001
 title: "May the app send a reading reminder at 20:00 by web push, with keys on Netlify and a new collection on the NAS?"
 description: "Hanna asked (#163) for a phone notification at 20:00 on days without reading, also when the app is closed; draft PR #165 builds it, but it needs VAPID secrets on Netlify, a new PocketBase collection and hook, and a second scheduled function."
-status: Open
+status: Resolved
 raised_on: 2026-11-21
 raised_by: architect
 issue: "https://github.com/SanderGeraedts/Hanna-s-Reading-List/issues/163"
 blocks: []
-resolved_by: []
+resolved_by: [D-0075]
 tags: [backend, infrastructure, notifications]
 ---
 
@@ -52,4 +52,4 @@ extended for `push_subscriptions` (owner-only). Option 3 if he has no time for i
 
 # Answer
 
-Open.
+Resolved on 2026-11-24 by the Engineer: **option 1, web push as built in #165.** Sander set the VAPID keys on Netlify (production only) himself; the team finishes and merges #165. Recorded in [D-0075](D-0075-a-reading-reminder-by-web-push.md).
