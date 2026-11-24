@@ -1,6 +1,6 @@
-# Paths only Sander may approve. Branch protection on main requires a code
-# owner review for these, so a change here can't go live without him.
-# See docs/hanna-guardrails.md for why.
+# Paths Sander is asked to review. GitHub no longer requires his review (D-0077):
+# the auto-merge workflow holds pull requests touching the shelf-saving files and
+# deploy/nas/ for him instead (hold-paths in .github/workflows/auto-merge.yml).
 
 # the account server on the NAS: schema, hooks, image
 /deploy/nas/                @SanderGeraedts
@@ -19,8 +19,7 @@
 /.claude/                   @SanderGeraedts
 /docs/hanna-guardrails.md   @SanderGeraedts
 
-# the harness's rules and hooks, which the rules from CLAUDE.md moved into
-# (T-0001, until Q-003 is answered)
+# the harness's rules and hooks, which the rules from CLAUDE.md moved into (T-0001)
 /AGENTS.md                  @SanderGeraedts
 /.harness/                  @SanderGeraedts
 /.githooks/                 @SanderGeraedts

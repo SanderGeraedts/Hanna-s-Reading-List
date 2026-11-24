@@ -2,12 +2,12 @@
 id: Q-002
 title: "May AI come back for completing series, page edges, quotes and back texts, with a paid API key on Netlify?"
 description: "Hanna asked (#183) for completing series, book edges, quotes and back texts made with the help of AI; AI was removed on 12 November (#117) together with ANTHROPIC_API_KEY, and bringing it back costs money per request and needs a key."
-status: Open
+status: Resolved
 raised_on: 2026-11-21
 raised_by: architect
 issue: "https://github.com/SanderGeraedts/Hanna-s-Reading-List/issues/189"
 blocks: []
-resolved_by: []
+resolved_by: [D-0076]
 tags: [outside-service, money]
 ---
 
@@ -50,4 +50,4 @@ answered.
 
 # Answer
 
-Open.
+Resolved on 2026-11-24 by the Engineer: **option 1, keep the app free of AI.** #183 is closed; non-AI versions can be built as ordinary tasks. Recorded in [D-0076](D-0076-the-app-stays-free-of-ai.md).

@@ -28,7 +28,7 @@ Rules that hold only for this project. Each one points at the decision behind it
   (`~/.claude/CLAUDE.md`) say this is **Hanna's instance**, read and follow
   [`docs/hanna-guardrails.md`](docs/hanna-guardrails.md) before doing anything else, and use
   the `feature-chat` skill for feature requests. Otherwise you are working with Sander and the
-  guardrails do not apply (D-0001, Q-003).
+  guardrails do not apply (D-0001, D-0077).
 - **Only production touches production data** (G-0019, D-0003, #96). Never run the dev
   server, a script or a test against the production `POCKETBASE_URL`, and never pull Netlify
   environment variables (`netlify env:get`, `netlify link`, `netlify dev` linked to the site
@@ -49,8 +49,10 @@ Rules that hold only for this project. Each one points at the decision behind it
 - **Where this project differs from the harness:** D-0002 overrules G-0017 (TanStack Start
   with server functions, not a static app), D-0003 overrules G-0018 (only the app's server
   talks to PocketBase) and D-0005 overrules G-0028 (no `harness infra`).
-- **Code owners** (Q-003): `.github/CODEOWNERS` lists the paths only Sander may approve, and
-  the `main` ruleset requires his review for them.
+- **Held for Sander** (D-0077): the harness's ruleset guards `main`, with no bypass. A pull
+  request touching `src/lib/shelfMerge.ts`, `src/server/shelf.ts` or `deploy/nas/` is held by
+  the auto-merge workflow (`waits-for-engineer`) and Sander merges it. `.github/CODEOWNERS`
+  only requests his review.
 - **Commands:** `pnpm install`, `pnpm run dev` (http://localhost:3000), `pnpm test`,
   `pnpm run build`. A merge to `main` deploys the site on Netlify within minutes; every pull
   request gets a Netlify deploy preview.

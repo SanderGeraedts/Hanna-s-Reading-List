@@ -68,12 +68,13 @@ global one replaced ends its line with `Replaced by G-NNNN.`
 - [D-0072 A book can be given its own seasons, and her pick replaces the app's guess](D-0072-a-book-can-be-given-its-own-seasons.md): An optional seasons?: Season[] on Book, set as four chips under Genres on the book panel's Details tab; matchesSeason answers from her picked seasons when the field has any and falls back to the genre-and-trope guess when it is empty.
 - [D-0073 A pose is judged by the shelf it lands on, not the narrowest one, and a book dropped on a lying book joins its pile](D-0073-piles-fit-the-shelf-they-land-on-and-books-can-be-dragged-onto-a-pile.md): Widens D-0044 §7 so lying flat works on a phone, says in the Looks tab when no shelf has room, and lets a drop on a lying book put the dragged book on top and lay it down.
 - [D-0074 The wishlist is a fifth bookcase on the shelf, not a dashboard block](D-0074-the-wishlist-is-a-bookcase-not-a-dashboard-block.md): BOOKCASES gains Wishlist and inBookcase is the only gate that lets wishes in and keeps them out of the other four; the book panel grows a Wishlist row and the WishlistCard block is removed.
+- [D-0075 The app may send a reading reminder at 20:00 by web push, with its keys on Netlify and a collection on the NAS](D-0075-a-reading-reminder-by-web-push.md): Resolves Q-001. Web push as built in #165: VAPID keys on Netlify for production only, a push_subscriptions collection and hook on PocketBase, and a second scheduled function.
+- [D-0076 The app stays free of AI: no AI for series, page edges, quotes or back texts](D-0076-the-app-stays-free-of-ai.md): Resolves Q-002. D-0017 stands; #183 is declined, and non-AI versions can be ordinary tasks.
+- [D-0077 The harness's ruleset guards main, with no bypass; pull requests touching shelf saving or the NAS are held for Sander](D-0077-the-harness-ruleset-guards-main-and-hold-paths-guard-the-shelf.md): Resolves Q-003. The main ruleset is deleted; hold-paths in auto-merge.yml holds shelfMerge.ts, server/shelf.ts and deploy/nas/ with waits-for-engineer; CODEOWNERS only requests reviews.
 
 ## Open questions
 
-- [Q-001 May the app send a reading reminder at 20:00 by web push, with keys on Netlify and a new collection on the NAS?](Q-001-may-the-app-send-a-reading-reminder-by-web-push.md): Hanna asked (#163) for a phone notification at 20:00 on days without reading; draft PR #165 builds it, but it needs VAPID secrets, a new PocketBase collection and a second scheduled function.
-- [Q-002 May AI come back for completing series, page edges, quotes and back texts, with a paid API key on Netlify?](Q-002-may-ai-features-come-back.md): Hanna asked (#183) for these made with AI; AI was removed on purpose in #117, and bringing it back costs money per request and needs a key.
-- [Q-003 Should the code-owner review on main (with the admin bypass) give way to the harness's ruleset and auto-merge, and how is the guard on shelf saving kept?](Q-003-how-do-code-owner-review-and-needs-sander-fit-the-harness.md): The ruleset main requires a code-owner review and lets admins bypass, while G-0029 wants no bypass and G-0011 wants green, passed pull requests to merge themselves.
+None.
 
 ## Replaced
 
@@ -82,4 +83,6 @@ global one replaced ends its line with `Replaced by G-NNNN.`
 
 ## Resolved questions
 
-None.
+- [Q-001 May the app send a reading reminder at 20:00 by web push, with keys on Netlify and a new collection on the NAS?](Q-001-may-the-app-send-a-reading-reminder-by-web-push.md): Hanna asked (#163) for a phone notification at 20:00 on days without reading; draft PR #165 builds it, but it needs VAPID secrets, a new PocketBase collection and a second scheduled function.
+- [Q-002 May AI come back for completing series, page edges, quotes and back texts, with a paid API key on Netlify?](Q-002-may-ai-features-come-back.md): Hanna asked (#183) for these made with AI; AI was removed on purpose in #117, and bringing it back costs money per request and needs a key.
+- [Q-003 Should the code-owner review on main (with the admin bypass) give way to the harness's ruleset and auto-merge, and how is the guard on shelf saving kept?](Q-003-how-do-code-owner-review-and-needs-sander-fit-the-harness.md): The ruleset main requires a code-owner review and lets admins bypass, while G-0029 wants no bypass and G-0011 wants green, passed pull requests to merge themselves.
