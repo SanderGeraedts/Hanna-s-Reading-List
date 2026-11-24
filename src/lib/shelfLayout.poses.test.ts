@@ -106,7 +106,7 @@ describe('flat books stack (D-0044 §5)', () => {
   })
 })
 
-describe('a pose that cannot fit falls back to standing (D-0044 §7)', () => {
+describe('a pose that cannot fit falls back to standing (D-0044 §7, D-0073 §1)', () => {
   it('stands a flat book on a case too narrow for it, and keeps the field', () => {
     const b = book('wide', 'Wide', { pose: 'flat' })
     expect(layoutOf([b], 0.2).slots.get('wide')!.pose).toBe('standing')
@@ -118,15 +118,96 @@ describe('a pose that cannot fit falls back to standing (D-0044 §7)', () => {
     const b = book('fo', 'Face out', { pose: 'faceout' })
     const d = bookDims(b)
     expect(layoutOf([b], d.w - 0.01).slots.get('fo')!.pose).toBe('standing')
-    expect(layoutOf([b], d.w + 0.01).slots.get('fo')!.pose).toBe('faceout')
+    // the margin a shelf always keeps at each end counts too, so a case needs a little more than the cover
+    expect(layoutOf([b], d.w + 0.08).slots.get('fo')!.pose).toBe('faceout')
   })
 
-  it('counts the room a decoration keeps on the most cramped shelf', () => {
+  it('still counts a decoration when every shelf of the case has one', () => {
     const b = book('fo2', 'Face out', { pose: 'faceout' })
     const d = bookDims(b)
-    // a case just wide enough for the cover, but not once a decoration keeps its spot
-    const l = computeLayout([b], { innerWidth: d.w + 0.05, minRows: 3 }, undefined, ['cat'])
+    // two shelves, a decoration on each: no shelf ever has the whole inner width
+    const l = computeLayout([b], { innerWidth: d.w + 0.05, minRows: 2 }, undefined, ['cat', 'koala'])
     expect(l.slots.get('fo2')!.pose).toBe('standing')
+  })
+})
+
+/**
+ * #271: lying flat did nothing on Hanna's phone, because D-0044 §7 measured the pose
+ * against the most cramped shelf of the case. D-0073 §1 measures it against the roomiest
+ * one and lets a wide item walk past a shelf that cannot hold it.
+ */
+describe('a pose on a narrow case (D-0073 §1)', () => {
+  const phone = { innerWidth: 0.55, minRows: 6 }
+  const flat = (id: string) => book(id, `Flat ${id}`, { pose: 'flat', pages: 300 })
+
+  /** enough standing books to fill the decorated shelf and reach the one below it */
+  const filler = (n: number) => Array.from({ length: n }, (_, i) => book(`fill${i}`, `Standing ${i}`, { pages: 600 }))
+
+  it('lies a book flat on a phone-sized case, on a shelf without a decoration', () => {
+    // the book is taller than the cat's shelf has room for (0.55 - 0.18 - 0.07 = 0.30)
+    expect(bookDims(flat('p1')).h).toBeGreaterThan(0.3)
+    const l = computeLayout([...filler(6), flat('p1')], phone, undefined, ['cat'])
+    const slot = l.slots.get('p1')!
+    expect(slot.pose).toBe('flat')
+    expect(slot.row).toBeGreaterThan(0)
+  })
+
+  it('gets the end of a cramped shelf and sends that shelf’s decoration down one', () => {
+    const l = computeLayout([flat('d1'), flat('d2'), book('next', 'After', { pages: 400 })], phone, undefined, ['cat'])
+    expect([l.slots.get('d1')!.pose, l.slots.get('d2')!.pose]).toEqual(['flat', 'flat'])
+    // the cat has not been drawn on top of the pile: it is on a shelf of its own
+    const cat = l.decor.find((d) => d.kind === 'cat')!
+    expect(cat.row).not.toBe(l.slots.get('d1')!.row)
+  })
+
+  it('keeps a pile of a series together on the shelf it lands on', () => {
+    const series = ['s1', 's2', 's3'].map((id) => book(id, `Percy Jackson ${id}`, { pose: 'flat', pages: 300, series: 'Percy Jackson' }))
+    const l = computeLayout([...filler(6), ...series], phone, undefined, ['cat'])
+    const slots = series.map((b) => l.slots.get(b.id)!)
+    expect(slots.every((s) => s.row === slots[0].row)).toBe(true)
+    expect(slots.every((s) => s.pose === 'flat')).toBe(true)
+    expect(slots[1].y).toBeGreaterThan(slots[0].y)
+    expect(slots[2].y).toBeGreaterThan(slots[1].y)
+  })
+
+  it('never skips a shelf: no shelf of a full case is left without a single book', () => {
+    const many = Array.from({ length: 30 }, (_, i) =>
+      i % 3 === 0 ? flat(`x${i}`) : book(`x${i}`, `Standing ${i}`, { pages: 500 }),
+    )
+    for (const decor of [['cat'], ['cat', 'mug', 'ivy'], []] as const) {
+      const l = computeLayout(many, phone, undefined, [...decor])
+      const used = new Set([...l.slots.values()].map((s) => s.row))
+      const last = Math.max(...used)
+      for (let row = 0; row <= last; row++) expect(used.has(row)).toBe(true)
+    }
+  })
+
+  it('never lets a pose and a decoration end up on top of each other', () => {
+    const many = Array.from({ length: 24 }, (_, i) => (i % 2 ? flat(`m${i}`) : book(`m${i}`, `Standing ${i}`, { pages: 400 })))
+    const l = computeLayout(many, phone, undefined, ['cat', 'mug', 'ivy'])
+    const widthOf = new Map<string, number>([
+      ['cat', 0.18],
+      ['mug', 0.1],
+      ['ivy', 0.11],
+    ])
+    for (const [id, s] of l.slots) {
+      const f = footprint(l.dims.get(id)!, s.pose)
+      // inside the case
+      expect(s.x + f.along / 2).toBeLessThanOrEqual(0.55 / 2 + 1e-9)
+      for (const d of l.decor) {
+        if (d.row !== s.row) continue
+        const dw = widthOf.get(d.kind)!
+        const apart = Math.abs(s.x - d.x) + 1e-9 >= (f.along + dw) / 2
+        expect(apart).toBe(true)
+      }
+    }
+  })
+
+  it('still stands a book no shelf of the case could ever hold, and keeps the field', () => {
+    const b = flat('huge')
+    const l = computeLayout([b], { innerWidth: 0.2, minRows: 6 }, undefined, [])
+    expect(l.slots.get('huge')!.pose).toBe('standing')
+    expect(b.pose).toBe('flat')
   })
 })
 
@@ -180,5 +261,20 @@ describe('a shelf with no poses is exactly the shelf it was', () => {
       expect(s.y - rowFloorY(s.row, l.rows)).toBeCloseTo(d.h / 2, 9)
       expect(s.z).toBeCloseTo(SHELF.depth / 2 - d.w / 2 - 0.012, 9)
     }
+  })
+})
+
+/** The pile goes down a shelf rather than standing, while that leaves no shelf empty (D-0073 §1). */
+describe('a pile that does not fit the shelf it reached', () => {
+  const phone = { innerWidth: 0.55, minRows: 6 }
+
+  it('goes down to the next shelf when the shelf it reached already has books', () => {
+    const before = Array.from({ length: 3 }, (_, i) => book(`b${i}`, `Standing ${i}`, { pages: 500 }))
+    const pile = ['p1', 'p2'].map((id) => book(id, `Flat ${id}`, { pose: 'flat', pages: 300 }))
+    const l = computeLayout([...before, ...pile], phone, undefined, ['cat'])
+    const slots = pile.map((b) => l.slots.get(b.id)!)
+    // the cat's shelf (row 0) has her standing books; the pile moved down to the roomy one
+    expect(l.slots.get('b0')!.row).toBe(0)
+    expect(slots.every((s) => s.row === 1 && s.pose === 'flat')).toBe(true)
   })
 })

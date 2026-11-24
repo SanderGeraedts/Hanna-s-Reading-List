@@ -30,10 +30,10 @@ function bar(view: ShelfView = START_VIEW, books: Book[] = shelf, empty = false)
 }
 
 describe('the bar above the shelf (T-0051, D-0046)', () => {
-  it('shows the four bookcases with All chosen', () => {
+  it('shows the five bookcases with All chosen', () => {
     bar()
     const group = screen.getByRole('group', { name: 'Bookcase' })
-    expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual(['All', 'Read', 'To read', 'Digital'])
+    expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual(['All', 'Read', 'To read', 'Digital', 'Wishlist'])
     expect(screen.getByRole('button', { name: 'All' }).getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByRole('button', { name: 'Read' }).getAttribute('aria-pressed')).toBe('false')
   })

@@ -211,12 +211,21 @@ describe('a pose wider than the shelf', () => {
     expect(computeLayout([b], { innerWidth: 1.6, minRows: 3 }).slots.get('one')!.pose).toBe('flat')
   })
 
-  it('counts the decoration room: the same case fits the pose with no decorations and not with one', () => {
+  it('counts the decoration room only while every shelf of the case has a decoration (D-0073 §1)', () => {
     const b = posed('two', 'faceout')
     const dims = computeLayout([b], { innerWidth: 1.6, minRows: 3 }).dims.get('two')!
-    const width = dims.w + 0.05
+    const width = dims.w + 0.1
     expect(computeLayout([b], { innerWidth: width, minRows: 3 }, undefined, []).slots.get('two')!.pose).toBe('faceout')
-    expect(computeLayout([b], { innerWidth: width, minRows: 3 }, undefined, ['cat']).slots.get('two')!.pose).toBe('standing')
+    // a decoration no longer costs the pose (D-0073 §1): the cover gets the end of the shelf
+    // and the cat moves down to the next one, which is where decorations are placed anyway
+    const roomy = computeLayout([b], { innerWidth: width, minRows: 3 }, undefined, ['cat'])
+    expect(roomy.slots.get('two')!.pose).toBe('faceout')
+    expect(roomy.decor.find((d) => d.kind === 'cat')!.row).toBe(1)
+    // a case too narrow for the cover itself still stands the book, and keeps her choice
+    expect(
+      computeLayout([b], { innerWidth: dims.w - 0.01, minRows: 3 }, undefined, []).slots.get('two')!.pose,
+    ).toBe('standing')
+    expect(b.pose).toBe('faceout')
   })
 })
 

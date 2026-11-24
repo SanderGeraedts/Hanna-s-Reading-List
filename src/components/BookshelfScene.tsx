@@ -4,7 +4,10 @@ import * as THREE from 'three'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import type { Book, SortKey } from '#/lib/library'
-import { SHELF, computeLayout, fitShelf, rowFloorY, topGap } from '#/lib/shelfLayout'
+import { SHELF, computeLayout, fitShelf, topGap } from '#/lib/shelfLayout'
+import { dropOrder } from '#/lib/shelfDrop'
+import type { Drop } from '#/lib/shelfDrop'
+import type { BookPose } from '#/lib/pose'
 import type { BookDims } from '#/lib/shelfLayout'
 import { FOV, aimCamera, cameraZ, frameCase, newAim, parallaxTarget, topShareFor } from './cameraAim'
 import type { PointerInput } from './cameraAim'
@@ -52,6 +55,17 @@ export interface BookshelfSceneProps {
   inspect: RefObject<InspectTarget>
   onSelect: (id: string | null) => void
   onReorder: (ids: string[]) => void
+  /**
+   * A book was dropped on a lying book or its pile (D-0073 §4): it joins the pile,
+   * so it is laid flat. The only time a pose is set for her (D-0044 §9).
+   */
+  onLayFlat?: (id: string) => void
+  /**
+   * The pose the open book is really drawn in, each time that changes (D-0073 §3).
+   * The panel says so when it is not the pose she picked, which is how she learns
+   * that this bookcase has no shelf with room for it.
+   */
+  onPoseDrawn?: (pose: BookPose | null) => void
   /** the sort last applied to the shelf; 'status' puts book nooks between the groups */
   arrangement?: SortKey | null
   /** share of the screen height covered by the details sheet on phones (0..1) */
@@ -195,6 +209,8 @@ export function watchContextLoss(canvas: HTMLCanvasElement, onLost: () => void) 
 interface DragState {
   id: string
   order: string[]
+  /** the drop is on a lying book or its pile, so letting go lays this book flat (D-0073 §4) */
+  lay?: boolean
 }
 
 function Scene({
@@ -203,6 +219,8 @@ function Scene({
   inspect,
   onSelect,
   onReorder,
+  onLayFlat,
+  onPoseDrawn,
   arrangement,
   sheet,
   highlight = null,
@@ -242,7 +260,13 @@ function Scene({
   const byId = useMemo(() => new Map(books.map((b) => [b.id, b])), [books])
   const ordered = useMemo(
     () =>
-      drag ? drag.order.map((id) => byId.get(id)).filter((b): b is Book => !!b) : books,
+      drag
+        ? drag.order
+            .map((id) => byId.get(id))
+            .filter((b): b is Book => !!b)
+            // dropping it on a pile lays it down, so show it lying there before she lets go
+            .map((b) => (drag.lay && b.id === drag.id ? { ...b, pose: 'flat' as const } : b))
+        : books,
     [drag, books, byId],
   )
   const clipColors = useMemo(() => rainbowClips(books), [books])
@@ -285,6 +309,12 @@ function Scene({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const decorKinds = useMemo(() => (shelfPet ? (['shelf-pet' as const, ...shownDecor(room)]) : shownDecor(room)), [room.decor, shelfPet])
   const layout = useMemo(() => computeLayout(ordered, fit, separators, decorKinds), [ordered, fit, separators, decorKinds])
+  // tell the panel which pose the open book really got, so it can say when this bookcase
+  // has no shelf with room for the one she picked (D-0073 §3)
+  useEffect(() => {
+    if (!onPoseDrawn) return
+    onPoseDrawn(selectedId ? (layout.slots.get(selectedId)?.pose ?? null) : null)
+  }, [onPoseDrawn, selectedId, layout])
   // Detailed books (D-0035): hardcovers, or the simple blocks, on any device
   const detailed = room.detailedBooks
   // the cosy room extras (D-0045): the clock only ticks while Day & night or the season is on
@@ -403,34 +433,14 @@ function Scene({
   const dragPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 0, 1), 0), [])
   const hit = useMemo(() => new THREE.Vector3(), [])
 
+  /** Where the dragged book would land, and whether that is on a pile (`dropOrder`, D-0073 §4). */
   const insertionOrder = useCallback(
-    (id: string, x: number, y: number): string[] => {
+    (id: string, x: number, y: number): Drop => {
       const others = books.filter((b) => b.id !== id)
-      const lay = computeLayout(others, { innerWidth: fit.innerWidth, minRows: caseLayout.rows }, undefined, decorKinds)
-      // which shelf is the pointer over?
-      let row = 0
-      for (let r = 0; r < lay.rows; r++) {
-        if (y >= rowFloorY(r, lay.rows) - SHELF.board) {
-          row = r
-          break
-        }
-        row = r
-      }
-      const inRow = others.filter((b) => lay.slots.get(b.id)!.row === row)
-      let index: number
-      const before = inRow.find((b) => lay.slots.get(b.id)!.x > x)
-      if (before) index = others.indexOf(before)
-      else if (inRow.length) index = others.indexOf(inRow[inRow.length - 1]) + 1
-      else {
-        // empty shelf: go after the last book on any shelf above it
-        const above = others.filter((b) => lay.slots.get(b.id)!.row < row)
-        index = above.length ? others.indexOf(above[above.length - 1]) + 1 : 0
-      }
-      const ids = others.map((b) => b.id)
-      ids.splice(index, 0, id)
-      return ids
+      const layout = computeLayout(others, { innerWidth: fit.innerWidth, minRows: caseLayout.rows }, undefined, decorKinds)
+      return dropOrder(others, layout, id, x, y)
     },
-    [books, caseLayout.rows, fit.innerWidth],
+    [books, caseLayout.rows, fit.innerWidth, decorKinds],
   )
 
   const onPointerDown = useCallback(
@@ -467,9 +477,9 @@ function Scene({
         THREE.MathUtils.clamp(hit.y, 0.1, caseLayout.caseHeight),
         hit.z,
       )
-      const order = insertionOrder(id, hit.x, hit.y)
+      const { order, lay } = insertionOrder(id, hit.x, hit.y)
       if (!drag) setHovered(null)
-      if (!drag || order.join() !== drag.order.join()) updateDrag({ id, order })
+      if (!drag || lay !== !!drag.lay || order.join() !== drag.order.join()) updateDrag({ id, order, lay })
     },
     [dragPlane, hit, insertionOrder, caseLayout.caseHeight, caseLayout.innerWidth, updateDrag],
   )
@@ -482,10 +492,13 @@ function Scene({
       pending.current = null
       const drag = dragRef.current
       updateDrag(null)
-      if (drag) onReorder(drag.order)
-      else onSelect(id)
+      if (drag) {
+        onReorder(drag.order)
+        // dropped on a pile: it lies down too, so it is really on the pile (D-0073 §4)
+        if (drag.lay) onLayFlat?.(drag.id)
+      } else onSelect(id)
     },
-    [onReorder, onSelect, updateDrag],
+    [onReorder, onSelect, onLayFlat, updateDrag],
   )
 
   // ---- scrolling: mouse wheel, or a swipe on touch screens -------------------

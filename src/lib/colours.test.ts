@@ -126,6 +126,14 @@ describe('colour check: everything stays readable', () => {
     // the white round buttons in the header keep dark text on both wallpapers
     ['text on a header button (lavender)', c('pill-ink'), walls.map((w) => over([255, 255, 255, 0.72], w)), 4.5],
     ['text on a header button (midnight)', c('pill-ink'), midWalls.map((w) => over([255, 255, 255, 0.72], w)), 4.5],
+    // the bookcase switch over the shelf: All · Read · To read · Digital · Wishlist (T-0096).
+    // Hanna could hardly read the unchosen ones, which were --pill-ink at 0.72 opacity on a
+    // 0.75 white pill: over dark wood that came out at about 3:1.
+    ['an unchosen bookcase on its pill (lavender)', c('pill-muted'), walls.map((w) => over([255, 255, 255, 0.92], w)), 4.5],
+    ['an unchosen bookcase on its pill (midnight)', c('pill-muted'), midWalls.map((w) => over([255, 255, 255, 0.92], w)), 4.5],
+    // the worst thing the pill can sit on is the dark wood of the bookcase, not the wallpaper
+    ['an unchosen bookcase on its pill, over the darkest wood', c('pill-muted'), [over([255, 255, 255, 0.92], [43, 29, 18, 1])], 4.5],
+    ['the chosen bookcase on its gold fill', c('accent-ink'), [c('accent')], 4.5],
     // the header text over the header's haze, on the midnight wallpaper
     ['header text over the midnight haze', mid('header-ink'), midWalls.map((w) => over(fade(midFade, hazeAlpha), w)), 4.5],
     // the header's band on the pages, over black and over white underneath, on both wallpapers (T-0035)

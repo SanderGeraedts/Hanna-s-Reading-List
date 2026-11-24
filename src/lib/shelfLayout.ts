@@ -260,8 +260,15 @@ export function computeLayout(
   // every shelf keeps a spot at its right end for its decoration (one per
   // shelf, in DECOR order), so full shelves still get their cat, mug or ivy
   const roomFor = (r: number) => innerWidth - (r < decorList.length ? decorList[r].width + DECOR_MARGIN * 2 : 0)
-  const fit = (width: number) => {
-    if (x > 0 && x + width > roomFor(row)) {
+  /**
+   * What a flat pile or a face-out book may use on any shelf: the whole inner width.
+   * A decoration is only ever *placed* where the books left room for it (`placeDecor`
+   * walks down the shelves), so letting a pose have the end of a shelf moves that
+   * shelf's cat or mug down to the next one instead of standing on it (D-0073 §1).
+   */
+  const poseRoom = innerWidth - DECOR_MARGIN * 2
+  const fit = (width: number, roomy = false) => {
+    if (x > 0 && x + width > (roomy ? poseRoom : roomFor(row))) {
       row++
       x = 0
     }
@@ -275,14 +282,14 @@ export function computeLayout(
    * stack of neighbouring flat books (D-0044 §5). A separator starts a new item,
    * so a nook or divider is never swallowed by a stack.
    */
-  // A pose is drawn only when the most cramped empty shelf of this bookcase has room for it
-  // (D-0044 §7); otherwise the book stands, with her saved pose untouched. The narrowest shelf,
-  // not the one it happens to land on, so a book's pose never depends on its neighbours.
-  const tightest = innerWidth - (decorList.length ? Math.max(...decorList.map((d) => d.width)) + DECOR_MARGIN * 2 : 0)
+  // A pose is drawn when a shelf of this bookcase has room for it at all (`poseRoom`, D-0073 §1,
+  // widening D-0044 §7, which measured it against the most cramped shelf and so dropped the pose
+  // on a phone, where a decoration takes nearly half the width — that is #271). Otherwise the
+  // book stands, with her saved pose untouched, exactly as before.
   const poseFor = (b: Book): BookPose => {
     const want = poseOf(b)
     if (want === 'standing') return want
-    return footprint(dims.get(b.id)!, want).along <= tightest ? want : 'standing'
+    return footprint(dims.get(b.id)!, want).along <= poseRoom ? want : 'standing'
   }
   const items: Array<{ books: Book[]; pose: BookPose }> = []
   for (const b of books) {
@@ -316,7 +323,7 @@ export function computeLayout(
     if (item.pose !== 'flat') {
       // a single standing or face-out book
       const f = footprint(dims.get(first.id)!, item.pose)
-      fit(f.along)
+      fit(f.along, item.pose === 'faceout')
       placed.push({ id: first.id, row, x: x + f.along / 2, yUp: f.up / 2, z: depthZ(f.deep), along: f.along, pose: item.pose })
       x += f.along + SHELF.gap
       continue
@@ -334,7 +341,7 @@ export function computeLayout(
         height += up
       }
       const along = Math.max(...stack.map((b) => footprint(dims.get(b.id)!, 'flat').along))
-      fit(along)
+      fit(along, true)
       const centre = x + along / 2
       let up = 0
       stack.forEach((b, i) => {

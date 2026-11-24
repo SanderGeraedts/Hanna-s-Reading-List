@@ -18,7 +18,8 @@ import {
 } from '#/lib/progress'
 import { LANGUAGE_CHOICES, languageName } from '#/lib/languages'
 import { tidyTitle } from '#/lib/titles'
-import { POSES, poseOf, posePatch } from '#/lib/pose'
+import { POSES, poseLabel, poseOf, posePatch } from '#/lib/pose'
+import type { BookPose } from '#/lib/pose'
 import type { SeriesInfo } from '#/lib/series'
 import type { SeriesChoice } from '#/lib/sleepSeries'
 import { StarRating } from './StarRating'
@@ -28,6 +29,8 @@ import { MergeSection } from './MergeSection'
 import { EdgesField } from './EdgesField'
 import { SpineColourField } from './SpineColourField'
 import { SetInField } from './SetInField'
+import { WishRow } from './WishRow'
+import { SeasonField } from './SeasonField'
 import { EbookButton, EbookLinkField } from './EbookLink'
 import { PanelPriceField } from './PriceField'
 import { ownsCopy } from '#/lib/price'
@@ -61,6 +64,8 @@ interface Props {
   detectedSeries?: SeriesInfo
   /** genres to suggest: the standard ones and any used on the shelf */
   genreOptions: string[]
+  /** the pose the shelf is really drawing this book in, when that is known (D-0073 §3) */
+  drawnPose?: BookPose | null
   onChangeCover: () => void
   /** every book on the shelf, to find copies of this one */
   shelf: Book[]
@@ -75,6 +80,8 @@ interface Props {
   /** merge another copy into this book */
   onMerge: (otherId: string) => void
   onRemove: () => void
+  /** "I bought it ›" on a wish: it joins the shelf today (D-0074 §5); absent for a book on the shelf */
+  onBought?: () => void
   onClose: () => void
   /** on phones: called with the share of the screen height the sheet covers */
   onSheet?: (share: number) => void
@@ -203,6 +210,7 @@ export function BookPanel({
   onProgress,
   onUpdate,
   detectedSeries,
+  drawnPose = null,
   genreOptions,
   onChangeCover,
   shelf,
@@ -212,6 +220,7 @@ export function BookPanel({
   onSeriesAnswer,
   onMerge,
   onRemove,
+  onBought,
   onClose,
   onSheet,
   headerPx = 0,
@@ -418,7 +427,9 @@ export function BookPanel({
         <div className="panel-top">
         <div className="panel-title">
           {titleDraft === null ? (
-            <h2>
+            // focusable so closing a dialog opened from the panel ("I bought it ›") can come
+            // back here: the row it was pressed on is gone, the book is on the shelf (D-0074 §5)
+            <h2 id="book-panel-title" tabIndex={-1}>
               {book.title}
               <button
                 className="icon-btn rename"
@@ -785,6 +796,8 @@ export function BookPanel({
 
       {tab === 'details' && (
       <div className="tab-panel panel-tab" role="tabpanel" id="book-tab-details" aria-labelledby="book-tab-details-tab" tabIndex={0}>
+      {/* a book on her wishlist: what the Wishlist block used to offer (D-0074 §5) */}
+      {book.wish && onBought && <WishRow book={book} onBought={onBought} onRemove={onRemove} />}
       <div className="field" role="group" aria-labelledby="formats-label">
         <span id="formats-label">How I have it</span>
         <div className="chips format-chips">
@@ -1016,6 +1029,11 @@ export function BookPanel({
         )}
       </div>
 
+      {/* the seasons she says the book is for (#272, D-0072): under Genres, because it is
+          the same kind of thing — what this book is — and it steps in front of the guess
+          the seasonal challenge makes from the genres just above it */}
+      <SeasonField book={book} onUpdate={onUpdate} />
+
       <SetInField book={book} shelf={shelf} onUpdate={onUpdate} />
 
       <label className="field">
@@ -1069,6 +1087,15 @@ export function BookPanel({
             </button>
           ))}
         </div>
+        {/* no shelf of this bookcase has room for the pose she picked, so the shelf is drawing
+            the book standing (D-0073 §3). Said here rather than nowhere, because #271 was her
+            asking us why the button did nothing on her phone. */}
+        {poseOf(book) !== 'standing' && drawnPose === 'standing' && (
+          <p className="muted small-text">
+            {poseLabel(poseOf(book))} doesn't fit this bookcase on this screen — it stands here and comes back on a
+            wider screen.
+          </p>
+        )}
       </div>
 
       <div className="side-pick" role="group" aria-label="Show side">

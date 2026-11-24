@@ -16,9 +16,10 @@ const book = (over: Partial<Book> = {}): Book =>
     ...over,
   }) as Book
 
-function show(b: Book, onUpdate: (patch: Partial<Book>) => void = () => {}) {
+function show(b: Book, onUpdate: (patch: Partial<Book>) => void = () => {}, drawnPose?: 'standing' | 'faceout' | 'flat') {
   return render(
     <BookPanel
+      drawnPose={drawnPose}
       book={b}
       onFace={() => {}}
       onStatus={() => {}}
@@ -98,5 +99,33 @@ describe('How it stands', () => {
       fireEvent.click(screen.getByRole('tab', { name }))
       expect(screen.queryByRole('group', { name: 'How it stands' })).toBeNull()
     }
+  })
+})
+
+/** The shelf has no room for the pose she picked (#271, D-0073 §3). */
+describe('when the bookcase has no room for the pose', () => {
+  const note = () => screen.queryByText(/doesn't fit this bookcase on this screen/)
+
+  it('says so under the picker, naming the pose she picked', () => {
+    show(book({ pose: 'flat' }), () => {}, 'standing')
+    openLooks()
+    expect(note()!.textContent).toContain('Lying flat')
+    expect(note()!.textContent).toContain('comes back on a wider screen')
+  })
+
+  it('says nothing while the pose is drawn, or while the shelf has not said (D-0014)', () => {
+    show(book({ pose: 'flat' }), () => {}, 'flat')
+    openLooks()
+    expect(note()).toBeNull()
+    cleanup()
+    show(book({ pose: 'flat' }))
+    openLooks()
+    expect(note()).toBeNull()
+  })
+
+  it('says nothing about a standing book, which is what every unposed book is', () => {
+    show(book(), () => {}, 'standing')
+    openLooks()
+    expect(note()).toBeNull()
   })
 })
