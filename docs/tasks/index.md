@@ -6,7 +6,7 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 
 ## Open
 
-None.
+- [T-0098 Make the app open faster: load only the page she is on, and paint the room at the size a phone can show](T-0098-the-app-opens-faster.md): The shelf page downloads every other page with it (one 255 kB app file) and the room's wood, floor and wallpaper are painted at up to 2048 px for a 390 px screen (22.6 MB of pictures); split the other pages out of the first download with React.lazy, and size the room's pictures to the device.
 
 ## Doing
 
