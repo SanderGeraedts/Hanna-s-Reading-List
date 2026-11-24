@@ -63,7 +63,7 @@ jobs:
             -d '{"identity":"ci@example.com","password":"ci-password-1234567"}' | jq -r .token)
           names=$(curl -fsS "http://127.0.0.1:8090/api/collections?perPage=200" -H "authorization: $token" | jq -r '.items[].name')
           echo "$names"
-          for c in users libraries storytel_logins; do
+          for c in users libraries storytel_logins push_subscriptions; do
             echo "$names" | grep -qx "$c" || { echo "::error::collection $c is missing"; docker logs pb; exit 1; }
           done
 
@@ -71,6 +71,15 @@ jobs:
           status=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/api/collections/libraries/records)
           body=$(curl -s http://127.0.0.1:8090/api/collections/libraries/records | jq -c .items)
           [ "$status" = 200 ] && [ "$body" = "[]" ] || { echo "::error::libraries readable while signed out ($status $body)"; exit 1; }
+
+          # signed out, nobody can read or add reminder subscriptions (D-0075)
+          status=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/api/collections/push_subscriptions/records)
+          body=$(curl -s http://127.0.0.1:8090/api/collections/push_subscriptions/records | jq -c .items)
+          [ "$status" = 200 ] && [ "$body" = "[]" ] || { echo "::error::push_subscriptions readable while signed out ($status $body)"; exit 1; }
+          status=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:8090/api/collections/push_subscriptions/records             -H 'content-type: application/json' -d '{"endpoint":"https://push.example.com/x","keys":{"p256dh":"a","auth":"b"}}')
+          [ "$status" = 400 ] || [ "$status" = 403 ] || { echo "::error::push_subscriptions writable while signed out ($status)"; exit 1; }
+          # the reminder routes need the secret
+          [ "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/api/nightly/reminders)" = 404 ] || { echo "::error::reminders open without the secret"; exit 1; }
 
           # sign-up: only addresses on SIGNUP_EMAILS (pb_hooks/signup.pb.js)
           signup() {

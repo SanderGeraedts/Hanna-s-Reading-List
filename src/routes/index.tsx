@@ -31,6 +31,7 @@ import { useChallengeExtras } from '#/components/useChallengeExtras'
 import { WishCard } from '#/components/WishCard'
 import { RoomPanel, useRoom } from '#/components/RoomPanel'
 import { ChallengesPage } from '#/components/ChallengesPage'
+import { ReminderToggle } from '#/components/ReminderToggle'
 import { StatsPage } from '#/components/StatsPage'
 import { CalendarPage } from '#/components/CalendarPage'
 import { CreaturesPage } from '#/components/CreaturesPage'
@@ -862,6 +863,7 @@ function ViewMenu({
       </summary>
       <nav className="view-menu-list" aria-label="More">
         {children && children(() => menu.current && (menu.current.open = false))}
+        <ReminderToggle />
       </nav>
     </details>
   )

@@ -10,6 +10,7 @@
         "/api/collections/users/": { "Proxy": "http://127.0.0.1:8090/api/collections/users" },
         "/api/collections/libraries/": { "Proxy": "http://127.0.0.1:8090/api/collections/libraries" },
         "/api/collections/storytel_logins/": { "Proxy": "http://127.0.0.1:8090/api/collections/storytel_logins" },
+        "/api/collections/push_subscriptions/": { "Proxy": "http://127.0.0.1:8090/api/collections/push_subscriptions" },
         "/api/nightly/": { "Proxy": "http://127.0.0.1:8090/api/nightly" }
       }
     },
