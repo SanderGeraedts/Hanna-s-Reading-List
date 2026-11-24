@@ -1,0 +1,33 @@
+tab 390x844: 30 hidden; area 111 px, 3 chips fully visible, peeking ["22/36","22/36"], bar 173 px, --chip-row 36px
+tab 390x844: Tab 30/30 fully visible, focus ring clipped on 15; next after the last chip: "Quick update"; Shift+Tab back 30/30; before the first chip: "Done"; console errors 0
+tab 390x844: Enter on chip 21 -> 29 chips left; active element BODY Hanna's Reading List150 b
+tab 1280x800: 30 hidden; area 86 px, 15 chips fully visible, peeking ["19/25","19/25","19/25","19/25","19/25","19/25","19/25","19/25"], bar 137 px, --chip-row calc(0.8rem * 1.25 + 2 * 0.25rem + 2px)
+tab 1280x800: Tab 30/30 fully visible, focus ring clipped on 8; next after the last chip: "Quick update"; Shift+Tab back 30/30; before the first chip: "Done"; console errors 0
+tab 1280x800: Enter on chip 21 -> 29 chips left; active element BODY Hanna's Reading List150 b
+touch 390x844: start scrollTop 0/526 page 0; small swipe up -> 0 page 0; long swipe up -> 0/526 page 0; tap last chip "+ On this day" -> 30 chips left (was 30); swipe down -> 0 page 0
+challenges 390x844: hid 4 (real clicks), 4 chips all fully visible true, bar 148 px sticky; 4 chips clicked back, chip area left 0; Done leaves arranging true; console errors 0
+challenges 844x390: hid 4 (real clicks), 4 chips all fully visible true, bar 106 px static; 4 chips clicked back, chip area left 0; Done leaves arranging true; console errors 0
+challenges 1280x800: hid 4 (real clicks), 4 chips all fully visible true, bar 84 px sticky; 4 chips clicked back, chip area left 0; Done leaves arranging true; console errors 0
+resize 844x700: bar sticky 148 px, scroll-padding-top 297px, under header/bar 0 of 171
+resize 844x501: bar sticky 148 px, scroll-padding-top 297px, under header/bar 0 of 171
+resize 844x500: bar static 148 px, scroll-padding-top 133px, under header/bar 0 of 171
+resize 844x450: bar static 148 px, scroll-padding-top 133px, under header/bar 0 of 171
+resize 844x390: bar static 148 px, scroll-padding-top 133px, under header/bar 0 of 171
+resize 844x501: bar sticky 148 px, scroll-padding-top 297px, under header/bar 0 of 171
+resize 844x844: bar sticky 148 px, scroll-padding-top 297px, under header/bar 0 of 171
+resize: console errors 0
+computer 1280x800 0 hidden: bar 51 px sticky
+computer 1280x800 6 hidden: bar 84 px sticky, 6 chips, 6 fully visible, peeking [], --chip-row calc(0.8rem * 1.25 + 2 * 0.25rem + 2px)
+computer 1280x800 13 hidden: bar 115 px sticky, 13 chips, 13 fully visible, peeking [], --chip-row calc(0.8rem * 1.25 + 2 * 0.25rem + 2px)
+computer 1280x800 30 hidden: bar 137 px sticky, 30 chips, 15 fully visible, peeking ["19/25","19/25","19/25","19/25","19/25","19/25","19/25","19/25"], --chip-row calc(0.8rem * 1.25 + 2 * 0.25rem + 2px); wheel in area: scrollTop 0 -> 40, page 0 -> 0
+computer 1440x900 0 hidden: bar 51 px sticky
+computer 1440x900 6 hidden: bar 84 px sticky, 6 chips, 6 fully visible, peeking [], --chip-row calc(0.8rem * 1.25 + 2 * 0.25rem + 2px)
+computer 1440x900 13 hidden: bar 115 px sticky, 13 chips, 13 fully visible, peeking [], --chip-row calc(0.8rem * 1.25 + 2 * 0.25rem + 2px)
+computer 1440x900 30 hidden: bar 137 px sticky, 30 chips, 15 fully visible, peeking ["19/25","19/25","19/25","19/25","19/25","19/25","19/25","19/25"], --chip-row calc(0.8rem * 1.25 + 2 * 0.25rem + 2px); wheel in area: scrollTop 0 -> 40, page 0 -> 0
+start {"chips":0,"page":0} area {"x":25,"y":277.1875,"width":332,"height":110.796875}
+raw drag up 60 in chips {"chips":57,"page":0}
+after 6 more drags {"chips":526,"page":0} max 526
+chips left after drags 30
+tap "+ On this day" -> 29 chips
+control drag on page {"chips":526,"page":49}
+drag down x8 in chips {"chips":0,"page":0}

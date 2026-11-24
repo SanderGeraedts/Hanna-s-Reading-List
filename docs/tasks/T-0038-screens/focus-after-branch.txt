@@ -1,0 +1,34 @@
+branch 844x390 dashboard+arrange+0-hidden: 0 of 285 focusable elements under the header or the Arrange bar; bar 62 px (15.9 % of 390), static; sideways scroll false; console errors 0
+branch 844x390 dashboard+arrange+6-hidden: 0 of 174 focusable elements under the header or the Arrange bar; bar 148 px (38 % of 390), static; sideways scroll false; console errors 0
+branch 844x390 dashboard+arrange+30-hidden: 0 of 35 focusable elements under the header or the Arrange bar; bar 148 px (38 % of 390), static; sideways scroll false; console errors 0
+branch 844x390 challenges+arrange+0-hidden: 0 of 32 focusable elements under the header or the Arrange bar; bar 62 px (15.9 % of 390), static; sideways scroll false; console errors 0
+branch 844x390 challenges+arrange+4-hidden: 0 of 6 focusable elements under the header or the Arrange bar; bar 106 px (27.2 % of 390), static; sideways scroll false; console errors 0
+branch 844x390 challenges+arrange+4-hidden: 0 of 6 focusable elements under the header or the Arrange bar; bar 106 px (27.2 % of 390), static; sideways scroll false; console errors 0
+branch 800x360 dashboard+arrange+0-hidden: 0 of 285 focusable elements under the header or the Arrange bar; bar 62 px (17.2 % of 360), static; sideways scroll false; console errors 0
+branch 800x360 dashboard+arrange+6-hidden: 0 of 174 focusable elements under the header or the Arrange bar; bar 148 px (41.2 % of 360), static; sideways scroll false; console errors 0
+branch 800x360 dashboard+arrange+30-hidden: 0 of 35 focusable elements under the header or the Arrange bar; bar 148 px (41.2 % of 360), static; sideways scroll false; console errors 0
+branch 800x360 challenges+arrange+0-hidden: 0 of 32 focusable elements under the header or the Arrange bar; bar 62 px (17.2 % of 360), static; sideways scroll false; console errors 0
+branch 800x360 challenges+arrange+4-hidden: 0 of 6 focusable elements under the header or the Arrange bar; bar 106 px (29.4 % of 360), static; sideways scroll false; console errors 0
+branch 800x360 challenges+arrange+4-hidden: 0 of 6 focusable elements under the header or the Arrange bar; bar 106 px (29.4 % of 360), static; sideways scroll false; console errors 0
+branch 390x844 dashboard+arrange+0-hidden: 0 of 285 focusable elements under the header or the Arrange bar; bar 62 px (7.3 % of 844), sticky; sideways scroll false; console errors 0
+branch 390x844 dashboard+arrange+6-hidden: 0 of 174 focusable elements under the header or the Arrange bar; bar 148 px (17.6 % of 844), sticky; sideways scroll false; console errors 0
+branch 390x844 dashboard+arrange+30-hidden: 0 of 35 focusable elements under the header or the Arrange bar; bar 148 px (17.6 % of 844), sticky; sideways scroll false; console errors 0
+branch 390x844 challenges+arrange+0-hidden: 0 of 32 focusable elements under the header or the Arrange bar; bar 62 px (7.3 % of 844), sticky; sideways scroll false; console errors 0
+branch 390x844 challenges+arrange+4-hidden: 0 of 6 focusable elements under the header or the Arrange bar; bar 148 px (17.6 % of 844), sticky; sideways scroll false; console errors 0
+branch 390x844 challenges+arrange+4-hidden: 0 of 6 focusable elements under the header or the Arrange bar; bar 148 px (17.6 % of 844), sticky; sideways scroll false; console errors 0
+branch 360x800 dashboard+arrange+0-hidden: 0 of 285 focusable elements under the header or the Arrange bar; bar 62 px (7.8 % of 800), sticky; sideways scroll false; console errors 0
+branch 360x800 dashboard+arrange+6-hidden: 0 of 174 focusable elements under the header or the Arrange bar; bar 148 px (18.5 % of 800), sticky; sideways scroll false; console errors 0
+branch 360x800 dashboard+arrange+30-hidden: 0 of 35 focusable elements under the header or the Arrange bar; bar 148 px (18.5 % of 800), sticky; sideways scroll false; console errors 0
+branch 360x800 challenges+arrange+0-hidden: 0 of 32 focusable elements under the header or the Arrange bar; bar 62 px (7.8 % of 800), sticky; sideways scroll false; console errors 0
+branch 360x800 challenges+arrange+4-hidden: 0 of 6 focusable elements under the header or the Arrange bar; bar 148 px (18.5 % of 800), sticky; sideways scroll false; console errors 0
+branch 360x800 challenges+arrange+4-hidden: 0 of 6 focusable elements under the header or the Arrange bar; bar 148 px (18.5 % of 800), sticky; sideways scroll false; console errors 0
+branch 1280x800 dashboard+arrange+0-hidden: 0 of 285 focusable elements under the header or the Arrange bar; bar 51 px (6.4 % of 800), sticky; sideways scroll false; console errors 0
+branch 1280x800 dashboard+arrange+6-hidden: 0 of 174 focusable elements under the header or the Arrange bar; bar 84 px (10.5 % of 800), sticky; sideways scroll false; console errors 0
+branch 1280x800 dashboard+arrange+30-hidden: 0 of 35 focusable elements under the header or the Arrange bar; bar 117 px (14.7 % of 800), sticky; sideways scroll false; console errors 0
+branch 1280x800 challenges+arrange+0-hidden: 0 of 32 focusable elements under the header or the Arrange bar; bar 51 px (6.4 % of 800), sticky; sideways scroll false; console errors 0
+branch 1280x800 challenges+arrange+4-hidden: 0 of 6 focusable elements under the header or the Arrange bar; bar 84 px (10.5 % of 800), sticky; sideways scroll false; console errors 0
+branch 1280x800 challenges+arrange+4-hidden: 0 of 6 focusable elements under the header or the Arrange bar; bar 84 px (10.5 % of 800), sticky; sideways scroll false; console errors 0
+branch total: 0 elements under the header or the bar
+branch clicks 390x844: 30 Hide buttons clicked for real (all of them); bar with all 30 hidden: 148 px
+branch clicks 390x844: 30 chips clicked for real (all of them, every block back); console errors 0
+branch tab 390x844 with 30 hidden: 30 of 30 chips fully visible in the chip area when reached by Tab

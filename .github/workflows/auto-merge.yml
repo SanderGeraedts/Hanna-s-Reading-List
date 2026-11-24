@@ -2,8 +2,8 @@
 # reusable workflow. Keep the tag the same as the harness dependency in package.json (D-0001).
 #
 # GitHub runs workflow_run workflows from the default branch, so a pull request can't change
-# how its own merge is decided. A pull request touching a path in .github/CODEOWNERS still
-# needs Sander's review under the ruleset main (Q-003).
+# how its own merge is decided. A pull request touching how the shelf is saved or what runs on
+# the NAS is held for Sander instead of merged (hold-paths, D-0077).
 name: Auto-merge
 
 on:
@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   merge:
-    uses: SanderGeraedts/harness/.github/workflows/auto-merge.yml@v0.7.0
+    uses: SanderGeraedts/harness/.github/workflows/auto-merge.yml@v0.9.0
     with:
       # A merge made with GITHUB_TOKEN starts no push workflows, so backend.yml wouldn't
       # publish the PocketBase image. These are the paths its push trigger watches. The
@@ -27,3 +27,7 @@ jobs:
       backend-paths: '^(deploy/nas/(Dockerfile|pb_migrations/|pb_hooks/)|\.github/workflows/backend\.yml)'
       # Wait for the backend image check too, when it ran for the pull request's head.
       wait-for: CI,Backend image
+      # D-0077: her books can't be rebuilt, and deploy/nas/ changes the live database. These
+      # are labelled waits-for-engineer and Sander merges them. Widening is fine; narrowing
+      # needs Sander.
+      hold-paths: '^(src/lib/shelfMerge\.ts|src/server/shelf\.ts|deploy/nas/)'

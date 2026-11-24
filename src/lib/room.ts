@@ -1,9 +1,10 @@
-import { DECOR } from './shelfLayout'
-import type { DecorKind } from './shelfLayout'
+import { DECOR, SHOP_DECOR } from './shelfLayout'
+import type { DecorKind, ShopDecorKind } from './shelfLayout'
 
 /**
  * Make the room yours: the wood of the bookcase, the wallpaper (on every
- * page) and which decorations stand on the shelves, in which order. Kept per
+ * page), whether the books are detailed hardcovers (D-0035) and which
+ * decorations stand on the shelves, in which order. Kept per
  * device, like the dashboard layout; the defaults are the room as it was.
  */
 
@@ -24,6 +25,7 @@ export const WALLPAPERS: Record<Wallpaper, string> = {
 }
 
 export const DECOR_NAMES: Record<DecorKind, string> = {
+  'shelf-pet': 'Favourite creature',
   koala: 'Koala',
   cat: 'Sleeping cat',
   mug: 'Mug of tea',
@@ -32,40 +34,88 @@ export const DECOR_NAMES: Record<DecorKind, string> = {
   succulent: 'Succulent',
   frame: 'Picture frame',
   vase: 'Pampas vase',
+  // bought in the creature shop (T-0031): listed only once she owns them
+  'dragon-plush': 'Dragon plush',
+  pennant: 'Pennant flags',
+  'egg-display': 'Egg display',
+  'snow-globe': 'Snow globe',
 }
+
+const isShopDecor = (k: DecorKind): k is ShopDecorKind => SHOP_DECOR.some((d) => d.kind === k)
 
 export interface Room {
   wood: Wood
   wallpaper: Wallpaper
   /** every decoration once, in shelf order (the first on the top shelf), on or off */
   decor: Array<{ kind: DecorKind; on: boolean }>
+  /** the books as hardcovers (on) or as simple blocks (off), on this device (D-0035) */
+  detailedBooks: boolean
+  /** the cosy room extras (D-0045), each on this device, all on by default */
+  readingCorner: boolean
+  dayNight: boolean
+  plant: boolean
+  seasonal: boolean
 }
+
+/** The cosy room extras, in the order they stand in the 🎨 panel (D-0045 §1). */
+export const ROOM_EXTRAS: Array<{ key: RoomExtra; label: string }> = [
+  { key: 'readingCorner', label: 'Reading corner' },
+  { key: 'dayNight', label: 'Day & night' },
+  { key: 'plant', label: 'Growing plant' },
+  { key: 'seasonal', label: 'Seasonal decorations' },
+]
+
+export type RoomExtra = 'readingCorner' | 'dayNight' | 'plant' | 'seasonal'
 
 export const DEFAULT_ROOM: Room = {
   wood: 'walnut',
   wallpaper: 'lavender',
-  decor: DECOR.map((d) => ({ kind: d.kind, on: true })),
+  // 'shelf-pet' is driven by her shelf choice (T-0033), not by Make-the-room-yours
+  decor: DECOR.filter((d) => d.kind !== 'shelf-pet').map((d) => ({ kind: d.kind, on: true })),
+  detailedBooks: true,
+  readingCorner: true,
+  dayNight: true,
+  plant: true,
+  seasonal: true,
 }
 
 const isKey = <T extends string>(o: Record<T, string>, v: unknown): v is T => typeof v === 'string' && Object.hasOwn(o, v)
 
-/** A saved room made safe: unknown values fall back to the defaults, every decoration exactly once. */
-export function cleanRoom(raw: unknown): Room {
+/**
+ * A saved room made safe: unknown values fall back to the defaults, every decoration exactly once.
+ * The shop's decorations (T-0031 Design §11, review 2026-11-23: at the top) are in it only when
+ * she owns them (`owned`, from her choices log): an owned one missing from the saved room joins
+ * **at the top**, switched on (the first time this device sees the purchase, so it always has a
+ * shelf); one she doesn't own is left out. Older saved rooms still load.
+ */
+export function cleanRoom(raw: unknown, owned: readonly ShopDecorKind[] = []): Room {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Partial<Record<keyof Room, unknown>>
   const seen = new Set<DecorKind>()
   const decor: Room['decor'] = []
   for (const d of Array.isArray(r.decor) ? r.decor : []) {
     const kind = (d as { kind?: unknown })?.kind
     if (!isKey(DECOR_NAMES, kind) || seen.has(kind)) continue
+    if (isShopDecor(kind) && !owned.includes(kind)) continue
     seen.add(kind)
     decor.push({ kind, on: (d as { on?: unknown }).on !== false })
   }
   // decorations added later come in at the end, switched on
   for (const d of DEFAULT_ROOM.decor) if (!seen.has(d.kind)) decor.push({ ...d })
+  // bought ones she hasn't seen on this device yet: at the TOP, switched on, so each gets a shelf
+  const prepend: Room['decor'] = []
+  for (const d of SHOP_DECOR) if (owned.includes(d.kind) && !seen.has(d.kind)) prepend.push({ kind: d.kind, on: true })
+  decor.unshift(...prepend)
   return {
     wood: isKey(WOODS, r.wood) ? r.wood : DEFAULT_ROOM.wood,
     wallpaper: isKey(WALLPAPERS, r.wallpaper) ? r.wallpaper : DEFAULT_ROOM.wallpaper,
     decor,
+    // only a saved false turns them off: a room saved before the switch counts as on
+    detailedBooks: r.detailedBooks !== false,
+    // the same rule for every cosy extra (D-0045 §1): an older saved room has them all on
+    readingCorner: r.readingCorner !== false,
+    dayNight: r.dayNight !== false,
+    plant: r.plant !== false,
+    seasonal: r.seasonal !== false,
   }
 }
 

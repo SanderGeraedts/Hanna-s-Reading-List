@@ -82,3 +82,18 @@ describe('what to read next (#58)', () => {
     expect(pickReadNext([])).toBeUndefined()
   })
 })
+
+describe('never a sleep read (D-0025, T-0017)', () => {
+  it('leaves out a book ticked as a sleep read and one whose series is marked', () => {
+    const shelf = [
+      book('plain'),
+      book('sleepy', { sleepRead: true }),
+      book('n1', { title: 'Night 1', series: 'Night Saga', seriesIndex: 1, status: 'read', sleepSeries: 'night saga' }),
+      book('n2', { title: 'Night 2', series: 'Night Saga', seriesIndex: 2 }),
+    ]
+    expect(ids(readNextChoices(shelf))).toEqual(['plain'])
+    // without the marks, both would be offered
+    const unmarked = shelf.map((b) => ({ ...b, sleepRead: undefined, sleepSeries: undefined }))
+    expect(ids(readNextChoices(unmarked))).toEqual(['n2', 'plain', 'sleepy'])
+  })
+})

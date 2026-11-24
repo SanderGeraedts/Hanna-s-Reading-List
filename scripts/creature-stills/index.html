@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Creature stills</title>
+  </head>
+  <body>
+    <!-- T-0030: dev only. scripts/render-creature-stills.mjs opens this page and calls window.renderAll(). -->
+    <script type="module">
+      import { renderAllStills } from '/src/components/creatures/stills.ts'
+      import { renderOutfitSheet, renderShopStills } from '/src/components/creatures/shopStills.ts'
+      window.renderOutfitSheet = () => renderOutfitSheet()
+      window.renderAll = () => renderAllStills()
+      // T-0031: the shop's pictures (`pnpm run render:creatures -- --shop`)
+      window.renderShop = () => renderShopStills()
+      window.ready = true
+    </script>
+  </body>
+</html>

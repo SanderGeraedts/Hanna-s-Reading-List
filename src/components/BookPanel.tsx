@@ -18,6 +18,8 @@ import {
 } from '#/lib/progress'
 import { LANGUAGE_CHOICES, languageName } from '#/lib/languages'
 import { tidyTitle } from '#/lib/titles'
+import { POSES, poseLabel, poseOf, posePatch } from '#/lib/pose'
+import type { BookPose } from '#/lib/pose'
 import type { SeriesInfo } from '#/lib/series'
 import type { SeriesChoice } from '#/lib/sleepSeries'
 import { StarRating } from './StarRating'
@@ -25,12 +27,31 @@ import { NO_SPICE, ratingText, spiceText } from '#/lib/ratings'
 import { backText } from './textures'
 import { MergeSection } from './MergeSection'
 import { EdgesField } from './EdgesField'
+import { SpineColourField } from './SpineColourField'
+import { SetInField } from './SetInField'
+import { WishRow } from './WishRow'
+import { SeasonField } from './SeasonField'
 import { EbookButton, EbookLinkField } from './EbookLink'
+import { PanelPriceField } from './PriceField'
+import { ownsCopy } from '#/lib/price'
 import { ebookHref } from '#/lib/ebookLink'
 import { findBackText } from '#/lib/findBackText'
 import { stoppedAtText } from '#/lib/didNotFinish'
+import { SHEET_MAX, SHEET_MAX_WIDTH, SHEET_MIN_PX, clampSheetPx, headerShareOf, openingSheetPx, sheetCap } from './inspectPlacement'
+import { Suggestions } from './Suggestions'
+import { CharactersField, TropesField } from './TropesField'
 
 export type Face = 'front' | 'spine' | 'back'
+
+/** The book panel's four tabs, in their order (D-0041); it always opens on Reading. */
+export const TABS = [
+  ['reading', 'Reading'],
+  ['notes', 'Notes'],
+  ['details', 'Details'],
+  ['looks', 'Looks'],
+] as const
+
+export type TabId = (typeof TABS)[number][0]
 
 interface Props {
   book: Book
@@ -43,6 +64,8 @@ interface Props {
   detectedSeries?: SeriesInfo
   /** genres to suggest: the standard ones and any used on the shelf */
   genreOptions: string[]
+  /** the pose the shelf is really drawing this book in, when that is known (D-0073 §3) */
+  drawnPose?: BookPose | null
   onChangeCover: () => void
   /** every book on the shelf, to find copies of this one */
   shelf: Book[]
@@ -57,16 +80,20 @@ interface Props {
   /** merge another copy into this book */
   onMerge: (otherId: string) => void
   onRemove: () => void
+  /** "I bought it ›" on a wish: it joins the shelf today (D-0074 §5); absent for a book on the shelf */
+  onBought?: () => void
   onClose: () => void
   /** on phones: called with the share of the screen height the sheet covers */
   onSheet?: (share: number) => void
+  /** the header's height in px (0 until measured): the sheet stops below the room the open book needs */
+  headerPx?: number
 }
 
-const SHEET_QUERY = '(max-width: 720px)'
+const SHEET_QUERY = `(max-width: ${SHEET_MAX_WIDTH}px)`
 const SHEET_KEY = 'hannas-reading-list:sheet'
 const SHEET_DEFAULT = 0.45
-const SHEET_MIN_PX = 96 // enough for the handle and the title
-const SHEET_MAX = 0.88
+// SHEET_MIN_PX: enough for the handle and the title
+export { SHEET_MAX, SHEET_MIN_PX }
 
 function savedSheetShare() {
   try {
@@ -77,15 +104,26 @@ function savedSheetShare() {
   }
 }
 
+function saveSheetShare(share: number) {
+  try {
+    localStorage.setItem(SHEET_KEY, share.toFixed(3))
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
  * On phones the panel is a bottom sheet whose height follows a drag on its
- * handle or title. The height is remembered for the next book.
+ * handle or title. The height is remembered for the next book. It stops where the open book
+ * still has a quarter of the screen above it, under the header (`headerPx`, T-0037).
  */
-function useSheet(onSheet?: (share: number) => void) {
+function useSheet(onSheet?: (share: number) => void, headerPx = 0) {
   const [isSheet, setIsSheet] = useState(false)
   const [height, setHeight] = useState<number | null>(null)
   const drag = useRef<{ y: number; h: number; id: number; moved: boolean } | null>(null)
   const panel = useRef<HTMLElement>(null)
+  /** the clamped height was saved when the panel opened (upright phone only, T-0037) */
+  const remembered = useRef(false)
 
   useEffect(() => {
     const mq = window.matchMedia(SHEET_QUERY)
@@ -101,18 +139,27 @@ function useSheet(onSheet?: (share: number) => void) {
       onSheet?.(0)
       return
     }
+    // on opening, turning the phone or a header that changes height: the height she last saw,
+    // under the cap. On an upright opening the clamped share becomes the preference, so nothing
+    // jumps between books; a sideways open or a mid-rotation size is only shown, not saved
+    // (T-0037, T-0044 F8). Only a drag by Hanna saves a new share otherwise (below).
     const fit = () => {
-      const h = Math.round(savedSheetShare() * window.innerHeight)
+      const screen = window.innerHeight
+      const saved = savedSheetShare()
+      const h = openingSheetPx(saved, screen, sheetCap(headerShareOf(headerPx, screen)))
+      const upright = window.innerWidth < screen
+      if (!remembered.current && upright && h / screen < saved - 0.001) saveSheetShare(h / screen)
+      remembered.current = true
       setHeight(h)
-      onSheet?.(h / window.innerHeight)
+      onSheet?.(h / screen)
     }
     fit()
     window.addEventListener('resize', fit)
     return () => window.removeEventListener('resize', fit)
-  }, [isSheet, onSheet])
+  }, [isSheet, onSheet, headerPx])
 
   const clampHeight = (h: number) =>
-    Math.round(Math.min(window.innerHeight * SHEET_MAX, Math.max(SHEET_MIN_PX, h)))
+    clampSheetPx(h, window.innerHeight, sheetCap(headerShareOf(headerPx, window.innerHeight)))
 
   const handlers = isSheet
     ? {
@@ -145,12 +192,7 @@ function useSheet(onSheet?: (share: number) => void) {
           if (e.currentTarget.hasPointerCapture(e.pointerId)) {
             e.currentTarget.releasePointerCapture(e.pointerId)
           }
-          const share = clampHeight(d.h - (e.clientY - d.y)) / window.innerHeight
-          try {
-            localStorage.setItem(SHEET_KEY, share.toFixed(3))
-          } catch {
-            /* ignore */
-          }
+          saveSheetShare(clampHeight(d.h - (e.clientY - d.y)) / window.innerHeight)
         },
         onPointerCancel: () => {
           drag.current = null
@@ -168,6 +210,7 @@ export function BookPanel({
   onProgress,
   onUpdate,
   detectedSeries,
+  drawnPose = null,
   genreOptions,
   onChangeCover,
   shelf,
@@ -177,10 +220,12 @@ export function BookPanel({
   onSeriesAnswer,
   onMerge,
   onRemove,
+  onBought,
   onClose,
   onSheet,
+  headerPx = 0,
 }: Props) {
-  const sheet = useSheet(onSheet)
+  const sheet = useSheet(onSheet, headerPx)
   const progress = book.progress ?? 0
   const pct = Math.round(progress * 100)
   const reads = timesRead(book)
@@ -340,6 +385,36 @@ export function BookPanel({
   const saveOnClose = useRef(save)
   saveOnClose.current = save
   useEffect(() => () => saveOnClose.current(), [])
+
+  /**
+   * The four tabs (D-0041). The panel opens on Reading for every book and never
+   * remembers the last tab: the state starts at 'reading' on every mount, and a
+   * different book resets it.
+   */
+  const [tab, setTab] = useState<TabId>('reading')
+  useEffect(() => setTab('reading'), [book.id])
+  const tabRefs = useRef<Partial<Record<TabId, HTMLButtonElement | null>>>({})
+  const openTab = (next: TabId) => {
+    // switching tab unmounts the fields, so what she typed is saved first
+    save()
+    setTab(next)
+    sheet.panel.current?.scrollTo?.({ top: 0 })
+  }
+  const onTabKey = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    const i = TABS.findIndex(([id]) => id === tab)
+    const to =
+      e.key === 'ArrowRight' ? (i + 1) % TABS.length
+      : e.key === 'ArrowLeft' ? (i - 1 + TABS.length) % TABS.length
+      : e.key === 'Home' ? 0
+      : e.key === 'End' ? TABS.length - 1
+      : -1
+    if (to < 0) return
+    e.preventDefault()
+    const id = TABS[to][0]
+    openTab(id)
+    tabRefs.current[id]?.focus()
+  }
+
   return (
     <aside
       ref={sheet.panel}
@@ -352,7 +427,9 @@ export function BookPanel({
         <div className="panel-top">
         <div className="panel-title">
           {titleDraft === null ? (
-            <h2>
+            // focusable so closing a dialog opened from the panel ("I bought it ›") can come
+            // back here: the row it was pressed on is gone, the book is on the shelf (D-0074 §5)
+            <h2 id="book-panel-title" tabIndex={-1}>
               {book.title}
               <button
                 className="icon-btn rename"
@@ -428,17 +505,30 @@ export function BookPanel({
       </div>
       </div>
 
-      <div className="side-pick" role="group" aria-label="Show side">
-        <button onClick={() => onFace('front')}>Front</button>
-        <button onClick={() => onFace('spine')}>Spine</button>
-        <button onClick={() => onFace('back')}>Back</button>
+      <div className="tabs panel-tabs" role="tablist" aria-label="Book details">
+        {TABS.map(([id, label]) => (
+          <button
+            key={id}
+            ref={(el) => {
+              tabRefs.current[id] = el
+            }}
+            id={`book-tab-${id}-tab`}
+            role="tab"
+            type="button"
+            aria-selected={tab === id}
+            aria-controls={`book-tab-${id}`}
+            tabIndex={tab === id ? 0 : -1}
+            className={tab === id ? 'tab active' : 'tab'}
+            onClick={() => openTab(id)}
+            onKeyDown={onTabKey}
+          >
+            {label}
+          </button>
+        ))}
       </div>
-      <button className="btn change-cover" onClick={onChangeCover}>
-        Change cover…
-      </button>
 
-      <EdgesField book={book} onChange={(edges) => onUpdate({ edges })} />
-
+      {tab === 'reading' && (
+      <div className="tab-panel panel-tab" role="tabpanel" id="book-tab-reading" aria-labelledby="book-tab-reading-tab" tabIndex={0}>
       <label className="field">
         <span>Status</span>
         <select
@@ -624,84 +714,28 @@ export function BookPanel({
           )}
         </div>
       )}
-
-      <div className="field" role="group" aria-labelledby="formats-label">
-        <span id="formats-label">How I have it</span>
-        <div className="chips format-chips">
-          {(Object.entries(FORMAT_LABELS) as Array<[BookFormat, string]>).map(([k, label]) => (
-            <button
-              key={k}
-              type="button"
-              className="format-chip"
-              aria-pressed={formats.includes(k)}
-              onClick={() => toggleFormat(k)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
       </div>
+      )}
 
-      <EbookLinkField link={book.ebookUrl} onChange={(ebookUrl) => onUpdate({ ebookUrl })} />
-
-      <div className="field-row">
-        <label className="field">
-          <span>Language</span>
-          <select
-            className="input"
-            value={book.language ?? ''}
-            onChange={(e) => onUpdate({ language: e.target.value || undefined })}
-          >
-            <option value="">Not set</option>
-            {languages.map((code) => (
-              <option key={code} value={code}>
-                {languageName(code)}
-              </option>
+      {tab === 'notes' && (
+      <div className="tab-panel panel-tab" role="tabpanel" id="book-tab-notes" aria-labelledby="book-tab-notes-tab" tabIndex={0}>
+      {notesOf(book).length > 0 && (
+        <div className="field">
+          <span>Journal</span>
+          <ul className="journal-list">
+            {notesOf(book).map(({ day, note }) => (
+              <li key={day}>
+                <span className="muted small-text">{formatPublished(day)}</span>
+                <p>{note}</p>
+              </li>
             ))}
-          </select>
-        </label>
-      </div>
-
-      <div className="field">
-        <span>Genres</span>
-        <div className="chips">
-          {(book.genres ?? []).map((g) => (
-            <span className="chip" key={g}>
-              {g}
-              <button aria-label={`Remove ${g}`} onClick={() => onUpdate({ genres: book.genres!.filter((x) => x !== g) })}>
-                ×
-              </button>
-            </span>
-          ))}
-          <input
-            className="input chip-input"
-            aria-label="Add a genre"
-            onFocus={() => setTyping('genre')}
-            placeholder={book.genres?.length ? 'Add…' : book.genres ? 'Add a genre…' : 'Looking up…'}
-            value={genreDraft}
-            onChange={(e) => setGenreDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                addGenre()
-              }
-            }}
-            onBlur={() => {
-              setTyping(null)
-              addGenre()
-            }}
-          />
+          </ul>
         </div>
-        {typing === 'genre' && (
-          <Suggestions
-            names={suggest(
-              genreOptions.filter((g) => !book.genres?.includes(g)),
-              genreDraft,
-            )}
-            onPick={(g) => addGenre(g)}
-          />
-        )}
-      </div>
+      )}
+
+      <TropesField book={book} shelf={shelf} onUpdate={onUpdate} />
+
+      <CharactersField book={book} onUpdate={onUpdate} />
 
       <div className="field">
         <label className="check">
@@ -757,20 +791,34 @@ export function BookPanel({
           </label>
         )}
       </div>
-
-      {notesOf(book).length > 0 && (
-        <div className="field">
-          <span>Journal</span>
-          <ul className="journal-list">
-            {notesOf(book).map(({ day, note }) => (
-              <li key={day}>
-                <span className="muted small-text">{formatPublished(day)}</span>
-                <p>{note}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
+      </div>
       )}
+
+      {tab === 'details' && (
+      <div className="tab-panel panel-tab" role="tabpanel" id="book-tab-details" aria-labelledby="book-tab-details-tab" tabIndex={0}>
+      {/* a book on her wishlist: what the Wishlist block used to offer (D-0074 §5) */}
+      {book.wish && onBought && <WishRow book={book} onBought={onBought} onRemove={onRemove} />}
+      <div className="field" role="group" aria-labelledby="formats-label">
+        <span id="formats-label">How I have it</span>
+        <div className="chips format-chips">
+          {(Object.entries(FORMAT_LABELS) as Array<[BookFormat, string]>).map(([k, label]) => (
+            <button
+              key={k}
+              type="button"
+              className="format-chip"
+              aria-pressed={formats.includes(k)}
+              onClick={() => toggleFormat(k)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* what she paid, only while she owns a copy; a price on another format is kept but hidden (T-0016) */}
+      {ownsCopy(formats) && <PanelPriceField price={book.price} onChange={(price) => onUpdate({ price })} />}
+
+      <EbookLinkField link={book.ebookUrl} onChange={(ebookUrl) => onUpdate({ ebookUrl })} />
 
       <div className="field">
         <span>Series</span>
@@ -922,6 +970,72 @@ export function BookPanel({
         </label>
       </div>
 
+      <div className="field-row">
+        <label className="field">
+          <span>Language</span>
+          <select
+            className="input"
+            value={book.language ?? ''}
+            onChange={(e) => onUpdate({ language: e.target.value || undefined })}
+          >
+            <option value="">Not set</option>
+            {languages.map((code) => (
+              <option key={code} value={code}>
+                {languageName(code)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="field">
+        <span>Genres</span>
+        <div className="chips">
+          {(book.genres ?? []).map((g) => (
+            <span className="chip" key={g}>
+              {g}
+              <button aria-label={`Remove ${g}`} onClick={() => onUpdate({ genres: book.genres!.filter((x) => x !== g) })}>
+                ×
+              </button>
+            </span>
+          ))}
+          <input
+            className="input chip-input"
+            aria-label="Add a genre"
+            onFocus={() => setTyping('genre')}
+            placeholder={book.genres?.length ? 'Add…' : book.genres ? 'Add a genre…' : 'Looking up…'}
+            value={genreDraft}
+            onChange={(e) => setGenreDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                addGenre()
+              }
+            }}
+            onBlur={() => {
+              setTyping(null)
+              addGenre()
+            }}
+          />
+        </div>
+        {typing === 'genre' && (
+          <Suggestions
+            names={suggest(
+              genreOptions.filter((g) => !book.genres?.includes(g)),
+              genreDraft,
+            )}
+            onPick={(g) => addGenre(g)}
+          />
+        )}
+      </div>
+
+      {/* the seasons she says the book is for (#272, D-0072): under Genres, because it is
+          the same kind of thing — what this book is — and it steps in front of the guess
+          the seasonal challenge makes from the genres just above it */}
+      <SeasonField book={book} onUpdate={onUpdate} />
+
+      <SetInField book={book} shelf={shelf} onUpdate={onUpdate} />
+
       <label className="field">
         <span>Back cover</span>
         <textarea
@@ -952,6 +1066,53 @@ export function BookPanel({
         onMerge={onMerge}
         onNotDuplicate={(id) => onUpdate({ notDuplicates: [...(book.notDuplicates ?? []), id] })}
       />
+      </div>
+      )}
+
+      {tab === 'looks' && (
+      <div className="tab-panel panel-tab" role="tabpanel" id="book-tab-looks" aria-labelledby="book-tab-looks-tab" tabIndex={0}>
+      {/* how the book stands on the shelf (D-0044): first on Looks, above the side picker */}
+      <div className="room-row" role="group" aria-label="How it stands">
+        <span className="muted small-text">How it stands</span>
+        <div className="segmented pose-pick">
+          {POSES.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              className={poseOf(book) === id ? 'active' : undefined}
+              aria-pressed={poseOf(book) === id}
+              onClick={() => poseOf(book) !== id && onUpdate(posePatch(id))}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {/* no shelf of this bookcase has room for the pose she picked, so the shelf is drawing
+            the book standing (D-0073 §3). Said here rather than nowhere, because #271 was her
+            asking us why the button did nothing on her phone. */}
+        {poseOf(book) !== 'standing' && drawnPose === 'standing' && (
+          <p className="muted small-text">
+            {poseLabel(poseOf(book))} doesn't fit this bookcase on this screen — it stands here and comes back on a
+            wider screen.
+          </p>
+        )}
+      </div>
+
+      <div className="side-pick" role="group" aria-label="Show side">
+        <button onClick={() => onFace('front')}>Front</button>
+        <button onClick={() => onFace('spine')}>Spine</button>
+        <button onClick={() => onFace('back')}>Back</button>
+      </div>
+      <button className="btn change-cover" onClick={onChangeCover}>
+        Change cover…
+      </button>
+
+      <SpineColourField book={book} onChange={(color) => onUpdate({ color })} onFace={onFace} />
+
+      <EdgesField book={book} onChange={(edges) => onUpdate({ edges })} />
+      </div>
+      )}
+
 
       <div className="panel-actions">
         <button className="btn" onClick={onClose}>
@@ -1057,28 +1218,3 @@ function FindBackText({ book, onFound }: { book: Book; onFound: (description: st
   )
 }
 
-/**
- * Names to pick from under a field while typing. Tapping one keeps the field
- * focused (pointerdown is cancelled), so the half-typed text isn't saved first.
- */
-function Suggestions({ names, onPick }: { names: string[]; onPick: (name: string) => void }) {
-  if (!names.length) return null
-  return (
-    <div className="chips suggestions" role="listbox" aria-label="Suggestions">
-      {names.map((n) => (
-        <button
-          key={n}
-          type="button"
-          role="option"
-          aria-selected={false}
-          className="btn small"
-          onPointerDown={(e) => e.preventDefault()}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => onPick(n)}
-        >
-          {n}
-        </button>
-      ))}
-    </div>
-  )
-}

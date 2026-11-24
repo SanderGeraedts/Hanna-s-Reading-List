@@ -1,0 +1,42 @@
+import type { Garden } from '#/lib/garden/garden'
+import { startYear, yearOf } from '#/lib/garden/garden'
+import { countLine, gardenSentence, nextLine, seasonChip } from '#/lib/garden/words'
+import { GardenFlat } from './garden/GardenFlat'
+import { gardenLayout } from '#/lib/garden/view'
+import { useReducedMotion } from './creatures/pose'
+import { useSeen } from './garden/useSeen'
+import { newsLine } from '#/lib/garden/seen'
+import { OpenLink } from './OpenLink'
+
+/**
+ * The dashboard block "Garden" (T-0065): a small flat drawing of this year's
+ * garden, how many plants it has and how many are in bloom, the season and what
+ * is next to unlock. Open › goes to the Garden tab. Always the flat drawing,
+ * never 3D: a block is not a scene.
+ */
+
+export function GardenCard({ garden, onOpen }: { garden: Garden; onOpen?: () => void }) {
+  const reduce = useReducedMotion()
+  const news = newsLine(useSeen(garden, false).plants)
+  const year = yearOf(garden, startYear(garden))
+  if (!year) return null
+  // the block draws at most two beds, side by side and with no item strip
+  const small = gardenLayout(Math.min(2, year.beds), 2, false)
+  return (
+    <section className="dash-card garden-block" aria-labelledby="garden-title">
+      <div className="dash-card-head">
+        <h2 id="garden-title">Garden</h2>
+        <OpenLink onOpen={onOpen} label="Garden" />
+      </div>
+      <div className="garden-block-stage" style={{ aspectRatio: `${small.width} / ${small.depth}` }}>
+        <GardenFlat year={year} season={garden.season} compact reduce={reduce} />
+      </div>
+      <p className="visually-hidden">{gardenSentence(year, garden.season)}</p>
+      <p className="garden-counts">
+        <span className="garden-season">{seasonChip(garden.season)}</span> <span>{countLine(year)}</span>
+      </p>
+      {news && <p className="small-text garden-news">{news}</p>}
+      <p className="small-text garden-next">{nextLine(garden)}</p>
+    </section>
+  )
+}

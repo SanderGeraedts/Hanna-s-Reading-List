@@ -1,0 +1,16 @@
+main-390-lavender-dashboard-scrolled.jpg: header 143.4px, background haze, sideways scroll false, console errors 1: Failed to load resource: the server responded with a status of 404 () http://localhost:3144/favicon.ico
+main-390-midnight-dashboard-scrolled.jpg: header 143.4px, background haze, sideways scroll false, console errors 0
+main-360-lavender-dashboard-scrolled.jpg: header 143.4px, background haze, sideways scroll false, console errors 0
+main-360-midnight-dashboard-scrolled.jpg: header 143.4px, background haze, sideways scroll false, console errors 0
+main-390-lavender-dashboard-top.jpg: header 143.4px, background haze, sideways scroll false, console errors 0
+main-390-midnight-dashboard-top.jpg: header 143.4px, background haze, sideways scroll false, console errors 0
+main-390-lavender-challenges-scrolled.jpg: header 143.4px, background haze, sideways scroll false, console errors 0
+main-390-midnight-challenges-scrolled.jpg: header 143.4px, background haze, sideways scroll false, console errors 0
+main-390-lavender-calendar-scrolled.jpg: header 143.4px, background haze, sideways scroll false, console errors 0
+main-390-midnight-calendar-scrolled.jpg: header 143.4px, background haze, sideways scroll false, console errors 0
+main-1280-lavender-dashboard-scrolled.jpg: header 129.2px, background haze, sideways scroll false, console errors 0
+main-1280-midnight-dashboard-scrolled.jpg: header 129.2px, background haze, sideways scroll false, console errors 0
+main-390-lavender-challenges-focus-bingo.jpg: header 143.4px, background haze, sideways scroll false, target top 161 vs header bottom 143, console errors 0
+main-390-lavender-calendar-month-2026-08.jpg: header 143.4px, background haze, sideways scroll false, target top 233 vs header bottom 143, console errors 0
+main-390-lavender-shelf.jpg: header 162.4px, background haze, sideways scroll false, console errors 0
+main-1280-lavender-shelf.jpg: header 184.2px, background haze, sideways scroll false, console errors 0

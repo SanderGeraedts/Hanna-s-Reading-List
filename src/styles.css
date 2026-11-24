@@ -21,10 +21,18 @@
   --accent-ink: #2a1a08; /* text on gold */
   --warning: #e0a35f; /* behind, a reminder */
   --danger: #ea8670; /* remove, wrong: 4.5:1 on a card (colours.test.ts) */
+  /* the badge medals' rims (T-0042, D-0038): 3:1 on a card on both wallpapers (colours.test.ts) */
+  --medal-gold: var(--accent);
+  --medal-silver: #c3c9d4;
+  --medal-bronze: #c8814f;
+  --medal-hidden: rgba(0, 0, 0, 0.45); /* a hidden medal's dark face, under a --muted "?" */
   --header-ink: #2d2038; /* text straight on the wallpaper: deep plum */
   --header-muted: #54456a;
   /* text on the white round buttons in the header: always dark, whatever the wallpaper */
   --pill-ink: #2d2038;
+  /* the quieter ink on those buttons (an unchosen bookcase): still ~9:1 on the white pill,
+     and never redefined for the dark theme, because the pills stay white there (T-0096) */
+  --pill-muted: #54456a;
   /* the haze behind the header, as r, g, b: pale on the lavender, dark on the midnight wallpaper */
   --header-fade: 246, 248, 255;
 
@@ -164,6 +172,21 @@ h2 {
   color: var(--header-ink);
   pointer-events: none;
 }
+/* on the pages (Dashboard, Challenges, Calendar) the cards scroll under the header, so there it is a
+   solid band in the header's own colour: nothing shows through the title, the stats or the tabs.
+   A short soft fade under it (in the gap .dashboard leaves above the first card) instead of a hard
+   line. The shelf keeps the haze above (T-0035). */
+.topbar.on-page {
+  background: rgb(var(--header-fade));
+}
+.topbar.on-page::after {
+  content: '';
+  position: absolute;
+  inset: 100% 0 auto 0;
+  height: var(--space-3);
+  background: linear-gradient(to bottom, rgb(var(--header-fade)), rgba(var(--header-fade), 0));
+  pointer-events: none;
+}
 .topbar .muted {
   color: var(--header-muted);
 }
@@ -236,6 +259,13 @@ h2 {
 .empty p.shelf-error-sub {
   font-family: var(--sans);
   font-size: var(--fs-small);
+}
+/* Try again, and Show simple books while the books are detailed (T-0034) */
+.shelf-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
 }
 
 /* ---- controls ------------------------------------------------------- */
@@ -511,6 +541,8 @@ textarea.input {
 }
 .tabs {
   display: flex;
+  /* six tabs (Search … Wishlist, T-0072) don't fit on one line at 390 px: they wrap */
+  flex-wrap: wrap;
   gap: 0.25rem;
   border-bottom: 1px solid var(--border);
 }
@@ -531,6 +563,48 @@ textarea.input {
 .tab-panel {
   display: grid;
   gap: 0.75rem;
+}
+/* the tab row and its panel; hidden (not unmounted) while the add follow-up shows (T-0016) */
+.add-tabs {
+  display: contents;
+}
+.add-tabs[hidden] {
+  display: none;
+}
+.add-follow-up .success {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.follow-up-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+/* everything new she taps in the follow-up is a full finger high on a touch screen */
+@media (pointer: coarse) {
+  .add-follow-up .format-chip,
+  .follow-up-actions .btn {
+    min-height: var(--tap);
+  }
+}
+/* a price: the € fixed inside the field's left edge, about 9rem wide */
+.price-box {
+  position: relative;
+  width: 9rem;
+  max-width: 100%;
+}
+.price-euro {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+.input.price-input {
+  width: 100%;
+  padding-left: 1.9rem;
 }
 .results {
   list-style: none;
@@ -748,12 +822,16 @@ textarea.input {
 /* ---- finding and zooming on the shelf -------------------------------- */
 /* on the lavender wall: light buttons with dark plum text, like ↻ */
 .zoom-controls .btn,
+.world-zoom .btn,
+.shelf-pan .btn,
 .topbar .btn.search-clear {
   background: rgba(255, 255, 255, 0.78);
   color: var(--pill-ink);
   border-color: rgba(45, 32, 56, 0.2);
 }
 .zoom-controls .btn:hover:not(:disabled),
+.world-zoom .btn:hover:not(:disabled),
+.shelf-pan .btn:hover:not(:disabled):not([aria-disabled='true']),
 .topbar .btn.search-clear:hover:not(:disabled) {
   background: #fff;
 }
@@ -766,13 +844,49 @@ textarea.input {
   flex-direction: column;
   gap: var(--space-2);
 }
-.zoom-controls .btn {
+.zoom-controls .btn,
+.world-zoom .btn,
+.shelf-pan .btn {
   width: var(--tap);
   height: var(--tap);
   padding: 0;
   display: grid;
   place-items: center;
   font-size: var(--fs-large);
+}
+/* zoomed in: ‹ › at the shelf's left and right edges (T-0025), centred between the header and
+   the bottom of the screen, and never down on the zoom column (four buttons, 16 px from the bottom) */
+.shelf-pan {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.shelf-pan .btn {
+  position: absolute;
+  top: min(
+    calc((var(--header-h, 0px) + 100%) / 2 - var(--tap) / 2),
+    calc(100% - var(--space-4) - 5 * var(--tap) - 4 * var(--space-2))
+  );
+  pointer-events: auto;
+}
+.shelf-pan .shelf-pan-left {
+  left: var(--space-4);
+}
+.shelf-pan .shelf-pan-right {
+  right: var(--space-4);
+}
+.shelf-pan .btn[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: default;
+}
+.shelf-pan .btn[aria-disabled='true']:active {
+  transform: none;
+}
+/* dimmed means no hover change: keep the zoom buttons' fill and border (beats .btn:hover) */
+.shelf-pan .btn[aria-disabled='true']:hover {
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(45, 32, 56, 0.2);
 }
 .search-clear {
   white-space: nowrap;
@@ -898,7 +1012,10 @@ textarea.input {
 .search-pop {
   position: absolute;
   z-index: 5;
-  right: 0;
+  /* hangs under the search button and opens to the right: the search is the toolbar's first item,
+     also when the toolbar wraps to a row of its own on the left (T-0026) */
+  left: 0;
+  right: auto;
   top: calc(100% + 0.5rem);
   width: min(24rem, calc(100vw - 2rem));
   display: grid;
@@ -1312,9 +1429,125 @@ textarea.input {
 }
 
 /* ---- genre filter (#41) --------------------------------------------- */
-.genre-filter.active .input {
+.genre-filter.active .input,
+.shelf-filter.active .input {
   border-color: var(--accent, #c8963e);
   box-shadow: 0 0 0 1px var(--accent, #c8963e);
+}
+
+/* ---- the bar above the shelf: bookcases and filters (T-0051, D-0046) ----
+   It is the header's own bottom row (flex-basis 100%), so the header's measured
+   height keeps the top shelf clear of it and the camera needs no change. */
+.shelf-bar {
+  flex: 1 0 100%;
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  pointer-events: auto;
+  min-width: 0;
+}
+/* the switch sits on the header's haze over the shelf, so it gets the header's own light
+   styling (as .topbar .input does), not the dark-card styling .segmented has on a card.
+   The pill is nearly solid and the ink is full strength (T-0096): at 0.75 white with the
+   ink at 0.72 the room showed through the words, and on dark wood there was hardly
+   anything left of them — which is what Hanna reported. */
+.shelf-cases {
+  justify-self: start;
+  max-width: 100%;
+  flex-wrap: wrap;
+  row-gap: 3px;
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(40, 50, 90, 0.3);
+}
+.topbar .shelf-cases button {
+  /* a quieter plum than the chosen one, but never faint: about 9:1 on the pill, against 3:1
+     before. Its own token, because --header-muted turns pale in the dark theme while this
+     pill stays white. */
+  color: var(--pill-muted);
+  opacity: 1;
+}
+.topbar .shelf-cases button:hover {
+  color: var(--pill-ink);
+}
+.topbar .shelf-cases button.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+  opacity: 1;
+}
+.shelf-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+  min-width: 0;
+}
+.shelf-filters > * {
+  flex: 0 0 auto;
+}
+.shelf-filters .muted {
+  white-space: nowrap;
+}
+/* the bar's bottom row sits where the header's haze has almost faded out, so the text that
+   stands straight on the room (the filter names, the empty line) gets a soft light halo and
+   stays readable over dark wood as well as over the wallpaper */
+.shelf-filters .muted,
+.shelf-none {
+  text-shadow:
+    0 1px 2px rgba(255, 255, 255, 0.9),
+    0 0 6px rgba(255, 255, 255, 0.7);
+}
+/* on the midnight wallpaper that text is light, and a white halo around light letters only
+   blurs them: give it a dark halo there instead, which does the same job (T-0096) */
+html[data-wallpaper='midnight'] .shelf-filters .muted,
+html[data-wallpaper='midnight'] .shelf-none {
+  text-shadow:
+    0 1px 2px rgba(10, 14, 40, 0.9),
+    0 0 6px rgba(10, 14, 40, 0.7);
+}
+.shelf-filters .input {
+  max-width: 11rem;
+}
+.shelf-none {
+  margin: 0;
+  color: var(--header-muted);
+  font-size: var(--fs-small);
+}
+/* Clear sits on the haze over the shelf, so it gets the header's light button styling */
+.topbar .btn.shelf-clear {
+  /* as solid as the bookcase switch beside it, so the room never shows through it (T-0096) */
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--pill-ink);
+  border-color: rgba(40, 50, 90, 0.3);
+}
+.topbar .btn.shelf-clear:hover {
+  background: #fff;
+}
+/* a phone: one sideways-scrolling row instead of four stacked lines eating the shelf */
+@media (max-width: 700px) {
+  .shelf-filters {
+    /* the grid lays its items out at their own width, so say "the whole row" before it can scroll */
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-right: 1rem;
+    scrollbar-width: none;
+  }
+  .shelf-filters::-webkit-scrollbar {
+    display: none;
+  }
+  .shelf-filters > * {
+    flex: 0 0 auto;
+  }
+  .shelf-filters .input {
+    max-width: 9rem;
+  }
+  /* the header hides a .sort label on a phone ("Arrange by"), but each filter needs its own
+     name: it is the only way to tell the six selects apart */
+  .shelf-filter > span {
+    display: inline;
+  }
 }
 
 /* ---- ISBN and publication date (#43, #44) --------------------------- */
@@ -1478,6 +1711,12 @@ textarea.input {
     pointer-events: auto;
     flex-shrink: 0;
   }
+  /* the bar above the shelf (T-0051): a full-width row of its own under the page tabs,
+     so the bookcase switch fits on one line and the filter row has the whole width to scroll in */
+  .topbar .shelf-bar {
+    grid-column: 1 / -1;
+    grid-row: 4;
+  }
 }
 
 /* ---- dashboard (#59) ------------------------------------------------- */
@@ -1488,6 +1727,9 @@ textarea.input {
   overflow-y: auto;
   /* starts under the header's real height (set on .app as --header-h), so the tabs cover nothing (#181) */
   padding: max(6.5rem, calc(var(--header-h, 0px) + var(--space-3))) 1.5rem 2rem;
+  /* and whatever is scrolled to or focused (Tab, scrollIntoView, a search result) lands below the
+     header too, never under it (T-0035, WCAG 2.4.11) */
+  scroll-padding-top: max(6.5rem, calc(var(--header-h, 0px) + var(--space-3)));
   /* the same lavender wallpaper as behind the shelf */
   background: var(--wallpaper);
   color: var(--header-ink);
@@ -1559,8 +1801,18 @@ textarea.input {
   border: 1px solid var(--accent);
   border-radius: var(--radius);
   position: sticky;
-  top: max(5rem, calc(var(--header-h, 0px) + var(--space-2)));
+  /* .dashboard (the scroll container) already starts under the header with its padding-top, and
+     sticky offsets count from inside that padding: so just a small gap, or the header counts twice
+     and the bar covers what is under it (T-0020) */
+  top: var(--space-2);
   z-index: 3;
+}
+/* while arranging the sticky bar sits under the header too: keep what is focused below the bar as
+   well (its height is measured into --arrange-h by useArrangeBarHeight, T-0035) */
+.dashboard:has(.dashboard-bar.arranging) {
+  scroll-padding-top: calc(
+    max(6.5rem, calc(var(--header-h, 0px) + var(--space-3))) + var(--space-2) + var(--arrange-h, 0px) + var(--space-2)
+  );
 }
 .dashboard-bar p {
   margin: 0;
@@ -1569,12 +1821,40 @@ textarea.input {
   display: flex;
   gap: 0.5rem;
 }
+/* the Hidden chips scroll inside an area of two and a half chip rows, so the bar never grows taller
+   than the screen however many blocks are hidden (T-0038). The top half of a third row peeks out:
+   the only (text-free) sign that more chips scroll into view. A row is one .btn.small chip: its
+   text, padding and border, or its finger height on a touch screen (below). The padding (taken
+   back by the margin, so nothing moves) leaves room for a focused chip's outline. */
 .hidden-blocks {
+  --chip-row: calc(var(--fs-small) * 1.25 + 2 * var(--space-1) + 2px);
+  --chip-gap: 0.4rem;
   flex-basis: 100%;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: var(--chip-gap);
   align-items: center;
+  max-height: calc(2.5 * var(--chip-row) + 2 * var(--chip-gap) + 2 * var(--space-1));
+  overflow-y: auto;
+  padding: var(--space-1);
+  margin: calc(-1 * var(--space-1));
+  /* when Tab scrolls a chip into view, leave room above and below for its focus outline (T-0044, F7) */
+  scroll-padding-block: var(--space-1);
+}
+@media (pointer: coarse) {
+  .hidden-blocks {
+    --chip-row: 36px; /* .btn.small's min-height on a touch screen */
+  }
+}
+/* a short screen (a phone held sideways): the arranging bar stays where it is on the page instead
+   of sticking under the header, so a bingo square only has to fit under the header (T-0038) */
+@media (max-height: 500px) {
+  .dashboard-bar.arranging {
+    position: static;
+  }
+  .dashboard:has(.dashboard-bar.arranging) {
+    scroll-padding-top: max(6.5rem, calc(var(--header-h, 0px) + var(--space-3)));
+  }
 }
 .dashboard-empty {
   text-align: center;
@@ -1672,6 +1952,23 @@ textarea.input {
   background: var(--accent);
   color: var(--accent-ink);
   font-weight: 600;
+}
+/* The pile's All · Paper · E-book · Audiobook switch (T-0023): a grid child, so
+   keep it its own width, and let it wrap rather than push the card sideways. */
+.pile-kinds {
+  justify-self: start;
+  max-width: 100%;
+  flex-wrap: wrap;
+  row-gap: 3px;
+  /* half a touch button plus padding and border: a pill on one row, a rounded box on two */
+  border-radius: calc(var(--tap) / 2 + 4px);
+}
+/* The pile's height and pace lines, one live region while the switch shows
+   (T-0024): repeat the card's gap so nothing moves. Not display: contents,
+   which some browsers drop live regions on. */
+.pile-said {
+  display: grid;
+  gap: var(--space-3);
 }
 .period-pick {
   display: flex;
@@ -1991,6 +2288,121 @@ textarea.input {
   font-size: var(--fs-body);
   margin: 0 0 0.4rem;
 }
+/* Fix a past day (T-0045): the Change editor and + Add a book controls that
+   appear inside the Calendar block's day panel and the Calendar page's day aside. */
+.day-change {
+  margin-left: 0.4rem;
+  white-space: nowrap;
+}
+.day-add-btn {
+  display: block;
+  margin: 0.75rem 0 0;
+  width: 100%;
+}
+.day-editor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.6rem;
+  align-items: center;
+  margin-top: 0.25rem;
+}
+.day-amount {
+  display: inline-flex;
+  gap: 0.3rem;
+  align-items: center;
+  flex: 1 1 10em;
+}
+.day-amount input {
+  min-width: 6em;
+  max-width: 10em;
+  padding: 0.25rem 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--text);
+}
+.day-editor-actions {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.day-editor .hint {
+  flex-basis: 100%;
+  margin: 0.1rem 0 0;
+  min-height: 1.2em;
+}
+.day-add {
+  margin-top: 0.75rem;
+  padding: 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card-soft, var(--card));
+}
+.day-add-head {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.day-add-search {
+  flex: 1;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--text);
+}
+.day-add-group {
+  margin-bottom: 0.5rem;
+}
+.day-add-group h4 {
+  margin: 0 0 0.25rem;
+  font-size: var(--fs-small);
+  font-weight: normal;
+}
+.day-add-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.day-add-pick {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.3rem 0.4rem;
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  text-align: left;
+  cursor: pointer;
+}
+.day-add-pick:hover,
+.day-add-pick:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.day-add-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.day-add-text strong {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.day-add-picked {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
 /* the book panel's finish dates */
 .finished-day {
   display: flex;
@@ -2008,7 +2420,7 @@ textarea.input {
     padding: max(5.25rem, calc(var(--header-h, 0px) + var(--space-2))) 0.75rem 1.5rem;
   }
   .dashboard-bar.arranging {
-    top: max(4.75rem, calc(var(--header-h, 0px) + var(--space-1)));
+    top: var(--space-1);
   }
   .dash-card {
     padding: 1rem;
@@ -2198,6 +2610,53 @@ textarea.input {
 .style-space {
   height: 1rem;
   background: var(--accent);
+}
+/* the creatures on the wallpaper (T-0027 Design §9): 3 per row on a phone (≈120 px), 5 on a computer (160 px) */
+.style-creatures {
+  background: var(--wallpaper);
+  color: var(--header-ink);
+  border-radius: var(--radius-card);
+  padding: var(--space-4);
+}
+.style-creatures .small-text {
+  color: var(--header-muted);
+}
+.style-creatures .btn:not(.primary),
+.style-creatures .check span {
+  color: var(--header-ink);
+}
+.creatures-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 120px));
+  justify-content: center;
+  gap: var(--space-3) var(--space-2);
+}
+@media (min-width: 900px) {
+  .creatures-grid {
+    grid-template-columns: repeat(5, 160px);
+    gap: var(--space-4);
+  }
+}
+.creatures-canvas {
+  position: absolute !important;
+  inset: 0;
+  pointer-events: none;
+}
+.creature-tile {
+  margin: 0;
+  display: grid;
+  gap: var(--space-1);
+  text-align: center;
+}
+.creature-square {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+}
+.creature-tile figcaption {
+  display: grid;
+  line-height: 1.25;
 }
 .style-radii {
   display: flex;
@@ -2601,6 +3060,57 @@ textarea.input {
   cursor: pointer;
 }
 
+/* ---- spine colour (T-0019) -------------------------------------------- */
+.spine-colour-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  align-items: center;
+}
+.spine-swatch {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-small);
+  font-size: var(--fs-large);
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+.spine-swatch:hover {
+  border-color: var(--text);
+}
+.spine-swatch[aria-pressed='true'] {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.spine-swatch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+.spine-swatch.outside {
+  margin-left: var(--space-2);
+}
+.spine-colour-dominant {
+  white-space: nowrap;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.spine-colour-dominant .star {
+  color: var(--accent);
+}
+.spine-colour-back {
+  justify-self: start;
+}
+@media (max-width: 720px), (pointer: coarse) {
+  .spine-swatch {
+    width: var(--tap);
+    height: var(--tap);
+  }
+}
+
 /* ---- more for the dashboard: pace, heatmap, spice, year in review, bingo ---- */
 .goal-to-go {
   font-size: var(--fs-body);
@@ -2748,13 +3258,16 @@ textarea.input {
 .alphabet-behind {
   color: var(--warning);
 }
-.alphabet-tips {
-  margin-top: 0.6rem;
+/* an empty letter can be tapped for a book from her pile (D-0070) */
+button.alphabet-letter {
+  cursor: pointer;
 }
-.alphabet-tip-letter {
-  display: inline-block;
-  width: 1.2rem;
-  font-family: var(--serif);
+button.alphabet-letter:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.alphabet-suggest {
+  margin-top: 0.6rem;
 }
 /* a done letter shows its book's cover (#150); tap it to pick another (#152) */
 .alphabet-letter {
@@ -2888,6 +3401,82 @@ textarea.input {
 }
 .bingo-cover .dash-cover.small {
   width: 1.4rem;
+}
+/* an empty square of the card being played suggests a book (T-0017) */
+.bingo-square.tappable {
+  border-color: var(--border-strong);
+  cursor: pointer;
+}
+.bingo-square.tappable:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent-line);
+}
+.bingo-square.tappable.chosen {
+  border: 1px solid var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+  background: var(--surface-sunken);
+  color: var(--text);
+}
+.bingo-square.tappable:focus-visible,
+#bingo-title:focus-visible,
+.bingo-suggest h3:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+#bingo-title:focus,
+.bingo-suggest h3:focus {
+  outline: none;
+}
+.bingo-suggest {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  background: var(--surface-sunken);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius-card);
+  position: relative;
+}
+/* the heading row leaves room for the ×, which comes last in tab order but sits top right */
+.bingo-suggest-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 1.9rem;
+  padding-right: calc(1.9rem + var(--space-2));
+}
+.bingo-suggest .bingo-suggest-close {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+}
+.bingo-suggest h3 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--text);
+}
+.bingo-suggest .next-book > div {
+  min-width: 0;
+}
+.bingo-suggest-title {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.bingo-suggest-actions .btn {
+  white-space: nowrap;
+}
+@media (pointer: coarse) {
+  .bingo-suggest .btn.icon.small.bingo-suggest-close {
+    min-width: var(--tap);
+    min-height: var(--tap);
+  }
+  .bingo-suggest-top {
+    min-height: var(--tap);
+    padding-right: calc(var(--tap) + var(--space-2));
+  }
 }
 
 @media (max-width: 720px) {
@@ -3045,34 +3634,109 @@ textarea.input {
 }
 
 /* ---- badges, the cover wall, when I read most ------------------------ */
-.badges {
+/* the unfolded body: the medal grid, then the medal card (and T-0043's birthday row) */
+.badges-body {
+  display: grid;
+  gap: var(--space-3);
+}
+.badges-body[hidden] {
+  display: none;
+}
+/* the medal grid (T-0042, D-0038): 48 px round medals, 6 a row at 390 px, 8 at 1280 px */
+.medals {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--tap) + var(--space-1)), 1fr));
+  justify-items: center;
   gap: var(--space-2);
 }
-.badge {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  border-radius: var(--radius-small);
+.medal {
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  width: calc(var(--tap) + var(--space-1));
+  height: calc(var(--tap) + var(--space-1));
+  padding: 0;
+  border-radius: var(--radius-pill);
+  font: inherit;
+  color: var(--text);
+  cursor: pointer;
+}
+.medal-icon {
+  font-size: var(--fs-heading);
+  line-height: 1;
+}
+/* earned: a 3 px rim in its tier's colour */
+.medal.earned {
+  background: var(--surface-raised);
+  border: 3px solid var(--medal-gold);
+}
+.medal.earned.silver {
+  border-color: var(--medal-silver);
+}
+.medal.earned.bronze {
+  border-color: var(--medal-bronze);
+}
+/* locked: plain grey, whatever rim it will get */
+.medal.locked {
   background: var(--surface-sunken);
+  border: 2px solid var(--border-strong);
+}
+.medal.locked .medal-icon,
+.medal-card-grey {
+  filter: grayscale(1);
   opacity: 0.5;
 }
-.badge.earned {
-  opacity: 1;
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-line);
+/* hidden: a dark medal with a "?" */
+.medal.hidden {
+  background: var(--medal-hidden);
+  border: 2px dashed var(--border-strong);
 }
-/* Steam-like: locked badges grey, with their progress */
-.badge.locked {
-  opacity: 0.6;
+.medal.hidden .medal-icon,
+.medal-card-q {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: var(--fs-large);
+  color: var(--muted);
 }
-.badge.locked .badge-icon {
-  filter: grayscale(1);
+.medal:hover,
+.medal.chosen {
+  background: var(--surface-hover);
+}
+/* chosen (T-0043 F11): a cream ring inside the rim, set off by a dark gap, so it reads as two
+   separate rings on every rim and can't pass for a thicker silver (or gold) rim */
+.medal.chosen {
+  box-shadow:
+    inset 0 0 0 2px var(--surface-solid),
+    inset 0 0 0 4px var(--text);
+}
+.medal:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+/* the medal card: the bingo suggestion card's box, under the whole grid */
+.badges-card:not(.open) {
+  /* empty, but its live region stays in the page: take back the stack's gap */
+  margin-top: calc(-1 * var(--space-3));
+}
+.badges-card.open {
+  margin-top: 0;
+}
+.badges-card-body {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.badges-card-body p,
+.badges-card h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.medal-riddle {
+  font-style: italic;
+  color: var(--text);
 }
 .badge-on {
   color: var(--accent);
@@ -3090,11 +3754,38 @@ textarea.input {
 .badges-total {
   margin: 0 0 var(--space-2);
 }
-.badges-hidden {
-  margin: var(--space-3) 0 var(--space-2);
+/* the birthday row (T-0043, D-0039): a small setting under the medals, after a hairline */
+.birthday-row {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-3);
+  display: grid;
+  gap: var(--space-2);
 }
-.hidden-badges {
-  list-style: none;
+.birthday-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+.birthday-controls .input {
+  width: auto;
+}
+.birthday-date {
+  color: var(--text);
+}
+.birthday-error {
+  margin: 0;
+  color: var(--danger);
+}
+@media (pointer: coarse) {
+  .birthday-controls .input,
+  .birthday-controls .btn {
+    min-height: var(--tap);
+  }
+  .birthday-controls .btn {
+    min-width: var(--tap);
+  }
 }
 /* a block's title that folds it away (Badges) */
 .card-fold {
@@ -3122,39 +3813,6 @@ textarea.input {
 }
 .dash-card.folded .badges-total {
   margin-bottom: 0;
-}
-/* a hidden badge: a locked tile with a "?", its riddle when tapped */
-.secret-tile {
-  width: 100%;
-  border: 1px dashed var(--accent-line);
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  opacity: 0.75;
-}
-.secret-tile .badge-icon {
-  display: inline-grid;
-  place-items: center;
-  width: 1.6em;
-  height: 1.6em;
-  border-radius: 50%;
-  background: var(--surface-solid);
-  color: var(--accent);
-  font-family: var(--serif);
-  font-weight: 700;
-}
-.secret-tile.open {
-  opacity: 1;
-  border-style: solid;
-}
-.secret-tile.open .small-text {
-  font-style: italic;
-  color: var(--text);
-}
-.secret-tile:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
 }
 /* "Badge unlocked": slides in at the bottom right, like Steam */
 .badge-toast {
@@ -4103,20 +4761,153 @@ textarea.input {
 }
 
 /* ---- reading in pictures: where your books are set -------------------- */
-.world-map {
-  width: 100%;
-  height: auto;
+/* the frame holds the map and, under it, the zoom strip, in the same ocean tint (T-0039) */
+.world-map-frame {
   margin: var(--space-2) 0;
   border-radius: var(--radius-small);
   background: rgba(120, 160, 200, 0.12);
 }
+.world-map {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-small) var(--radius-small) 0 0;
+  overflow: hidden;
+}
+.world-map.zoomed,
+.world-map.zoomed .world-country,
+.world-map.zoomed .world-zone {
+  cursor: grab;
+}
+.world-map.grabbing,
+.world-map.grabbing .world-country,
+.world-map.grabbing .world-zone {
+  cursor: grabbing;
+}
+.world-map:focus {
+  outline: none;
+}
+.world-map:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.world-zoom {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2) var(--space-2);
+}
 .world-country {
   fill: rgba(255, 255, 255, 0.1);
   stroke: rgba(0, 0, 0, 0.35);
-  stroke-width: 0.25;
+  /* as thin at 8× as at zoom one */
+  stroke-width: 0.3px;
+  vector-effect: non-scaling-stroke;
+  cursor: pointer;
 }
+/* an SVG path can't take an outline reliably: the focused country gets the dashed gold mark instead */
+.world-country:focus {
+  outline: none;
+}
+@media (hover: hover) {
+  .world-country:not(.lit):hover {
+    fill: var(--border-strong);
+  }
+}
+/* tiny lit countries: an invisible 44 px edge to tap (T-0039) */
+.world-zone {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 44px;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+/* the chosen country: 2.5 px gold over a 5 px dark edge; the Tab-focused one dashed */
+.world-marks path {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.world-mark-edge {
+  stroke: var(--bg);
+  stroke-width: 5px;
+}
+.world-marks .world-mark-edge.plain {
+  fill: var(--accent-soft);
+}
+.world-mark {
+  stroke: var(--accent);
+  stroke-width: 2.5px;
+}
+.world-mark.focus {
+  stroke-dasharray: 4 3;
+}
+/* the country card: the bingo suggestion card's look, right under the map */
+.bingo-suggest.world-pick {
+  margin: 0 0 var(--space-3);
+}
+.world-pick h3 {
+  overflow-wrap: anywhere;
+}
+#world-title:focus {
+  outline: none;
+}
+#world-title:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.world-covers,
+.world-land-books {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.world-covers {
+  margin: 0;
+}
+.world-cover {
+  display: block;
+  border: 0;
+  padding: 0;
+  background: none;
+  border-radius: var(--radius-small);
+  cursor: pointer;
+}
+.world-cover:focus-visible,
+.world-name:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.world-cover img,
+.world-cover .cover-chip {
+  display: block;
+  width: 3rem;
+  height: 4.5rem;
+  border-radius: var(--radius-small);
+  object-fit: cover;
+}
+/* a lit country is filled with its covers (inline style), its outline drawn on top (T-0018) */
 .world-country.lit {
-  fill: var(--accent);
+  stroke: none;
+}
+.world-outlines path {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.world-outline-edge {
+  stroke: var(--bg);
+  stroke-width: 2.5px;
+}
+.world-outline {
+  stroke: var(--accent);
+  stroke-width: 1.25px;
 }
 .world-top {
   list-style: none;
@@ -4127,13 +4918,121 @@ textarea.input {
   gap: var(--space-1) var(--space-3);
 }
 .world-top li {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-2);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--fs-body);
+  color: var(--text);
+}
+/* each name opens its country's card, and still reads as a plain name */
+.world-name {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--fs-body);
+  color: var(--text);
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.world-name.chosen {
+  color: var(--accent);
+  font-weight: 600;
+}
+@media (pointer: coarse) {
+  .world-name {
+    min-height: var(--tap);
+  }
+}
+.world-lands-block {
+  margin-top: var(--space-3);
+}
+.world-lands-title {
+  margin: 0;
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--text);
 }
 .world-lands {
+  list-style: none;
   margin: var(--space-2) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.world-land-name {
+  display: block;
   font-size: var(--fs-small);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.world-land-books {
+  margin: var(--space-1) 0 0;
+}
+
+/* ---- Set in, in the book panel (T-0015) -----------------------------------
+   Genres' chips, with long names wrapping inside the chip, and a list of
+   suggestions one per line under the Add box. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.setin .chip {
+  max-width: 100%;
+}
+.setin-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.setin .chip button {
+  flex: none;
+}
+.setin-list {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: var(--space-1) 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-small);
+  background: var(--surface-solid);
+}
+.setin-list[hidden] {
+  display: none;
+}
+.setin-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-small);
+  color: var(--text);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.setin-list li.active {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+/* on a phone: Set in's chips, × and rows are big enough for a finger (Genres keeps its look) */
+@media (pointer: coarse) {
+  .setin .chip {
+    min-height: var(--tap);
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  .setin .chip button {
+    min-width: var(--tap);
+    min-height: var(--tap);
+  }
+  .setin-list li {
+    min-height: var(--tap);
+  }
 }
 
 /* ---- make the room yours: the 🎨 Room panel ------------------------------ */
@@ -4234,6 +5133,24 @@ textarea.input {
   gap: var(--space-2);
   min-height: var(--tap);
   cursor: pointer;
+}
+.room-toggle input {
+  accent-color: var(--accent);
+}
+.room-toggle input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* Detailed books (T-0034): the whole 44 px row toggles it */
+.room-row > .room-toggle {
+  display: flex;
+}
+/* How it stands: the pose picker on the book panel's Looks tab (T-0052, D-0044) */
+.pose-pick {
+  justify-self: start;
+  max-width: 100%;
+  flex-wrap: wrap;
+  row-gap: 3px;
 }
 .room-move {
   display: inline-flex;
@@ -4426,4 +5343,2435 @@ button.today-item:hover {
   height: 1px;
   overflow: hidden;
   clip-path: inset(50%);
+}
+
+/* ---- motivation for the pile (T-0014) --------------------------------------
+   In vs. out this month, the 6-month line and the two coin jars, under the
+   pile's numbers; the dust-off under Waiting for you; the Pile challenge button. */
+.pile-motivation {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: var(--space-3);
+}
+.pile-sentence {
+  margin: 0;
+  font-size: var(--fs-body);
+  color: var(--text);
+}
+.pile-line {
+  display: grid;
+  gap: var(--space-1);
+}
+.pile-spark {
+  display: block;
+  width: 100%;
+  max-width: 24rem;
+  height: auto;
+  overflow: visible;
+}
+.pile-spark .zero {
+  stroke: var(--border-strong);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+.pile-spark .trend {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+/* earlier months are rings, this month a filled dot: "now" differs by shape */
+.pile-spark .dot {
+  fill: var(--surface-solid);
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.pile-spark .dot.now {
+  fill: var(--accent);
+}
+.pile-spark .value {
+  fill: var(--text);
+  font-size: 10px;
+  font-weight: 600;
+}
+.pile-spark .axis {
+  fill: var(--muted);
+  font-size: 9px;
+}
+.pile-spark .axis.now {
+  fill: var(--text);
+  font-weight: 700;
+}
+/* two equal jars side by side; they stack only in a card narrower than about 18rem */
+.pile-jars {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.6rem, 1fr));
+  gap: var(--space-3);
+}
+.jar {
+  display: grid;
+  gap: var(--space-1);
+  align-content: start;
+  padding: var(--space-3);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-strong);
+  border-top: 4px solid var(--border-strong); /* the lid */
+  border-radius: var(--radius-small) var(--radius-small) var(--radius-card) var(--radius-card);
+}
+.jar p {
+  margin: 0;
+}
+.jar-name {
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--text);
+}
+.jar-coins {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--fs-large);
+  line-height: 1.2;
+  min-height: 1.4em;
+}
+/* an empty place: a dashed ring the size of a coin, so full and empty differ by shape */
+.jar-slot {
+  display: inline-block;
+  width: 1.1em;
+  height: 1.1em;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius-pill);
+}
+.jar-status {
+  font-size: var(--fs-small);
+}
+/* the buying jar's one line, "🪙 4.6 coins" (T-0016); below zero the whole line is in --warning,
+   and its real minus sign makes it read without colour */
+.jar-count {
+  font-size: var(--fs-large);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text);
+}
+.jar-count.below {
+  color: var(--warning);
+}
+/* the dust-off's cover is a 44 px target, the cover centred in it */
+.dust-off .cover-btn {
+  min-width: var(--tap);
+  min-height: var(--tap);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.waiting-card h2:focus {
+  outline: none;
+}
+.waiting-card h2:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* new buttons are a full finger high on a touch screen, not the 36 px of .btn.small */
+@media (pointer: coarse) {
+  .btn.small.tall {
+    min-height: var(--tap);
+  }
+}
+/* the Challenges bar wraps whole buttons on a phone, never the words inside them */
+.challenges-page .dashboard-bar-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.challenges-page .dashboard-bar-actions .btn {
+  white-space: nowrap;
+}
+
+/* ---- the book creatures: the Creatures tab and block (T-0029) ------------------------- */
+.creatures-page {
+  max-width: 72rem;
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-4);
+}
+.creatures-head {
+  flex-wrap: wrap;
+}
+.creatures-earn {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.creatures-today {
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+.creatures-empty {
+  margin: 0;
+  color: var(--header-muted);
+}
+/* a computer: the den left (about 62 %), the creature card and This week right */
+.creatures-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 62fr) minmax(0, 38fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+.creatures-side {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+@media (max-width: 860px) {
+  .creatures-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 720px) {
+  .dashboard:has(> .creatures-page) {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+.den-card {
+  padding: var(--space-3);
+  gap: var(--space-3);
+}
+.den-stage {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  border-radius: var(--radius-small);
+  overflow: hidden;
+  /* the den's own colour while the 3D loads: no spinner */
+  background: #3a2c24;
+}
+@media (max-width: 720px) {
+  .den-stage {
+    aspect-ratio: auto;
+    height: 300px;
+  }
+}
+.den-stage .den-canvas {
+  position: absolute !important;
+  inset: 0;
+}
+.den-below {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  padding: 0 var(--space-2) var(--space-2);
+}
+.den-below h2,
+.choose h2 {
+  margin: 0;
+}
+.hello-shiny {
+  font-weight: 600;
+}
+.name-field {
+  display: grid;
+  gap: var(--space-1);
+  width: min(100%, 20rem);
+}
+.name-field label {
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.field-error {
+  color: var(--danger);
+  font-size: var(--fs-small);
+}
+
+/* the cookie pill: gold outline, cream number */
+.cookie-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border: 1.5px solid var(--accent-line);
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--text);
+  font-size: var(--fs-large);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* 3b: five tiles over one canvas */
+.choose {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-2);
+}
+.choose-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.choose-canvas {
+  position: absolute !important;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+.choose-tile {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: center;
+  padding: var(--space-2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface-sunken);
+  cursor: pointer;
+  text-align: center;
+}
+.choose-tile:hover {
+  border-color: var(--accent-line);
+}
+.choose-tile.picked {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+.choose-tile:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.choose-square {
+  width: 100%;
+  aspect-ratio: 1;
+}
+.choose-name {
+  font-size: var(--fs-small);
+  line-height: 1.25;
+}
+@media (max-width: 720px) {
+  /* three on the first row, two centred on the second */
+  .choose-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+  .choose-tile {
+    grid-column: span 2;
+    padding: var(--space-1);
+  }
+  .choose-tile:nth-of-type(4) {
+    grid-column: 2 / span 2;
+  }
+  .choose-tile:nth-of-type(5) {
+    grid-column: 4 / span 2;
+  }
+}
+.choose-actions {
+  justify-content: flex-start;
+}
+
+/* the creature card */
+.creature-card {
+  gap: var(--space-2);
+}
+.creature-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.creature-name-row h2 {
+  overflow-wrap: anywhere;
+}
+.creature-rename {
+  display: grid;
+  gap: var(--space-2);
+}
+.creature-level .muted {
+  margin-left: var(--space-1);
+}
+.growth {
+  display: grid;
+  gap: var(--space-1);
+}
+.growth-bar {
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+.growth-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+.growth-numbers {
+  justify-self: end;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.food-bowl {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+.feed-wrap {
+  position: relative;
+  display: inline-block;
+}
+.feed-btn[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: default;
+}
+.feed-btn[aria-disabled='true']:hover {
+  background: var(--accent);
+}
+/* a 🍪 hops from the button toward the den */
+.cookie-hop {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  pointer-events: none;
+  animation: cookie-hop 0.5s ease-out forwards;
+}
+@keyframes cookie-hop {
+  from {
+    transform: translate(-50%, 0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translate(-160%, -60px) scale(0.8);
+    opacity: 0;
+  }
+}
+
+/* This week */
+.week-card summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.week-card summary::-webkit-details-marker {
+  display: none;
+}
+.week-card summary::before {
+  content: '▸';
+  color: var(--muted);
+}
+.week-card[open] summary::before {
+  content: '▾';
+}
+.week-card summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-small);
+}
+.week-card summary h2 {
+  font-size: var(--fs-large);
+}
+.week-list {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.week-list li {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+.week-day {
+  font-weight: 600;
+}
+.week-what {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.week-cookies {
+  white-space: nowrap;
+}
+.week-part {
+  white-space: nowrap;
+}
+.week-title {
+  white-space: normal;
+}
+
+/* the dashboard block */
+.creatures-row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+.still-tile {
+  position: relative;
+  flex: none;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+@media (max-width: 720px) {
+  .still-tile {
+    width: 96px;
+    height: 96px;
+  }
+}
+.still-tile .still-canvas {
+  position: absolute !important;
+  inset: 0;
+}
+.creatures-info {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  flex: 1;
+}
+.creatures-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .growth-fill {
+    transition: none;
+  }
+  .cookie-hop {
+    display: none;
+  }
+}
+
+/* ---- eggs, the album, pets and release (T-0030) ------------------------------------------ */
+.still-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+.still-missing {
+  display: grid;
+  place-items: center;
+  max-width: 100%;
+  aspect-ratio: 1;
+  font-family: var(--serif);
+  color: var(--muted);
+  font-size: 1.4rem;
+}
+.tier-line {
+  font-size: var(--fs-small);
+  white-space: nowrap;
+}
+.tier-gems {
+  color: var(--accent);
+  letter-spacing: 0.05em;
+}
+.tier-word {
+  color: var(--muted);
+}
+.reveal .tier-line .tier-word,
+.album-group h3 {
+  color: var(--text);
+}
+.reveal h2 {
+  overflow-wrap: anywhere;
+}
+.reveal-new {
+  margin: 0;
+}
+
+/* the duplicate choice: three full-width buttons in a column, 44 px at least */
+.dup-choices {
+  display: grid;
+  gap: var(--space-2);
+  width: 100%;
+}
+.dup-choices .btn,
+.dup-which .btn,
+.release-confirm .btn {
+  min-height: 44px;
+}
+.dup-which,
+.dup-warn {
+  display: grid;
+  gap: var(--space-3);
+  width: 100%;
+}
+.which-list {
+  display: grid;
+  gap: var(--space-2);
+}
+.which-list:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: var(--radius-small);
+}
+.which-title {
+  margin: 0;
+}
+
+/* the "This is a shiny!" warning */
+.shiny-warning {
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-card);
+  padding: var(--space-3);
+  color: var(--text);
+  display: grid;
+  gap: var(--space-1);
+}
+.shiny-warning p {
+  margin: 0;
+}
+
+/* the hold button: a secondary button in --danger; a fill grows left to right over 2 s */
+.hold-btn {
+  position: relative;
+  overflow: hidden;
+  border-color: var(--danger);
+  color: var(--danger);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+}
+.hold-btn:hover:not(:disabled) {
+  border-color: var(--danger);
+}
+.hold-fill {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--danger) 35%, transparent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 200ms ease-out;
+  pointer-events: none;
+}
+.hold-btn.holding .hold-fill {
+  transform: scaleX(1);
+  transition: transform var(--hold-ms, 2000ms) linear;
+}
+.hold-label {
+  position: relative;
+}
+.danger-btn,
+.release-btn {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.release-btn {
+  border-color: var(--border-strong);
+}
+.release-btn[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: default;
+}
+.release-row {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: var(--space-1);
+}
+.release-confirm {
+  display: grid;
+  gap: var(--space-2);
+}
+.release-confirm h3,
+.release-confirm p {
+  margin: 0;
+}
+.release-confirm h3 {
+  overflow-wrap: anywhere;
+}
+
+/* the Eggs card */
+.eggs-card {
+  gap: var(--space-3);
+}
+.eggs-row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+.eggs-tile {
+  flex: none;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.eggs-info {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.eggs-info p {
+  margin: 0;
+}
+.eggs-then {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.eggs-small {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.eggs-small li {
+  width: 40px;
+  min-height: 40px;
+  display: grid;
+  place-items: center;
+}
+.next-egg {
+  margin: 0;
+}
+
+/* Your pets: one row per pet, the whole row is the target */
+.pets-card h2 .muted {
+  font-weight: 400;
+}
+.pets-list {
+  display: grid;
+  gap: var(--space-2);
+}
+.pet-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 56px;
+  padding: var(--space-1) var(--space-2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface-sunken);
+  cursor: pointer;
+}
+.pet-row:hover {
+  border-color: var(--accent-line);
+}
+.pet-row.current {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+.pet-row:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.pet-tile {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+.pet-text {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+}
+.pet-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pet-line {
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.pet-chip {
+  flex: none;
+  font-size: var(--fs-small);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
+}
+
+/* the album: 5 a row at 1280, 2 at 390 */
+.album-card {
+  gap: var(--space-3);
+}
+.album-head {
+  display: grid;
+  gap: var(--space-1);
+}
+.album-count {
+  margin: 0;
+  font-size: var(--fs-body);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.album-bar {
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+.album-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--radius-pill);
+}
+.album-group {
+  display: grid;
+  gap: var(--space-2);
+}
+.album-group h3 {
+  margin: 0;
+  font-size: var(--fs-body);
+}
+.album-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-3);
+}
+@media (max-width: 720px) {
+  .album-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+}
+.album-item {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface-raised);
+  min-width: 0;
+}
+.album-item.legendary {
+  border-color: var(--accent-line);
+}
+.album-pic {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius-small);
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 240, 215, 0.14), transparent 70%),
+    var(--surface-sunken);
+  margin-bottom: var(--space-1);
+  display: grid;
+  place-items: center;
+}
+.album-item.unknown .album-pic {
+  border: 2px dashed var(--border-strong);
+}
+.silhouette {
+  filter: brightness(0) drop-shadow(0 0 1.5px rgba(244, 234, 217, 0.5));
+}
+.album-count-pill {
+  position: absolute;
+  top: var(--space-1);
+  left: var(--space-1);
+  font-size: var(--fs-small);
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-solid);
+  color: var(--text);
+}
+.album-shiny-toggle {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-solid);
+  cursor: pointer;
+  font-size: 1.1rem;
+  display: grid;
+  place-items: center;
+}
+.album-shiny-toggle[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.album-shiny-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.album-name {
+  font-weight: 600;
+  font-size: var(--fs-body);
+  overflow-wrap: anywhere;
+}
+.album-label {
+  font-size: var(--fs-small);
+  color: var(--text);
+}
+.album-source {
+  font-size: var(--fs-tiny);
+  color: var(--muted);
+}
+
+/* ---- the creature shop (T-0031) ------------------------------------------------------------ */
+/* the Den | Shop switch, on the wallpaper: white pills with dark ink, the open one gold-outlined */
+.view-switch {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: calc(var(--space-2) * -1);
+}
+.view-switch-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--tap);
+  padding: var(--space-1) var(--space-4);
+  border: 1px solid rgba(45, 32, 56, 0.2);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--pill-ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+.view-switch-link:hover {
+  background: #fff;
+}
+.view-switch-link.active {
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 2px rgba(217, 168, 91, 0.35);
+  background: #fff;
+}
+.view-switch-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.den-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 var(--space-2);
+}
+.creature-name-row {
+  flex-wrap: wrap;
+}
+.creature-name-row h2 {
+  flex: 1 1 8rem;
+}
+/* a new habitat: the den fades in from a soft dark veil (300 ms) */
+.den-fade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: rgba(20, 14, 10, 0.55);
+  opacity: 0;
+  animation: den-fade 300ms ease-out;
+}
+@keyframes den-fade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .den-fade {
+    animation: none;
+  }
+}
+
+/* the Shop view: the den left (sticky, so what she puts on shows while she scrolls), the shop right */
+.shop-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 40fr) minmax(0, 60fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+.shop-den {
+  position: sticky;
+  top: var(--space-2);
+  z-index: 2;
+  padding: var(--space-3);
+}
+@media (max-width: 860px) {
+  .shop-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* a phone: only the canvas is sticky; the strip scrolls with the page, on its own card */
+  .shop-den {
+    display: contents;
+  }
+  .shop-den > .den-stage {
+    position: sticky;
+    top: var(--space-2);
+    z-index: 2;
+    height: 180px;
+    aspect-ratio: auto;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  }
+  .shop-den > .shop-strip {
+    padding: var(--space-4);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+  }
+}
+
+/* the strips under the den: "Biscuit is wearing" and "In the den" */
+.shop-strip {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.shop-strip h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.strip-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0 var(--space-3);
+}
+.strip-rows li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap);
+  border-top: 1px solid var(--border);
+}
+.strip-rows .muted {
+  flex: 0 0 6.5rem;
+  font-size: var(--fs-small);
+}
+.strip-what {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 860px) {
+  .strip-rows {
+    grid-template-columns: 1fr 1fr;
+  }
+  .strip-rows .muted {
+    flex-basis: auto;
+  }
+  .strip-rows li {
+    flex-wrap: wrap;
+    padding: var(--space-1) 0;
+  }
+}
+.dress-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.dress-pet {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  width: 4.5rem;
+  padding: var(--space-1);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-card);
+  cursor: pointer;
+}
+.dress-pet .still-img,
+.dress-pet .still-missing {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+}
+.dress-pet.picked {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+.dress-pet:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.dress-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-small);
+}
+
+/* the shop card: category chips, then the cards */
+.shop-card h2 {
+  margin: 0 0 var(--space-3);
+}
+.shop-chips {
+  gap: var(--space-2);
+}
+.shop-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--tap);
+  padding: var(--space-1) var(--space-3);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.shop-chip:hover {
+  border-color: var(--accent-line);
+}
+.shop-chip.active {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  font-weight: 600;
+}
+.shop-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.shop-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: var(--space-3);
+}
+@media (max-width: 720px) {
+  .shop-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.shop-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  min-width: 0;
+}
+.shop-item.in-use {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+.shop-pic {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: var(--radius-small);
+  background:
+    radial-gradient(circle at 50% 40%, rgba(255, 236, 200, 0.16), transparent 65%),
+    var(--surface-sunken);
+  overflow: hidden;
+}
+.shop-pic.wide {
+  aspect-ratio: 16 / 10;
+}
+.shop-pic .still-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.shop-pic.wide .still-img {
+  object-fit: cover;
+}
+.shop-state {
+  position: absolute;
+  top: var(--space-1);
+  left: var(--space-1);
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-solid);
+  border: 1px solid var(--accent-line);
+  color: var(--text);
+  font-size: var(--fs-small);
+  font-weight: 600;
+}
+.shop-name {
+  margin: var(--space-1) 0 0;
+  font-size: var(--fs-body);
+  overflow-wrap: anywhere;
+}
+.shop-line {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+.shop-price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: auto 0 0;
+  padding-top: var(--space-1);
+}
+.price-pill {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.shop-more {
+  color: var(--muted);
+  font-size: var(--fs-small);
+  white-space: nowrap;
+}
+.shop-btn {
+  width: 100%;
+  min-height: var(--tap);
+  margin-top: auto;
+  white-space: normal;
+}
+.shop-price + .shop-btn {
+  margin-top: var(--space-1);
+}
+.shop-btn[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.shop-now {
+  margin: auto 0 0;
+  min-height: var(--tap);
+  display: grid;
+  place-items: center;
+}
+.shop-confirm {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+.shop-question {
+  margin: 0;
+  font-size: var(--fs-small);
+  font-weight: 700;
+}
+.shop-confirm-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.shop-confirm-row .btn {
+  flex: 1 1 4rem;
+  min-height: var(--tap);
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
+}
+.shop-egg-line {
+  margin: 0;
+}
+.shop-egg-line a {
+  color: var(--accent);
+  font-weight: 600;
+}
+.still-missing.wide {
+  aspect-ratio: 16 / 10;
+  width: 100%;
+}
+/* a little less padding than other cards, so four cards fit a row at 1280 (Design §4) */
+.shop-card {
+  padding: var(--space-4);
+}
+/* a phone: each strip row is the slot word above the item, with its button beside */
+@media (max-width: 860px) {
+  .strip-rows li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'slot button' 'what what';
+    align-items: center;
+    gap: 2px var(--space-2);
+  }
+  .strip-rows li .muted {
+    grid-area: slot;
+  }
+  .strip-rows li .strip-what {
+    grid-area: what;
+    overflow-wrap: break-word;
+  }
+  .strip-rows li .btn {
+    grid-area: button;
+  }
+}
+
+/* ---- the book panel's tabs (T-0047, D-0041) ------------------------------ */
+/* the row sits under the title and above the scroll, so it is always one tap away */
+.panel-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  /* solid, so a tab panel scrolling under the row never shows through it */
+  background: var(--surface-solid);
+  margin-bottom: var(--space-2);
+}
+.panel-tabs .tab {
+  flex: 1 1 0;
+  padding: 0.5rem 0.4rem;
+  text-align: center;
+  min-width: 0;
+}
+@media (pointer: coarse) {
+  .panel-tabs .tab {
+    min-height: var(--tap);
+  }
+}
+.panel-tab {
+  gap: var(--space-3);
+}
+.panel-tab[hidden] {
+  display: none;
+}
+
+/* ---- tropes and characters (T-0048, D-0042) ------------------------------ */
+/* a trope she typed herself can be long: it wraps inside its chip */
+.chip {
+  overflow-wrap: anywhere;
+}
+.character-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+.character-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.character-name {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.icon-btn.fav {
+  color: var(--muted);
+  font-size: var(--fs-body);
+  line-height: 1;
+}
+.icon-btn.fav.on {
+  color: var(--accent);
+}
+@media (pointer: coarse) {
+  .character-list .icon-btn,
+  .character-list .btn.icon {
+    min-width: var(--tap);
+    min-height: var(--tap);
+  }
+}
+
+/* the dashboard block */
+.dash-sub {
+  margin: var(--space-2) 0 var(--space-1);
+}
+.trope-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+.trope-bars li {
+  display: grid;
+  grid-template-columns: minmax(6rem, 10rem) 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-small);
+}
+.trope-name {
+  overflow-wrap: anywhere;
+}
+.trope-bar {
+  height: 0.5rem;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  overflow: hidden;
+}
+.trope-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.favourite-characters {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+}
+.favourite-character {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-1);
+  width: 4.5rem;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+/* ---- the reading garden (T-0061 … T-0065, D-0051) --------------------
+   The flat drawn garden and the cosy 3D one share one stage: the drawing
+   fills it, and the spot buttons she tends with lie over it at the places
+   the view's own projection puts them. */
+.garden-page {
+  max-width: 72rem;
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-4);
+}
+.garden-head {
+  flex-wrap: wrap;
+}
+.garden-state {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.garden-season {
+  white-space: nowrap;
+}
+.garden-total,
+.garden-counts {
+  color: var(--muted);
+  font-size: var(--fs-small);
+  margin: 0;
+}
+.garden-years {
+  margin: 0;
+}
+.garden-years .btn.active {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+}
+.garden-card {
+  padding: var(--space-3);
+  gap: var(--space-2);
+  display: grid;
+}
+.garden-stage {
+  position: relative;
+  border-radius: var(--radius-small);
+  overflow: hidden;
+  /* the garden's own colour while a drawing loads: no spinner */
+  background: #4e6b47;
+}
+.garden-stage.scene {
+  aspect-ratio: 16 / 9;
+}
+.garden-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.garden-stage .garden-canvas {
+  position: absolute !important;
+  inset: 0;
+}
+/* the buttons: one per spot, placed by the view, as wide as a spot */
+.garden-spots {
+  position: absolute;
+  inset: 0;
+}
+.garden-bed-group {
+  display: contents;
+}
+.garden-spot {
+  position: absolute;
+  width: 11%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+.garden-spot.has-plant {
+  cursor: grab;
+}
+.garden-spot:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* while a plant is picked up, every spot shows itself */
+.garden-spot.choosing {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+}
+.garden-spot.picked {
+  background: rgba(217, 168, 91, 0.35);
+}
+.garden-plant.picked {
+  filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.45));
+}
+.garden-picked {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: start;
+  padding: var(--space-2);
+  background: var(--surface-sunken);
+  border-radius: var(--radius-small);
+}
+.garden-picked p {
+  margin: 0;
+}
+.garden-items-card {
+  padding: var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+}
+.garden-items-card h2 {
+  margin: 0;
+}
+.garden-item.locked {
+  opacity: 0.6;
+  cursor: default;
+}
+.garden-item.placed {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+}
+.garden-next {
+  margin: 0;
+  color: var(--muted);
+}
+/* the dashboard block: one bed, small */
+.garden-block-stage {
+  border-radius: var(--radius-small);
+  overflow: hidden;
+  background: #4e6b47;
+}
+.garden-block-stage .garden-svg {
+  max-height: 10rem;
+}
+/* the visitors drift; with reduce motion they sit still (D-0051 §7) */
+.garden-visitor {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.garden-visitor.drift-0 {
+  animation: garden-drift-0 11s ease-in-out infinite alternate;
+}
+.garden-visitor.drift-1 {
+  animation: garden-drift-1 14s ease-in-out infinite alternate;
+}
+.garden-visitor.drift-2 {
+  animation: garden-drift-2 9s ease-in-out infinite alternate;
+}
+@keyframes garden-drift-0 {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(1.4px, -0.9px);
+  }
+}
+@keyframes garden-drift-1 {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(-1.2px, 1.1px);
+  }
+}
+@keyframes garden-drift-2 {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(0.9px, 1.3px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .garden-visitor {
+    animation: none !important;
+  }
+}
+@media (max-width: 720px) {
+  .dashboard:has(> .garden-page) {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .garden-spot {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* ---- the garden's tools: finding, tidying, the news and the cover signs
+   (T-0066) ---------------------------------------------------------------- */
+.garden-news {
+  color: var(--ink-soft);
+  font-size: var(--fs-small);
+}
+.garden-find {
+  position: relative;
+  margin-bottom: var(--space-2);
+}
+.garden-find .input {
+  width: 100%;
+  max-width: 320px;
+}
+.garden-find-hits {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  max-width: 100%;
+}
+.garden-find-hits .btn {
+  text-align: left;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.garden-find-none {
+  color: var(--ink-soft);
+}
+.garden-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
+}
+.garden-tidy {
+  margin: 0;
+}
+.garden-item.off-season {
+  opacity: 0.55;
+}
+
+/* a plant that is new or has grown since she last looked: a quiet ring, never a pop-up */
+.garden-spot.fresh-new::after,
+.garden-spot.fresh-grown::after,
+.garden-spot.found::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  pointer-events: none;
+  border: 2px solid var(--gold, #e8c15a);
+}
+.garden-spot.fresh-grown::after {
+  border-color: #8fbf7a;
+  opacity: 0.8;
+}
+.garden-spot.fresh-new::after {
+  animation: garden-fresh 3.2s ease-in-out infinite alternate;
+}
+.garden-spot.found::after {
+  border-width: 3px;
+}
+@keyframes garden-fresh {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .garden-spot.fresh-new::after {
+    animation: none;
+  }
+}
+
+/* ---- books on her shelf that fit a challenge (T-0066) ------------------- */
+.challenge-fits {
+  margin-top: var(--space-1);
+}
+.challenge-fits-none {
+  margin-top: var(--space-1);
+}
+.challenge-fits-list {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: var(--space-1) 0 0;
+  padding: 0;
+}
+.challenge-fits-list button {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  width: 64px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+}
+.challenge-fits-list button[disabled] {
+  cursor: default;
+}
+.challenge-fits-list img,
+.challenge-fits-list .cover-chip {
+  width: 40px;
+  height: 58px;
+  object-fit: cover;
+  border-radius: 3px;
+  display: block;
+}
+.challenge-fits-why {
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+  text-align: center;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+/* ---- a closer look, the cover behind a plant, and the night (D-0071) --- */
+.garden-beds {
+  margin-bottom: var(--space-1);
+}
+.garden-stage.night {
+  background: #16203a;
+}
+.garden-spot.peeked::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  pointer-events: none;
+}
+.garden-peek {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  gap: var(--space-1);
+  width: min(260px, 70%);
+  padding: var(--space-1);
+  border-radius: var(--radius-small);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.35);
+  transform: translate(-50%, calc(-100% - 12px));
+}
+.garden-peek.left {
+  transform: translate(-85%, calc(-100% - 12px));
+}
+.garden-peek-cover {
+  width: 48px;
+  height: 70px;
+  object-fit: cover;
+  border-radius: 3px;
+  flex: none;
+}
+.garden-peek-text {
+  display: grid;
+  gap: 2px;
+  align-content: start;
+  min-width: 0;
+}
+.garden-peek-text p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.garden-peek-title {
+  font-family: var(--serif);
+}
+.garden-peek-close {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+}
+.garden-look-chips {
+  margin: 0;
+}
+
+/* ---- Pick the cover before the book is added (T-0070) ---------------- */
+.cover-step {
+  gap: var(--space-2);
+}
+.cover-step-title {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: var(--fs-body);
+  overflow-wrap: anywhere;
+}
+/* inside the add dialog the body is the one scroller: the grid doesn't scroll on its own */
+.cover-step .cover-grid {
+  max-height: none;
+  overflow: visible;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+}
+/* the picked cover is marked by its ring and by a tick, never by colour alone */
+.cover-tick,
+.cover-photo-badge {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+.cover-tick {
+  top: 2px;
+  right: 2px;
+}
+.cover-photo-badge {
+  bottom: 2px;
+  left: 2px;
+}
+/* the series guesses sit on one line and wrap */
+.series-chips {
+  flex-wrap: wrap;
+}
+
+/* ---- Scanning a pile of books in one go (T-0071) --------------------- */
+.batch-scan {
+  gap: var(--space-2);
+}
+/* the camera stays in view while the list grows under it */
+.batch-camera {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+}
+.batch-heading {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: var(--fs-body);
+}
+.batch-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+  /* a grid item's min-width is auto by default: without this the chips push the dialog wider */
+  min-width: 0;
+}
+.batch-row {
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  gap: 0.75rem;
+  align-items: start;
+  padding: var(--space-2);
+  border-radius: var(--radius-small);
+  background: var(--surface-raised);
+  min-width: 0;
+}
+/* collapsed, a row says how she has that book; tapping opens its own chips */
+.batch-formats {
+  justify-self: start;
+}
+.batch-row .format-chip {
+  font-size: 0.72rem;
+  padding: 2px var(--space-2);
+}
+.batch-cover {
+  width: 48px;
+  height: 72px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--surface-raised);
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+.batch-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.batch-text {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+  font-size: var(--fs-small);
+}
+.batch-text strong {
+  font-family: var(--serif);
+  font-size: var(--fs-body);
+  overflow-wrap: anywhere;
+}
+.batch-text .chip {
+  justify-self: start;
+}
+.batch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.batch-row .price-box {
+  width: 7rem;
+}
+.batch-add-all {
+  justify-self: stretch;
+}
+/* a row that will not be added stays readable, and keeps its ✕ at full strength */
+.batch-row.muted .batch-remove {
+  color: var(--text);
+}
+@media (pointer: coarse) {
+  .batch-row .format-chip,
+  .batch-row .btn,
+  .batch-remove {
+    min-height: var(--tap);
+  }
+}
+
+/* ---- The wishlist: the bookcase's own bits (T-0072, D-0053, D-0074) ---- */
+/* the wish row in the book panel: what the Wishlist block used to offer */
+.wish-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: 0.15rem;
+}
+.wish-price {
+  font-variant-numeric: tabular-nums;
+}
+/* "Add to wishlist" by hand, in the add dialog */
+.wish-by-hand > summary {
+  cursor: pointer;
+  font-size: var(--fs-small);
+  color: var(--accent);
+}
+.wish-by-hand form {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+@media (pointer: coarse) {
+  .wish-actions .btn {
+    min-height: var(--tap);
+  }
+}
+
+/* ---- the challenges: rings, confetti, the four new cards and the bingo swap ----
+   T-0090 … T-0093 (D-0064, D-0065, D-0067). */
+
+/* the ring row at the top of the Challenges page (D-0064) */
+.challenge-rings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-card);
+  /* the cards own surface, not a sunken well: over the pale lavender wallpaper a
+     translucent well leaves the names and the ring tracks too faint to read */
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.challenge-ring {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  width: 3.4rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+}
+.challenge-ring svg {
+  width: var(--tap);
+  height: var(--tap);
+  display: block;
+}
+.challenge-ring .ring-track,
+.challenge-ring .ring-fill {
+  fill: none;
+  stroke-width: 5;
+}
+.challenge-ring .ring-track {
+  stroke: rgba(255, 255, 255, 0.12);
+}
+.challenge-ring .ring-fill {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.6s ease-out;
+}
+.challenge-ring .ring-disc {
+  fill: var(--accent);
+  stroke: none;
+}
+.challenge-ring .ring-number {
+  fill: var(--text);
+  font-family: var(--serif);
+  font-size: 13px;
+  font-weight: 600;
+}
+.challenge-ring.done .ring-number {
+  fill: var(--accent-ink);
+  font-size: 15px;
+}
+.challenge-ring.done {
+  color: var(--text);
+}
+.challenge-ring-name {
+  font-size: var(--fs-tiny);
+  max-width: 5.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (min-width: 900px) {
+  .challenge-ring {
+    width: 4rem;
+  }
+  .challenge-ring svg {
+    width: 52px;
+    height: 52px;
+  }
+}
+
+/* the confetti for a finished challenge (D-0064 §4) */
+.confetti-layer {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 60;
+}
+.confetti-bit {
+  position: absolute;
+  top: -20px;
+  width: var(--w);
+  height: var(--h);
+  border-radius: 1px;
+  animation: confetti-fall 1600ms cubic-bezier(0.25, 0.6, 0.4, 1) forwards;
+}
+@keyframes confetti-fall {
+  from {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(var(--drift), var(--fall), 0) rotate(var(--spin));
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .confetti-layer {
+    display: none;
+  }
+}
+
+/* around the world */
+.world-countries {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* seasonal */
+.season-rows,
+.series-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.season-row,
+.series-row {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, 8rem) 1fr auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-small);
+  border: 1px solid transparent;
+}
+.season-row.current {
+  border-color: var(--accent-line);
+}
+.season-name,
+.series-name {
+  font-size: var(--fs-small);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.season-row.done .season-name,
+.series-row.done .series-name {
+  color: var(--text);
+}
+.season-count,
+.series-count {
+  min-width: 4.5rem;
+  text-align: right;
+}
+
+/* minutes a day: a month grid that fills up */
+.minutes-weekdays,
+.minutes-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-top: var(--space-2);
+  max-width: 17rem;
+}
+.minutes-weekdays {
+  font-size: var(--fs-tiny);
+  color: var(--muted);
+  text-align: center;
+}
+.minutes-day {
+  aspect-ratio: 1;
+  border-radius: var(--radius-small);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+}
+.minutes-day.on {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+}
+.minutes-day.future {
+  background: none;
+  border: 0;
+  position: relative;
+}
+.minutes-day.future::after {
+  content: '';
+  position: absolute;
+  inset: calc(50% - 1.5px);
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+.minutes-day.today {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.minutes-month {
+  font-family: var(--serif);
+  font-size: var(--fs-body);
+  min-width: 5.5rem;
+  text-align: center;
+}
+
+/* read the series */
+.series-add {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.series-add label {
+  display: grid;
+  gap: 0.3rem;
+}
+
+/* her own challenges: the unit next to the number, and the second rule */
+.own-challenge-form .goal-amount {
+  display: grid;
+  gap: 0.3rem;
+  align-content: start;
+}
+.goal-amount-row {
+  display: grid;
+  grid-template-columns: 1fr 6.5rem;
+  gap: var(--space-2);
+}
+.own-challenge-form .and-row {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  padding: var(--space-2);
+  margin: 0;
+}
+
+/* swapping a bingo square (D-0067) */
+.bingo-swap {
+  display: grid;
+  gap: var(--space-2);
+}
+.bingo-swap-list {
+  display: grid;
+  gap: var(--space-2);
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.bingo-swap-list .btn {
+  min-height: var(--tap);
+  text-align: left;
+}
+.bingo-swap-start {
+  margin-top: var(--space-2);
+}
+@media (min-width: 900px) {
+  .bingo-swap-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ---- the Stats page, My year and the year story (T-0080, T-0081) ------ */
+.stats-page {
+  max-width: 68rem;
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-4);
+}
+.stats-head {
+  flex-wrap: wrap;
+}
+.stats-head h1 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: var(--fs-heading);
+}
+.stats-pickers {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.stats-field {
+  display: grid;
+  gap: 0.15rem;
+  font-size: var(--fs-small);
+}
+.stats-field select:disabled {
+  opacity: 0.5;
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+  align-items: start;
+}
+.stats-numbers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-4);
+}
+.stats-number {
+  display: grid;
+  gap: 0.1rem;
+  margin: 0;
+  min-width: 6rem;
+}
+.stats-number strong {
+  font-family: var(--serif);
+  font-size: var(--fs-heading);
+  line-height: 1.1;
+}
+/* the compare year's value next to a number: the arrow is decoration, the words are for readers */
+.compare-note {
+  font-size: var(--fs-small);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.compare-note.up {
+  color: var(--accent);
+}
+.compare-note.big {
+  font-size: var(--fs-body);
+}
+.hbars .compare-note {
+  grid-column: 2 / -1;
+}
+.flower-legend .compare-note {
+  margin-left: auto;
+}
+/* the compare year's bars behind this year's, in the quiet gold the months chart uses */
+.bar-chart .bar-was {
+  fill: rgba(217, 168, 91, 0.32);
+}
+
+/* My year: the one reading block left on the dashboard */
+.myyear-body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.myyear-body .goal-ring {
+  width: 5.5rem;
+  height: 5.5rem;
+  flex: none;
+}
+.myyear-numbers {
+  margin: 0;
+  font-size: var(--fs-large);
+  min-width: 0;
+}
+
+/* Year in review: the numbers and ▶ Play */
+.wrapped-line {
+  margin: 0;
+  font-size: var(--fs-large);
+}
+.wrapped-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-2);
+}
+
+/* the year wrap-up story: full screen, one fact per slide */
+.story-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--bg);
+  display: flex;
+  cursor: pointer;
+}
+.story {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: var(--space-3);
+  padding: var(--space-3) 1rem calc(var(--space-4) + env(safe-area-inset-bottom));
+  background: var(--surface-solid);
+  color: var(--text);
+}
+.story:focus-visible {
+  outline: none;
+}
+.story-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.story-progress {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 3px;
+  flex: 1;
+}
+.story-progress li {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--surface-sunken);
+}
+.story-progress li.done {
+  background: var(--accent);
+}
+.story-slide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--space-2);
+  width: min(34rem, 100%);
+  margin: 0 auto;
+  min-height: 0;
+}
+.story-heading {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: var(--fs-large);
+  color: var(--muted);
+  font-weight: 400;
+}
+.story-value {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(2.5rem, 14vw, 4.5rem);
+  line-height: 1.05;
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+.story-label {
+  margin: 0;
+  font-size: var(--fs-large);
+}
+.story-places {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-1) var(--space-2);
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.story-book {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 0;
+}
+.story-book .dash-cover {
+  max-height: 40vh;
+  width: auto;
+}
+.story-title {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: var(--fs-large);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.story-summary {
+  width: 100%;
+  overflow-y: auto;
+}
+.story-summary .records {
+  text-align: left;
+}
+.story-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: auto;
+}
+
+@media (max-width: 860px) {
+  .stats-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .stats-pickers {
+    width: 100%;
+  }
+  .stats-field {
+    flex: 1;
+    min-width: 8rem;
+  }
 }

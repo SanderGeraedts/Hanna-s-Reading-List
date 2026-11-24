@@ -23,4 +23,4 @@ jobs:
   # (its default checks). GitHub reports this job as "checks / checks". No POCKETBASE_URL
   # here, so tests and the build never reach the NAS (G-0019, D-0003).
   checks:
-    uses: SanderGeraedts/harness/.github/workflows/ci.yml@v0.7.0
+    uses: SanderGeraedts/harness/.github/workflows/ci.yml@v0.9.0

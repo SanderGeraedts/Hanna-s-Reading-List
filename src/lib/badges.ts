@@ -1,12 +1,20 @@
 import type { Book } from './library'
-import { hexToHsl, localDay, timesRead } from './library'
+import { formatsOf, hexToHsl, localDay, timesRead } from './library'
 import { LETTERS, alphabetYear } from './alphabet'
 import { bingoYear } from './bingo'
 import { challengeCalendar } from './monthChallenge'
 import { amountUnit } from './readingLog'
-import { listenOnly } from './listening'
+import { AUDIO_FORMATS, listenOnly } from './listening'
 import { seriesGroups } from './series'
 import { allFinishes } from './stats'
+import { finished as onTheMap, landKey, placesOf } from './places'
+import { MAP_COUNTRY_SET } from './mapCountries'
+import { CONTINENTS, continentsOf } from './continents'
+import type { Continent } from './continents'
+import { bookKinds } from './pileHeight'
+import { foldTrope, tropesOf } from './tropes'
+import { completedChallenges } from './challengeRings'
+import type { OwnChallenge } from './ownChallenges'
 
 /**
  * Milestones & badges on the dashboard: worked out from the books, so nothing
@@ -28,8 +36,37 @@ export interface Badge {
   progress?: { done: number; goal: number }
   /** a secret badge: hidden until earned, a surprise */
   secret?: boolean
-  /** a secret badge's riddle, shown on its locked tile when tapped (the name stays secret) */
+  /** a secret badge's riddle, shown on its locked medal's card when tapped (the name stays secret) */
   riddle?: string
+  /** the rim of its medal once earned, by its step in its family (D-0038) */
+  tier: Tier
+}
+
+export type Tier = 'bronze' | 'silver' | 'gold'
+
+/**
+ * Bronze, silver or gold by a badge's step in its family (D-0038): a family is the badges
+ * whose ids are the same up to a final `-<number>` (books-1 … books-250), secret ones
+ * included. In a family of two or more the lowest step is bronze, the highest gold and the
+ * rest silver; a badge on its own is gold.
+ */
+function withTiers(list: Array<Omit<Badge, 'tier'>>): Badge[] {
+  const step = (id: string) => {
+    const m = id.match(/^(.*)-(\d+)$/)
+    return m ? { family: m[1], n: Number(m[2]) } : { family: id, n: 0 }
+  }
+  const families = new Map<string, number[]>()
+  for (const b of list) {
+    const { family, n } = step(b.id)
+    families.set(family, [...(families.get(family) ?? []), n])
+  }
+  return list.map((b) => {
+    const { family, n } = step(b.id)
+    const steps = families.get(family)!
+    const tier: Tier =
+      steps.length < 2 || n === Math.max(...steps) ? 'gold' : n === Math.min(...steps) ? 'bronze' : 'silver'
+    return { ...b, tier }
+  })
 }
 
 type Reached = { earned: boolean; on?: string; total?: number }
@@ -99,11 +136,43 @@ export const RIDDLES: Record<string, string> = {
   'new-year': 'Turn the last page as the new year begins.',
   binge: 'Three stories in seven days.',
   rainbow: 'Red, orange, yellow, green, blue, indigo, violet: finish them all.',
+  'home-sweet-home': 'No passport needed: a story set among the tulips, windmills and canals.',
+  birthday: 'Turn the last page on the one day a year the candles are all for you.',
 }
 
-export function badges(books: Book[], today = localDay()): Badge[] {
+/** The travel badges for each continent (T-0040). */
+const POSTCARDS: Record<Continent, { id: string; icon: string }> = {
+  Europe: { id: 'continent-europe', icon: '🏰' },
+  Asia: { id: 'continent-asia', icon: '🏯' },
+  Africa: { id: 'continent-africa', icon: '🦒' },
+  'North America': { id: 'continent-north-america', icon: '🗽' },
+  'South America': { id: 'continent-south-america', icon: '🦜' },
+  Oceania: { id: 'continent-oceania', icon: '🦘' },
+}
+
+export interface BadgeOptions {
+  /** this device's birthday, `MM-DD` (D-0039): for the secret Birthday book */
+  birthday?: string
+  /**
+   * her own challenges (D-0064 §6): they are not in `books`, so the
+   * `challenges-N` family counts only the ready-made ones without them. Never
+   * required, so no caller breaks and no medal is ever wrongly shown as earned.
+   */
+  challenges?: OwnChallenge[]
+  /** her own bingo swaps (D-0067), so a swapped card is judged as she sees it */
+  swaps?: ReadonlyMap<string, string>
+  /** her reading goal per year, for the reading-goal challenge */
+  goals?: Record<number, number | null>
+}
+
+export function badges(books: Book[], today = localDay(), options: BadgeOptions = {}): Badge[] {
   const finishes = allFinishes(books)
-  const out: Badge[] = []
+  // each finished book once, on its first finish day ("different books")
+  const finishedBooks = books
+    .filter((b) => timesRead(b) > 0)
+    .map((b) => ({ book: b, day: [...(b.finished ?? [])].sort()[0] as string | undefined }))
+  const authorOf = (b: Book) => b.authors[0]?.trim().toLowerCase() || undefined
+  const out: Array<Omit<Badge, 'tier'>> = []
   const add = (id: string, icon: string, name: string, how: string, r: Reached, goal?: number, secret?: boolean) =>
     out.push({
       id,
@@ -159,6 +228,21 @@ export function badges(books: Book[], today = localDay()): Badge[] {
     add(`listen-${n}`, icon, `${n.toLocaleString('en')} hours listened`, `Listen for ${n.toLocaleString('en')} hours`, reachedOn(listened, n), n)
   }
 
+  // formats: the pile switch's kinds (paper, e-book, audio), and different books by format
+  const kindSteps = firstsOf(finishes.map((f) => ({ day: f.day, values: bookKinds(f.book) })))
+  add('kinds-3', '🔀', 'Mix it up', 'Finish a paper book, an e-book and an audiobook', reachedOn(kindSteps, 3), 3)
+  const booksWith = (has: (b: Book) => boolean) => finishedBooks.filter((f) => has(f.book)).map((f) => ({ day: f.day, n: 1 }))
+  add('library-10', '🪪', 'Library lover', 'Finish 10 books from the library', reachedOn(booksWith((b) => formatsOf(b).includes('library')), 10), 10)
+  add('ebooks-10', '📱', 'E-reader', 'Finish 10 e-books', reachedOn(booksWith((b) => formatsOf(b).includes('ebook')), 10), 10)
+  add(
+    'audiobooks-10',
+    '👂',
+    'All ears',
+    'Finish 10 audiobooks',
+    reachedOn(booksWith((b) => formatsOf(b).some((f) => AUDIO_FORMATS.includes(f))), 10),
+    10,
+  )
+
   // series finished: the day the last book of it was first finished
   const groups = seriesGroups(books)
   const bySeries = new Map<string, Book[]>()
@@ -189,6 +273,53 @@ export function badges(books: Book[], today = localDay()): Badge[] {
   add('languages-2', '🗣️', 'Bilingual', 'Finish books in 2 languages', reachedOn(languageSteps, 2), 2)
   add('languages-3', '🌍', 'Polyglot', 'Finish books in 3 languages', reachedOn(languageSteps, 3), 3)
 
+  // authors: different books by one author (first author, trimmed, lower case), and different authors
+  const byAuthor = new Map<string, Array<string | undefined>>()
+  for (const { book: b, day } of finishedBooks) {
+    const author = authorOf(b)
+    if (author) byAuthor.set(author, [...(byAuthor.get(author) ?? []), day])
+  }
+  const fan = [...byAuthor.values()]
+    .map((days) => reachedOn(days.map((day) => ({ day, n: 1 })), 10))
+    .filter((r) => r.earned)
+    .sort((a, b) => (a.on ?? '￿').localeCompare(b.on ?? '￿'))[0]
+  const most = Math.max(0, ...[...byAuthor.values()].map((d) => d.length))
+  add('author-10', '🤩', 'Superfan', 'Finish 10 books by the same author', fan ?? { earned: false, total: most }, 10)
+  const authorSteps = firstsOf(finishes.map((f) => ({ day: f.day, values: [authorOf(f.book)].filter((a): a is string => !!a) })))
+  add('authors-25', '👥', 'Wide reader', 'Finish books by 25 different authors', reachedOn(authorSteps, 25), 25)
+  add('authors-50', '🦉', 'Well-read', 'Finish books by 50 different authors', reachedOn(authorSteps, 50), 50)
+
+  // travel (D-0037): the finished books the world map counts, each once, on its first finish day
+  const trips = books
+    .filter((b) => onTheMap(b) && b.places !== undefined)
+    .map((b) => {
+      const p = placesOf(b.places!, MAP_COUNTRY_SET)
+      return {
+        day: [...(b.finished ?? [])].sort()[0] as string | undefined,
+        countries: p.countries,
+        continents: [...new Set(p.countries.flatMap(continentsOf))],
+        lands: [...new Set(p.imaginary.map(landKey))],
+      }
+    })
+  const countrySteps = firstsOf(trips.map((t) => ({ day: t.day, values: t.countries })))
+  for (const [n, icon, name] of [
+    [5, '🛂', 'Passport stamped'],
+    [10, '✈️', 'Frequent flyer'],
+    [25, '🧳', 'World traveller'],
+    [50, '🌐', 'Around the world'],
+  ] as const) {
+    add(`countries-${n}`, icon, name, `Finish books set in ${n} countries`, reachedOn(countrySteps, n), n)
+  }
+  for (const c of CONTINENTS) {
+    const { id, icon } = POSTCARDS[c]
+    add(id, icon, `Postcard from ${c}`, `Finish a book set in ${c}`, once(trips.filter((t) => t.continents.includes(c)).map((t) => t.day)))
+  }
+  const continentSteps = firstsOf(trips.map((t) => ({ day: t.day, values: t.continents })))
+  add('continents-6', '🌏', 'World tour', 'Finish books set on all 6 continents', reachedOn(continentSteps, 6), 6)
+  const landSteps = firstsOf(trips.map((t) => ({ day: t.day, values: t.lands })))
+  add('lands-3', '🦄', 'Dreamwalker', 'Finish books set in 3 imaginary lands', reachedOn(landSteps, 3), 3)
+  add('lands-10', '🐉', 'Realm hopper', 'Finish books set in 10 imaginary lands', reachedOn(landSteps, 10), 10)
+
   // ratings and the journal
   const rated = books.filter((b) => b.rating).map((b) => ({ day: [...(b.finished ?? [])].sort().at(-1), n: 1 }))
   add('rated-10', '⭐', 'Critic', 'Rate 10 books', reachedOn(rated, 10), 10)
@@ -215,6 +346,48 @@ export function badges(books: Book[], today = localDay()): Badge[] {
   add('alphabet', '🔤', 'A to Z', 'Finish a book for every letter in one year', once(alphabetDays))
   add('monthly', '🗓️', 'Twelve months', 'Finish all 12 monthly challenge books of a year', once(monthlyDays))
 
+  // challenges completed (D-0064 §6): one family, not one medal per challenge.
+  // A completed challenge has no day of its own, so these medals carry none.
+  const completed = completedChallenges({
+    books,
+    own: options.challenges ?? [],
+    swaps: options.swaps,
+    goals: options.goals ?? {},
+    today,
+  }).length
+  for (const [n, icon, name, how] of [
+    [1, '🎖️', 'First challenge', 'Finish a challenge'],
+    [5, '🏵️', 'Five challenges', 'Finish 5 challenges'],
+    [10, '🎗️', 'Ten challenges', 'Finish 10 challenges'],
+  ] as const) {
+    add(`challenges-${n}`, icon, name, how, { earned: completed >= n, total: completed }, n)
+  }
+
+  // seasons, re-reads included
+  const month = (d: string) => d.slice(5, 7)
+  const spooky = finishes.filter((f) => f.day && month(f.day) === '10' && (f.book.genres ?? []).some((g) => /horror|thriller|paranormal/i.test(g)))
+  add('spooky-season', '🎃', 'Spooky season', 'Finish a horror, thriller or paranormal book in October', once(spooky.map((f) => f.day)))
+  const summers = new Map<string, string[]>()
+  for (const f of finishes) {
+    if (!f.day || !['06', '07', '08'].includes(month(f.day))) continue
+    const year = f.day.slice(0, 4)
+    summers.set(year, [...(summers.get(year) ?? []), f.day])
+  }
+  const summerOn = [...summers.values()]
+    .filter((d) => d.length >= 10)
+    .map((d) => d.sort()[9])
+    .sort()[0]
+  const bestSummer = Math.max(0, ...[...summers.values()].map((d) => d.length))
+  add(
+    'summer-10',
+    '🏖️',
+    'Summer reader',
+    'Finish 10 books between June and August of one year',
+    summerOn ? { earned: true, on: summerOn } : { earned: false, total: bestSummer },
+    10,
+  )
+  add('winter-warmer', '🧣', 'Winter warmer', 'Finish a book on 24, 25 or 26 December', once(finishes.filter((f) => /-12-2[456]$/.test(f.day ?? '')).map((f) => f.day)))
+
   // reading streaks, from the reading log
   const runs = streakDays(books.flatMap((b) => Object.entries(b.readingLog ?? {}).filter(([, a]) => a > 0).map(([d]) => d)))
   const longest = Math.max(0, ...runs.keys())
@@ -224,6 +397,7 @@ export function badges(books: Book[], today = localDay()): Badge[] {
     [14, '🌋'],
     [30, '☄️'],
     [100, '🌠'],
+    [365, '🌞'],
   ] as const) {
     const on = runs.get(n)
     add(`streak-${n}`, icon, `${n}-day streak`, `Read ${n} days in a row`, on ? { earned: true, on } : { earned: false, total: longest }, n)
@@ -236,6 +410,41 @@ export function badges(books: Book[], today = localDay()): Badge[] {
   }
   add('reread-5', '💞', 'Old favourite', 'Read one book 5 times', rereadOn(5))
 
+  // tropes (D-0042): different finished books that share one and the same trope.
+  // One family, not one badge per trope: her own words must not change the grid.
+  const byTrope = new Map<string, { name: string; days: Array<string | undefined> }>()
+  for (const { book: b, day } of finishedBooks) {
+    const seen = new Set<string>()
+    for (const t of tropesOf(b)) {
+      const key = foldTrope(t)
+      if (!key || seen.has(key)) continue
+      seen.add(key)
+      const found = byTrope.get(key)
+      if (found) found.days.push(day)
+      else byTrope.set(key, { name: t, days: [day] })
+    }
+  }
+  const bestTrope = Math.max(0, ...[...byTrope.values()].map((t) => t.days.length))
+  for (const [n, icon, name] of [
+    [5, '💘', 'Trope lover'],
+    [10, '🫶', 'Trope devotee'],
+    [25, '💝', 'Trope queen'],
+  ] as const) {
+    // the earliest book that brought a trope to n, and which trope it was
+    const hit = [...byTrope.values()]
+      .map((t) => ({ name: t.name, ...reachedOn(t.days.map((day) => ({ day, n: 1 })), n) }))
+      .filter((r) => r.earned)
+      .sort((a, b) => (a.on ?? '￿').localeCompare(b.on ?? '￿'))[0]
+    add(
+      `trope-${n}`,
+      icon,
+      name,
+      hit ? `Finish ${n} books with the same trope · ${hit.name}` : `Finish ${n} books with the same trope`,
+      hit ?? { earned: false, total: bestTrope },
+      n,
+    )
+  }
+
   // ---- secret badges: hidden until earned ------------------------------
   const secret = (id: string, icon: string, name: string, how: string, r: Reached) => {
     add(id, icon, name, how, r, undefined, true)
@@ -243,12 +452,6 @@ export function badges(books: Book[], today = localDay()): Badge[] {
   }
 
   // 5 different books by the same author
-  const byAuthor = new Map<string, Array<string | undefined>>()
-  for (const b of books) {
-    const author = b.authors[0]?.trim().toLowerCase()
-    if (!author || timesRead(b) === 0) continue
-    byAuthor.set(author, [...(byAuthor.get(author) ?? []), [...(b.finished ?? [])].sort()[0]])
-  }
   secret(
     'author-5',
     '💌',
@@ -311,7 +514,14 @@ export function badges(books: Book[], today = localDay()): Badge[] {
   )
   secret('rainbow', '🌈', 'Rainbow', 'Finish books with spines in all 7 colours of the rainbow', reachedOn(colourSteps, 7))
 
-  return out
+  // a story set at home
+  secret('home-sweet-home', '🌷', 'Home sweet home', 'Finish a book set in the Netherlands', once(trips.filter((t) => t.countries.includes('Netherlands')).map((t) => t.day)))
+
+  // a book finished on her birthday, any year; the day comes from this device only (D-0039)
+  const bday = options.birthday && /^\d\d-\d\d$/.test(options.birthday) ? `-${options.birthday}` : undefined
+  secret('birthday', '🎂', 'Birthday book', 'Finish a book on your birthday', once(bday ? finishes.filter((f) => f.day?.endsWith(bday)).map((f) => f.day) : []))
+
+  return withTiers(out)
 }
 
 /** Badges earned in the last 7 days (with a known day): shown under "Waiting for you". */

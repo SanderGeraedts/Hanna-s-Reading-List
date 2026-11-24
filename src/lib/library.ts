@@ -1,4 +1,6 @@
 import type { PageEdges } from './edges'
+import type { BookCharacter } from './characters'
+import type { Season } from './garden/seasons'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { loadShelf, saveShelf, type RemoteShelf } from '#/server/shelf'
 import { seriesGroups } from './series'
@@ -33,6 +35,19 @@ export interface Book {
   storytelIds?: string[]
   /** where Hanna keeps the e-book file, an https:// or http:// link (#185); see ebookLink.ts */
   ebookUrl?: string
+  /**
+   * what she paid for a bought paperback, hardcover or e-book, in euros with at
+   * most two decimals (T-0016); the buying jar spends €5 a coin (D-0024); see price.ts
+   */
+  price?: number
+  /**
+   * on her wishlist, not on the shelf (D-0053): a book she wants to buy. It is
+   * saved and synced with her books, and counted nowhere — the page splits the
+   * library once with shelfBooks()/wishBooks(); see wishlist.ts
+   */
+  wish?: boolean
+  /** where to buy a wish, an https:// or http:// link (D-0053); see wishlist.ts */
+  buyUrl?: string
   /** ids of the copies merged into this book, so they don't come back */
   mergedIds?: string[]
   /** books Hanna said are not the same book, so they aren't suggested for merging */
@@ -103,6 +118,18 @@ export interface Book {
   genres?: string[]
   /** where the story is set, from Open Library (looked up once for finished books; an empty list means none known) */
   places?: string[]
+  /** story tropes, hers and from the ready list; one spelling per trope (D-0042); see tropes.ts */
+  tropes?: string[]
+  /**
+   * the seasons Hanna says this book is for (D-0072); left out or empty means
+   * the season is worked out from its genres and tropes, as it always was.
+   * See seasonChallenge.ts
+   */
+  seasons?: Season[]
+  /** the characters of this book; `fav` marks a favourite ♥ (D-0042); see characters.ts */
+  characters?: BookCharacter[]
+  /** how this book stands on the shelf; left out = standing (D-0044); see pose.ts */
+  pose?: 'faceout' | 'flat'
   /** lent to a friend: to whom, and since when (yyyy-mm-dd) */
   lent?: { to: string; since?: string }
   /** book bingo cards this book filled (#119), kept so a full card stays full; see bingo.ts */

@@ -1,29 +1,29 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Book, NewBook } from '#/lib/library'
-import { formatDuration } from '#/lib/listening'
+import { localDay } from '#/lib/library'
 import {
   BookLine,
-  BreakdownCard,
   CurrentlyReadingCard,
-  GoalCard,
   LentCard,
-  MonthlyChart,
   FactCard,
   OnThisDayCard,
   PileCard,
-  RecordsCard,
   RecentCard,
   SeriesCard,
   dayStory,
 } from './DashboardExtras'
-import { AuthorsCard, BingoCard, HeatmapCard, PaceCard, SpiceCard, WrappedCard } from './DashboardMore'
+import { AuthorsCard, BingoCard, PaceCard, SpiceCard, WrappedCard } from './DashboardMore'
+import { MyYearCard } from './MyYearCard'
+import { YearStory } from './YearStory'
 import { pickReadNext, readNextChoices } from '#/lib/readNext'
 import { pendingRatings } from '#/lib/ratingAsk'
 import { seriesQuestions } from '#/lib/sleepSeries'
 import { WaitingCard } from './WaitingCard'
-import { BooksWorldMapCard, GenreFlowerCard, PagesPerMonthCard } from './PictureBlocks'
+import { BooksWorldMapCard } from './PictureBlocks'
 import { WrapUpCard } from './WrapUpCard'
 import { wrapKey, wrapUpDue } from '#/lib/wrapup'
+import { cleanDustOff, dustOffDismiss, dustOffPick, dustOffSeen, waitedText, weekOf } from '#/lib/pile'
+import type { DustOffState } from '#/lib/pile'
 import { AgainCard } from './AgainCard'
 import { AlphabetCard } from './AlphabetCard'
 import { NewForYouCard } from './NewForYouCard'
@@ -33,33 +33,48 @@ import { OpenLink } from './OpenLink'
 import type { ChallengeSection } from './ChallengesPage'
 import { topRated } from '#/lib/ratings'
 import { StarRating } from './StarRating'
-import { monthWeeks, periodStats, readingYears } from '#/lib/stats'
+import { monthWeeks, readingYears } from '#/lib/stats'
 import { amountText, amountUnit, finishedIn, monthEntries, startedIn } from '#/lib/readingLog'
 import type { DayEntry } from '#/lib/readingLog'
 import { percentText } from '#/lib/progress'
+import { AddBookForDay, ChangeButton, DayChangeEditor } from './DayEditor'
 import {
   BLOCKS,
-  DEFAULT_LAYOUT,
   SECTIONS,
   SECTION_IDS,
-  cleanLayout,
   hideBlock,
   moveBlock,
   placeOf,
+  resetLayout,
   showBlock,
   singleColumn,
   toggleFold,
   toggleFavourite,
   favouriteColumns,
+  favouritePlace,
+  moveFavouriteTo,
+  stepFavourite,
 } from '#/lib/dashboardLayout'
-import type { BlockId, DashboardLayout, SectionId } from '#/lib/dashboardLayout'
+import type { ArrowKey, BlockId, SectionId } from '#/lib/dashboardLayout'
 import { TodayStrip } from './TodayStrip'
-import { BadgesCard, CoverWallCard, RhythmCard } from './NewBlocks'
+import { useDashboardLayout } from './useDashboardLayout'
+import { useArrangeBarHeight } from './useArrangeBarHeight'
+import { BadgesCard, CoverWallCard, useBirthday } from './NewBlocks'
+import { TropesCard, tropesBlock } from './TropesCard'
 import { badges, newBadges } from '#/lib/badges'
+import { useChallengeExtras } from './useChallengeExtras'
+import { CreaturesCard } from './CreaturesCard'
+import { useCreatures } from './creatures/CreaturesContext'
+import { useGarden } from './garden/useGarden'
+import { GardenCard } from './GardenCard'
+import { useSeen } from './garden/useSeen'
+import { waitingLine } from '#/lib/garden/seen'
 
 const BADGES_SEEN = 'hannas-reading-list:badges-seen'
 /** the month whose wrap-up was opened or put away under Waiting for you (yyyy-mm) */
 const WRAP_SEEN = 'hannas-reading-list:wrapup-seen'
+/** the dust-off's week, its pick and the books she said Not now to (T-0014) */
+const DUST_OFF = 'hannas-reading-list:dust-off'
 import type { Period } from '#/lib/stats'
 
 /**
@@ -89,6 +104,15 @@ interface DashboardProps extends Props {
   onOpenCalendar?: (month: string) => void
   /** put a suggested book on the shelf ("New for you") */
   onAdd?: (book: NewBook) => void
+  /**
+   * the Creatures tab; `choose`: straight to choosing the first creature, `hatch`: hatching the
+   * oldest egg, `duplicate`: the choice for a duplicate (a Hatch or Choose button)
+   */
+  onOpenCreatures?: (step?: 'choose' | 'hatch' | 'duplicate') => void
+  /** "Open ›" on the Garden block: the Garden tab (T-0065) */
+  onOpenGarden?: () => void
+  /** "Open ›" on My year: the Stats page (T-0080) */
+  onOpenStats?: () => void
 }
 
 export interface PeriodPick {
@@ -103,31 +127,6 @@ export const toPeriod = ({ kind, year, month }: PeriodPick): Period =>
 export const periodLabel = ({ kind, year, month }: PeriodPick) =>
   kind === 'all' ? 'all time' : kind === 'year' ? `in ${year}` : `in ${monthName(month)} ${year}`
 
-const layoutKey = (accountId: string | null) => `hannas-reading-list:dashboard:${accountId ?? 'local'}`
-
-/** The layout, remembered on this device for this account (#85). */
-function useLayout(accountId: string | null) {
-  const key = layoutKey(accountId)
-  const [layout, setState] = useState<DashboardLayout>(() => {
-    try {
-      return cleanLayout(JSON.parse(localStorage.getItem(key) ?? 'null'))
-    } catch {
-      return DEFAULT_LAYOUT
-    }
-  })
-  const setLayout = useCallback(
-    (next: DashboardLayout) => {
-      setState(next)
-      try {
-        localStorage.setItem(key, JSON.stringify(next))
-      } catch {
-        /* storage blocked: it still holds for this visit */
-      }
-    },
-    [key],
-  )
-  return [layout, setLayout] as const
-}
 
 const NARROW = '(max-width: 860px)'
 
@@ -152,21 +151,38 @@ interface Drop {
   marker: string
 }
 
-interface Drag {
-  id: BlockId
-  dx: number
-  dy: number
-  drop: Drop | null
+/** Where a block dragged within Favourites would land (T-0020): a list place, and where the drop line shows. */
+interface FavDrop {
+  /** list place among the other favourites (past the end: the end) */
+  index: number
+  /** the favourite it goes before, or `fav-end:<n>` for the end of visual column n */
+  marker: string
 }
 
-export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChallenges, onOpenCalendar, onAdd }: DashboardProps) {
+/** A drag knows where it started: in a section, or in Favourites (the same block's other copy stays put). */
+type Drag = { id: BlockId; dx: number; dy: number } & (
+  | { place: 'section'; drop: Drop | null }
+  | { place: 'favourites'; drop: FavDrop | null }
+)
+
+export function Dashboard({
+  books,
+  onShowBook,
+  accountId,
+  onUpdate,
+  onOpenChallenges,
+  onOpenCalendar,
+  onAdd,
+  onOpenCreatures,
+  onOpenGarden,
+  onOpenStats,
+}: DashboardProps) {
   const open = (section: ChallengeSection) => (onOpenChallenges ? () => onOpenChallenges(section) : undefined)
-  const now = new Date()
-  // the period picked under "Books read"; the charts and records follow it
-  const [pick, setPick] = useState<PeriodPick>({ kind: 'year', year: now.getFullYear(), month: now.getMonth() + 1 })
-  const period = toPeriod(pick)
-  const [layout, setLayout] = useLayout(accountId)
+  // the year wrap-up story she opened with ▶ Play (T-0081); null: no story open
+  const [storyYear, setStoryYear] = useState<number | null>(null)
+  const [layout, setLayout] = useDashboardLayout(accountId)
   const [arranging, setArranging] = useState(false)
+  const arrangeBar = useArrangeBarHeight()
   // the monthly challenge's editor is open (#144)
   const [challengeEditing, setChallengeEditing] = useState(false)
   const [drag, setDrag] = useState<Drag | null>(null)
@@ -186,7 +202,14 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
       return []
     }
   })
-  const freshBadges = useMemo(() => newBadges(badges(books)).filter((b) => !seenBadges.includes(b.id)), [books, seenBadges])
+  // this device's birthday counts here too (D-0039), so the Birthday book can wait for you
+  const birthday = useBirthday()
+  // her own challenges, bingo swaps and goals: the challenges-N medals count them (D-0064 §6)
+  const badgeExtras = useChallengeExtras(accountId)
+  const freshBadges = useMemo(
+    () => newBadges(badges(books, undefined, { birthday, ...badgeExtras })).filter((b) => !seenBadges.includes(b.id)),
+    [books, seenBadges, birthday, badgeExtras],
+  )
   const seeBadge = (id: string) => {
     const next = [...seenBadges, id]
     setSeenBadges(next)
@@ -226,7 +249,72 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
           onDismiss: seeWrap,
         }
       : undefined
-  const nothingWaiting = toRate.length === 0 && questions.length === 0 && freshBadges.length === 0 && !wrapUp
+  // once a week, the want-to-read book that has waited longest, until Not now (on this device; T-0014)
+  const [dustState, setDustState] = useState<DustOffState>(() => {
+    try {
+      return cleanDustOff(JSON.parse(localStorage.getItem(DUST_OFF) ?? 'null'))
+    } catch {
+      return { dismissed: [] }
+    }
+  })
+  const today = localDay()
+  const dustBook = useMemo(() => dustOffPick(books, dustState, today), [books, dustState, today])
+  const keepDust = (next: DustOffState) => {
+    setDustState(next)
+    try {
+      localStorage.setItem(DUST_OFF, JSON.stringify(next))
+    } catch {
+      /* storage blocked: it still holds for this visit */
+    }
+  }
+  // remember the week's pick, so it stays the same all week
+  useEffect(() => {
+    if (dustBook && (dustState.week !== weekOf(today) || dustState.pick !== dustBook.id)) keepDust(dustOffSeen(dustState, dustBook, today))
+  }, [dustBook, dustState, today])
+  const dustOff = dustBook
+    ? { book: dustBook, waited: waitedText(dustBook, today), onDismiss: () => keepDust(dustOffDismiss(dustState, dustBook, today)) }
+    : undefined
+  // her creature (T-0029): the welcome egg and the newest level-up wait here too, never in a pop-up
+  const creatures = useCreatures(books)
+  // her garden (T-0065): the block shows this year's, and keeps out of the way before the first plant
+  const garden = useGarden(books)
+  const hatchEgg = onOpenCreatures ? () => onOpenCreatures('choose') : undefined
+  const creatureEgg = creatures.c.egg && hatchEgg ? { onHatch: hatchEgg } : undefined
+  // milestone eggs and duplicates waiting for her choice (T-0030), only once she has her first pet
+  const hatchMilestone = onOpenCreatures ? () => onOpenCreatures('hatch') : undefined
+  const creatureEggs = creatures.c.pet && creatures.c.eggs.length && hatchMilestone ? { eggs: creatures.c.eggs, onHatch: hatchMilestone } : undefined
+  const waitingDup = creatures.c.pet ? creatures.c.waiting[0] : undefined
+  const creatureDuplicate =
+    waitingDup && onOpenCreatures ? { species: waitingDup.species, onChoose: () => onOpenCreatures('duplicate') } : undefined
+  const levelUp = creatures.levelUp
+  const creatureLevelUp = levelUp
+    ? {
+        text: levelUp.text,
+        onNice: () => creatures.api.see(levelUp.pet.id, levelUp.pet.level),
+        onVisit: () => {
+          creatures.api.see(levelUp.pet.id, levelUp.pet.level)
+          onOpenCreatures?.()
+        },
+      }
+    : undefined
+  // the garden's news, without clearing it: only opening the Garden tab counts as looking
+  const gardenSeen = useSeen(garden.garden, false)
+  const gardenLine = waitingLine(gardenSeen.plants, gardenSeen.unlocked)
+  const gardenWaiting = gardenLine && onOpenGarden ? { line: gardenLine, onVisit: onOpenGarden } : undefined
+  const nothingWaiting =
+    toRate.length === 0 &&
+    questions.length === 0 &&
+    freshBadges.length === 0 &&
+    !wrapUp &&
+    !dustOff &&
+    !creatureEgg &&
+    !creatureEggs &&
+    !creatureDuplicate &&
+    !creatureLevelUp &&
+    !gardenWaiting
+
+  // nothing noted anywhere yet: the Tropes & characters block keeps out of the way
+  const noTropes = tropesBlock(books).empty
 
   const blocks: Record<BlockId, React.ReactNode> = {
     waiting: (
@@ -238,14 +326,28 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
         newBadges={freshBadges}
         onSeenBadge={seeBadge}
         wrapUp={wrapUp}
+        dustOff={dustOff}
+        creatureEgg={creatureEgg}
+        creatureEggs={creatureEggs}
+        creatureDuplicate={creatureDuplicate}
+        creatureLevelUp={creatureLevelUp}
+        garden={gardenWaiting}
       />
     ),
-    badges: <BadgesCard books={books} />,
+    creatures: (
+      <CreaturesCard
+        c={creatures.c}
+        onFeed={creatures.feed}
+        onOpen={onOpenCreatures ? () => onOpenCreatures() : undefined}
+        onHatch={hatchEgg}
+        onHatchMilestone={hatchMilestone}
+      />
+    ),
+    garden: <GardenCard garden={garden.garden} onOpen={onOpenGarden} />,
+    badges: <BadgesCard books={books} extras={badgeExtras} />,
+    tropes: <TropesCard books={books} onShowBook={onShowBook} />,
     covers: <CoverWallCard books={books} onShowBook={onShowBook} />,
-    rhythm: <RhythmCard books={books} />,
-    flower: <GenreFlowerCard books={books} />,
-    months: <PagesPerMonthCard books={books} />,
-    world: <BooksWorldMapCard books={books} />,
+    world: <BooksWorldMapCard books={books} onShowBook={onShowBook} />,
     challenge: (
       <ChallengeCard
         books={books}
@@ -257,20 +359,13 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
         onOpen={open('monthly')}
       />
     ),
-    // Books read, with the books per month under it
-    count: (
-      <ReadCount books={books} onShowBook={onShowBook} pick={pick} onPick={setPick}>
-        <MonthlyChart books={books} year={pick.year} bare />
-      </ReadCount>
-    ),
-    goal: <GoalCard books={books} accountId={accountId} onOpen={open('goal')} />,
+    // the one block about her reading left on the dashboard (D-0060); the charts are on the Stats page
+    myyear: <MyYearCard books={books} accountId={accountId} onOpen={onOpenStats} />,
     next: <ReadNextCard books={books} onShowBook={onShowBook} />,
     newforyou: <NewForYouCard books={books} accountId={accountId} onAdd={onAdd ?? (() => {})} />,
     reading: <CurrentlyReadingCard books={books} onShowBook={onShowBook} />,
     series: <SeriesCard books={books} onShowBook={onShowBook} />,
-    calendar: <Calendar books={books} onShowBook={onShowBook} onOpen={onOpenCalendar} />,
-    breakdown: <BreakdownCard books={books} period={period} label={periodLabel(pick)} />,
-    records: <RecordsCard books={books} period={period} label={periodLabel(pick)} onShowBook={onShowBook} />,
+    calendar: <Calendar books={books} onShowBook={onShowBook} onOpen={onOpenCalendar} onUpdate={onUpdate} />,
     pile: <PileCard books={books} />,
     onthisday: <OnThisDayCard books={books} onShowBook={onShowBook} />,
     lent: <LentCard books={books} onShowBook={onShowBook} />,
@@ -279,16 +374,22 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
     top: <RatingsCard books={books} onShowBook={onShowBook} />,
     fact: <FactCard books={books} />,
     pace: <PaceCard books={books} onShowBook={onShowBook} />,
-    heatmap: <HeatmapCard books={books} />,
     authors: <AuthorsCard books={books} />,
-    wrapped: <WrappedCard books={books} onShowBook={onShowBook} />,
+    wrapped: <WrappedCard books={books} onShowBook={onShowBook} onPlay={setStoryYear} />,
     recent: <RecentCard books={books} onShowBook={onShowBook} />,
     alphabet: <AlphabetCard books={books} onShowBook={onShowBook} onUpdate={onUpdate} compact onOpen={open('alphabet')} />,
-    bingo: <BingoCard books={books} onUpdate={onUpdate} compact onOpen={open('bingo')} />,
+    bingo: <BingoCard books={books} onUpdate={onUpdate} compact onOpen={open('bingo')} onShowBook={onShowBook} />,
   }
 
   /** a block that has nothing to say right now stays out of the way (still shown while arranging) */
-  const showing = (id: BlockId) => arranging || !(id === 'waiting' && nothingWaiting)
+  const showing = (id: BlockId) =>
+    arranging ||
+    !(
+      (id === 'waiting' && nothingWaiting) ||
+      (id === 'creatures' && !creatures.c.pet && !creatures.c.egg) ||
+      (id === 'garden' && garden.garden.plants === 0) ||
+      (id === 'tropes' && noTropes)
+    )
   const columnsOf = (section: SectionId): BlockId[][] =>
     narrow ? [singleColumn(layout.sections[section])] : layout.sections[section]
   const scroller = () => root.current
@@ -331,16 +432,90 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
     return { section, column: visual as 0 | 1, index: 0, marker: end }
   }
 
-  const handleProps = (id: BlockId) => ({
+  const favColumns = narrow ? 1 : 2
+
+  /**
+   * The drop place in Favourites (T-0020): only the Favourites grid counts, so a
+   * drag over a section keeps its line at the nearest Favourites place. Column
+   * c, before the block at row r (counted without the dragged one), is list
+   * place 2r + c of the others (r with one column); past the end it is the end,
+   * and the line shows at the end of the column where the end is.
+   */
+  const favDropAt = (x: number, y: number, id: BlockId): FavDrop | null => {
+    const grid = root.current?.querySelector<HTMLElement>('.dash-favourites-grid')
+    const cols = [...(grid?.querySelectorAll<HTMLElement>(':scope > .dash-column') ?? [])]
+    if (!cols.length) return null
+    const dist = (el: HTMLElement) => {
+      const r = el.getBoundingClientRect()
+      return x < r.left ? r.left - x : x > r.right ? x - r.right : 0
+    }
+    const visual = cols.reduce((best, el, i) => (dist(el) < dist(cols[best]) ? i : best), 0)
+    const others = [...cols[visual].querySelectorAll<HTMLElement>(':scope > .dash-block')].filter(
+      (el) => el.dataset.favourite !== id,
+    )
+    const row = others.findIndex((el) => {
+      const r = el.getBoundingClientRect()
+      return y < r.top + r.height / 2
+    })
+    const count = layout.favourites.length - 1
+    const r = row < 0 ? others.length : row
+    const index = favColumns === 2 ? 2 * r + visual : r
+    if (index >= count) return { index: count, marker: `fav-end:${favColumns === 2 ? count % 2 : 0}` }
+    return { index, marker: row < 0 ? `fav-end:${visual}` : others[row].dataset.favourite! }
+  }
+
+  // the screen-reader line in Favourites, and the handle to focus again after a key move
+  const [favSay, setFavSay] = useState('')
+  const refocus = useRef<BlockId | null>(null)
+  /** A Hidden chip was restored (Enter): after re-render, focus moves to the next chip or to the block's handle (T-0044, F7). */
+  const restoreFocus = useRef<{ nextId: BlockId | null; blockId: BlockId } | null>(null)
+  useEffect(() => {
+    const id = refocus.current
+    if (!id) return
+    refocus.current = null
+    root.current?.querySelector<HTMLElement>(`.dash-favourites-grid [data-favourite="${id}"] .block-handle`)?.focus()
+  }, [layout])
+  useEffect(() => {
+    const r = restoreFocus.current
+    if (!r) return
+    restoreFocus.current = null
+    const chip = r.nextId
+      ? root.current?.querySelector<HTMLElement>(`.hidden-blocks [data-hidden="${r.nextId}"]`)
+      : null
+    if (chip) return chip.focus()
+    root.current
+      ?.querySelector<HTMLElement>(`.dashboard-grid [data-block="${r.blockId}"] .block-handle`)
+      ?.focus()
+  }, [layout])
+  const say = (text: string) => {
+    if (text !== favSay) return setFavSay(text)
+    // the same words again: clear first, so they are read again
+    setFavSay('')
+    setTimeout(() => setFavSay(text), 50)
+  }
+  /** Puts a new Favourites order in place and says where the block went; nothing when nothing moved. */
+  const moveInFavourites = (id: BlockId, next: typeof layout) => {
+    if (next.favourites.every((x, i) => x === layout.favourites[i])) return false
+    setLayout(next)
+    const place = favouritePlace(next, id, favColumns)!
+    say(
+      favColumns === 2
+        ? `${BLOCKS[id]}: ${place.column === 0 ? 'left' : 'right'} column, row ${place.row + 1} of the favourites.`
+        : `${BLOCKS[id]}: place ${place.index + 1} of ${next.favourites.length} in the favourites.`,
+    )
+    return true
+  }
+
+  const handleProps = (id: BlockId, from: Drag['place'] = 'section') => ({
     onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => {
       if (e.button !== 0) return
       e.preventDefault()
       e.currentTarget.setPointerCapture(e.pointerId)
       start.current = { x: e.clientX, y: e.clientY, scroll: scroller()?.scrollTop ?? 0 }
-      setDrag({ id, dx: 0, dy: 0, drop: null })
+      setDrag({ id, dx: 0, dy: 0, place: from, drop: null } as Drag)
     },
     onPointerMove: (e: React.PointerEvent<HTMLButtonElement>) => {
-      if (drag?.id !== id) return
+      if (drag?.id !== id || drag.place !== from) return
       // scroll along near the top and bottom edges
       const el = scroller()
       if (el) {
@@ -348,22 +523,32 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
         else if (e.clientY > window.innerHeight - 60) el.scrollTop += 14
       }
       const scrolled = (el?.scrollTop ?? 0) - start.current.scroll
-      setDrag({
-        id,
-        dx: e.clientX - start.current.x,
-        dy: e.clientY - start.current.y + scrolled,
-        drop: dropAt(e.clientX, e.clientY, id),
-      })
+      const moved = { id, dx: e.clientX - start.current.x, dy: e.clientY - start.current.y + scrolled }
+      setDrag(
+        from === 'favourites'
+          ? { ...moved, place: from, drop: favDropAt(e.clientX, e.clientY, id) }
+          : { ...moved, place: from, drop: dropAt(e.clientX, e.clientY, id) },
+      )
     },
     onPointerUp: () => {
-      if (drag?.id === id && drag.drop) {
-        setLayout(moveBlock(layout, id, drag.drop.section, drag.drop.column, drag.drop.index))
+      if (drag?.id === id && drag.place === from && drag.drop) {
+        if (drag.place === 'favourites') moveInFavourites(id, moveFavouriteTo(layout, id, drag.drop.index))
+        else setLayout(moveBlock(layout, id, drag.drop.section, drag.drop.column, drag.drop.index))
       }
       setDrag(null)
     },
     onPointerCancel: () => setDrag(null),
     // without a pointer: arrow keys move the block; with Shift, up and down go to the next section
     onKeyDown: (e: React.KeyboardEvent<HTMLButtonElement>) => {
+      if (from === 'favourites') {
+        // within Favourites: by row and column; Shift does nothing (there is no other section)
+        if (e.shiftKey || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return
+        if (moveInFavourites(id, stepFavourite(layout, id, e.key as ArrowKey, favColumns))) {
+          e.preventDefault()
+          refocus.current = id
+        }
+        return
+      }
       const place = placeOf(layout, id)
       if (!place) return
       const s = SECTION_IDS.indexOf(place.section)
@@ -409,23 +594,40 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
       {wrapOpen && (
         <WrapUpCard books={books} year={wrapOpen.year} month={wrapOpen.month} onShowBook={onShowBook} onClose={() => setWrapOpen(null)} />
       )}
+      {storyYear !== null && (
+        <YearStory books={books} year={storyYear} onShowBook={onShowBook} onClose={() => setStoryYear(null)} />
+      )}
       <TodayStrip books={books} accountId={accountId} onShowBook={onShowBook} />
-      <div className={`dashboard-bar${arranging ? ' arranging' : ''}`}>
+      <div className={`dashboard-bar${arranging ? ' arranging' : ''}`} ref={arrangeBar}>
         {arranging ? (
           <>
             <div className="dashboard-bar-actions">
-              <button className="btn small" onClick={() => setLayout(DEFAULT_LAYOUT)}>
+              <button className="btn small" onClick={() => setLayout(resetLayout(layout))}>
                 Reset
               </button>
-              <button className="btn small primary" onClick={() => setArranging(false)}>
+              <button
+                className="btn small primary"
+                onClick={() => {
+                  setArranging(false)
+                  setFavSay('')
+                }}
+              >
                 Done
               </button>
             </div>
             {layout.hidden.length > 0 && (
               <div className="hidden-blocks">
                 <span className="muted small-text">Hidden:</span>
-                {layout.hidden.map((id) => (
-                  <button key={id} className="btn small" onClick={() => setLayout(showBlock(layout, id))}>
+                {layout.hidden.map((id, i) => (
+                  <button
+                    key={id}
+                    data-hidden={id}
+                    className="btn small"
+                    onClick={() => {
+                      restoreFocus.current = { nextId: layout.hidden[i + 1] ?? null, blockId: id }
+                      setLayout(showBlock(layout, id))
+                    }}
+                  >
                     + {BLOCKS[id]}
                   </button>
                 ))}
@@ -457,20 +659,49 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
             (layout.favourites.length === 0 ? (
               <p className="muted small-text dash-favourites-empty">Star blocks with ☆ to see them here, on top.</p>
             ) : (
-              // the favourites also stay in their own section; these are copies, not dragged from here
-              <div className={`dashboard-grid${arranging ? ' arranging' : ''}`}>
+              // the favourites also stay in their own section; these copies move only within Favourites (T-0020)
+              <div className={`dashboard-grid dash-favourites-grid${arranging ? ' arranging' : ''}`}>
                 {(narrow ? [singleColumn(favouriteColumns(layout))] : favouriteColumns(layout)).map((col, visual) => (
                   <div className="dash-column" key={visual}>
-                    {col.filter(showing).map((id) => (
-                      <div key={id} className="dash-block">
-                        {arranging && <div className="block-tools">{star(id)}</div>}
-                        {blocks[id]}
-                      </div>
-                    ))}
+                    {col.filter(showing).map((id) => {
+                      const moving = drag?.place === 'favourites' && drag.id === id
+                      const marked = drag?.place === 'favourites' && drag.drop?.marker === id
+                      return (
+                        <div
+                          key={id}
+                          data-favourite={id}
+                          className={`dash-block${moving ? ' moving' : ''}${marked ? ' drop-before' : ''}`}
+                          style={moving ? { transform: `translate(${drag.dx}px, ${drag.dy}px)` } : undefined}
+                        >
+                          {arranging && (
+                            <div className="block-tools">
+                              <button
+                                className="btn icon small block-handle"
+                                aria-label={`Move ${BLOCKS[id]} within the favourites: drag it, or use the arrow keys`}
+                                title="Drag to move"
+                                {...handleProps(id, 'favourites')}
+                              >
+                                <span aria-hidden>⠿</span>
+                              </button>
+                              {star(id)}
+                            </div>
+                          )}
+                          {blocks[id]}
+                        </div>
+                      )
+                    })}
+                    {drag?.place === 'favourites' && drag.drop?.marker === `fav-end:${visual}` && (
+                      <div className="drop-end" aria-hidden />
+                    )}
                   </div>
                 ))}
               </div>
             ))}
+          {arranging && (
+            <p className="visually-hidden" role="status" aria-live="polite">
+              {favSay}
+            </p>
+          )}
         </section>
       )}
       {SECTION_IDS.map((section) => {
@@ -501,12 +732,13 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
                 {columnsOf(section).map((col, visual) => (
                   <div className="dash-column" key={visual}>
                     {col.filter(showing).map((id) => {
-                      const moving = drag?.id === id
+                      const moving = drag?.place === 'section' && drag.id === id
+                      const marked = drag?.place === 'section' && drag.drop?.marker === id
                       return (
                         <div
                           key={id}
                           data-block={id}
-                          className={`dash-block${moving ? ' moving' : ''}${drag?.drop?.marker === id ? ' drop-before' : ''}`}
+                          className={`dash-block${moving ? ' moving' : ''}${marked ? ' drop-before' : ''}`}
                           style={moving ? { transform: `translate(${drag.dx}px, ${drag.dy}px)` } : undefined}
                         >
                           {arranging && (
@@ -534,7 +766,9 @@ export function Dashboard({ books, onShowBook, accountId, onUpdate, onOpenChalle
                         </div>
                       )
                     })}
-                    {drag?.drop?.marker === `end:${section}:${visual}` && <div className="drop-end" aria-hidden />}
+                    {drag?.place === 'section' && drag.drop?.marker === `end:${section}:${visual}` && (
+                      <div className="drop-end" aria-hidden />
+                    )}
                   </div>
                 ))}
               </div>
@@ -700,57 +934,6 @@ function TopRatedCard({ books, onShowBook, switcher }: Props & { switcher?: Reac
   )
 }
 
-function ReadCount({
-  books,
-  onShowBook,
-  pick,
-  onPick,
-  children,
-}: Props & { pick: PeriodPick; onPick: (pick: PeriodPick) => void; children?: React.ReactNode }) {
-  const { kind, year, month } = pick
-  const stats = useMemo(() => periodStats(books, toPeriod({ kind, year, month })), [books, kind, year, month])
-  const label = periodLabel(pick)
-
-  return (
-    <section className="dash-card count-card" aria-labelledby="count-title">
-      <div className="dash-card-head">
-        <h2 id="count-title">Books read</h2>
-        <PeriodTabs pick={pick} onPick={onPick} />
-      </div>
-
-      <PeriodSelect books={books} pick={pick} onPick={onPick} />
-
-      <p className="big-number" aria-live="polite">
-        <strong>{stats.books}</strong> {stats.books === 1 ? 'book' : 'books'} <span className="muted">{label}</span>
-      </p>
-      <p className="muted count-details">
-        {[
-          stats.reads > stats.books &&
-            `${stats.reads - stats.books} re-read${stats.reads - stats.books === 1 ? '' : 's'}`,
-          stats.pages > 0 && `${stats.pages.toLocaleString('en-GB')} pages`,
-          stats.minutes > 0 && `${formatDuration(stats.minutes)} listened`,
-        ]
-          .filter(Boolean)
-          .join(' · ') || (kind === 'all' ? 'Nothing finished yet.' : 'Nothing finished with a date here yet.')}
-      </p>
-
-      {stats.list.length > 0 && (
-        <ul className="cover-row" aria-label={`Books read ${label}`}>
-          {stats.list.slice(0, 40).map((b) => (
-            <li key={b.id}>
-              <button className="cover-btn" title={b.title} aria-label={b.title} onClick={() => onShowBook(b.id)}>
-                <Cover book={b} small />
-              </button>
-            </li>
-          ))}
-          {stats.list.length > 40 && <li className="muted more">+{stats.list.length - 40}</li>}
-        </ul>
-      )}
-      {children}
-    </section>
-  )
-}
-
 // ---------------------------------------------------------------------------
 
 function ReadNextCard({ books, onShowBook }: Props) {
@@ -830,7 +1013,15 @@ export function dayPile(entries: DayEntry[], day: number, shuffle: number) {
   return order.slice(-PILE)
 }
 
-function Calendar({ books, onShowBook, onOpen }: Props & { onOpen?: (month: string) => void }) {
+function Calendar({
+  books,
+  onShowBook,
+  onOpen,
+  onUpdate,
+}: Props & {
+  onOpen?: (month: string) => void
+  onUpdate?: (id: string, patch: Partial<Book> | ((book: Book) => Partial<Book>)) => void
+}) {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
@@ -949,9 +1140,12 @@ function Calendar({ books, onShowBook, onOpen }: Props & { onOpen?: (month: stri
       </table>
       {picked !== null ? (
         <DayDetails
+          books={books}
+          day={`${year}-${String(month).padStart(2, '0')}-${String(picked).padStart(2, '0')}`}
           entries={byDay.get(picked) ?? []}
           label={`${picked} ${name}`}
           onShowBook={onShowBook}
+          onUpdate={onUpdate}
           onClose={() => setPicked(null)}
         />
       ) : (
@@ -1012,16 +1206,25 @@ function MonthList({
 
 /** What happened on one day (#89): how much she read of each book, and what she started or finished. */
 function DayDetails({
+  books,
+  day,
   entries,
   label,
   onShowBook,
+  onUpdate,
   onClose,
 }: {
+  books: Book[]
+  day: string
   entries: DayEntry[]
   label: string
   onShowBook: (id: string) => void
+  onUpdate?: (id: string, patch: Partial<Book> | ((book: Book) => Partial<Book>)) => void
   onClose: () => void
 }) {
+  const [editing, setEditing] = useState<string | null>(null)
+  const canEdit = !!onUpdate
+  const update = onUpdate ?? (() => {})
   return (
     <div className="day-log" role="group" aria-labelledby="day-log-title">
       <div className="dash-card-head">
@@ -1036,21 +1239,54 @@ function DayDetails({
         <ul className="book-list">
           {entries.map((e) => (
             <BookLine key={e.book.id} book={e.book} onShowBook={onShowBook}>
-              <span className="day-facts small-text">
-                {e.started && <span className="day-tag">Started on this day</span>}
-                {e.finished && <span className="day-tag">Finished on this day</span>}
-                {e.amount !== undefined && (
-                  <span>
-                    Read {amountText(e.book, e.amount)}
-                    {amountUnit(e.book) !== 'percent' && (
-                      <span className="muted"> · {percentText(e.amount)}% of the book</span>
+              {editing === e.book.id ? (
+                <DayChangeEditor
+                  book={e.book}
+                  day={day}
+                  entry={e}
+                  onUpdate={update}
+                  onClose={() => setEditing(null)}
+                />
+              ) : (
+                <>
+                  <span className="day-facts small-text">
+                    {e.started && <span className="day-tag">Started on this day</span>}
+                    {e.finished && <span className="day-tag">Finished on this day</span>}
+                    {e.amount !== undefined && (
+                      <span>
+                        Read {amountText(e.book, e.amount)}
+                        {amountUnit(e.book) !== 'percent' && (
+                          <span className="muted"> · {percentText(e.amount)}% of the book</span>
+                        )}
+                      </span>
                     )}
                   </span>
-                )}
-              </span>
+                  {canEdit && <ChangeButton book={e.book} open={false} onOpen={() => setEditing(e.book.id)} />}
+                </>
+              )}
             </BookLine>
           ))}
         </ul>
+      )}
+      {canEdit && (
+        editing === '__add' ? (
+          <AddBookForDay
+            books={books}
+            day={day}
+            entries={entries}
+            onUpdate={update}
+            onClose={() => setEditing(null)}
+          />
+        ) : (
+          <button
+            type="button"
+            className="btn small day-add-btn"
+            onClick={() => setEditing('__add')}
+            aria-expanded={false}
+          >
+            + Add a book
+          </button>
+        )
       )}
     </div>
   )

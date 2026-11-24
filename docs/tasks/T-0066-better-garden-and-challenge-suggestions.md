@@ -1,0 +1,107 @@
+---
+id: T-0066
+title: "Improve the reading garden and suggest books from her shelf for the challenges that offered none"
+description: "Tidy with Undo, finding a book across every year, a quiet mark on what is new, cover signs for the last month's reading and for the book she is reading now, forty-four plant kinds, unlocks to three hundred books with four seasonal items and a strip that grows, the 3D trees and ferns joined up again, and up to three books from her own shelf under the world, the seasonal and her own challenges."
+status: Doing
+size: full
+depends_on: [T-0060, T-0061, T-0062, T-0063, T-0064, T-0065]
+decisions: [D-0068, D-0069, D-0070, D-0071, D-0050, D-0051, D-0052, D-0013, D-0014, D-0025]
+raised_on: 2026-11-23
+done_on: ""
+result: []
+---
+
+# Goal
+
+Hanna asked to improve the garden the day it went live, and, while it was being built, for
+cover signs on the plants, for the 3D trees whose crowns float above their trunks to be
+fixed, and for challenges to suggest books that fit. She chose one big update rather than
+five smaller ones. D-0068 and D-0069 record what was decided and the two choices she made
+against advice.
+
+# Done when
+
+`pnpm test` and `pnpm run build` pass, and on the preview:
+
+- plants stand in the order she finished the books, and pressing one shows its cover with
+  **Open book**; nothing can be moved and nothing is saved for a plant;
+- a garden with more than one bed offers **Whole year** and a chip per bed;
+- **Have a look** switches the garden to any season or to night, says so while it is not now,
+  and **Now** puts it back; it is gone when she leaves the tab;
+- **Share** makes a picture of the garden as it stands;
+- **Find a book…** finds a book finished in an older year and jumps to that year, ringing
+  its plant;
+- plants new or grown since the last visit are ringed, and the dashboard block says so;
+- the garden items strip shows the new items, a seasonal one only in its season;
+- a 3D tree's crown sits on its trunk, with no gap;
+- the world, the seasonal and her own challenge cards show up to three books from her shelf
+  with the reason each fits, or a line saying nothing fits;
+- tapping a letter the A–Z challenge has not got yet suggests a book from her pile, with
+  **Another one** when more than one counts;
+- when plants have grown or an item has unlocked since this device last looked, "Waiting for
+  you" says so with **Visit garden**, and opening the garden clears it.
+
+# Notes
+
+- `src/lib/garden/` (`numbers`, `plants`, `garden`, `spots`, `tend`, `find`, `seen`, `signs`),
+  `src/components/garden/`, `src/components/GardenPage.tsx`, `src/components/GardenCard.tsx`.
+- `src/lib/challengeFits.ts`, `src/components/ChallengeFits.tsx`, `ReadyChallenges.tsx`,
+  `OwnChallenges.tsx`, `ChallengesPage.tsx`.
+- Nothing in `deploy/nas/`: the garden still saves only spots, through the existing route
+  (D-0052). A group-1 change with nothing for Sander.
+
+# Design
+
+The Garden tab keeps its shape. Above the year chips, a search box; under the garden, the
+plant count on the left and **Tidy by reading order** (with **Undo** after a tidy) on the
+right. A new or grown plant is a quiet ring, gold for new and green for grown, animated only
+where motion is welcome; a found plant is a thicker gold ring. A cover sign is a small
+wooden board on a post, drawn over the garden so the flat and the 3D views get the same one;
+the sign for the book being read has a dashed, empty board, because nothing is planted there
+yet. Picked-up plants gain an **Open book** button beside **Put back**.
+
+On the Challenges page, an open world, seasonal or own challenge ends with "On your shelf"
+and up to three covers, each under the reason it fits; with nothing matching, one muted line
+says what would.
+
+# Test
+
+`pnpm test`: `Test Files 194 passed | 2 skipped (196)`, `Tests 2423 passed | 22 skipped (2445)`.
+`pnpm run build`: `✓ built in 964ms`. `pnpm exec harness check`: tasks, decisions, overrules and
+generated files all in step. CI on #268: `checks / checks pass 1m33s`.
+
+Tried to break it: a tidy of a garden already in reading order is refused rather than written
+again; Undo replayed through the real choice log puts every plant back on the spot it stood on;
+a search for a book with no plant finds nothing; a sign is refused for a finish day in the
+future and for a plant with no finish day; the reading signs stop when the beds are full and
+never share a spot; a seasonal item stays unlocked out of its season but does not stand in the
+garden; a suggestion is never offered for a book she has finished, and three world suggestions
+are three different countries.
+
+Verdict: passed on the automated checks. What the garden and the challenge cards actually look
+like is Hanna's to confirm on the live site.
+
+# Log
+
+- 2026-11-23 architect: recorded D-0068 and D-0069 from Hanna's feature chat, where she chose
+  one big update, re-matching every existing plant, and more plant kinds over day and night.
+- 2026-11-23 developer: built the whole round on one branch; `pnpm test` 2423 passed, 22
+  skipped; `pnpm run build` built in 964 ms. Also fixed the floating 3D tree crowns, the
+  bare winter branches and the floating fern fronds Hanna reported, and the same smaller gap
+  in the flat drawing.
+- 2026-11-23 tester: the checks above run and recorded; passed. #268 merged.
+- 2026-11-23 developer: the A–Z card's "From your pile" list is gone; an empty letter is now
+  tapped for a book from her pile, in the same panel a bingo square opens, which is what she
+  asked for (D-0070).
+- 2026-11-23 developer: the garden now speaks in "Waiting for you" as D-0050 §11 said it
+  should, with new plants, growth and unlocks in one line and Visit garden; the device's note
+  of what it last saw gained the unlocked items, and an older note counts every unlock as
+  already seen so no old pond is announced.
+- 2026-11-23 developer: Hanna asked for no dragging in the garden at all and for a cover on a
+  press instead, which retires moving, Tidy, Undo and the signs (D-0071); the garden also
+  gained a bed at a time, a look at any season or after dark, night from the device's clock,
+  and a picture to share. `pnpm test` 2425 passed, 22 skipped; `pnpm run build` built in
+  936 ms.
+  Remaining: Hanna confirms on the live site that Tidy and Undo do what she expects, that the
+  cover signs and the re-matched plants look right, and that the suggestions under A–Z, the
+  world, the seasonal and her own challenges are useful.

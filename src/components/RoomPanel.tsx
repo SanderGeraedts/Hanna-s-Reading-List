@@ -1,25 +1,39 @@
 import { useEffect, useState } from 'react'
-import { DECOR_NAMES, DEFAULT_ROOM, WALLPAPERS, WOODS, cleanRoom, moveDecor, toggleDecor } from '#/lib/room'
+import { DECOR_NAMES, DEFAULT_ROOM, ROOM_EXTRAS, WALLPAPERS, WOODS, cleanRoom, moveDecor, toggleDecor } from '#/lib/room'
 import type { Room, Wallpaper, Wood } from '#/lib/room'
+import type { ShopDecorKind } from '#/lib/shelfLayout'
 
 const KEY = 'hannas-reading-list:room'
+const NONE: readonly ShopDecorKind[] = []
 
 /**
  * Her room (Make the room yours), remembered on this device. The wallpaper
  * goes on <html data-wallpaper>, so every page's CSS can follow it.
+ *
+ * `owned`: the decorations she bought in the creature shop (T-0031 §11, from her choices log, so
+ * the same on every device). One she hasn't seen here yet joins at the end, switched on; whether
+ * it shows stays per device. Reset switches them on again and keeps them.
  */
-export function useRoom() {
-  const [room, setState] = useState<Room>(() => {
+export function useRoom(owned: readonly ShopDecorKind[] = NONE) {
+  const read = () => {
     try {
-      return cleanRoom(JSON.parse(localStorage.getItem(KEY) ?? 'null'))
+      return cleanRoom(JSON.parse(localStorage.getItem(KEY) ?? 'null'), owned)
     } catch {
-      return DEFAULT_ROOM
+      return cleanRoom(DEFAULT_ROOM, owned)
     }
-  })
+  }
+  const [room, setState] = useState<Room>(read)
+  const ownedKey = owned.join(',')
+  // a purchase seen for the first time (here or synced from another device): it joins the room
+  useEffect(() => {
+    setState((prev) => cleanRoom(prev, owned))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownedKey])
   useEffect(() => {
     document.documentElement.dataset.wallpaper = room.wallpaper
   }, [room.wallpaper])
-  const setRoom = (next: Room) => {
+  const setRoom = (raw: Room) => {
+    const next = cleanRoom(raw, owned)
     setState(next)
     try {
       localStorage.setItem(KEY, JSON.stringify(next))
@@ -30,7 +44,7 @@ export function useRoom() {
   return [room, setRoom] as const
 }
 
-/** The 🎨 Room panel: wood, wallpaper and decorations; the shelf changes live behind it. */
+/** The 🎨 Room panel: wood, wallpaper, books and decorations; the shelf changes live behind it. */
 export function RoomPanel({ room, onRoom, onClose }: { room: Room; onRoom: (room: Room) => void; onClose: () => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -71,6 +85,26 @@ export function RoomPanel({ room, onRoom, onClose }: { room: Room; onRoom: (room
             </button>
           ))}
         </div>
+      </div>
+
+      {/* above the decorations, so it shows on a phone without scrolling (T-0034) */}
+      <div className="room-row" role="group" aria-label="Books">
+        <span className="muted small-text">Books</span>
+        <label className="room-toggle">
+          <input type="checkbox" checked={room.detailedBooks} onChange={() => onRoom({ ...room, detailedBooks: !room.detailedBooks })} />
+          <span>Detailed books</span>
+        </label>
+      </div>
+
+      {/* the cosy room extras (D-0045): one group, so the decorations below stay reachable on a phone */}
+      <div className="room-row" role="group" aria-label="Your room">
+        <span className="muted small-text">Your room</span>
+        {ROOM_EXTRAS.map(({ key, label }) => (
+          <label key={key} className="room-toggle">
+            <input type="checkbox" checked={room[key]} onChange={() => onRoom({ ...room, [key]: !room[key] })} />
+            <span>{label}</span>
+          </label>
+        ))}
       </div>
 
       <div className="room-row">

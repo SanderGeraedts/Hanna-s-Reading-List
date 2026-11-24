@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import { loadGoals, saveGoal } from '#/server/shelf'
 import type { Book } from '#/lib/library'
 import { dailyFact, unlockedFacts } from '#/lib/facts'
@@ -6,7 +7,15 @@ import { formatDuration } from '#/lib/listening'
 import {
   breakdown,
   goalProgress,
+  hoursSpoken,
+  kindPace,
+  kindPaceText,
+  kindPaceWords,
   lentOut,
+  noPaceLine,
+  paceHours,
+  paceNumber,
+  paceTime,
   monthlyCounts,
   onThisDay,
   paused,
@@ -17,6 +26,27 @@ import {
   wantPile,
 } from '#/lib/insights'
 import { goalPace, goalPaceText } from '#/lib/insightsMore'
+import { localDay } from '#/lib/library'
+import { pileJars, pileMonths, pileSentence, signed } from '#/lib/pile'
+import {
+  audioLead,
+  compareDuration,
+  compareHeight,
+  comparisonWords,
+  daysSpoken,
+  daysText,
+  durationWords,
+  heightLead,
+  heightSpoken,
+  heightText,
+  pileHeights,
+  pileKinds,
+  timeSpoken,
+  timeText,
+} from '#/lib/pileHeight'
+import type { Pile as HeightPile, PileKind } from '#/lib/pileHeight'
+import { belowZero, buyingJarLabel, coinText } from '#/lib/price'
+import type { PileMonth } from '#/lib/pile'
 import { goalForecast } from '#/lib/finishEstimate'
 import type { BreakdownKind } from '#/lib/insights'
 import { periodStats } from '#/lib/stats'
@@ -89,17 +119,22 @@ export function GoalCard({
   accountId,
   year: forYear,
   onOpen,
+  readOnly = false,
 }: {
   books: Book[]
   accountId: string | null
   /** another year than this one, on the Challenges page: shown, not changed */
   year?: number
-  /** on the dashboard: open the Challenges page */
+  /** on the dashboard and the Stats page: open the Challenges page */
   onOpen?: () => void
+  /** on the Stats page (T-0080): shown only; the goal is set on the Challenges page */
+  readOnly?: boolean
 }) {
   const today = new Date()
   const year = forYear ?? today.getFullYear()
   const past = year < today.getFullYear()
+  // the Stats page shows the ring; the goal itself is set on the Challenges page (D-0060)
+  const locked = past || readOnly
   // a past year is judged at its last day
   const now = past ? new Date(year, 11, 31, 23) : today
   const key = goalKey(accountId, year)
@@ -166,7 +201,7 @@ export function GoalCard({
     </form>
   )
 
-  if (past && !goal) {
+  if (locked && !goal) {
     return (
       <section className="dash-card goal-card" aria-labelledby="goal-title">
         <h2 id="goal-title">Reading goal {year}</h2>
@@ -175,7 +210,7 @@ export function GoalCard({
     )
   }
 
-  if (!goal || (editing && !past)) {
+  if (!goal || (editing && !locked)) {
     return (
       <section className="dash-card goal-card" aria-labelledby="goal-title">
         <h2 id="goal-title">Reading goal</h2>
@@ -206,7 +241,7 @@ export function GoalCard({
       <div className="dash-card-head">
         <h2 id="goal-title">Reading goal {year}</h2>
         <OpenLink onOpen={onOpen} label="Reading goal" />
-        {!past && (
+        {!locked && (
           <button className="btn small" onClick={() => setEditing(true)}>
             Change
           </button>
@@ -341,10 +376,22 @@ export function SeriesCard({ books, onShowBook }: Props) {
 
 // ---- books per month -------------------------------------------------------------
 
-export function MonthlyChart({ books, year, bare = false }: { books: Book[]; year: number; bare?: boolean }) {
+export function MonthlyChart({
+  books,
+  year,
+  bare = false,
+  compare,
+}: {
+  books: Book[]
+  year: number
+  bare?: boolean
+  /** another year, drawn behind in the quiet tone (the Stats page, T-0080) */
+  compare?: number
+}) {
   const counts = useMemo(() => monthlyCounts(books, year), [books, year])
+  const was = useMemo(() => (compare === undefined ? null : monthlyCounts(books, compare)), [books, compare])
   const [hover, setHover] = useState<number | null>(null)
-  const max = Math.max(...counts)
+  const max = Math.max(...counts, ...(was ?? []))
   const top = Math.max(4, Math.ceil(max / 2) * 2)
   const ticks = [0, top / 2, top]
   const W = 360
@@ -385,8 +432,12 @@ export function MonthlyChart({ books, year, bare = false }: { books: Book[]; yea
             const h = (n / top) * plotH
             const r = Math.min(4, h / 2, barW / 2)
             const base = 8 + plotH
+            const before = was ? (was[i] / top) * plotH : 0
             return (
               <g key={i}>
+                {was && was[i] > 0 && (
+                  <rect className="bar-was" x={x} y={base - before} width={barW} height={before} rx={2} />
+                )}
                 {n > 0 && (
                   <path
                     className={`bar${hover === i ? ' active' : ''}`}
@@ -423,6 +474,11 @@ export function MonthlyChart({ books, year, bare = false }: { books: Book[]; yea
           </div>
         )}
       </div>
+      {compare !== undefined && (
+        <p className="months-key small-text">
+          <span className="months-swatch now" aria-hidden /> {year} <span className="months-swatch last" aria-hidden /> {compare}
+        </p>
+      )}
       <details className="table-view">
         <summary className="muted small-text">Show as a table</summary>
         <table>
@@ -431,6 +487,7 @@ export function MonthlyChart({ books, year, bare = false }: { books: Book[]; yea
               <tr key={i}>
                 <th scope="row">{monthName(i + 1)}</th>
                 <td>{n}</td>
+                {was && <td>{was[i]}</td>}
               </tr>
             ))}
           </tbody>
@@ -539,38 +596,278 @@ export function RecordsCard({ books, period, label, onShowBook }: Props & { peri
 
 export function PileCard({ books }: { books: Book[] }) {
   const pile = wantPile(books)
-  const time =
-    pile.months === undefined
-      ? undefined
-      : pile.months < 12
-        ? plural(pile.months, 'month')
-        : `about ${plural(Math.round(pile.months / 12), 'year')}`
+  const heights = useMemo(() => pileHeights(books), [books])
+  const kinds = pileKinds(heights)
+  // the switch's choice reaches the height line and the pace line (T-0024); not saved anywhere
+  const [choice, setChoice] = useState<PileChoice>('all')
+  const hasSwitch = kinds.length > 1
+  const shown: PileChoice = hasSwitch && choice !== 'all' && kinds.includes(choice) ? choice : 'all'
+  // the chosen kind ran out (the shelf changed): fall back to All
+  if (choice !== shown) setChoice(shown)
   return (
     <section className="dash-card" aria-labelledby="pile-title">
       <h2 id="pile-title">Want-to-read pile</h2>
       <p className="big-number">
         <strong>{pile.books}</strong> {pile.books === 1 ? 'book' : 'books'} <span className="muted">waiting</span>
       </p>
-      <p className="muted small-text">
-        {[
-          pile.pages > 0 && `${pile.pages.toLocaleString('en-GB')} pages`,
-          pile.minutes > 0 && `${formatDuration(pile.minutes)} to listen`,
-        ]
-          .filter(Boolean)
-          .join(' · ')}
-      </p>
-      {time ? (
-        <p>
-          At your pace of {pile.perMonth.toFixed(1).replace(/\.0$/, '')} a month, that's {time} of reading.
+      {(pile.pages > 0 || pile.minutes > 0) && (
+        <p className="muted small-text">
+          {[
+            pile.pages > 0 && `${pile.pages.toLocaleString('en-GB')} pages`,
+            pile.minutes > 0 && `${formatDuration(pile.minutes)} to listen`,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
         </p>
-      ) : (
-        pile.books > 0 && (
-          <p className="muted small-text">
-            Once some books have a “Finished on” date, this shows how long the pile would take.
-          </p>
-        )
       )}
+      {hasSwitch && (
+        <div className="segmented pile-kinds" role="group" aria-label="Which part of the pile">
+          {PILE_BUTTONS.filter((b) => b.kind === 'all' || kinds.includes(b.kind)).map((b) => (
+            <button
+              key={b.kind}
+              type="button"
+              className={shown === b.kind ? 'active' : ''}
+              aria-pressed={shown === b.kind}
+              onClick={() => setChoice(b.kind)}
+            >
+              {b.emoji && <span aria-hidden="true">{b.emoji}</span>}
+              {b.emoji && ' '}
+              {b.label}
+            </button>
+          ))}
+        </div>
+      )}
+      {pile.books > 0 && (
+        // one polite live region for the height and pace lines while the switch shows (T-0024)
+        <div className="pile-said" {...(hasSwitch ? { 'aria-live': 'polite' as const, 'aria-atomic': true } : {})}>
+          <PileHeightLine pile={heights} shown={shown} />
+          <PilePaceLine books={books} shown={shown} />
+        </div>
+      )}
+      <PileMotivation books={books} />
     </section>
+  )
+}
+
+/** A height shown with a non-breaking space, and spoken with its unit in full (T-0021). */
+function Height({ metres }: { metres: number }) {
+  return (
+    <>
+      <span aria-hidden="true">{heightText(metres, ' ')}</span>
+      <span className="visually-hidden">{heightSpoken(metres)}</span>
+    </>
+  )
+}
+
+const NBSP = ' '
+
+/** A listening time shown with non-breaking spaces inside, and spoken in full (T-0023). */
+function Time({ minutes }: { minutes: number }) {
+  return (
+    <>
+      <span aria-hidden="true">{timeText(minutes, NBSP)}</span>
+      <span className="visually-hidden">{timeSpoken(minutes)}</span>
+    </>
+  )
+}
+
+type PileChoice = 'all' | PileKind
+
+const PILE_BUTTONS: { kind: PileChoice; emoji?: string; label: string }[] = [
+  { kind: 'all', label: 'All' },
+  { kind: 'paper', emoji: '📖', label: 'Paper' },
+  { kind: 'ebook', emoji: '📱', label: 'E-book' },
+  { kind: 'audio', emoji: '🎧', label: 'Audiobook' },
+]
+
+const PILE_EMOJI: Record<PileChoice, string> = { all: '📚', paper: '📖', ebook: '📱', audio: '🎧' }
+
+/**
+ * How tall the want-to-read pile would stand, as real books (T-0023, D-0030),
+ * with the All · Paper · E-book · Audiobook switch when two or more kinds have
+ * books. The switch (in `PileCard`) starts on All and is not saved anywhere.
+ */
+function PileHeightLine({ pile, shown }: { pile: HeightPile; shown: PileChoice }) {
+  let line: ReactNode
+  if (shown === 'audio') {
+    const comparison = compareDuration(pile.audioMinutes)
+    line = (
+      <>
+        {audioLead(pile.counts.audio)} <Time minutes={pile.audioMinutes} />:{' '}
+        {comparison.kind === 'days' ? (
+          <>
+            about as long as listening nonstop for{' '}
+            <span aria-hidden="true">{`${daysText(comparison.days)}${NBSP}days`}</span>
+            <span className="visually-hidden">{daysSpoken(comparison.days)}</span>
+          </>
+        ) : (
+          <>
+            {durationWords(comparison).before}
+            <Time minutes={comparison.thing.minutes} />
+            {durationWords(comparison).after}
+          </>
+        )}
+        .
+      </>
+    )
+  } else {
+    const metres = shown === 'all' ? pile.all : pile[shown]
+    const comparison = compareHeight(metres)
+    const { before, after } = comparisonWords(comparison)
+    line = (
+      <>
+        {heightLead(shown, pile.counts[shown])} <Height metres={metres} />: {before}
+        <Height metres={comparison.thing.metres} />
+        {after}.
+      </>
+    )
+  }
+
+  return (
+    <p>
+      <span aria-hidden="true">{`${PILE_EMOJI[shown]}${NBSP}`}</span>
+      {line}
+    </p>
+  )
+}
+
+/**
+ * The pace line under the height line: the whole pile on All (as before), or
+ * the chosen kind at the pace she finishes that kind, Audiobook in hours
+ * (T-0024, D-0031).
+ */
+function PilePaceLine({ books, shown }: { books: Book[]; shown: PileChoice }) {
+  if (shown === 'all') {
+    const pile = wantPile(books)
+    if (pile.months === undefined) {
+      return (
+        <p className="muted small-text">
+          Once some books have a “Finished on” date, this shows how long the pile would take.
+        </p>
+      )
+    }
+    return (
+      <p>
+        At your pace of {paceNumber(pile.perMonth)} a month, that's {paceTime(pile.months)} of reading.
+      </p>
+    )
+  }
+  const pace = kindPace(books, shown)
+  if (pace.months === undefined) return <p className="muted small-text">{noPaceLine(shown)}</p>
+  const withTime = { ...pace, months: pace.months }
+  if (shown !== 'audio') return <p>{kindPaceText(withTime)}</p>
+  const { before, after } = kindPaceWords(withTime)
+  const hours = paceHours(pace.perMonth)
+  return (
+    <p>
+      {before}
+      <span aria-hidden="true">{`${hours}${NBSP}h`}</span>
+      <span className="visually-hidden">{hoursSpoken(hours)}</span>
+      {after}
+    </p>
+  )
+}
+
+/** In vs. out this month, the 6-month line and the two coin jars (T-0014). */
+function PileMotivation({ books }: { books: Book[] }) {
+  const today = localDay()
+  const months = useMemo(() => pileMonths(books, today), [books, today])
+  const jars = useMemo(() => pileJars(books, today), [books, today])
+  const now = months[months.length - 1]
+  const nothing = now.added === 0 && now.read === 0
+  return (
+    <div className="pile-motivation">
+      <p className={nothing ? 'muted small-text' : 'pile-sentence'}>{pileSentence(now)}</p>
+      <PileLine months={months} />
+      <div className="pile-jars">
+        <BuyingJar coins={jars.buying} />
+        <StorytelJar coins={jars.storytel} />
+      </div>
+    </div>
+  )
+}
+
+/** The net change per month as a small line: up is grew, down is shrank, each point with its number. */
+function PileLine({ months }: { months: PileMonth[] }) {
+  const W = 300
+  const H = 96
+  const pad = 18
+  const mid = 42
+  const half = 24
+  const scale = Math.max(2, ...months.map((m) => Math.abs(m.net)))
+  const x = (i: number) => pad + (i * (W - pad * 2)) / (months.length - 1)
+  const y = (v: number) => mid - (v / scale) * half
+  const last = months.length - 1
+  const points = months.map((m, i) => `${x(i)},${y(m.net)}`).join(' ')
+  return (
+    <div className="pile-line">
+      <p className="muted small-text">Last 6 months</p>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="pile-spark"
+        role="img"
+        aria-label={`Pile change per month: ${months.map((m) => `${monthName(m.month)} ${signed(m.net)}`).join(', ')}`}
+      >
+        <line className="zero" x1={4} x2={W - 4} y1={mid} y2={mid} />
+        <polyline className="trend" points={points} />
+        {months.map((m, i) => (
+          <g key={`${m.year}-${m.month}`}>
+            <circle className={i === last ? 'dot now' : 'dot'} cx={x(i)} cy={y(m.net)} r={i === last ? 4.5 : 3.2} />
+            <text className="value" x={x(i)} y={m.net >= 0 ? y(m.net) - 8 : y(m.net) + 15} textAnchor="middle">
+              {signed(m.net)}
+            </text>
+            <text className={i === last ? 'axis now' : 'axis'} x={x(i)} y={H - 4} textAnchor="middle">
+              {monthName(m.month, 'short').slice(0, 3)}
+            </text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  )
+}
+
+/** Coins as 🪙 per coin, "🪙 × 9" above 6, with empty slots up to `places`. */
+function Coins({ coins, places }: { coins: number; places: number }) {
+  return (
+    <p className="jar-coins" aria-hidden>
+      {coins > 6 ? (
+        <span>🪙 × {coins}</span>
+      ) : (
+        <>
+          {Array.from({ length: coins }, (_, i) => (
+            <span key={`c${i}`}>🪙</span>
+          ))}
+          {Array.from({ length: Math.max(0, places - coins) }, (_, i) => (
+            <span key={`e${i}`} className="jar-slot" />
+          ))}
+        </>
+      )}
+    </p>
+  )
+}
+
+/** The buying jar (T-0016, D-0024): just its count, "🪙 4.6 coins", in the warning colour below zero. */
+function BuyingJar({ coins }: { coins: number }) {
+  const below = belowZero(coins)
+  return (
+    <div className="jar" role="group" aria-label={buyingJarLabel(coins)}>
+      <p className="jar-name">📚 Buying jar</p>
+      {/* read through the group's label, so the 🪙 and the minus sign aren't read out */}
+      <p className={below ? 'jar-count below' : 'jar-count'} aria-hidden>
+        {coinText(coins)}
+      </p>
+    </div>
+  )
+}
+
+function StorytelJar({ coins }: { coins: number }) {
+  const label = `${coins} ${coins === 1 ? 'coin' : 'coins'}`
+  return (
+    <div className="jar" role="group" aria-label={`Storytel jar: ${label}`}>
+      <p className="jar-name">🎧 Storytel jar</p>
+      <Coins coins={coins} places={1} />
+      <p className="jar-status muted">{label}</p>
+    </div>
   )
 }
 

@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ClientOnly, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { ZOOM_MAX, clampZoom } from '#/components/BookshelfScene'
 import { SafeBookshelf } from '#/components/SafeBookshelf'
+import { ShelfPanButtons } from '#/components/ShelfPanButtons'
+import type { PanDirection, PanEdges } from '#/lib/shelfPan'
+import { SHELF_CONTROLS_ATTR } from '#/lib/shelfPan'
 import { AddBookDialog } from '#/components/AddBookDialog'
 import { BookPanel } from '#/components/BookPanel'
 import { CoverPicker } from '#/components/CoverPicker'
@@ -23,11 +26,20 @@ import { Dashboard } from '#/components/Dashboard'
 import { BadgeToasts } from '#/components/NewBlocks'
 import { QuickUpdate } from '#/components/QuickUpdate'
 import { SparkleLayer, sparkle } from '#/components/Sparkles'
+import { ConfettiLayer } from '#/components/Confetti'
+import { useChallengeExtras } from '#/components/useChallengeExtras'
 import { WishCard } from '#/components/WishCard'
 import { RoomPanel, useRoom } from '#/components/RoomPanel'
 import { ChallengesPage } from '#/components/ChallengesPage'
 import { ReminderToggle } from '#/components/ReminderToggle'
+import { StatsPage } from '#/components/StatsPage'
 import { CalendarPage } from '#/components/CalendarPage'
+import { CreaturesPage } from '#/components/CreaturesPage'
+import { GardenPage } from '#/components/GardenPage'
+import { CreaturesProvider, useCreaturesValue } from '#/components/creatures/CreaturesContext'
+import { useShelfPet } from '#/components/creatures/useShelfPet'
+import { isCategory, ownedDecor } from '#/lib/creatures/shop'
+import type { ShopCategory } from '#/lib/creatures/shop'
 import type { ChallengeSection } from '#/components/ChallengesPage'
 import { useStorytelSync } from '#/lib/useStorytelSync'
 import type { Tab } from '#/components/AddBookDialog'
@@ -35,7 +47,14 @@ import { SearchBox } from '#/components/SearchBox'
 import { genreSuggestions } from '#/lib/genres'
 import { useBookDetails } from '#/lib/useBookDetails'
 import type { Book } from '#/lib/library'
-import { NO_GENRE, filterByGenre, genreOptions as shelfGenres, reorderShown } from '#/lib/genreFilter'
+import { NO_GENRE, reorderShown } from '#/lib/genreFilter'
+import { START_VIEW, applyView, cleanFilters, filterOptions, viewSummary } from '#/lib/shelfFilter'
+import type { ShelfView } from '#/lib/shelfFilter'
+import { ShelfBar } from '#/components/ShelfBar'
+import { boughtPatch, shelfBooks, wishBooks, wishCountText } from '#/lib/wishlist'
+import { posePatch } from '#/lib/pose'
+import type { BookPose } from '#/lib/pose'
+import { FollowUpDialog } from '#/components/FollowUpDialog'
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -43,16 +62,36 @@ export const Route = createFileRoute('/')({
   // back button returns to the shelf; &focus= scrolls to one challenge ("Open ›")
   validateSearch: (
     search: Record<string, unknown>,
-  ): { view?: 'dashboard' | 'challenges' | 'calendar'; focus?: ChallengeSection; month?: string } => {
+  ): {
+    view?: 'dashboard' | 'stats' | 'challenges' | 'calendar' | 'creatures' | 'garden'
+    focus?: ChallengeSection
+    month?: string
+    step?: 'choose' | 'hatch' | 'duplicate'
+    shop?: ShopCategory
+  } => {
     const view =
-      search.view === 'dashboard' || search.view === 'challenges' || search.view === 'calendar' ? search.view : undefined
+      search.view === 'dashboard' ||
+      search.view === 'stats' ||
+      search.view === 'challenges' ||
+      search.view === 'calendar' ||
+      search.view === 'creatures' ||
+      search.view === 'garden'
+        ? search.view
+        : undefined
     const focus = FOCUS.find((f) => f === search.focus)
     // &month=2026-11 opens the Calendar page at that month
     const month = typeof search.month === 'string' && /^\d{4}-\d{2}$/.test(search.month) ? search.month : undefined
+    // &step=choose opens the Creatures tab at "Choose your first creature" (a Hatch button, T-0029);
+    // &step=hatch hatches the oldest milestone egg, &step=duplicate opens a duplicate's choice (T-0030)
+    const step = search.step === 'choose' || search.step === 'hatch' || search.step === 'duplicate' ? search.step : undefined
+    // &shop=outfits opens the Creatures tab's Shop view at that category (T-0031); none: the Den view
+    const shop = isCategory(search.shop) ? search.shop : undefined
     return {
       ...(view && { view }),
       ...(view === 'challenges' && focus && { focus }),
       ...(view === 'calendar' && month && { month }),
+      ...(view === 'creatures' && step && { step }),
+      ...(view === 'creatures' && shop && { shop }),
     }
   },
 })
@@ -120,11 +159,27 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
       account?.id ?? null,
       onExpired,
     )
-  // books not out yet are on the shelf too, as want-to-read
-  const books = allBooks
+  /**
+   * **The one filter** (D-0053). Books not out yet are on the shelf too, as
+   * want-to-read; books on her **wishlist** are not. Everything below this line
+   * is given `books`, so the shelf, the pile, the statistics, the suggestions,
+   * the map, the challenges, the badges, the creatures and the Reading Garden
+   * all leave the wishlist out without any code of their own. Only the Wishlist
+   * block, the add dialog's duplicate check and the sync hooks see `allBooks`.
+   */
+  const books = useMemo(() => shelfBooks(allBooks), [allBooks])
+  const wishes = useMemo(() => wishBooks(allBooks), [allBooks])
+  /** her own challenges, bingo swaps and goals, for the challenges-N medals (D-0064 §6) */
+  const badgeExtras = useChallengeExtras(account?.id ?? null)
+  /** the wish she just bought, while the follow-up asks how she has it (T-0072) */
+  const [bought, setBought] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   // the 3D shelf: zoomed in (1 is the whole case) and what a search lights up
   const [zoom, setZoom] = useState(1)
+  // zoomed in: whether the shelf can move sideways and is at an end; the ‹ › buttons move it (T-0025)
+  const [pan, setPan] = useState<PanEdges | null>(null)
+  const panControl = useRef<((direction: PanDirection) => void) | null>(null)
+  const panStep = useCallback((direction: PanDirection) => panControl.current?.(direction), [])
   const [matches, setMatches] = useState<string[] | null>(null)
   const highlight = useMemo(() => (matches ? new Set(matches) : null), [matches])
   const [adding, setAdding] = useState<Tab | null>(null)
@@ -206,7 +261,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
         ? 'Refresh from Storytel'
         : 'Connect Storytel') + (arrangement ? ', and put the books back in order' : '')
 
-  const selected = books.find((b) => b.id === selectedId) ?? null
+  // the whole library, so a wish opened from the Wishlist bookcase gets its panel too (D-0074)
+  const selected = allBooks.find((b) => b.id === selectedId) ?? null
   const seriesMap = useMemo(() => detectSeries(books), [books])
   const selectedSeries = selected ? seriesMap.get(selected.id) : undefined
   // the whole series as a sleep read; new books by a series author are asked about once
@@ -219,26 +275,50 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   const genreOptions = useMemo(() => genreSuggestions(books.flatMap((b) => b.genres ?? [])), [books])
   useBookDetails(allBooks, loaded, updateBook)
 
-  // show only one genre (#41); a genre no book has any more falls back to all books
-  const [genre, setGenre] = useState<string | null>(null)
-  const genreChoices = useMemo(() => shelfGenres(books), [books])
-  const activeGenre = genre && genreChoices.some((g) => g.value === genre) ? genre : null
-  const shown = useMemo(() => filterByGenre(books, activeGenre), [books, activeGenre])
-  const reorderShelf = useCallback(
-    (ids: string[]) => reorder(activeGenre ? reorderShown(books.map((b) => b.id), ids) : ids),
-    [reorder, books, activeGenre],
+  // the bookcase and the filters above the shelf (D-0046). Never saved: a reload starts at
+  // All with nothing set, like the genre filter did before it moved into the bar.
+  const [rawShelfView, setShelfView] = useState<ShelfView>(START_VIEW)
+  const filterChoices = useMemo(() => filterOptions(books), [books])
+  // a filter whose value has left the shelf counts as "any" (D-0046 §9)
+  const shelfView = useMemo<ShelfView>(
+    () => ({ bookcase: rawShelfView.bookcase, filters: cleanFilters(rawShelfView.filters, filterChoices) }),
+    [rawShelfView, filterChoices],
   )
+  /**
+   * What the shelf draws. The whole library goes in and `inBookcase` narrows it, which is
+   * how the Wishlist bookcase gets her wishes and the other four never see one (D-0074 §2-3).
+   * Everything that counts, suggests or draws anything else still gets `books`, her shelf.
+   */
+  const shown = useMemo(() => applyView(allBooks, shelfView), [allBooks, shelfView])
+  const summary = useMemo(() => viewSummary(shelfView, filterChoices), [shelfView, filterChoices])
+  // a rearrange on a narrowed shelf is mapped back onto the whole library, so the books it
+  // does not show (another bookcase's, and her wishes) keep the place they had
+  const reorderShelf = useCallback(
+    (ids: string[]) => reorder(reorderShown(allBooks.map((b) => b.id), ids)),
+    [reorder, allBooks],
+  )
+  // Make a wish starts from a picked genre, as it did when genre lived in the header
+  const activeGenre = shelfView.filters.genre
 
   // what she could read next (#58): Make a wish grants from these; a genre picked at the top starts the wish
   const wishChoices = useMemo(() => readNextChoices(books), [books])
+  // her creature choices once for the whole page: the Creatures tab, the dashboard block and Waiting for you share them
+  const creatures = useCreaturesValue(account?.id ?? null)
+  // decorations she bought in the creature shop join the room on every device (T-0031 §11)
+  const owned = useMemo(() => ownedDecor(creatures.choices.log), [creatures.choices.log])
+  // the favourite creature on the shelf (T-0033): computed from books + log for its reactions
+  const shelfPet = useShelfPet(books, creatures)
   // her room: wood, wallpaper and decorations (Make the room yours), on this device
-  const [room, setRoom] = useRoom()
+  const [room, setRoom] = useRoom(owned)
   const [roomOpen, setRoomOpen] = useState(false)
 
   const select = useCallback((id: string | null) => {
     if (id) inspect.current = { rotY: 0, rotX: 0 }
     setSelectedId(id)
   }, [])
+  // the pose the shelf really drew the open book in, so the panel can say when the
+  // bookcase has no shelf with room for the one she picked (D-0073 §3)
+  const [drawnPose, setDrawnPose] = useState<BookPose | null>(null)
 
   // the shelf, the dashboard (#59) or the Challenges page
   const search = Route.useSearch()
@@ -260,6 +340,30 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     },
     [navigate, select],
   )
+  const openCreatures = useCallback(
+    (step?: 'choose' | 'hatch' | 'duplicate') => {
+      select(null)
+      navigate({ search: step ? { view: 'creatures', step } : { view: 'creatures' } })
+    },
+    [navigate, select],
+  )
+  const openGarden = useCallback(() => {
+    select(null)
+    navigate({ search: { view: 'garden' } })
+  }, [navigate, select])
+  /** "Open ›" on My year: the Stats page (T-0080) */
+  const openStats = useCallback(() => {
+    select(null)
+    navigate({ search: { view: 'stats' } })
+  }, [navigate, select])
+  /** the Shop view (T-0031): switching Den ↔ Shop is a history entry (Back returns), a category change replaces it */
+  const openShop = useCallback(
+    (shop: ShopCategory | null, opts?: { replace?: boolean }) =>
+      navigate({ search: shop ? { view: 'creatures', shop } : { view: 'creatures' }, replace: !!opts?.replace }),
+    [navigate],
+  )
+  /** the choose step is open: drop &step=choose, so a reload or Back doesn't open it again */
+  const choseOpened = useCallback(() => navigate({ search: { view: 'creatures' }, replace: true }), [navigate])
   const openChallenges = useCallback(
     (focus: ChallengeSection) => {
       select(null)
@@ -332,28 +436,11 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
       ))}
     </select>
   )
-  const genreSelect = (done?: () => void) => (
-    <select
-      className="input"
-      value={activeGenre ?? ''}
-      onChange={(e) => {
-        setGenre(e.target.value || null)
-        done?.()
-      }}
-      aria-label="Show only one genre"
-    >
-      <option value="">All genres</option>
-      {genreChoices.map((g) => (
-        <option key={g.value} value={g.value}>
-          {g.label} ({g.count})
-        </option>
-      ))}
-    </select>
-  )
 
   return (
+    <CreaturesProvider value={creatures}>
     <div className="app" style={headerPx ? ({ '--header-h': `${headerPx}px` } as React.CSSProperties) : undefined}>
-      <header className="topbar" ref={header}>
+      <header className={offShelf ? 'topbar on-page' : 'topbar'} ref={header}>
         <div className="brand">
           <div className="brand-title">
             {/* the ☰ menu only holds the shelf's tools on a phone: elsewhere it would be empty */}
@@ -366,12 +453,6 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
                       <span className="muted">Arrange by</span>
                       {sortSelect(close)}
                     </label>
-                    {genreChoices.length > 0 && (
-                      <label className="menu-field">
-                        <span className="muted">Genre</span>
-                        {genreSelect(close)}
-                      </label>
-                    )}
                     <button
                       disabled={wishChoices.length === 0}
                       onClick={() => {
@@ -388,10 +469,15 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             <h1>Hanna's Reading List</h1>
           </div>
           <p className="muted">
-            {books.length === 0
+            {/* the Wishlist bookcase counts in its own words: books and what they would cost (D-0074 §4) */}
+            {shelfView.bookcase === 'wish'
+              ? wishes.length
+                ? wishCountText(wishes)
+                : 'Nothing on your wishlist yet'
+              : books.length === 0
               ? 'An empty shelf, waiting for stories'
-              : activeGenre
-                ? `${shown.length} of ${books.length} books · ${genreChoices.find((g) => g.value === activeGenre)!.label}`
+              : summary.length
+                ? `${shown.length} of ${books.length} books · ${summary.join(' · ')}`
                 : `${books.length} book${books.length === 1 ? '' : 's'} · ` +
                 (['reading', 'paused', 'want', 'read', 'dnf'] as const)
                   .filter((s) => counts[s])
@@ -410,12 +496,6 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
                 <span className="muted">Arrange by</span>
                 {sortSelect()}
               </label>
-              {genreChoices.length > 0 && (
-                <label className={`sort genre-filter desktop-only${activeGenre ? ' active' : ''}`}>
-                  <span className="muted">Genre</span>
-                  {genreSelect()}
-                </label>
-              )}
               <button
                 className="btn read-next desktop-only"
                 aria-label="What to read next"
@@ -448,6 +528,9 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             <AccountMenu account={account} sync={offline && sync === 'loading' ? 'offline' : sync} onSignOut={onSignOut} />
           )}
         </div>
+        {/* the bookcase switch and the filter row (D-0046): the header's own bottom row, so the
+            header's measured height keeps the top shelf clear of the bar */}
+        {!offShelf && books.length > 0 && <ShelfBar view={shelfView} options={filterChoices} onView={setShelfView} empty={shown.length === 0} />}
       </header>
 
       <main className="stage">
@@ -458,6 +541,9 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             inspect={inspect}
             onSelect={select}
             onReorder={reorderShelf}
+            // dropped on a pile: the book lies down too, the one pose the app sets (D-0073 §4-5)
+            onLayFlat={(id) => updateBook(id, posePatch('flat'))}
+            onPoseDrawn={setDrawnPose}
             // a shelf still arranged by genre or colour from before #41/#45 keeps its order, without those nooks
             arrangement={arrangement && MENU_SORT_KEYS.includes(arrangement) ? arrangement : null}
             sheet={sheet}
@@ -467,20 +553,25 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             topInset={headerPx}
             paused={offShelf}
             room={room}
+            onRoom={setRoom}
+            onPan={setPan}
+            panControl={panControl}
+            shelfPet={shelfPet}
           />
         </ClientOnly>
+        {!offShelf && !selected && books.length > 0 && <ShelfPanButtons pan={pan} onStep={panStep} />}
         {!offShelf && !selected && books.length > 0 && (
-          <div className="zoom-controls" role="group" aria-label="Zoom">
-            <button className="btn icon" aria-label="Zoom in" title="Zoom in (Ctrl + scroll)" disabled={zoom >= ZOOM_MAX} onClick={() => setZoom(clampZoom(zoom * 1.4))}>
+          <div className="zoom-controls" role="group" aria-label="Zoom" {...{ [SHELF_CONTROLS_ATTR]: '' }}>
+            <button className="btn" aria-label="Zoom in" title="Zoom in (Ctrl + scroll)" disabled={zoom >= ZOOM_MAX} onClick={() => setZoom(clampZoom(zoom * 1.4))}>
               +
             </button>
-            <button className="btn icon" aria-label="Zoom out" title="Zoom out" disabled={zoom <= 1} onClick={() => setZoom(clampZoom(zoom / 1.4))}>
+            <button className="btn" aria-label="Zoom out" title="Zoom out" disabled={zoom <= 1} onClick={() => setZoom(clampZoom(zoom / 1.4))}>
               −
             </button>
-            <button className="btn icon" aria-label="Show the whole bookcase" title="Show the whole bookcase" disabled={zoom <= 1} onClick={() => setZoom(1)}>
+            <button className="btn" aria-label="Show the whole bookcase" title="Show the whole bookcase" disabled={zoom <= 1} onClick={() => setZoom(1)}>
               ⤢
             </button>
-            <button className="btn icon" aria-label="Your room" title="Your room: wood, wallpaper, decorations" aria-expanded={roomOpen} onClick={() => setRoomOpen(!roomOpen)}>
+            <button className="btn" aria-label="Your room" title="Your room: wood, wallpaper, books, room, decorations" aria-expanded={roomOpen} onClick={() => setRoomOpen(!roomOpen)}>
               🎨
             </button>
           </div>
@@ -504,9 +595,41 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             onOpenChallenges={openChallenges}
             onOpenCalendar={openCalendar}
             onAdd={addBook}
+            onOpenCreatures={openCreatures}
+            onOpenGarden={openGarden}
+            onOpenStats={openStats}
+          />
+        )}
+        {view === 'stats' && (
+          <StatsPage
+            books={books}
+            accountId={account?.id ?? null}
+            onShowBook={showBook}
+            onOpenGoal={() => openChallenges('goal')}
           />
         )}
         {view === 'calendar' && <CalendarPage books={books} onShowBook={showBook} onUpdate={updateBook} startMonth={search.month} />}
+        {view === 'creatures' && (
+          <ClientOnly fallback={null}>
+            <CreaturesPage
+              books={books}
+              startChoose={search.step === 'choose'}
+              onChooseOpened={choseOpened}
+              startStep={search.step === 'hatch' || search.step === 'duplicate' ? search.step : undefined}
+              onStepOpened={choseOpened}
+              shop={search.shop ?? null}
+              onShop={openShop}
+              room={room}
+              onRoom={setRoom}
+              paused={!!selected || adding !== null || wishing}
+            />
+          </ClientOnly>
+        )}
+        {view === 'garden' && (
+          <ClientOnly fallback={null}>
+            <GardenPage books={books} paused={!!selected || adding !== null || wishing} onShowBook={showBook} />
+          </ClientOnly>
+        )}
         {view === 'challenges' && (
           <ChallengesPage
             books={books}
@@ -518,8 +641,9 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
         )}
       </main>
 
-      <BadgeToasts books={books} accountId={account?.id ?? null} ready={loaded} />
+      <BadgeToasts books={books} accountId={account?.id ?? null} ready={loaded} extras={badgeExtras} />
       <SparkleLayer />
+      <ConfettiLayer />
       {wishing && (
         <WishCard
           books={books}
@@ -556,6 +680,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             if (arrangement && RESORT_ON[arrangement]?.some((k) => k in patch)) sortBy(arrangement)
           }}
           detectedSeries={selectedSeries}
+          drawnPose={drawnPose}
           genreOptions={genreOptions}
           onChangeCover={() => setPickingCover(true)}
           shelf={books}
@@ -575,8 +700,16 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             select(null)
             removeBook(selected.id)
           }}
+          {...(selected.wish && {
+            // "I bought it ›" on a wish: onto the shelf today, and the follow-up asks the rest (D-0074 §5)
+            onBought: () => {
+              updateBook(selected.id, boughtPatch())
+              setBought(selected.id)
+            },
+          })}
           onClose={() => select(null)}
           onSheet={onSheet}
+          headerPx={headerPx}
         />
       )}
 
@@ -585,6 +718,19 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           book={selected}
           onChange={(patch) => updateBook(selected.id, patch)}
           onClose={() => setPickingCover(false)}
+        />
+      )}
+
+      {/* a wish she just bought: how she has it and what it cost, in a dialog she opened (D-0013) */}
+      {bought && (
+        <FollowUpDialog
+          key={bought}
+          book={allBooks.find((b) => b.id === bought) ?? null}
+          onUpdate={updateBook}
+          onClose={() => setBought(null)}
+          // the wish row it was pressed on is gone, the book is on her shelf: focus goes
+          // back to the open book's title (D-0074 §5)
+          returnFocusId="book-panel-title"
         />
       )}
 
@@ -638,16 +784,20 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
         </div>
       )}
     </div>
+    </CreaturesProvider>
   )
 }
 
-type View = 'shelf' | 'dashboard' | 'challenges' | 'calendar'
+type View = 'shelf' | 'dashboard' | 'stats' | 'challenges' | 'calendar' | 'creatures' | 'garden'
 
 const VIEWS = [
   { view: 'shelf', icon: '📚', label: 'Bookshelf' },
   { view: 'dashboard', icon: '📊', label: 'Dashboard' },
+  { view: 'stats', icon: '📈', label: 'Stats' },
   { view: 'challenges', icon: '🏆', label: 'Challenges' },
   { view: 'calendar', icon: '📅', label: 'Calendar' },
+  { view: 'creatures', icon: '🐾', label: 'Creatures' },
+  { view: 'garden', icon: '🌱', label: 'Garden' },
 ] as const
 
 const FOCUS: ChallengeSection[] = ['goal', 'monthly', 'bingo', 'alphabet']

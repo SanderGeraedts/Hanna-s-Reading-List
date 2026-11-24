@@ -23,6 +23,18 @@ function logPatch(book: Book, day: string, amount: number): Pick<Book, 'readingL
 }
 
 /**
+ * Fix how much she read on a past day (T-0045), without moving the book's
+ * progress or its status. Only `readingLog[day]` is set, to a `share` of 0..1.
+ * A share of 0 (or less) takes the book off that day; if that was the last
+ * day, `readingLog` is dropped. The streak, the calendar, the stats and the
+ * cookies (D-0033) follow from the log, so they come out right next time.
+ */
+export function setDayAmountPatch(book: Book, day: string, share: number): Pick<Book, 'readingLog'> {
+  const n = share > 1 ? 1 : share < 0 ? 0 : share
+  return logPatch(book, day, n)
+}
+
+/**
  * The change for moving a book's progress to `progress` on `day`: how far it
  * moved on is added to that day. Moving it back takes off that day's amount
  * (a slip of the slider), but never below nothing.

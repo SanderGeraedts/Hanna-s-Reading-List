@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import type { FormEvent, KeyboardEvent } from 'react'
 import type { Book } from '#/lib/library'
 import { badges } from '#/lib/badges'
-import type { Badge } from '#/lib/badges'
+import type { Badge, BadgeOptions, Tier } from '#/lib/badges'
+import { birthdayOf, clearBirthday, daysInMonth, readBirthday, subscribeBirthday, writeBirthday } from '#/lib/birthday'
 import { rhythm, WEEKDAY_NAMES } from '#/lib/rhythm'
+import type { StatsYear } from '#/lib/yearCompare'
 import { sleepReadIds } from '#/lib/sleepSeries'
 import type { ShareSpec } from '#/lib/shareImage'
 import { Cover, monthName } from './Dashboard'
@@ -11,23 +14,99 @@ import { ShareButton } from './ShareButton'
 const dayText = (day: string) =>
   new Date(`${day}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 
-/** Milestones & badges: every badge, earned ones with their day, the rest greyed out. */
-export function BadgesCard({ books }: { books: Book[] }) {
-  const all = useMemo(() => badges(books), [books])
+/**
+ * Milestones & badges (T-0042, D-0038): every badge as a round medal in one grid, earned
+ * (newest first, bronze/silver/gold rim), then locked (grey, closest to done first), then
+ * hidden (a dark "?"). Tapping a medal opens one card under the grid.
+ */
+export function BadgesCard({ books, extras }: { books: Book[]; extras?: BadgeOptions }) {
+  const birthday = useBirthday()
+  const all = useMemo(() => badges(books, undefined, { birthday, ...extras }), [books, birthday, extras])
   // like Steam: unlocked first (newest on top), then the locked ones closest to done;
-  // secret badges stay hidden until unlocked: a locked "?" tile, with a riddle when tapped
-  const earned = all
-    .filter((b) => b.earned)
-    .sort((a, b) => (b.on ?? '').localeCompare(a.on ?? ''))
-  const locked = all
-    .filter((b) => !b.earned && !b.secret)
-    .sort((a, b) => share(b) - share(a))
+  // secret badges stay hidden until unlocked: a "?" medal at the end, with a riddle when tapped
+  const earned = all.filter((b) => b.earned).sort((a, b) => (b.on ?? '').localeCompare(a.on ?? ''))
+  const locked = all.filter((b) => !b.earned && !b.secret).sort((a, b) => share(b) - share(a))
   const hidden = all.filter((b) => !b.earned && b.secret)
-  const [shownRiddle, setShownRiddle] = useState<string | null>(null)
+  const order = [...earned, ...locked, ...hidden]
   const [folded, setFolded] = useFolded('badges')
+  const [chosenId, setChosenId] = useState<string | null>(null)
+  const [focusId, setFocusId] = useState<string | null>(null)
+  const medals = useRef(new Map<string, HTMLButtonElement>())
+  const gridRef = useRef<HTMLUListElement>(null)
+  const cardRef = useRef<HTMLElement>(null)
   const percent = Math.round((earned.length / Math.max(1, all.length)) * 100)
+
+  // the card follows its badge by id; a badge that is gone closes it
+  const chosen = order.find((b) => b.id === chosenId) ?? null
+  useEffect(() => {
+    if (chosenId && !chosen) setChosenId(null)
+  }, [chosenId, chosen])
+
+  // on a phone the card is brought into view when it opens or switches
+  useEffect(() => {
+    if (!chosenId) return
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    cardRef.current?.scrollIntoView?.({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' })
+  }, [chosenId])
+
+  // a medal that moves (earned while its card is open) keeps the focus it had
+  const focusedBefore =
+    typeof document !== 'undefined' && gridRef.current?.contains(document.activeElement)
+      ? (document.activeElement as HTMLElement).dataset.id
+      : undefined
+  useLayoutEffect(() => {
+    if (!focusedBefore) return
+    const el = medals.current.get(focusedBefore)
+    if (el && document.activeElement !== el) el.focus({ preventScroll: true })
+  })
+
+  // one Tab stop: the chosen medal, else the last focused one, else the first
+  const tabId = chosen?.id ?? (order.some((b) => b.id === focusId) ? focusId : order[0]?.id)
+
+  const close = () => {
+    const id = chosenId
+    setChosenId(null)
+    if (id) medals.current.get(id)?.focus()
+  }
+
+  const onGridKey = (e: KeyboardEvent<HTMLUListElement>) => {
+    const i = order.findIndex((b) => b.id === (e.target as HTMLElement).dataset.id)
+    if (i < 0) return
+    const last = order.length - 1
+    // columns shown right now, read from the layout: the medals on the first row
+    const tops = order.map((b) => medals.current.get(b.id)?.offsetTop ?? 0)
+    const cols = Math.max(1, tops.filter((t) => t === tops[0]).length)
+    let to: number | null = null
+    if (e.key === 'Enter' || e.key === ' ') {
+      // handled here (not by the button's own click), so holding Enter toggles once; Space's
+      // keyup is cancelled too (onKeyUp below), since some browsers (Firefox) click a button on
+      // Space's keyup, which would open the card and close it at once
+      e.preventDefault()
+      if (!e.repeat) setChosenId(chosenId === order[i].id ? null : order[i].id)
+      return
+    }
+    if (e.key === 'ArrowRight') to = Math.min(last, i + 1)
+    else if (e.key === 'ArrowLeft') to = Math.max(0, i - 1)
+    else if (e.key === 'Home') to = 0
+    else if (e.key === 'End') to = last
+    else if (e.key === 'ArrowUp') to = i - cols >= 0 ? i - cols : i
+    else if (e.key === 'ArrowDown') to = i + cols <= last ? i + cols : Math.floor(i / cols) < Math.floor(last / cols) ? last : i
+    if (to === null) return
+    e.preventDefault()
+    medals.current.get(order[to].id)?.focus()
+  }
+
   return (
-    <section className={`dash-card${folded ? ' folded' : ''}`} aria-labelledby="badges-title">
+    <section
+      className={`dash-card${folded ? ' folded' : ''}`}
+      aria-labelledby="badges-title"
+      onKeyDown={(e) => {
+        if (e.key === 'Escape' && chosenId) {
+          e.preventDefault()
+          close()
+        }
+      }}
+    >
       <div className="dash-card-head">
         {/* the title folds the list away; the count and the bar stay */}
         <button
@@ -35,7 +114,10 @@ export function BadgesCard({ books }: { books: Book[] }) {
           className="card-fold"
           aria-expanded={!folded}
           aria-controls="badges-list"
-          onClick={() => setFolded(!folded)}
+          onClick={() => {
+            setChosenId(null)
+            setFolded(!folded)
+          }}
         >
           <h2 id="badges-title">Badges</h2>
           <span className="card-fold-mark" aria-hidden>
@@ -56,78 +138,287 @@ export function BadgesCard({ books }: { books: Book[] }) {
       >
         <span style={{ width: `${percent}%` }} />
       </div>
-      <div id="badges-list" hidden={folded}>
-      <ul className="badges">
-        {earned.map((b) => (
-          <li key={b.id} className="badge earned" title={b.how}>
-            <span className="badge-icon" aria-hidden>
-              {b.icon}
-            </span>
-            <span className="badge-text">
-              <strong>{b.name}</strong>
-              <span className="muted small-text">{b.how}</span>
-              <span className="badge-on small-text">
-                {b.secret && <span className="badge-secret">secret · </span>}
-                {b.on ? `Unlocked ${dayText(b.on)}` : 'Unlocked'}
-              </span>
-            </span>
-          </li>
-        ))}
-        {locked.map((b) => (
-          <li key={b.id} className="badge locked" title={b.how}>
-            <span className="badge-icon" aria-hidden>
-              {b.icon}
-            </span>
-            <span className="badge-text">
-              <strong>{b.name}</strong>
-              <span className="muted small-text">{b.how}</span>
-              {b.progress && b.progress.done > 0 && (
-                <span className="badge-progress">
-                  <span className="progress-bar" aria-hidden>
-                    <span style={{ width: `${(b.progress.done / b.progress.goal) * 100}%` }} />
+      <div id="badges-list" className="badges-body" hidden={folded}>
+        <ul
+          className="medals"
+          aria-label="Badges"
+          ref={gridRef}
+          onKeyDown={onGridKey}
+          onKeyUp={(e) => {
+            if (e.key === ' ') e.preventDefault()
+          }}
+        >
+          {order.map((b) => {
+            const state = b.earned ? 'earned' : b.secret ? 'hidden' : 'locked'
+            const open = b.id === chosenId
+            return (
+              <li key={b.id}>
+                <button
+                  type="button"
+                  ref={(el) => {
+                    if (el) medals.current.set(b.id, el)
+                    else medals.current.delete(b.id)
+                  }}
+                  data-id={b.id}
+                  data-state={state}
+                  data-tier={b.earned ? b.tier : undefined}
+                  className={`medal ${state}${b.earned ? ` ${b.tier}` : ''}${open ? ' chosen' : ''}`}
+                  title={state === 'hidden' ? 'Hidden badge' : b.name}
+                  aria-label={medalName(b)}
+                  aria-expanded={open}
+                  aria-controls="badges-card"
+                  tabIndex={b.id === tabId ? 0 : -1}
+                  onFocus={() => setFocusId(b.id)}
+                  onClick={() => setChosenId(open ? null : b.id)}
+                >
+                  <span className="medal-icon" aria-hidden>
+                    {state === 'hidden' ? '?' : b.icon}
                   </span>
-                  <span className="muted small-text">
-                    {b.progress.done.toLocaleString('en')} / {b.progress.goal.toLocaleString('en')}
-                  </span>
-                </span>
-              )}
-            </span>
-          </li>
-        ))}
-      </ul>
-      {hidden.length > 0 && (
-        <>
-          <p className="badges-hidden muted small-text">
-            <span aria-hidden>🔒</span> {hidden.length} hidden {hidden.length === 1 ? 'badge' : 'badges'}. Tap one for a riddle.
-          </p>
-          <ul className="badges hidden-badges">
-            {hidden.map((b) => {
-              const open = shownRiddle === b.id
-              return (
-                <li key={b.id}>
-                  <button
-                    type="button"
-                    className={`badge secret-tile${open ? ' open' : ''}`}
-                    aria-expanded={open}
-                    aria-label={open ? `Hidden badge: ${b.riddle}` : 'Hidden badge: show its riddle'}
-                    onClick={() => setShownRiddle(open ? null : b.id)}
-                  >
-                    <span className="badge-icon" aria-hidden>
-                      {open ? '🔮' : '?'}
-                    </span>
-                    <span className="badge-text">
-                      <strong>???</strong>
-                      <span className="muted small-text">{open ? b.riddle : 'Tap for a riddle'}</span>
-                    </span>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        </>
-      )}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+        {/* always in the page, so opening or switching the card is read out */}
+        <section
+          id="badges-card"
+          ref={cardRef}
+          className={`badges-card${chosen ? ' open bingo-suggest' : ''}`}
+          // labelled only while open: closed, it points at no heading (T-0043 F11)
+          aria-labelledby={chosen ? 'badges-card-title' : undefined}
+        >
+          <div className="badges-card-body" aria-live="polite" aria-atomic="true">
+            {chosen && <MedalCardText b={chosen} />}
+          </div>
+          {chosen && (
+            <button type="button" className="btn icon small bingo-suggest-close" aria-label="Close" onClick={close}>
+              ×
+            </button>
+          )}
+        </section>
+        {/* remounted on folding, so unsaved picks are dropped */}
+        <BirthdayRow key={folded ? 'folded' : 'open'} />
       </div>
     </section>
+  )
+}
+
+/** This device's birthday (`MM-DD`, D-0039), kept up to date when it's set, changed or cleared. */
+export function useBirthday(): string | undefined {
+  return useSyncExternalStore(subscribeBirthday, readBirthday, () => undefined)
+}
+
+const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1)
+const DAYS = Array.from({ length: 31 }, (_, i) => i + 1)
+const birthdayText = (b: string) => `${Number(b.slice(3))} ${monthName(Number(b.slice(0, 2)))}`
+
+/**
+ * The birthday row at the end of the Badges block (T-0043, D-0039): day and month, kept on this
+ * device only. Empty: two selects and Save; set: "14 May" with Change and Clear. It never shows
+ * the secret badge's name or emoji, and never asks for a year.
+ */
+function BirthdayRow() {
+  const birthday = useBirthday()
+  const [editing, setEditing] = useState(false)
+  const [day, setDay] = useState('')
+  const [month, setMonth] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const changeRef = useRef<HTMLButtonElement>(null)
+  const dayRef = useRef<HTMLSelectElement>(null)
+  const focusNext = useRef<'change' | 'day' | null>(null)
+  const showForm = !birthday || editing
+
+  // focus moves on purpose after a state change, never lost: useLayoutEffect runs synchronously
+  // before the browser paints, so there is no frame on which focus is on the page body (T-0044, F12)
+  useLayoutEffect(() => {
+    const to = focusNext.current
+    focusNext.current = null
+    if (to === 'change') changeRef.current?.focus()
+    else if (to === 'day') dayRef.current?.focus()
+  })
+
+  const pick = (set: (v: string) => void) => (v: string) => {
+    set(v)
+    setError(null)
+  }
+  const startChange = () => {
+    setDay(birthday ? String(Number(birthday.slice(3))) : '')
+    setMonth(birthday ? birthday.slice(0, 2) : '')
+    setError(null)
+    setEditing(true)
+    focusNext.current = 'day'
+  }
+  const cancel = () => {
+    setEditing(false)
+    setError(null)
+    focusNext.current = 'change'
+  }
+  const save = (e: FormEvent) => {
+    e.preventDefault()
+    if (!day || !month) return setError('Pick a day and a month.')
+    const d = Number(day)
+    const m = Number(month)
+    if (d > daysInMonth(m)) return setError(`There is no ${d} ${monthName(m)}.`)
+    writeBirthday(birthdayOf(d, m))
+    setEditing(false)
+    setError(null)
+    focusNext.current = 'change'
+  }
+  const clear = () => {
+    clearBirthday()
+    setDay('')
+    setMonth('')
+    setEditing(false)
+    setError(null)
+    focusNext.current = 'day'
+  }
+
+  return (
+    <div className="birthday-row" role="group" aria-labelledby="birthday-label">
+      {showForm ? (
+        <form
+          className="birthday-controls"
+          onSubmit={save}
+          onKeyDown={(e) => {
+            // Escape in Change is Cancel, and stops here (an open medal card stays open)
+            if (e.key === 'Escape' && editing) {
+              e.preventDefault()
+              e.stopPropagation()
+              cancel()
+            }
+          }}
+        >
+          <span id="birthday-label" className="small-text muted">
+            Birthday
+          </span>
+          <select
+            ref={dayRef}
+            className="input"
+            aria-label="Day"
+            value={day}
+            onChange={(e) => pick(setDay)(e.target.value)}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? 'birthday-error' : undefined}
+          >
+            <option value="">Day</option>
+            {DAYS.map((d) => (
+              <option key={d} value={String(d)}>
+                {d}
+              </option>
+            ))}
+          </select>
+          <select
+            className="input"
+            aria-label="Month"
+            value={month}
+            onChange={(e) => pick(setMonth)(e.target.value)}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? 'birthday-error' : undefined}
+          >
+            <option value="">Month</option>
+            {MONTHS.map((m) => (
+              <option key={m} value={String(m).padStart(2, '0')}>
+                {monthName(m)}
+              </option>
+            ))}
+          </select>
+          <button type="submit" className="btn small">
+            Save
+          </button>
+          {editing && (
+            <button type="button" className="btn quiet small" onClick={cancel}>
+              Cancel
+            </button>
+          )}
+        </form>
+      ) : (
+        <div className="birthday-controls">
+          <span id="birthday-label" className="small-text muted">
+            Birthday
+          </span>
+          <span id="birthday-date" className="birthday-date small-text">
+            {birthdayText(birthday)}
+          </span>
+          <button
+            ref={changeRef}
+            type="button"
+            className="btn quiet small"
+            aria-label="Change birthday"
+            aria-describedby="birthday-date"
+            onClick={startChange}
+          >
+            Change
+          </button>
+          <button type="button" className="btn quiet small" aria-label="Clear birthday" onClick={clear}>
+            Clear
+          </button>
+        </div>
+      )}
+      {error && (
+        <p id="birthday-error" className="birthday-error small-text" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  )
+}
+
+const tierWord = (t: Tier) => t[0].toUpperCase() + t.slice(1)
+const count = (n: number) => n.toLocaleString('en')
+
+/** What a screen reader hears for a medal: never a hidden badge's name. */
+function medalName(b: Badge): string {
+  if (b.earned) return `${b.name}, ${b.tier}, unlocked${b.secret ? ', secret badge' : ''}`
+  if (b.secret) return 'Hidden badge'
+  return b.progress ? `${b.name}, locked, ${count(b.progress.done)} of ${count(b.progress.goal)}` : `${b.name}, locked`
+}
+
+/** The medal card's contents: name, what it takes, and its day or progress (a hidden one's riddle). */
+function MedalCardText({ b }: { b: Badge }) {
+  if (!b.earned && b.secret) {
+    return (
+      <>
+        <div className="bingo-suggest-top">
+          <h3 id="badges-card-title">
+            <span className="medal-card-q" aria-hidden>
+              ?
+            </span>{' '}
+            Hidden badge
+          </h3>
+        </div>
+        <p className="medal-riddle small-text">{b.riddle}</p>
+      </>
+    )
+  }
+  return (
+    <>
+      <div className="bingo-suggest-top">
+        <h3 id="badges-card-title">
+          <span className={b.earned ? undefined : 'medal-card-grey'} aria-hidden>
+            {b.icon}
+          </span>{' '}
+          {b.name}
+        </h3>
+      </div>
+      <p className="muted small-text">{b.how}</p>
+      {b.earned ? (
+        <p className="badge-on small-text">
+          {tierWord(b.tier)} · {b.secret && <><span className="badge-secret">secret</span> · </>}
+          {b.on ? `Unlocked ${dayText(b.on)}` : 'Unlocked'}
+        </p>
+      ) : b.progress ? (
+        <div className="badge-progress">
+          <span className="progress-bar" aria-hidden>
+            <span style={{ width: `${(b.progress.done / b.progress.goal) * 100}%` }} />
+          </span>
+          <span className="muted small-text">
+            {count(b.progress.done)} / {count(b.progress.goal)}
+          </span>
+        </div>
+      ) : (
+        <p className="muted small-text">Locked</p>
+      )}
+    </>
   )
 }
 
@@ -162,10 +453,14 @@ const share = (b: Badge) => (b.progress ? b.progress.done / b.progress.goal : 0)
  * which badges it has already shown; the very first time it shows none (so
  * the badges she already had don't all pop up at once).
  */
-export function BadgeToasts({ books, accountId, ready }: { books: Book[]; accountId: string | null; ready: boolean }) {
+export function BadgeToasts({ books, accountId, ready, extras }: { books: Book[]; accountId: string | null; ready: boolean; extras?: BadgeOptions }) {
   const key = `hannas-reading-list:badges-shown:${accountId ?? 'local'}`
   const [queue, setQueue] = useState<Badge[]>([])
-  const earnedIds = useMemo(() => (ready ? badges(books).filter((b) => b.earned) : null), [books, ready])
+  const birthday = useBirthday()
+  const earnedIds = useMemo(
+    () => (ready ? badges(books, undefined, { birthday, ...extras }).filter((b) => b.earned) : null),
+    [books, ready, birthday, extras],
+  )
 
   useEffect(() => {
     if (!earnedIds) return
@@ -178,7 +473,8 @@ export function BadgeToasts({ books, accountId, ready }: { books: Book[]; accoun
     }
     const fresh = shown ? earnedIds.filter((b) => !shown!.includes(b.id)) : []
     try {
-      localStorage.setItem(key, JSON.stringify(earnedIds.map((b) => b.id)))
+      // shown badges stay shown, so clearing and setting the birthday again doesn't toast twice
+      localStorage.setItem(key, JSON.stringify([...new Set([...(shown ?? []), ...earnedIds.map((b) => b.id)])]))
     } catch {
       /* storage blocked: then no toasts, rather than the same ones every visit */
       return
@@ -256,10 +552,16 @@ export function CoverWallCard({ books, onShowBook }: { books: Book[]; onShowBook
   )
 }
 
-/** When I read most: reading days per weekday (last twelve months) and per month (this year). */
-export function RhythmCard({ books }: { books: Book[] }) {
-  const year = new Date().getFullYear()
-  const r = useMemo(() => rhythm(books, year), [books, year])
+/**
+ * When I read most: reading days per weekday and per month. On the dashboard
+ * that was the last twelve months and this year; on the Stats page (T-0080)
+ * both follow the year she picked, or all of her reading for All time.
+ */
+export function RhythmCard({ books, year: forYear }: { books: Book[]; year?: StatsYear }) {
+  const thisYear = new Date().getFullYear()
+  const year = forYear ?? thisYear
+  const scope = forYear === undefined ? 'recent' : 'period'
+  const r = useMemo(() => rhythm(books, year, undefined, scope), [books, year, scope])
   const [view, setView] = useState<'week' | 'year'>('week')
   const values = view === 'week' ? r.weekdays : r.months
   const labels = view === 'week' ? WEEKDAY_NAMES.map((d) => d.slice(0, 2)) : Array.from({ length: 12 }, (_, i) => monthName(i + 1, 'short').slice(0, 1))
@@ -286,7 +588,11 @@ export function RhythmCard({ books }: { books: Book[] }) {
         ))}
       </div>
       <p className="muted small-text">
-        {view === 'week' ? 'Reading days per weekday, the last twelve months.' : `Reading days per month, ${year}.`}
+        {view === 'week'
+          ? scope === 'recent'
+            ? 'Reading days per weekday, the last twelve months.'
+            : `Reading days per weekday, ${year === 'all' ? 'all time' : year}.`
+          : `Reading days per month, ${year === 'all' ? 'all time' : year}.`}
       </p>
     </section>
   )

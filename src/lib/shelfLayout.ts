@@ -2,6 +2,8 @@ import type { Book } from './library'
 import { seriesGroups } from './series'
 import { thicknessPages } from './listening'
 import type { NookThemeId } from './nookThemes'
+import { poseOf } from './pose'
+import type { BookPose } from './pose'
 
 /** World units: 1 unit ≈ 1 metre. */
 export const SHELF = {
@@ -51,12 +53,38 @@ export interface Slot {
   y: number
   z: number
   row: number
+  /** the pose the shelf actually draws this book in (D-0044 §7: standing when its own doesn't fit) */
+  pose: BookPose
 }
 
-export type DecorKind = 'koala' | 'succulent' | 'frame' | 'candle' | 'vase' | 'cat' | 'mug' | 'ivy'
+/**
+ * How much room a book takes in each direction in a pose (D-0044 §4):
+ * `along` the shelf, `up` from the shelf floor and `deep` into the case.
+ */
+export function footprint(d: BookDims, pose: BookPose): { along: number; up: number; deep: number } {
+  if (pose === 'faceout') return { along: d.w, up: d.h, deep: d.t }
+  if (pose === 'flat') return { along: d.h, up: d.t, deep: d.w }
+  return { along: d.t, up: d.h, deep: d.w }
+}
 
-/** Decorations in placement order (the koala always comes first) and their footprint width. */
+/** How far a stack of flat books may grow before it reaches the shelf above. */
+export const stackRoom = () => SHELF.rowHeight - SHELF.board - SHELF.gap
+
+/** A flat book in a stack is nudged a couple of millimetres along the shelf, alternately. */
+export const STACK_SHIFT = 0.002
+
+export type DecorKind = 'shelf-pet' | 'koala' | 'succulent' | 'frame' | 'candle' | 'vase' | 'cat' | 'mug' | 'ivy' | ShopDecorKind
+/** Decorations she buys in the creature shop (T-0031): on the shelves only once bought. */
+export type ShopDecorKind = 'dragon-plush' | 'pennant' | 'egg-display' | 'snow-globe'
+
+/**
+ * Decorations in placement order and their footprint width. `'shelf-pet'` comes FIRST
+ * so the favourite creature always gets the right-hand end of the top row (T-0033 §8a);
+ * the koala and the rest follow on later shelves (the layout code pushes books along to
+ * make room).
+ */
 export const DECOR: Array<{ kind: DecorKind; width: number }> = [
+  { kind: 'shelf-pet', width: 0.17 },
   { kind: 'koala', width: 0.17 },
   // the newer ones first, so they get a shelf before the older ones
   { kind: 'cat', width: 0.18 },
@@ -67,6 +95,14 @@ export const DECOR: Array<{ kind: DecorKind; width: number }> = [
   { kind: 'frame', width: 0.15 },
   { kind: 'vase', width: 0.11 },
 ]
+/** The shop's decorations (T-0031 Design §2, each at most 0.16 wide), in shop order. */
+export const SHOP_DECOR: Array<{ kind: ShopDecorKind; width: number }> = [
+  { kind: 'dragon-plush', width: 0.16 },
+  { kind: 'pennant', width: 0.16 },
+  { kind: 'egg-display', width: 0.13 },
+  { kind: 'snow-globe', width: 0.11 },
+]
+const ALL_DECOR = [...DECOR, ...SHOP_DECOR]
 /** at most one decoration per shelf, so the books stay the main thing */
 const DECOR_PER_ROW = 1
 const DECOR_GAP = 0.05
@@ -200,12 +236,13 @@ export function computeLayout(
   { innerWidth = SHELF.innerWidth, minRows = SHELF.minRows }: Partial<ShelfFit> = {},
   /** book id -> what stands just before that book */
   separators: Map<string, Separator> = new Map(),
-  /** the decorations she picked, in shelf order (Make the room yours); all of them by default */
-  decorKinds: DecorKind[] = DECOR.map((d) => d.kind),
+  /** the decorations she picked, in shelf order (Make the room yours); all of them (except the optional shelf-pet) by default */
+  decorKinds: DecorKind[] = DECOR.map((d) => d.kind).filter((k) => k !== 'shelf-pet'),
 ): ShelfLayout {
-  const decorList = decorKinds.map((k) => DECOR.find((d) => d.kind === k)!).filter(Boolean)
+  const decorList = decorKinds.map((k) => ALL_DECOR.find((d) => d.kind === k)!).filter(Boolean)
   const dims = new Map<string, BookDims>()
-  const placed: Array<{ id: string; row: number; x: number; d: BookDims }> = []
+  /** `yUp` is the book's centre above the shelf floor; the absolute y follows once `rows` is known */
+  const placed: Array<{ id: string; row: number; x: number; yUp: number; z: number; along: number; pose: BookPose }> = []
   const sepPlaced: Array<{
     before: string
     label: string
@@ -223,23 +260,55 @@ export function computeLayout(
   // every shelf keeps a spot at its right end for its decoration (one per
   // shelf, in DECOR order), so full shelves still get their cat, mug or ivy
   const roomFor = (r: number) => innerWidth - (r < decorList.length ? decorList[r].width + DECOR_MARGIN * 2 : 0)
-  const fit = (width: number) => {
-    if (x > 0 && x + width > roomFor(row)) {
+  /**
+   * What a flat pile or a face-out book may use on any shelf: the whole inner width.
+   * A decoration is only ever *placed* where the books left room for it (`placeDecor`
+   * walks down the shelves), so letting a pose have the end of a shelf moves that
+   * shelf's cat or mug down to the next one instead of standing on it (D-0073 §1).
+   */
+  const poseRoom = innerWidth - DECOR_MARGIN * 2
+  const fit = (width: number, roomy = false) => {
+    if (x > 0 && x + width > (roomy ? poseRoom : roomFor(row))) {
       row++
       x = 0
     }
   }
   const series = seriesGroups(books)
+  for (const b of books) dims.set(b.id, bookDims(b, series.get(b.id)?.key || undefined))
+  // the depth of a book's centre, so every pose's front face sits on the shelf's front line
+  const depthZ = (deep: number) => SHELF.depth / 2 - deep / 2 - 0.012
+  /**
+   * The books in placement order, grouped into items: one book on its own, or a
+   * stack of neighbouring flat books (D-0044 §5). A separator starts a new item,
+   * so a nook or divider is never swallowed by a stack.
+   */
+  // A pose is drawn when a shelf of this bookcase has room for it at all (`poseRoom`, D-0073 §1,
+  // widening D-0044 §7, which measured it against the most cramped shelf and so dropped the pose
+  // on a phone, where a decoration takes nearly half the width — that is #271). Otherwise the
+  // book stands, with her saved pose untouched, exactly as before.
+  const poseFor = (b: Book): BookPose => {
+    const want = poseOf(b)
+    if (want === 'standing') return want
+    return footprint(dims.get(b.id)!, want).along <= poseRoom ? want : 'standing'
+  }
+  const items: Array<{ books: Book[]; pose: BookPose }> = []
   for (const b of books) {
-    const d = bookDims(b, series.get(b.id)?.key || undefined)
-    dims.set(b.id, d)
-    const sep = separators.get(b.id)
+    const pose = poseFor(b)
+    const last = items[items.length - 1]
+    const joins = pose === 'flat' && last?.pose === 'flat' && !separators.has(b.id)
+    if (joins) last.books.push(b)
+    else items.push({ books: [b], pose })
+  }
+
+  for (const item of items) {
+    const first = item.books[0]
+    const sep = separators.get(first.id)
     if (sep) {
       const { width, gap } = sep.kind === 'nook' ? NOOK : DIVIDER
       // keep the marker on the same shelf as the book it introduces
-      fit(width + gap * 2 + d.t)
+      fit(width + gap * 2 + footprint(dims.get(first.id)!, poseFor(first)).along)
       sepPlaced.push({
-        before: b.id,
+        before: first.id,
         label: sep.label,
         kind: sep.kind,
         row,
@@ -251,14 +320,52 @@ export function computeLayout(
       })
       x += width + gap * 2
     }
-    fit(d.t)
-    placed.push({ id: b.id, row, x: x + d.t / 2, d })
-    x += d.t + SHELF.gap
+    if (item.pose !== 'flat') {
+      // a single standing or face-out book
+      const f = footprint(dims.get(first.id)!, item.pose)
+      fit(f.along, item.pose === 'faceout')
+      placed.push({ id: first.id, row, x: x + f.along / 2, yUp: f.up / 2, z: depthZ(f.deep), along: f.along, pose: item.pose })
+      x += f.along + SHELF.gap
+      continue
+    }
+    // a run of flat books: one or more stacks, each as wide as its widest book
+    let rest = item.books
+    while (rest.length) {
+      const stack: Book[] = []
+      let height = 0
+      for (const b of rest) {
+        const up = footprint(dims.get(b.id)!, 'flat').up
+        // a stack never grows through the shelf above
+        if (stack.length && height + up > stackRoom()) break
+        stack.push(b)
+        height += up
+      }
+      const along = Math.max(...stack.map((b) => footprint(dims.get(b.id)!, 'flat').along))
+      fit(along, true)
+      const centre = x + along / 2
+      let up = 0
+      stack.forEach((b, i) => {
+        const f = footprint(dims.get(b.id)!, 'flat')
+        placed.push({
+          id: b.id,
+          row,
+          // stacked by hand, not machined: every book but the bottom one is nudged a little
+          x: centre + (i === 0 ? 0 : i % 2 ? STACK_SHIFT : -STACK_SHIFT),
+          yUp: up + f.up / 2,
+          z: depthZ(f.deep),
+          along: f.along,
+          pose: 'flat',
+        })
+        up += f.up
+      })
+      x += along + SHELF.gap
+      rest = rest.slice(stack.length)
+    }
   }
   // right edge of the books (and nooks) on each shelf
   const usedEnd = (r: number) => {
     let end = 0
-    for (const p of placed) if (p.row === r) end = Math.max(end, p.x + p.d.t / 2)
+    for (const p of placed) if (p.row === r) end = Math.max(end, p.x + p.along / 2)
     for (const n of sepPlaced) {
       const width = n.kind === 'nook' ? NOOK.width : DIVIDER.width
       if (n.row === r) end = Math.max(end, n.x + width / 2)
@@ -309,8 +416,9 @@ export function computeLayout(
     slots.set(p.id, {
       row: p.row,
       x: -innerWidth / 2 + p.x,
-      y: rowFloorY(p.row, rows) + p.d.h / 2,
-      z: SHELF.depth / 2 - p.d.w / 2 - 0.012,
+      y: rowFloorY(p.row, rows) + p.yUp,
+      z: p.z,
+      pose: p.pose,
     })
   }
   return {

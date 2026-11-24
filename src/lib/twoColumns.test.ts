@@ -24,3 +24,32 @@ describe('arranging the Challenges page', () => {
     expect(oneColumn(defaults.columns)).toEqual(['goal', 'monthly', 'bingo', 'alphabet'])
   })
 })
+
+describe('a Challenges layout saved before the four new challenges (T-0091)', () => {
+  type Next = 'goal' | 'monthly' | 'bingo' | 'alphabet' | 'world' | 'season' | 'minutes' | 'series'
+  const nextKnown: Next[] = ['goal', 'monthly', 'bingo', 'alphabet', 'world', 'season', 'minutes', 'series']
+  const nextDefaults: TwoColumns<Next> = {
+    columns: [
+      ['goal', 'bingo', 'world', 'minutes'],
+      ['monthly', 'alphabet', 'season', 'series'],
+    ],
+    hidden: [],
+  }
+
+  it('keeps her order and puts each new block in its default place', () => {
+    // what she had arranged before they existed
+    const old = { columns: [['bingo', 'goal'], ['alphabet']], hidden: ['monthly'] }
+    const got = cleanTwoColumns(old, nextKnown, nextDefaults)
+    // her own order is untouched
+    expect(got.columns[0].slice(0, 2)).toEqual(['bingo', 'goal'])
+    expect(got.hidden).toEqual(['monthly'])
+    // every new block is somewhere, exactly once, and nothing is lost
+    const all = [...got.columns[0], ...got.columns[1], ...got.hidden]
+    expect([...all].sort()).toEqual([...nextKnown].sort())
+    for (const id of ['world', 'season', 'minutes', 'series'] as const) expect(all).toContain(id)
+  })
+
+  it('a layout that already knows them is left alone', () => {
+    expect(cleanTwoColumns(nextDefaults, nextKnown, nextDefaults)).toEqual(nextDefaults)
+  })
+})

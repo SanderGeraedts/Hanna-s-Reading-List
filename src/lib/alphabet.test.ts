@@ -150,3 +150,27 @@ describe('A–Z authors (#151)', () => {
     expect(y.tips.map((t) => `${t.letter}:${t.book.id}`)).toEqual(['R:w', 'Y:w'])
   })
 })
+
+describe('A–Z tips follow the series order (D-0025, T-0017)', () => {
+  const s = (n: number, title: string, extra: Partial<Book> = {}) =>
+    book(`s${n}`, title, { series: 'Saga', seriesIndex: n, authors: ['Saga Writer'], ...extra })
+  const tipFor = (books: Book[], letter: string) =>
+    alphabetYear(books, 2026, '2026-11-21').tips.find((t) => t.letter === letter)?.book.id
+
+  it('never tips book 3 while book 2 is unread or missing', () => {
+    expect(tipFor([s(1, 'Alpha', { status: 'read' }), s(2, 'Beta'), s(3, 'Xenon')], 'X')).toBeUndefined()
+    expect(tipFor([s(1, 'Alpha', { status: 'read' }), s(3, 'Xenon')], 'X')).toBeUndefined()
+  })
+
+  it('tips book 3 once book 2 is read', () => {
+    expect(tipFor([s(1, 'Alpha', { status: 'read' }), s(2, 'Beta', { status: 'read' }), s(3, 'Xenon')], 'X')).toBe('s3')
+  })
+
+  it('still tips a book she is reading or has paused, ahead of want books', () => {
+    const shelf = [book('w', 'Zebra'), book('r', 'Zed', { status: 'reading' }), book('p', 'Quiet', { status: 'paused' })]
+    expect(tipFor(shelf, 'Z')).toBe('r')
+    expect(tipFor(shelf, 'Q')).toBe('p')
+    // a paused book 3 of a series is still a tip: she is already at it
+    expect(tipFor([s(1, 'Alpha', { status: 'read' }), s(3, 'Xenon', { status: 'paused' })], 'X')).toBe('s3')
+  })
+})

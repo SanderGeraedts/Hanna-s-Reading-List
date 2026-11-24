@@ -8,6 +8,10 @@ import netlify from '@netlify/vite-plugin-tanstack-start'
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
+  // Bundle three.js into the server build instead of loading it from node_modules at run time:
+  // three's examples (BufferGeometryUtils) are ES modules, and the Netlify function loads
+  // node_modules with require(), which crashed every page (ERR_REQUIRE_ESM, 2026-11-23).
+  ssr: { noExternal: ['three', /^three\//, /^@react-three\//] },
   plugins: [
     tanstackStart(),
     netlify({

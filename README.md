@@ -69,7 +69,7 @@ Never point a local dev server at the production `POCKETBASE_URL` (see #96). The
 
 `CLAUDE.md` is the project guide for Claude Code. Hanna has her own Claude instance, which follows [`docs/hanna-guardrails.md`](docs/hanna-guardrails.md): she can build features on her own, and anything that would need Sander (the NAS, secrets, paid or signed-up services, the shelf sync) is explained first and opened as a draft PR labelled `needs-sander`. Feature requests go through the `feature-chat` skill (`.claude/skills/feature-chat/`). `.github/CODEOWNERS` lists the paths only Sander may approve. Setting up her PC: [`docs/hanna-setup.md`](docs/hanna-setup.md).
 
-Requests arrive as GitHub issues; the architect turns each one into a task or a question. The order of work is the generated task index, [`docs/tasks/index.md`](docs/tasks/index.md), and the decisions are in [`docs/decisions/index.md`](docs/decisions/index.md).
+Requests arrive as GitHub issues; the architect turns each one into a task or a question. The order of work is the generated task index, [`docs/tasks/index.md`](docs/tasks/index.md), and the decisions are in [`docs/decisions/index.md`](docs/decisions/index.md). Work Hanna agreed but that hasn't started yet waits, in order, in [`docs/backlog.md`](docs/backlog.md).
 
 ## How it fits together
 

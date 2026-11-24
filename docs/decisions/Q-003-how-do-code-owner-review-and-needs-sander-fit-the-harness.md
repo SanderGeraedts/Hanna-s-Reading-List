@@ -2,12 +2,12 @@
 id: Q-003
 title: "Should the code-owner review on main (with the admin bypass) give way to the harness's ruleset and auto-merge, and how is the guard on shelf saving kept?"
 description: "The existing ruleset 'main' requires a code-owner review for the paths in .github/CODEOWNERS and lets admins bypass it, while G-0029 wants a ruleset with 0 approvals and no bypass and G-0011 wants green, tester-passed pull requests to merge themselves; the code-owner rule is a deliberate guard on Hanna's data and on the guardrails."
-status: Open
+status: Resolved
 raised_on: 2026-11-21
 raised_by: architect
 issue: "https://github.com/SanderGeraedts/Hanna-s-Reading-List/issues/190"
-blocks: [T-0001]
-resolved_by: []
+blocks: []
+resolved_by: [D-0077]
 tags: [access, process]
 ---
 
@@ -75,4 +75,4 @@ follow-up task to match (merging by Hanna herself, `needs-sander` versus `waits-
 
 # Answer
 
-Open.
+Resolved on 2026-11-24 by the Engineer: **option 2.** The `main` ruleset is replaced by the harness's ruleset with no bypass, and `hold-paths` holds pull requests touching `src/lib/shelfMerge.ts`, `src/server/shelf.ts` or `deploy/nas/` for Sander. Recorded in [D-0077](D-0077-the-harness-ruleset-guards-main-and-hold-paths-guard-the-shelf.md).

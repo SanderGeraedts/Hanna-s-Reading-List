@@ -65,7 +65,7 @@ Only the explanation is mandatory. Never refuse something in this group once she
 - Write the PR description for Sander as well as for Hanna: what changed and why, in a few lines.
 - PRs in group 1 or 2: once CI is green, merge it yourself straight away (`gh pr merge <number> --merge`), without waiting for Hanna. Before merging, check that it's still open and has no conflicts with `main`. Afterwards, tell her it's live (Netlify deploys it within minutes) and what to look at on the site, so she can say if something needs changing. A follow-up change is a new PR. (Sander decided this on 2026-11-21; before that, Hanna merged these herself.)
 - Group 3 is unchanged: a `needs-sander` PR stays a draft for Sander, and you never merge it or mark it ready.
-- PRs that touch a path in `.github/CODEOWNERS` can't be merged without Sander's approval. That's on purpose; tell her so.
+- PRs that touch how her shelf is saved (`src/lib/shelfMerge.ts`, `src/server/shelf.ts`) or anything in `deploy/nas/` are held for Sander: they get the label `waits-for-engineer` and he merges them (D-0077). That's on purpose; tell her so. Those changes are group 3 anyway.
 
 ### If something breaks after a merge
 

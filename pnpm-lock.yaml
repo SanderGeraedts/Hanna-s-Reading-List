@@ -40,8 +40,8 @@ importers:
         specifier: ^1.3.19
         version: 1.3.19(@tanstack/react-start@1.169.4(esbuild@0.28.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(rolldown@1.2.16)(vite@8.3.5(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.1)))(@types/node@22.20.5)(bare-buffer@3.7.2)(vite@8.3.5(@types/node@22.20.5)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.1))
       '@sandergeraedts/harness':
-        specifier: github:SanderGeraedts/harness#v0.7.0
-        version: https://codeload.github.com/SanderGeraedts/harness/tar.gz/9f6ca58b2313050105805540fda4079085e1a795
+        specifier: github:SanderGeraedts/harness#v0.9.0
+        version: https://codeload.github.com/SanderGeraedts/harness/tar.gz/c174c19c6188f65652ec4d4acc8402602fe74676
       '@testing-library/react':
         specifier: ^16.3.0
         version: 16.3.0(@testing-library/dom@10.4.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -69,6 +69,9 @@ importers:
       happy-dom:
         specifier: ^21.0.4
         version: 21.0.4
+      playwright:
+        specifier: ^1.65.1
+        version: 1.65.1
       typescript:
         specifier: ^6.0.2
         version: 6.0.3
@@ -981,9 +984,9 @@ packages:
       rollup:
         optional: true
 
-  '@sandergeraedts/harness@https://codeload.github.com/SanderGeraedts/harness/tar.gz/9f6ca58b2313050105805540fda4079085e1a795':
-    resolution: {gitHosted: true, integrity: sha512-KmkPachY15QYAaf6R7EZ/7f78vAvYV3lcKAAF2+sGULgQCQ5J/19zCt5s2mPNGb5RTys78d/97ZqG9DLOnXpeg==, tarball: https://codeload.github.com/SanderGeraedts/harness/tar.gz/9f6ca58b2313050105805540fda4079085e1a795}
-    version: 0.7.0
+  '@sandergeraedts/harness@https://codeload.github.com/SanderGeraedts/harness/tar.gz/c174c19c6188f65652ec4d4acc8402602fe74676':
+    resolution: {gitHosted: true, integrity: sha512-gP573kx/MPJXiWj5Ey2EJ2GJ8wRwYvCAw5sWQHX3zRN/uOoaX8rS/3jOLblNbuwmKAfMg2gPuWm7gpWfCFV3nA==, tarball: https://codeload.github.com/SanderGeraedts/harness/tar.gz/c174c19c6188f65652ec4d4acc8402602fe74676}
+    version: 0.9.0
     engines: {node: '>=22'}
     hasBin: true
 
@@ -2699,6 +2702,16 @@ packages:
   picoquery@2.5.0:
     resolution: {integrity: sha512-j1kgOFxtaCyoFCkpoYG2Oj3OdGakadO7HZ7o5CqyRazlmBekKhbDoUnNnXASE07xSY4nDImWZkrZv7toSxMi/g==}
 
+  playwright-core@1.65.1:
+    resolution: {integrity: sha512-hqPpz7blSMPxWVdoeE1yiBSzXsKiVOd2k+kjCvmUywD2GPO2Dd9HfcWnq9NN0GHbNZDFgZ9JfBFr+X5/BLo0qw==}
+    engines: {node: '>=20'}
+    hasBin: true
+
+  playwright@1.65.1:
+    resolution: {integrity: sha512-vJ1FuoOrNwOKHUIVEvSt3jT1L+wjjDpwhwIstKtfvTh8XIG4FG4bIFuvNdMxi81LGfAhUgUZleVFaOLY4RIUUw==}
+    engines: {node: '>=20'}
+    hasBin: true
+
   possible-typed-array-names@1.1.0:
     resolution: {integrity: sha512-/+5VFTchJDoVj3bhoqi6UeymcD00DAwb1nJwamzPvHEszJ4FpF6SNNbUbOS8yI56qHzdV8eK0qEfOSiodkTdxg==}
     engines: {node: '>= 0.4'}
@@ -4344,7 +4357,7 @@ snapshots:
       estree-walker: 2.0.2
       picomatch: 4.0.7
 
-  '@sandergeraedts/harness@https://codeload.github.com/SanderGeraedts/harness/tar.gz/9f6ca58b2313050105805540fda4079085e1a795':
+  '@sandergeraedts/harness@https://codeload.github.com/SanderGeraedts/harness/tar.gz/c174c19c6188f65652ec4d4acc8402602fe74676':
     dependencies:
       ws: 8.23.0
     transitivePeerDependencies:
@@ -6148,6 +6161,12 @@ snapshots:
   picomatch@4.0.7: {}
 
   picoquery@2.5.0: {}
+
+  playwright-core@1.65.1: {}
+
+  playwright@1.65.1:
+    dependencies:
+      playwright-core: 1.65.1
 
   possible-typed-array-names@1.1.0: {}
 

@@ -6,7 +6,7 @@ import { guessLanguage } from './languages'
 import { seriesGroups } from './series'
 import { findOnOpenLibrary } from './storytelImport'
 import { titleQueries } from './titles'
-import { needsPlaces } from './places'
+import { needsPlaces, placesPatch } from './places'
 
 const WORKERS = 3
 
@@ -98,7 +98,7 @@ function common(books: Book[]) {
 export function useBookDetails(
   books: Book[],
   loaded: boolean,
-  updateBook: (id: string, patch: Partial<Book>) => void,
+  updateBook: (id: string, patch: Partial<Book> | ((book: Book) => Partial<Book>)) => void,
 ) {
   const tried = useRef(new Set<string>())
   const seen = useRef(new Set<string>())
@@ -134,7 +134,8 @@ export function useBookDetails(
           try {
             if (job.genres) updateBook(b.id, { genres: await lookUpGenres(b) })
             if (job.facts) updateBook(b.id, await lookUpFacts(b))
-            if (job.places) updateBook(b.id, { places: await lookUpPlaces(b) })
+            // written only if she hasn't set or emptied the places meanwhile (D-0023)
+            if (job.places) updateBook(b.id, placesPatch(await lookUpPlaces(b)))
           } catch {
             /* Open Library unreachable: try again on the next visit */
           }
