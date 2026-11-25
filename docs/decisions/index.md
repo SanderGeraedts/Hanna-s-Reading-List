@@ -71,6 +71,7 @@ global one replaced ends its line with `Replaced by G-NNNN.`
 - [D-0075 The app may send a reading reminder at 20:00 by web push, with its keys on Netlify and a collection on the NAS](D-0075-a-reading-reminder-by-web-push.md): Resolves Q-001. Web push as built in #165: VAPID keys on Netlify for production only, a push_subscriptions collection and hook on PocketBase, and a second scheduled function.
 - [D-0076 The app stays free of AI: no AI for series, page edges, quotes or back texts](D-0076-the-app-stays-free-of-ai.md): Resolves Q-002. D-0017 stands; #183 is declined, and non-AI versions can be ordinary tasks.
 - [D-0077 The harness's ruleset guards main, with no bypass; pull requests touching shelf saving or the NAS are held for Sander](D-0077-the-harness-ruleset-guards-main-and-hold-paths-guard-the-shelf.md): Resolves Q-003. The main ruleset is deleted; hold-paths in auto-merge.yml holds shelfMerge.ts, server/shelf.ts and deploy/nas/ with waits-for-engineer; CODEOWNERS only requests reviews.
+- [D-0078 Netlify skips the build, preview and production alike, when a change touches only docs/ and Markdown at the repository root](D-0078-netlify-skips-builds-when-only-docs-changed.md): Overrules G-0018 for docs-only changes. An ignore command in netlify.toml cancels the build when every changed file is under docs/ or is a root .md file; anything else, or anything it can't work out, builds.
 
 ## Open questions
 
