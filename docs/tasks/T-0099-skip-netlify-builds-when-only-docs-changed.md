@@ -2,7 +2,7 @@
 id: T-0099
 title: "Skip Netlify builds when a change touches only docs/ and root Markdown"
 description: "Add a dependency-free ignore script and a [build] ignore line in netlify.toml, so a docs-only pull request gets no deploy preview and a docs-only merge doesn't redeploy, with a test over git ranges and one real docs-only pull request as proof."
-status: Open
+status: Doing
 size: small
 depends_on: []
 decisions: [D-0078, G-0011, G-0018, G-0019, D-0077]
@@ -97,3 +97,4 @@ Nothing visible in the app.
 # Log
 
 - 2026-11-25 architect: Sander decided (in session) to skip Netlify previews for docs-only pull requests in both repositories, to save build minutes; recorded D-0078 (overrules G-0018 for docs-only changes, production skipped too) and wrote this task. Size: small.
+- 2026-11-25 developer: built `scripts/netlify-ignore.mjs` (Node built-ins and git only; previews diff `merge-base(origin/main or a fetched main, COMMIT_REF)..COMMIT_REF`, production diffs `CACHED_COMMIT_REF..COMMIT_REF` only when both are set, differ and the cached one is an ancestor; `--name-status --no-renames`; anything uncertain or an empty diff builds), the `[build] ignore` line in `netlify.toml`, and `scripts/netlify-ignore.test.ts` (22 cases over throwaway git repositories, every case in *Done when* 1 plus `docs-not/`, `src/notes.md`, a cached ref that isn't in the clone and preview ignoring `CACHED_COMMIT_REF`). AGENTS.md and `docs/hanna-setup.md` now say docs-only pull requests get no preview; `.claude/skills/feature-chat/SKILL.md` left as is (her feature pull requests change `src/`). Check: `pnpm exec vitest run scripts/netlify-ignore.test.ts` → `Tests 22 passed (22)`; `pnpm test` → `Test Files 199 passed | 2 skipped (201)`, `Tests 2480 passed | 22 skipped (2502)`. For the architect: `tsc --noEmit` on `main` already reports two unused imports (`src/components/GardenPage.test.tsx` `SPOTS_PER_BED`, `src/lib/dashboardLayout.test.ts` `toggleFavourite`); not fixed here.

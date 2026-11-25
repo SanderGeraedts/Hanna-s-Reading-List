@@ -107,7 +107,7 @@ Open the repo in Orca, start Claude in it, and ask:
 
 > Whose instance is this, and what do you need Sander for?
 
-It should say it's Hanna's instance and sum up the "Needs Sander" rules from the guardrails. Then try a small feature with `/feature-chat`, for example *"make the shelf a little darker"*. It should ask one or two questions, show a short plan, and after she says yes build it on a branch and open a PR. Once CI is green, she can check the deploy preview and merge it.
+It should say it's Hanna's instance and sum up the "Needs Sander" rules from the guardrails. Then try a small feature with `/feature-chat`, for example *"make the shelf a little darker"*. It should ask one or two questions, show a short plan, and after she says yes build it on a branch and open a PR. Once CI is green, she can check the deploy preview and merge it. (A PR that changes only notes or docs, such as her backlog, gets no deploy preview: nothing in the app changed.)
 
 ## If something goes wrong
 
