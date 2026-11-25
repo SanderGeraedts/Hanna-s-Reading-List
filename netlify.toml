@@ -1,6 +1,8 @@
 [build]
   command = "pnpm run build"
   publish = "dist/client"
+  # D-0078: skip the build when only docs/ or root Markdown changed (exit 0 skips)
+  ignore = "node scripts/netlify-ignore.mjs"
 
 [build.environment]
   NODE_VERSION = "22"

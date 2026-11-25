@@ -55,4 +55,6 @@ Rules that hold only for this project. Each one points at the decision behind it
   only requests his review.
 - **Commands:** `pnpm install`, `pnpm run dev` (http://localhost:3000), `pnpm test`,
   `pnpm run build`. A merge to `main` deploys the site on Netlify within minutes; every pull
-  request gets a Netlify deploy preview.
+  request that changes the app gets a Netlify deploy preview. A change that touches only
+  `docs/` or Markdown at the root gets no preview and no redeploy (D-0078,
+  `scripts/netlify-ignore.mjs`).
