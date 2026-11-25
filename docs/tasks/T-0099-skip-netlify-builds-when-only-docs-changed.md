@@ -94,7 +94,81 @@ Nothing visible in the app.
 
 # Test
 
+Tester, 2026-11-25, on `6738e3e` (PR #276), clean `pnpm install --frozen-lockfile`.
+
+**CI (read, not repeated):** run 45626361874, attempt 1, `success` on `6738e3e`.
+`gh pr checks 276`: `checks / checks pass 1m33s`; `checks / e2e` and `checks / shards`
+`skipping` (the harness skips e2e on a draft; they run on `ready_for_review`);
+`netlify/hannas-reading-list/deploy-preview pass  Deploy Preview ready!` (status went
+`pending Deploy Preview processing.` 13:43:05 → `success Deploy Preview ready!` 13:43:37); the
+Header rules / Pages changed / Redirect rules checks `neutral`. CI log:
+`✓ scripts/netlify-ignore.test.ts (22 tests)`, `Test Files 199 passed | 2 skipped (201)`,
+`Tests 2480 passed | 22 skipped (2502)`; no retries. The preview loads: `GET /` on
+`deploy-preview-276` → `200`. So the PR that carries the script built its preview, as *Done
+when* 3 requires (its last commit touches only this task file, but the merge-base diff includes
+`scripts/` and `netlify.toml`, so it built).
+
+**Done when 1, the test, repeated:**
+`pnpm exec vitest run scripts/netlify-ignore.test.ts` → `Tests  22 passed (22)`; then five
+more runs with `--sequence.concurrent --maxWorkers=4` → `Tests  22 passed (22)` each time
+(132 of 132).
+
+**Done when 2:** `netlify.toml` line 5: `ignore = "node scripts/netlify-ignore.mjs"` under
+`[build]`. `pnpm exec harness check` → `✓ tasks: 74 tasks, index in step`,
+`✓ decisions: 70 records, index complete, 4 overrules valid`, `✓ engineers: 2 listed`,
+`✓ generated files: current`, exit 0.
+
+**Trying to break it** (own throwaway repositories in a temp folder, `node` on the script with
+the Netlify variables; exit 0 = skip, 1 = build):
+
+- `docs/x/../../src/evil.ts` written → git records `src/evil.ts` → build. git never reports a
+  `..` path.
+- docs file and src file with spaces and unicode (`src/ünïcödé n.ts`) → build; docs + root
+  `ünïcödé c.md` only → skip (`-z` output, no quoting problems).
+- root `NOTES.MD`, `Notes.Md` → build (only lowercase `.md` counts, the safe side). A root file
+  named just `.md` → skip (harmless).
+- deleted `src/app.ts` + docs change → build; mode change only on `src/app.ts` → build;
+  `src/app.ts` turned into a symlink (`T`) → build.
+- submodule added under `docs/` → build (it adds root `.gitmodules`); under `src/` → build.
+- symlink `src/link.md` → build; symlink `docs/link.ts` → `../src/app.ts` → skip, which is
+  right: the app file itself is unchanged and nothing in the app reads `docs/` (checked: no
+  import of `docs/` or root Markdown in `src/`, `netlify/`, `vite.config.ts`, `public/`).
+- run from `docs/` subdirectory with the absolute script path: docs-only → skip, docs+src →
+  build (git reports root-relative paths). The `netlify.toml` command itself run from a
+  subdirectory fails to find the script → exit 1 → build.
+- merge commits, production: cached = a docs commit, head = merge bringing `src` → build;
+  merge of a branch whose earlier commit changed `src` → build; merge of a docs-only branch →
+  skip. Previews: docs branch that merged current `main` (which had `src` changes) → skip
+  (correct, merge base moves); same with a stale `origin/main` → build; an "evil" merge that
+  edits `src` in the merge commit → build.
+- `CACHED_COMMIT_REF` an unrelated root commit, a missing sha, `not-a-ref`, `--all`, or a
+  descendant of `COMMIT_REF` → build (`not an ancestor`). `COMMIT_REF` unset → build;
+  `COMMIT_REF=nope` → build.
+- `CONTEXT`: `deploy-preview` and `production` with a docs-only change → skip;
+  `branch-deploy`, `dev`, `Production`, `DEPLOY-PREVIEW`, empty → build.
+- not a git repository, git not on `PATH` → build.
+- shallow clones: depth 1 of the branch only → build (`no merge base of FETCH_HEAD`), and
+  production with the cached commit outside the clone → build; depth 2 all branches → preview
+  build (no merge base), production docs-only → skip. Clone without `origin/main` → the
+  `git fetch origin main` fallback works (docs-only → skip, with `src` → build); fetch failing
+  (offline) → build.
+- Could not test on Windows: a file name containing a newline (the file system refuses it);
+  `-z` is the right handling for it.
+- Observation, not blocking: with `diff.relative=true` injected into git's config and the
+  script run from `docs/`, a docs+src change gave `skip` (git limits the diff to the current
+  directory). Netlify runs the command from the repository root with no such config, so this
+  can't happen in the build; adding `--no-relative` to the `git diff` call would close it.
+
+**Docs:** `AGENTS.md` now says a pull request that changes the app gets a preview and a
+docs-only change gets none; `docs/hanna-setup.md` says the same for Hanna. No other doc outside
+tasks and decisions promises a preview for every pull request. D-0078 exists and is indexed.
+
+**Verdict:** passed. *Done when* 1 and 2 hold; the script PR's own preview built. *Done when* 3
+(a real docs-only pull request skipped, production skip on merge, live site still up) can only
+be checked after this merges.
+
 # Log
 
 - 2026-11-25 architect: Sander decided (in session) to skip Netlify previews for docs-only pull requests in both repositories, to save build minutes; recorded D-0078 (overrules G-0018 for docs-only changes, production skipped too) and wrote this task. Size: small.
 - 2026-11-25 developer: built `scripts/netlify-ignore.mjs` (Node built-ins and git only; previews diff `merge-base(origin/main or a fetched main, COMMIT_REF)..COMMIT_REF`, production diffs `CACHED_COMMIT_REF..COMMIT_REF` only when both are set, differ and the cached one is an ancestor; `--name-status --no-renames`; anything uncertain or an empty diff builds), the `[build] ignore` line in `netlify.toml`, and `scripts/netlify-ignore.test.ts` (22 cases over throwaway git repositories, every case in *Done when* 1 plus `docs-not/`, `src/notes.md`, a cached ref that isn't in the clone and preview ignoring `CACHED_COMMIT_REF`). AGENTS.md and `docs/hanna-setup.md` now say docs-only pull requests get no preview; `.claude/skills/feature-chat/SKILL.md` left as is (her feature pull requests change `src/`). Check: `pnpm exec vitest run scripts/netlify-ignore.test.ts` → `Tests 22 passed (22)`; `pnpm test` → `Test Files 199 passed | 2 skipped (201)`, `Tests 2480 passed | 22 skipped (2502)`. For the architect: `tsc --noEmit` on `main` already reports two unused imports (`src/components/GardenPage.test.tsx` `SPOTS_PER_BED`, `src/lib/dashboardLayout.test.ts` `toggleFavourite`); not fixed here.
+- 2026-11-25 tester: passed (CI green on attempt 1, Netlify preview for #276 built and loads, the script's test 132 of 132 over six runs, about 50 own break cases never skipped an app change; see Test). Remaining: Done when 3 after the merge: open a real docs-only pull request and check that `gh pr checks` shows Netlify's deploy preview skipped or canceled, `checks / checks` green and auto-merge merged it; then Netlify's deploy list for `main` shows that commit's production build skipped and the live site still loads.
