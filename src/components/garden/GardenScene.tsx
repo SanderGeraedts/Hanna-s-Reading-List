@@ -4,10 +4,12 @@ import * as THREE from 'three'
 import type { YearGarden } from '#/lib/garden/garden'
 import { DETAILED_PLANTS } from '#/lib/garden/numbers'
 import type { Season } from '#/lib/garden/seasons'
+import type { GardenWeather } from '#/lib/garden/weather'
+import type { SceneryId } from '#/lib/garden/scenery'
 import { SCENE_ELEVATION, gardenLayout, slotPoint, spotPoint } from '#/lib/garden/view'
 import { itemSlotsFor } from '#/lib/garden/numbers'
 import { usePageVisible } from '../creatures/pose'
-import { buildBeds, buildGround, buildItem, buildPlant, buildPlantField, buildShadows, buildVisitors, buildWeather, lookOf } from './plantModel'
+import { buildBeds, buildGround, buildItem, buildPlant, buildPlantField, buildScenery, buildShadows, buildVisitors, buildWeather, lookOf } from './plantModel'
 import { sceneColumns, sceneView, NOMINAL_W } from './gardenView'
 
 /**
@@ -29,13 +31,19 @@ export interface GardenSceneProps {
   reduce?: boolean
   /** something is over the page: stop rendering */
   paused?: boolean
+  /** the day's weather, invented from the day (D-0083 §1) */
+  weather?: GardenWeather
+  /** the scenery that has arrived with her reading (D-0083 §2) */
+  scenery?: readonly SceneryId[]
 }
 
-export function GardenScene({ year, season, night, reduce, paused }: GardenSceneProps) {
+export function GardenScene({ year, season, night, reduce, paused, weather, scenery }: GardenSceneProps) {
   const columns = sceneColumns(year.beds)
   const layout = useMemo(() => gardenLayout(year.beds, columns), [year.beds, columns])
   const view = useMemo(() => sceneView(layout), [layout])
   const target = useMemo(() => new THREE.Vector3(layout.width / 2, 0, layout.depth / 2), [layout])
+  // how much of the sun gets through: a bright day is a bright day, rain is grey
+  const dim = weather === 'sun' ? 1.08 : weather === 'cloud' || weather === 'shower' ? 0.82 : weather === 'rain' || weather === 'mist' ? 0.7 : 1
   return (
     <Canvas
       className="garden-canvas"
@@ -58,13 +66,14 @@ export function GardenScene({ year, season, night, reduce, paused }: GardenScene
         </>
       ) : (
         <>
-          <hemisphereLight args={['#ffe8cc', '#4a3a2a', 1.15]} />
-          <ambientLight intensity={0.3} color="#ffdcb4" />
-          <directionalLight position={[-4, 7, 4]} intensity={1.7} color="#ffdcae" />
+          {/* the weather is the day's light as much as its drops: a grey sky is simply flatter (D-0083 §1) */}
+          <hemisphereLight args={['#ffe8cc', '#4a3a2a', 1.15 * dim]} />
+          <ambientLight intensity={0.3 * (weather === 'mist' ? 1.5 : 1)} color={weather === 'mist' ? '#e8edf5' : '#ffdcb4'} />
+          <directionalLight position={[-4, 7, 4]} intensity={1.7 * dim} color={weather === 'sun' ? '#ffe3b4' : '#ffdcae'} />
           <directionalLight position={[3, 4, -5]} intensity={0.4} color="#e8e4ff" />
         </>
       )}
-      <Garden year={year} season={season} reduce={reduce} paused={paused} />
+      <Garden year={year} season={season} reduce={reduce} paused={paused} weather={weather} scenery={scenery} />
     </Canvas>
   )
 }
@@ -86,14 +95,14 @@ function Rig({ target, scale }: { target: THREE.Vector3; scale: number }) {
   return null
 }
 
-function Garden({ year, season, reduce, paused }: GardenSceneProps) {
+function Garden({ year, season, reduce, paused, weather, scenery }: GardenSceneProps) {
   const visible = usePageVisible()
   const columns = sceneColumns(year.beds)
   const layout = useMemo(() => gardenLayout(year.beds, columns), [year.beds, columns])
   const { invalidate, scene } = useThree()
   const group = useRef<THREE.Group>(null)
   const visitors = useRef<THREE.Points | null>(null)
-  const weather = useRef<THREE.Points | null>(null)
+  const skyRef = useRef<THREE.Points | null>(null)
   const sway = useRef<THREE.Object3D[]>([])
 
   // built once per garden and season
@@ -101,6 +110,9 @@ function Garden({ year, season, reduce, paused }: GardenSceneProps) {
     const root = new THREE.Group()
     root.add(buildGround(layout, season))
     root.add(buildBeds(layout, season))
+    // everything her reading has brought, in one mesh (D-0083 §2)
+    const around = buildScenery(layout, scenery ?? [], season)
+    if (around) root.add(around)
     const shadows: Array<{ x: number; z: number; r: number }> = []
     const swaying: THREE.Object3D[] = []
     // the plants nearest the front are the detailed ones; the rest are the simplest shape of
@@ -140,11 +152,13 @@ function Garden({ year, season, reduce, paused }: GardenSceneProps) {
     push(year.visitors.birds, '#8d7f9c', 1.6)
     const flyers = buildVisitors(guests)
     if (flyers) root.add(flyers)
-    // falling leaves and snow only when motion is welcome and the garden is not already full
-    const sky = reduce || year.plants.length > 60 ? null : buildWeather(layout, season)
+    // falling rain, leaves and snow only when motion is welcome and the garden is not already full
+    const sky = reduce || year.plants.length > 60 ? null : buildWeather(layout, season, weather)
     if (sky) root.add(sky)
-    return { root, flyers, sky, swaying }
-  }, [layout, season, year, reduce])
+    // rain comes down; snow and leaves take their time
+    const speed = weather === 'rain' ? 2.2 : weather === 'shower' ? 1.6 : 0.35
+    return { root, flyers, sky, swaying, speed }
+  }, [layout, season, year, reduce, weather, scenery])
 
   useLayoutEffect(() => {
     const g = group.current
@@ -152,7 +166,7 @@ function Garden({ year, season, reduce, paused }: GardenSceneProps) {
     g.clear()
     g.add(built.root)
     visitors.current = built.flyers
-    weather.current = built.sky
+    skyRef.current = built.sky
     sway.current = built.swaying
     invalidate()
     return () => {
@@ -174,11 +188,11 @@ function Garden({ year, season, reduce, paused }: GardenSceneProps) {
       }
       pos.needsUpdate = true
     }
-    const sky = weather.current
+    const sky = skyRef.current
     if (sky) {
       const pos = sky.geometry.attributes.position as THREE.BufferAttribute
       for (let i = 0; i < pos.count; i++) {
-        const y = pos.getY(i) - delta * 0.35
+        const y = pos.getY(i) - delta * built.speed
         pos.setY(i, y < 0 ? 4 : y)
       }
       pos.needsUpdate = true

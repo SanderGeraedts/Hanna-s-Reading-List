@@ -7,6 +7,9 @@ import type { GardenItemId } from '#/lib/garden/numbers'
 import { freeItemSlot, placeItem, removeItem } from '#/lib/garden/tend'
 import type { PlaceEvent, Tended } from '#/lib/garden/tend'
 import type { Season } from '#/lib/garden/seasons'
+import type { GardenWeather } from '#/lib/garden/weather'
+import { doKindness } from '#/lib/garden/kindness'
+import type { KindnessId } from '#/lib/garden/kindness'
 import { useCreaturesApi } from '../creatures/CreaturesContext'
 
 /**
@@ -21,15 +24,21 @@ export interface GardenHandle {
   garden: Garden
   place: (year: number, item: GardenItemId) => Tended
   takeAway: (year: number, item: GardenItemId) => Tended
+  /** a small kindness (D-0083 §3): never needed, and nothing is saved when it is already done today */
+  beKind: (id: KindnessId) => string
 }
 
-export function useGarden(books: Book[], opts: { phone?: boolean; today?: string; season?: Season } = {}): GardenHandle {
+export function useGarden(
+  books: Book[],
+  opts: { phone?: boolean; today?: string; season?: Season; weather?: GardenWeather } = {},
+): GardenHandle {
   const api = useCreaturesApi()
   const log = api.choices.log
   const today = opts.today ?? localDay()
   const phone = !!opts.phone
   const season = opts.season
-  const garden = useMemo(() => deriveGarden(books, log, { today, phone, season }), [books, log, today, phone, season])
+  const weather = opts.weather
+  const garden = useMemo(() => deriveGarden(books, log, { today, phone, season, weather }), [books, log, today, phone, season, weather])
 
   const write = useCallback(
     (events: PlaceEvent[]) => {
@@ -59,7 +68,22 @@ export function useGarden(books: Book[], opts: { phone?: boolean; today?: string
     [garden, write],
   )
 
-  return { garden, place, takeAway }
+  /**
+   * A small kindness: one `place` event with a `g:k:` key, the way a swapped
+   * bingo square is saved (D-0067). Done already today, nothing at all is
+   * saved and nothing is said — there is no way to fall behind at this.
+   */
+  const beKind = useCallback(
+    (id: KindnessId) => {
+      const r = doKindness(log, id, today)
+      if (!r.ok) return ''
+      write([r.event as unknown as PlaceEvent])
+      return r.say
+    },
+    [log, today, write],
+  )
+
+  return { garden, place, takeAway, beKind }
 }
 
 export type { Plant }

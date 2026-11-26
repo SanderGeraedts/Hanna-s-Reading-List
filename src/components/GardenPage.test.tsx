@@ -3,6 +3,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import type { Book } from '#/lib/library'
 import { PLANT_KINDS, PLANT_KIND_IDS } from '#/lib/garden/plants'
 import { SPOTS_PER_BED } from '#/lib/garden/numbers'
+import { weatherChip, weatherOf } from '#/lib/garden/weather'
 
 // no server: signed out, every server function mocked like the other page tests
 vi.mock('#/server/shelf', () => ({
@@ -105,7 +106,8 @@ describe('the Garden tab', () => {
     const { container } = tab([finished('2026-03-02', { title: 'A book' })])
     // the chip in the head, and the one in "Have a look" that switches to it
     expect(screen.getAllByText(/🍂 Autumn/)).not.toHaveLength(0)
-    expect(container.textContent).toContain('Your 2026 garden in autumn:')
+    // the sentence now says the day's weather too (D-0083 §1)
+    expect(container.textContent).toContain('Your 2026 garden in autumn, with ')
   })
 
   it('shows the empty-garden line when nothing is finished', () => {
@@ -209,7 +211,8 @@ describe('the dashboard block', () => {
     )
     expect(screen.getByRole('heading', { name: 'Garden' })).toBeTruthy()
     expect(screen.getByText(/1 plant · \d+ in bloom/)).toBeTruthy()
-    expect(screen.getByText('🍂 Autumn')).toBeTruthy()
+    // the block says the season and the day's weather side by side (D-0083 §1)
+    expect(screen.getByText(/🍂 Autumn · /)).toBeTruthy()
     expect(screen.getByText(/Next: a path at 5 books/)).toBeTruthy()
   })
 
@@ -311,5 +314,58 @@ describe('reduce motion and the seasons in the tab', () => {
       view.unmount()
     }
     vi.setSystemTime(new Date(`${TODAY}T12:00:00`))
+  })
+})
+
+describe('a more alive garden (D-0083)', () => {
+  it('shows the day’s weather beside the season, and the same weather every time', () => {
+    const books = [finished('2026-03-02', { title: 'A book' })]
+    const view = tab(books)
+    const chip = weatherChip(weatherOf(TODAY))
+    expect(screen.getAllByText(new RegExp(chip.slice(chip.indexOf(' ') + 1))).length).toBeGreaterThan(0)
+    view.unmount()
+    tab(books)
+    expect(screen.getAllByText(new RegExp(chip.slice(chip.indexOf(' ') + 1))).length).toBeGreaterThan(0)
+  })
+
+  it('offers a look at another weather, which saves nothing', () => {
+    tab([finished('2026-03-02', { title: 'A book' })])
+    fireEvent.click(within(screen.getByRole('group', { name: 'Have a look at the weather' })).getByText('🌫️ Mist'))
+    expect(screen.getByText(/Looking at .*mist/i)).toBeTruthy()
+    expect(savedLog()).toEqual([])
+    fireEvent.click(screen.getByText('Now'))
+    expect(screen.queryByText(/Looking at/)).toBeNull()
+  })
+
+  it('says what scenery is on its way, and never as something she must do', () => {
+    tab([finished('2026-03-02', { title: 'A book' })])
+    expect(screen.getByText(/Next to arrive: a hedge, after 2 more books/)).toBeTruthy()
+  })
+
+  it('brings the scenery itself once enough books are finished', () => {
+    const { container } = tab(Array.from({ length: 4 }, (_, i) => finished(`2026-03-0${i + 1}`, { title: `Book ${i}` })))
+    expect(container.querySelector('.garden-scenery')).toBeTruthy()
+  })
+
+  it('offers three small kindnesses, and says plainly that none of them is needed', () => {
+    tab([finished('2026-03-02', { title: 'A book' })])
+    expect(screen.getByText('Nothing here needs doing. They are just nice to do.')).toBeTruthy()
+    expect(within(screen.getByRole('group', { name: 'Small kindnesses' })).getAllByRole('button')).toHaveLength(3)
+  })
+
+  it('saves one place event with a g:k: key when she waters, and then says it is done', () => {
+    tab([finished('2026-03-02', { title: 'A book' })])
+    fireEvent.click(screen.getByText('💧 Water a plant'))
+    const log = savedLog()
+    expect(log).toHaveLength(1)
+    expect(log[0]).toMatchObject({ kind: 'place', key: 'g:k:water', day: TODAY })
+    expect(screen.getByText('💧 Watered today')).toBeTruthy()
+  })
+
+  it('saves nothing more when the same kindness is done again the same day', () => {
+    tab([finished('2026-03-02', { title: 'A book' })])
+    fireEvent.click(screen.getByText('🌾 Scatter seed'))
+    fireEvent.click(screen.getByText('🌾 Seed scattered today'))
+    expect(savedLog()).toHaveLength(1)
   })
 })

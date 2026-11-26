@@ -30,6 +30,12 @@ import { seasonOf } from './seasons'
 import type { Season } from './seasons'
 import { arrange, savedItems } from './spots'
 import type { Spot } from './spots'
+import { weatherOf } from './weather'
+import type { GardenWeather } from './weather'
+import { nextScenery, readingSoFar, sceneryFor } from './scenery'
+import type { NextScenery, SceneryId } from './scenery'
+import { NO_GIFTS, doneToday, kindnessGifts } from './kindness'
+import type { KindnessGifts, KindnessId } from './kindness'
 
 /**
  * The reading garden, worked out from her shelf and her reading log (T-0060,
@@ -60,6 +66,8 @@ export interface Plant {
   night: boolean
   /** showing flowers in this season */
   blooming: boolean
+  /** in flower today because she watered it (D-0083 §3); gone again tomorrow */
+  watered?: boolean
   /** where it stands: its own place in the order she finished the books */
   bed: number
   spot: number
@@ -95,6 +103,16 @@ export interface NextUnlock {
 export interface Garden {
   today: string
   season: Season
+  /** the day's weather, invented from the day and never fetched (D-0083 §1) */
+  weather: GardenWeather
+  /** the scenery that has arrived with her reading, in the order it arrived (D-0083 §2) */
+  scenery: SceneryId[]
+  /** the next piece of scenery on its way, or null when it has all arrived */
+  nextScenery: NextScenery | null
+  /** the small kindnesses already done today (D-0083 §3) */
+  kindness: KindnessId[]
+  /** what today's kindnesses gave the garden; all zeros on a day she did none */
+  gifts: KindnessGifts
   /** the year gardens, newest year first, "Earlier" last */
   years: YearGarden[]
   /** every plant, all years */
@@ -119,6 +137,12 @@ export interface GardenOptions {
    * dashboard's block never passes it.
    */
   season?: Season
+  /**
+   * Look at the garden in another weather than the day's own (D-0083 §1). Like
+   * the season and the night it is a **look**: never saved, and the dashboard's
+   * block never passes it.
+   */
+  weather?: GardenWeather
 }
 
 /** Every day she read something, oldest first (a day with a share of more than nothing). */
@@ -152,8 +176,19 @@ export function scaleOf(growth: number, reads: number): number {
 
 const yearLabel = (year: number) => (year === EARLIER_YEAR ? 'Earlier' : String(year))
 
-/** Visitors for a garden (T-0063 §3): they come by themselves, they are never a score. */
-export function visitorsFor(plants: number, inBloom: number, items: ReadonlyMap<GardenItemId, number>, phone = false): Visitors {
+/**
+ * Visitors for a garden (T-0063 §3): they come by themselves, they are never a
+ * score. `extra` is what today's kindnesses brought (D-0083 §3): a bird that
+ * came for the seed is a guest on top of the cap, so the kindness is always
+ * visible — a gift that might be swallowed by a cap would be no gift at all.
+ */
+export function visitorsFor(
+  plants: number,
+  inBloom: number,
+  items: ReadonlyMap<GardenItemId, number>,
+  phone = false,
+  extra: Readonly<{ birds?: number; butterflies?: number }> = {},
+): Visitors {
   const water = items.has('birdbath') || items.has('pond')
   let bees = Math.min(BEE_CAP, Math.floor(inBloom / BEE_PER_BLOOM))
   let butterflies = Math.min(BUTTERFLY_CAP, Math.floor(inBloom / BUTTERFLY_PER_BLOOM))
@@ -168,7 +203,7 @@ export function visitorsFor(plants: number, inBloom: number, items: ReadonlyMap<
     else break
     over--
   }
-  return { bees, butterflies, birds }
+  return { bees, butterflies: butterflies + (extra.butterflies ?? 0), birds: birds + (extra.birds ?? 0) }
 }
 
 /** The whole garden. `log` is her choice log (D-0052); without it the garden is the tidy default. */
@@ -240,6 +275,28 @@ export function deriveGarden(books: readonly Book[], log: readonly ChoiceEvent[]
   // newest year first, "Earlier" last
   years.sort((a, b) => (a.year === EARLIER_YEAR ? 1 : b.year === EARLIER_YEAR ? -1 : b.year - a.year))
 
+  /**
+   * Today's kindnesses (D-0083 §3), in the garden she is reading in now: the
+   * year of today, or her newest garden when she hasn't finished anything this
+   * year. One garden, because watering one plant is watering one plant, not
+   * every plant of every year she has ever read.
+   */
+  const gifts = kindnessGifts(log, today)
+  const kindness = [...doneToday(log, today)]
+  const thisYear = Number(today.slice(0, 4))
+  const tended = years.find((y) => y.year === thisYear) ?? years[0]
+  if (tended && (gifts.bloom > 0 || gifts.birds > 0 || gifts.butterflies > 0)) {
+    // the watering: the first plant of the garden that isn't already in flower comes into flower
+    let water = gifts.bloom
+    if (water > 0)
+      tended.plants = tended.plants.map((p) => (!p.blooming && water-- > 0 ? { ...p, blooming: true, watered: true } : p))
+    tended.blooming = tended.plants.filter((p) => p.blooming).length
+    tended.visitors = visitorsFor(tended.plants.length, tended.blooming, tended.items, opts.phone, {
+      birds: gifts.birds,
+      butterflies: gifts.butterflies,
+    })
+  }
+
   const finished = first.size
   const unlocked: GardenItemId[] = GARDEN_ITEMS.filter((i) => finished >= i.books).map((i) => i.id)
   // a seasonal item is unlocked for good, but only stands in the garden in its own season
@@ -248,9 +305,16 @@ export function deriveGarden(books: readonly Book[], log: readonly ChoiceEvent[]
     return season_ === null || season_ === season
   })
   const nextItem = GARDEN_ITEMS.find((i) => finished < i.books)
+  // what her reading has brought to the garden all by itself (D-0083 §2)
+  const so = readingSoFar(finished, readingDays.length)
   return {
     today,
     season,
+    weather: opts.weather ?? weatherOf(today),
+    scenery: sceneryFor(so),
+    nextScenery: nextScenery(so),
+    kindness,
+    gifts: kindness.length ? gifts : NO_GIFTS,
     years,
     plants: first.size,
     finished,

@@ -1,6 +1,10 @@
 import type { Garden, Plant, YearGarden } from './garden'
 import { SEASON_ICON, SEASON_LABEL } from './seasons'
 import type { Season } from './seasons'
+import { WEATHER_LINE } from './weather'
+import type { GardenWeather } from './weather'
+import { scenerySpec } from './scenery'
+import type { SceneryId } from './scenery'
 
 /**
  * Every word the garden says (T-0061 … T-0065). No hint texts (D-0014): the
@@ -33,6 +37,24 @@ export const LEFT_SAY = 'Left where it was.'
 
 export const seasonChip = (season: Season) => `${SEASON_ICON[season]} ${SEASON_LABEL[season]}`
 
+/**
+ * "Next to arrive: a potting shed, after 12 more reading days" — the one quiet
+ * line about scenery on its way (D-0083 §2). It is never a goal: nothing has to
+ * be done for it, it simply comes.
+ */
+export function nextSceneryLine(garden: Garden): string {
+  if (!garden.nextScenery) return 'Everything has arrived in the garden.'
+  const { name, toGo } = garden.nextScenery
+  return `Next to arrive: ${withArticle(name.toLowerCase())}, after ${toGo}`
+}
+
+/** "A hedge, a fence and a brook." — the scenery standing in the garden, for a screen reader. */
+export function sceneryLine(ids: readonly SceneryId[]): string {
+  if (!ids.length) return ''
+  const names = ids.map((id) => withArticle(scenerySpec(id).name.toLowerCase()))
+  return `${list(names).replace(/^./, (c) => c.toUpperCase())}.`
+}
+
 /** "114 plants · 12 in bloom". */
 export function countLine(year: YearGarden): string {
   const n = year.plants.length
@@ -61,11 +83,15 @@ const count = (n: number, one: string, many: string) => `${n === 1 ? 'one' : n =
  * The whole garden in one sentence, for a screen reader instead of the picture
  * (T-0061 §5): "Your 2026 garden in winter: 114 plants in 10 beds, 12 in bloom,
  * with a bench, a pond and a greenhouse, and two bees."
+ *
+ * The day's weather and the scenery that has arrived are said here too
+ * (D-0083), so what she hears is what she would have seen.
  */
-export function gardenSentence(year: YearGarden, season: Season): string {
+export function gardenSentence(year: YearGarden, season: Season, weather?: GardenWeather, scenery: readonly SceneryId[] = []): string {
   const n = year.plants.length
   const where = year.year === 0 ? 'Your earlier garden' : `Your ${year.year} garden`
-  if (n === 0) return `${where} in ${SEASON_LABEL[season].toLowerCase()}: nothing planted yet.`
+  const sky = weather ? `, with ${WEATHER_LINE[weather]}` : ''
+  if (n === 0) return `${where} in ${SEASON_LABEL[season].toLowerCase()}${sky}: nothing planted yet.`
   const parts = [`${n} plant${n === 1 ? '' : 's'} in ${year.beds} bed${year.beds === 1 ? '' : 's'}`, `${year.blooming} in bloom`]
   // at most three items: ten of them read as a list, not as a garden
   const items = [...year.items.keys()].slice(0, 3).map((i) => `a ${i === 'lanterns' ? 'set of lanterns' : i}`)
@@ -75,7 +101,8 @@ export function gardenSentence(year: YearGarden, season: Season): string {
   if (year.visitors.butterflies) guests.push(count(year.visitors.butterflies, 'butterfly', 'butterflies'))
   if (year.visitors.birds) guests.push(count(year.visitors.birds, 'bird', 'birds'))
   if (guests.length) parts.push(`and ${list(guests)}`)
-  return `${where} in ${SEASON_LABEL[season].toLowerCase()}: ${parts.join(', ')}.`
+  const around = sceneryLine(scenery)
+  return `${where} in ${SEASON_LABEL[season].toLowerCase()}${sky}: ${parts.join(', ')}.${around ? ` ${around}` : ''}`
 }
 
 export const EMPTY_GARDEN = 'Finish a book and the first plant appears.'
