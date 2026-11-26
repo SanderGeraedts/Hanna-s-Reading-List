@@ -12,7 +12,7 @@ import {
   thisMonth,
 } from '#/lib/monthChallenge'
 import type { ShareSpec } from '#/lib/shareImage'
-import { Cover, monthName } from './Dashboard'
+import { Cover, monthName } from './common'
 import { ShareButton } from './ShareButton'
 import { OpenLink } from './OpenLink'
 

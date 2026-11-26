@@ -3,6 +3,7 @@ import { localDay } from '../library'
 import type { OwnChallenge } from '../ownChallenges'
 import { sleepReadIds } from '../sleepSeries'
 import { isChoose, isCurrent, isFeed, isHatch, isName, isRelease } from './choices'
+import { cookieMark, earnedWithMark } from './cookieMark'
 import type { ChoiceEvent, ChooseEvent, DuplicatePick, HatchEvent } from './choices'
 import { earnedThrough, readingDays, thisWeek } from './cookies'
 import type { ReadingDay, Week } from './cookies'
@@ -213,7 +214,7 @@ export interface Creatures {
   /** cookies from duplicates turned into cookies */
   bonus: number
   spent: number
-  /** earned + bonus − spent; may be below zero after a fix to a past day */
+  /** earned + bonus − spent; earned never goes down (D-0081), so this stays where it was */
   balance: number
   /** the shop (T-0031): what she owns, wears, placed in the den, her habitat and the eggs she bought */
   shop: ShopState
@@ -284,7 +285,9 @@ interface Living {
 export function deriveCreatures(books: Book[], log: readonly ChoiceEvent[], now: Date, opts: Options = {}): Creatures {
   const today = localDay(now)
   const days = readingDays(books, opts.sleep ?? sleepReadIds(books))
-  const earned = earnedThrough(days, today)
+  // cookies she has earned are never taken back (D-0081): a day corrected downwards, a
+  // book removed or a slider nudged back must not confiscate cookies she has already spent
+  const earned = earnedWithMark(earnedThrough(days, today), cookieMark(log))
   const minutesToday = minutesReadToday(days, today)
   const shop = deriveShop(log)
   const spent = spentOf(log, shop)

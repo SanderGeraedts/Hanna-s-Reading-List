@@ -61,7 +61,7 @@ describe('the Your room group in the panel', () => {
   it('sits between Books and the decorations', () => {
     panel(DEFAULT_ROOM)
     const groups = screen.getAllByRole('group').map((g) => g.getAttribute('aria-label'))
-    expect(groups).toEqual(['Wood', 'Wallpaper', 'Books', 'Your room'])
+    expect(groups).toEqual(['Wood', 'Wallpaper', 'Books', 'Night mode', 'Your room'])
   })
 
   it('flips just the one she tapped and leaves the rest of the room alone', () => {

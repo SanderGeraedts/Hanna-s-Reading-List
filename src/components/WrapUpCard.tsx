@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react'
 import type { Book } from '#/lib/library'
 import { monthWrap } from '#/lib/wrapup'
 import type { ShareSpec } from '#/lib/shareImage'
-import { Cover, monthName } from './Dashboard'
+import { Cover, monthName } from './common'
 import { ShareButton } from './ShareButton'
 import { StarRating } from './StarRating'
 

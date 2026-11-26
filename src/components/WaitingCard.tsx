@@ -10,7 +10,7 @@ import type { Egg } from '#/lib/creatures/eggs'
 import type { SpeciesId } from '#/lib/creatures/species'
 import { eggReason, eggsWaitingLine, speciesWord } from '#/lib/creatures/words'
 import { StarRating } from './StarRating'
-import { Cover } from './Dashboard'
+import { Cover } from './common'
 
 interface Props {
   /** finished books whose finish hasn't been rated or skipped yet */
@@ -36,6 +36,11 @@ interface Props {
   creatureLevelUp?: { text: string; onNice: () => void; onVisit: () => void }
   /** what has happened in the garden since this device last looked (T-0066, D-0050 §11) */
   garden?: { line: string; onVisit: () => void }
+  /**
+   * a wish she already has on her shelf (D-0086): offered, never done for her. It is her
+   * list, so it says what will happen and waits for her yes; "Keep it" is remembered.
+   */
+  wishDone?: { text: string; title: string; onRemove: () => void; onKeep: () => void }
 }
 
 /**
@@ -58,6 +63,7 @@ export function WaitingCard({
   creatureDuplicate,
   creatureLevelUp,
   garden,
+  wishDone,
 }: Props) {
   const heading = useRef<HTMLHeadingElement>(null)
   return (
@@ -73,7 +79,21 @@ export function WaitingCard({
         !creatureEgg &&
         !creatureEggs &&
         !creatureDuplicate &&
-        !creatureLevelUp && <p className="muted small-text">Nothing waiting.</p>}
+        !creatureLevelUp &&
+        !wishDone && <p className="muted small-text">Nothing waiting.</p>}
+      {wishDone && (
+        <div className="waiting-row waiting-wish">
+          <p className="small-text">{wishDone.text}</p>
+          <div className="waiting-actions">
+            <button type="button" className="btn small" onClick={wishDone.onRemove}>
+              Take it off the wishlist
+            </button>
+            <button type="button" className="btn small" onClick={wishDone.onKeep}>
+              Keep it
+            </button>
+          </div>
+        </div>
+      )}
       {creatureEgg && (
         <ul className="waiting-list">
           <li>

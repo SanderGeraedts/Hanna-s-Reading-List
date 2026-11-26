@@ -4,7 +4,7 @@ import type { Book } from '#/lib/library'
 import type { ShareSpec } from '#/lib/shareImage'
 import { storySubtitle, yearStory } from '#/lib/yearStory'
 import type { StorySlide } from '#/lib/yearStory'
-import { Cover } from './Dashboard'
+import { Cover } from './common'
 import { ShareButton } from './ShareButton'
 import { StarRating } from './StarRating'
 

@@ -8,7 +8,7 @@ import { rhythm, WEEKDAY_NAMES } from '#/lib/rhythm'
 import type { StatsYear } from '#/lib/yearCompare'
 import { sleepReadIds } from '#/lib/sleepSeries'
 import type { ShareSpec } from '#/lib/shareImage'
-import { Cover, monthName } from './Dashboard'
+import { Cover, monthName } from './common'
 import { ShareButton } from './ShareButton'
 
 const dayText = (day: string) =>

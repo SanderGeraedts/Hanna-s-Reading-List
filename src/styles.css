@@ -33,6 +33,11 @@
   /* the quieter ink on those buttons (an unchosen bookcase): still ~9:1 on the white pill,
      and never redefined for the dark theme, because the pills stay white there (T-0096) */
   --pill-muted: #54456a;
+  /* the pills themselves: one token, so night mode darkens them all at once (D-0085) */
+  --pill-bg: rgba(255, 255, 255, 0.92);
+  --pill-bg-soft: rgba(255, 255, 255, 0.78);
+  --pill-border: rgba(40, 50, 90, 0.3);
+  --pill-hover: #fff;
   /* the haze behind the header, as r, g, b: pale on the lavender, dark on the midnight wallpaper */
   --header-fade: 246, 248, 255;
 
@@ -118,6 +123,58 @@ html[data-wallpaper='midnight'] {
     auto;
 }
 
+/* ---- night mode (D-0085) -----------------------------------------------
+   She reads in bed, and every page was bright whatever the hour. After dark
+   (or always, or never — her choice in the 🎨 room panel) the wallpaper behind
+   the pages goes to a deep warm brown and the white round buttons in the
+   header go dark with light ink, so nothing on the screen glares at her.
+
+   The cards were already dark walnut with cream text, so they are left alone:
+   only the things that were light change. The 3D room has had its own evening
+   since D-0045 (Day & night), and keeps it.
+
+   colours.test.ts checks this block, like the midnight one. */
+html[data-night='on'] {
+  color-scheme: dark;
+  --wall-top: #241c17;
+  --wall-2: #1f1813;
+  --wall-mid: #1a1410;
+  --wall-4: #15100d;
+  --wall-floor: #100c0a;
+  --wall-page-bottom: #17120e;
+  --wall-stripe: rgba(255, 240, 215, 0.02);
+  --header-ink: #f0e5d2;
+  --header-muted: #cbbba1;
+  --header-fade: 26, 20, 16;
+  /* the round buttons: dark with light ink, instead of white with dark ink */
+  --pill-bg: rgba(58, 46, 38, 0.95);
+  --pill-bg-soft: rgba(58, 46, 38, 0.85);
+  --pill-border: rgba(240, 220, 190, 0.28);
+  --pill-hover: rgba(72, 58, 48, 0.98);
+  --pill-ink: #f4ead9;
+  --pill-muted: #cbbba1;
+  /* the halo that keeps the filter names readable is dark here, as on the midnight paper */
+  --wallpaper: repeating-linear-gradient(
+      90deg,
+      transparent 0 var(--wall-stripe-px),
+      var(--wall-stripe) var(--wall-stripe-px) calc(var(--wall-stripe-px) * 2)
+    ),
+    linear-gradient(to bottom, var(--wall-top), var(--wall-page-bottom));
+}
+html[data-night='on'] .shelf-filters .muted,
+html[data-night='on'] .shelf-none {
+  text-shadow:
+    0 1px 2px rgba(10, 7, 5, 0.9),
+    0 0 6px rgba(10, 7, 5, 0.7);
+}
+/* a white hover would flash at night */
+html[data-night='on'] .topbar .btn.shelf-clear:hover,
+html[data-night='on'] .zoom-controls .btn:hover:not(:disabled),
+html[data-night='on'] .world-zoom .btn:hover:not(:disabled),
+html[data-night='on'] .shelf-pan .btn:hover:not(:disabled):not([aria-disabled='true']),
+html[data-night='on'] .topbar .btn.search-clear:hover:not(:disabled) {
+  background: var(--pill-hover);
+}
 
 * {
   box-sizing: border-box;
@@ -192,9 +249,9 @@ h2 {
 }
 /* the sort menu sits on the light band, so give it light styling too */
 .topbar .input {
-  background: rgba(255, 255, 255, 0.75);
+  background: var(--pill-bg-soft);
   color: var(--pill-ink);
-  border-color: rgba(40, 50, 90, 0.2);
+  border-color: var(--pill-border);
   color-scheme: light;
 }
 .topbar > * {
@@ -225,6 +282,9 @@ h2 {
 .stage canvas {
   display: block;
 }
+/* a page whose file is still on its way (D-0080 §1): the same quiet line the shelf
+   uses while it is being built, so nothing jumps */
+.page-loading,
 .stage-loading,
 .empty {
   position: absolute;
@@ -761,13 +821,13 @@ textarea.input {
 /* ---- What to read next (#58) ----------------------------------------- */
 .topbar .btn.read-next {
   height: 2.4rem;
-  background: rgba(255, 255, 255, 0.75);
+  background: var(--pill-bg-soft);
   color: var(--pill-ink);
-  border-color: rgba(40, 50, 90, 0.2);
+  border-color: var(--pill-border);
   white-space: nowrap;
 }
 .topbar .btn.read-next:hover:not(:disabled) {
-  background: #fff;
+  background: var(--pill-hover);
 }
 
 /* ---- the page tabs (Bookshelf, Dashboard, Challenges, Calendar) ------ */
@@ -793,7 +853,7 @@ textarea.input {
   cursor: pointer;
 }
 .page-tab:hover {
-  background: #fff;
+  background: var(--pill-hover);
 }
 .page-tab.active {
   background: var(--accent);
@@ -825,15 +885,15 @@ textarea.input {
 .world-zoom .btn,
 .shelf-pan .btn,
 .topbar .btn.search-clear {
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--pill-bg-soft);
   color: var(--pill-ink);
-  border-color: rgba(45, 32, 56, 0.2);
+  border-color: var(--pill-border);
 }
 .zoom-controls .btn:hover:not(:disabled),
 .world-zoom .btn:hover:not(:disabled),
 .shelf-pan .btn:hover:not(:disabled):not([aria-disabled='true']),
 .topbar .btn.search-clear:hover:not(:disabled) {
-  background: #fff;
+  background: var(--pill-hover);
 }
 .zoom-controls {
   position: absolute;
@@ -885,8 +945,8 @@ textarea.input {
 }
 /* dimmed means no hover change: keep the zoom buttons' fill and border (beats .btn:hover) */
 .shelf-pan .btn[aria-disabled='true']:hover {
-  background: rgba(255, 255, 255, 0.78);
-  border-color: rgba(45, 32, 56, 0.2);
+  background: var(--pill-bg-soft);
+  border-color: var(--pill-border);
 }
 .search-clear {
   white-space: nowrap;
@@ -904,12 +964,12 @@ textarea.input {
   place-items: center;
   font-size: var(--fs-heading);
   line-height: 1;
-  background: rgba(255, 255, 255, 0.75);
+  background: var(--pill-bg-soft);
   color: var(--pill-ink);
-  border-color: rgba(40, 50, 90, 0.2);
+  border-color: var(--pill-border);
 }
 .topbar .btn.refresh:hover:not(:disabled) {
-  background: #fff;
+  background: var(--pill-hover);
 }
 .btn.refresh.spinning span {
   animation: spin 0.9s linear infinite;
@@ -1002,12 +1062,12 @@ textarea.input {
   padding: 0;
   display: grid;
   place-items: center;
-  background: rgba(255, 255, 255, 0.75);
+  background: var(--pill-bg-soft);
   color: var(--pill-ink);
-  border-color: rgba(40, 50, 90, 0.2);
+  border-color: var(--pill-border);
 }
 .topbar .search-btn:hover {
-  background: #fff;
+  background: var(--pill-hover);
 }
 .search-pop {
   position: absolute;
@@ -1239,12 +1299,12 @@ textarea.input {
   font-family: var(--serif);
   font-size: var(--fs-large);
   font-weight: 600;
-  background: rgba(255, 255, 255, 0.75);
+  background: var(--pill-bg-soft);
   color: var(--pill-ink);
-  border-color: rgba(40, 50, 90, 0.2);
+  border-color: var(--pill-border);
 }
 .topbar .account-btn:hover {
-  background: #fff;
+  background: var(--pill-hover);
 }
 .sync-dot {
   position: absolute;
@@ -1456,8 +1516,8 @@ textarea.input {
   max-width: 100%;
   flex-wrap: wrap;
   row-gap: 3px;
-  background: rgba(255, 255, 255, 0.92);
-  border-color: rgba(40, 50, 90, 0.3);
+  background: var(--pill-bg);
+  border-color: var(--pill-border);
 }
 .topbar .shelf-cases button {
   /* a quieter plum than the chosen one, but never faint: about 9:1 on the pill, against 3:1
@@ -1516,12 +1576,12 @@ html[data-wallpaper='midnight'] .shelf-none {
 /* Clear sits on the haze over the shelf, so it gets the header's light button styling */
 .topbar .btn.shelf-clear {
   /* as solid as the bookcase switch beside it, so the room never shows through it (T-0096) */
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--pill-bg);
   color: var(--pill-ink);
-  border-color: rgba(40, 50, 90, 0.3);
+  border-color: var(--pill-border);
 }
 .topbar .btn.shelf-clear:hover {
-  background: #fff;
+  background: var(--pill-hover);
 }
 /* a phone: one sideways-scrolling row instead of four stacked lines eating the shelf */
 @media (max-width: 700px) {
@@ -1587,12 +1647,12 @@ html[data-wallpaper='midnight'] .shelf-none {
 }
 .topbar .view-menu > summary {
   font-size: var(--fs-large);
-  background: rgba(255, 255, 255, 0.75);
+  background: var(--pill-bg-soft);
   color: var(--pill-ink);
-  border-color: rgba(40, 50, 90, 0.2);
+  border-color: var(--pill-border);
 }
 .topbar .view-menu > summary:hover {
-  background: #fff;
+  background: var(--pill-hover);
 }
 .view-menu-list {
   position: absolute;
@@ -3503,6 +3563,21 @@ button.alphabet-letter:focus-visible {
 
 .calendar .day-pile::after {
   z-index: 1;
+}
+
+/* a wish she already has on her shelf, offered and never done for her (D-0086) */
+.waiting-wish {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.waiting-wish p {
+  margin: 0;
+}
+.waiting-wish .waiting-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 /* ---- waiting for you: books to rate, books that might be in a series ---- */
@@ -6251,18 +6326,18 @@ button.today-item:hover {
   padding: var(--space-1) var(--space-4);
   border: 1px solid rgba(45, 32, 56, 0.2);
   border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--pill-bg-soft);
   color: var(--pill-ink);
   font-weight: 600;
   text-decoration: none;
 }
 .view-switch-link:hover {
-  background: #fff;
+  background: var(--pill-hover);
 }
 .view-switch-link.active {
   border: 2px solid var(--accent);
   box-shadow: 0 0 0 2px rgba(217, 168, 91, 0.35);
-  background: #fff;
+  background: var(--pill-hover);
 }
 .view-switch-link:focus-visible {
   outline: 2px solid var(--accent);
@@ -7272,6 +7347,16 @@ button.today-item:hover {
   font-variant-numeric: tabular-nums;
 }
 /* "Add to wishlist" by hand, in the add dialog */
+/* Scan a book onto the wishlist, in a bookshop (D-0082): the first thing on the tab,
+   because that is where she is standing when she needs it */
+.wish-scan {
+  width: 100%;
+  justify-content: center;
+  margin-bottom: var(--space-3);
+}
+.wish-scan-back {
+  margin-bottom: var(--space-2);
+}
 .wish-by-hand > summary {
   cursor: pointer;
   font-size: var(--fs-small);

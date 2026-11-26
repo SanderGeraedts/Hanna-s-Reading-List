@@ -6,7 +6,7 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 
 ## Open
 
-- [T-0098 Make the app open faster: load only the page she is on, and paint the room at the size a phone can show](T-0098-the-app-opens-faster.md): The shelf page downloads every other page with it (one 255 kB app file) and the room's wood, floor and wallpaper are painted at up to 2048 px for a 390 px screen (22.6 MB of pictures); split the other pages out of the first download with React.lazy, and size the room's pictures to the device.
+None.
 
 ## Doing
 
@@ -37,8 +37,10 @@ One file per task, from [_template.md](_template.md). Pick from *Open* a task wh
 - [T-0095 Make lying flat work on the phone, say when it cannot, and let a book be dragged onto a pile](T-0095-piles-on-a-narrow-shelf-and-dragging-onto-a-pile.md): computeLayout judges a pose against the roomiest shelf of the case and lets a wide item skip a shelf too cramped for it, the Looks tab says when no shelf has room, and dropping a dragged book on a lying book or pile puts it on top and lays it down.
 - [T-0096 Make the text on the shelf readable against the room, starting with the bookcase switch](T-0096-readable-text-on-the-shelf.md) (small): The bookcase switch's inactive buttons lose their 0.72 opacity and sit on a more solid pill, and the rest of the text that stands on the 3D room (the filter row, the empty line, the count line, the controls over the stage) is checked against the wallpaper and the dark wood in both themes.
 - [T-0097 Make the wishlist a bookcase on the shelf and take its dashboard block away](T-0097-the-wishlist-as-a-bookcase.md): BOOKCASES gains Wishlist, inBookcase keeps wishes out of the other four and lets only wishes into that one, the header counts the wishlist in its own words, the book panel grows a Wishlist row with the price, Buy and I bought it, and the WishlistCard block and its id are removed.
-- [T-0099 Stop a fact coming round twice, and show each reading day's fact on the calendar](T-0099-a-fact-never-comes-round-twice.md): The count of facts becomes max(reading days, a mark that only grows), the mark rides in the choice log as one `place` event keyed `f:seen`, it is moved on by the page rather than by the Fact of the day block, and the calendar's day panel shows the fact that reading day unlocked.
+- [T-0098 Make the app open faster: load only the page she is on, and paint the room at the size a phone can show](T-0098-the-app-opens-faster.md): The shelf page downloads every other page with it (one 255 kB app file) and the room's wood, floor and wallpaper are painted at up to 2048 px for a 390 px screen (22.6 MB of pictures); split the other pages out of the first download with React.lazy, and size the room's pictures to the device.
 - [T-0099 Skip Netlify builds when a change touches only docs/ and root Markdown](T-0099-skip-netlify-builds-when-only-docs-changed.md) (small): Add a dependency-free ignore script and a [build] ignore line in netlify.toml, so a docs-only pull request gets no deploy preview and a docs-only merge doesn't redeploy, with a test over git ranges and one real docs-only pull request as proof.
+- [T-0100 Stop a fact coming round twice, and show each reading day's fact on the calendar](T-0100-a-fact-never-comes-round-twice.md): The count of facts becomes max(reading days, a mark that only grows), the mark rides in the choice log as one `place` event keyed `f:seen`, it is moved on by the page rather than by the Fact of the day block, and the calendar's day panel shows the fact that reading day unlocked.
+- [T-0111 Stop the cookie balance going below zero, and let a book be scanned onto the wishlist](T-0111-no-negative-cookies-and-scanning-onto-the-wishlist.md): The highest total of cookies ever earned rides in the choice log as one `place` event keyed `c:earned` and `earned` is never less than it, so correcting a past day cannot confiscate cookies she has spent; and BatchScan gains a wishlist mode, offered as 'Scan a book in a shop' on the Add to wishlist tab.
 
 ## Done
 

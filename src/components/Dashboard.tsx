@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Cover, PILE, WEEKDAYS, dayPile, mark, monthName, useNarrow } from './common'
 import type { Book, NewBook } from '#/lib/library'
 import { localDay } from '#/lib/library'
 import {
@@ -83,10 +84,6 @@ import type { Period } from '#/lib/stats'
  * DashboardExtras. She arranges the blocks herself (#85): see dashboardLayout.ts.
  */
 
-export const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-export const monthName = (month: number, style: 'long' | 'short' = 'long') =>
-  new Date(2000, month - 1, 1).toLocaleDateString('en-GB', { month: style })
-
 export interface Props {
   books: Book[]
   /** open a book on the shelf */
@@ -115,6 +112,8 @@ interface DashboardProps extends Props {
   onOpenStats?: () => void
   /** how far along her facts are (D-0079), so one can never come round twice */
   factMark?: number
+  /** a wish she already has on her shelf, to offer in Waiting for you (D-0086) */
+  wishDone?: { text: string; title: string; onRemove: () => void; onKeep: () => void }
 }
 
 export interface PeriodPick {
@@ -130,19 +129,6 @@ export const periodLabel = ({ kind, year, month }: PeriodPick) =>
   kind === 'all' ? 'all time' : kind === 'year' ? `in ${year}` : `in ${monthName(month)} ${year}`
 
 
-const NARROW = '(max-width: 860px)'
-
-export function useNarrow() {
-  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia(NARROW).matches)
-  useEffect(() => {
-    const m = window.matchMedia(NARROW)
-    const on = () => setNarrow(m.matches)
-    on()
-    m.addEventListener('change', on)
-    return () => m.removeEventListener('change', on)
-  }, [])
-  return narrow
-}
 
 /** Where a dragged block would land, and which block (or column end) shows the drop line. */
 interface Drop {
@@ -179,6 +165,7 @@ export function Dashboard({
   onOpenGarden,
   onOpenStats,
   factMark = 0,
+  wishDone,
 }: DashboardProps) {
   const open = (section: ChallengeSection) => (onOpenChallenges ? () => onOpenChallenges(section) : undefined)
   // the year wrap-up story she opened with ▶ Play (T-0081); null: no story open
@@ -335,6 +322,7 @@ export function Dashboard({
         creatureDuplicate={creatureDuplicate}
         creatureLevelUp={creatureLevelUp}
         garden={gardenWaiting}
+        wishDone={wishDone}
       />
     ),
     creatures: (
@@ -808,16 +796,6 @@ function RatingsCard({ books, onShowBook }: Props) {
   )
 }
 
-export function Cover({ book, small }: { book: Book; small?: boolean }) {
-  return book.coverUrl ? (
-    <img className={`dash-cover${small ? ' small' : ''}`} src={book.coverUrl} alt="" loading="lazy" />
-  ) : (
-    <span className={`dash-cover blank${small ? ' small' : ''}`} style={{ background: book.color }} aria-hidden>
-      {small ? '' : book.title}
-    </span>
-  )
-}
-
 // ---------------------------------------------------------------------------
 
 /** All time / Year / Month, for the blocks that look at a period. */
@@ -999,23 +977,6 @@ function ReadNextCard({ books, onShowBook }: Props) {
  * day; below are the books started and finished that month.
  */
 /** class for a book finished, started or read on (continued) on a calendar day */
-export const mark = (e: DayEntry) =>
-  e.finished ? ' finished' : e.started ? ' started' : e.amount !== undefined ? ' continued' : ''
-
-/** at most this many covers in a day's pile; more show as "+2" */
-export const PILE = 6
-
-/**
- * A day's books as a pile of covers, one layer per book (#102): the top one
- * changes each time the dashboard opens (`shuffle`), the rest lie under it.
- */
-export function dayPile(entries: DayEntry[], day: number, shuffle: number) {
-  const top = (shuffle + day) % entries.length
-  // the top book last, so it is drawn on top
-  const order = [...entries.slice(top + 1), ...entries.slice(0, top), entries[top]]
-  return order.slice(-PILE)
-}
-
 function Calendar({
   books,
   onShowBook,

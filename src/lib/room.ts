@@ -55,7 +55,30 @@ export interface Room {
   dayNight: boolean
   plant: boolean
   seasonal: boolean
+  /**
+   * Night mode for the pages (D-0085): `auto` follows the clock, the way the room's
+   * Day & night already does, and the other two hold it. Kept on this device like the
+   * rest of the room (D-0022) and never sent anywhere.
+   */
+  night: NightMode
 }
+
+/** Night mode: by the clock, always on, or always off. */
+export type NightMode = 'auto' | 'on' | 'off'
+
+export const NIGHT_MODES: Array<{ id: NightMode; label: string }> = [
+  { id: 'auto', label: 'After dark' },
+  { id: 'on', label: 'Always' },
+  { id: 'off', label: 'Never' },
+]
+
+/**
+ * Whether the pages are in night mode right now. `hour` is the device's own hour;
+ * `auto` uses the app's night, eight in the evening until six in the morning, the
+ * same one the garden and the room already use (D-0050, D-0045).
+ */
+export const isNightNow = (night: NightMode, hour: number): boolean =>
+  night === 'on' ? true : night === 'off' ? false : hour >= 20 || hour < 6
 
 /** The cosy room extras, in the order they stand in the 🎨 panel (D-0045 §1). */
 export const ROOM_EXTRAS: Array<{ key: RoomExtra; label: string }> = [
@@ -77,6 +100,8 @@ export const DEFAULT_ROOM: Room = {
   dayNight: true,
   plant: true,
   seasonal: true,
+  // after dark by default: she reads in bed, and the pages were bright whatever the hour
+  night: 'auto',
 }
 
 const isKey = <T extends string>(o: Record<T, string>, v: unknown): v is T => typeof v === 'string' && Object.hasOwn(o, v)
@@ -116,6 +141,8 @@ export function cleanRoom(raw: unknown, owned: readonly ShopDecorKind[] = []): R
     dayNight: r.dayNight !== false,
     plant: r.plant !== false,
     seasonal: r.seasonal !== false,
+    // a room saved before night mode existed follows the clock, like a new one (D-0085)
+    night: r.night === 'on' || r.night === 'off' ? r.night : 'auto',
   }
 }
 

@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import type { Book } from '#/lib/library'
 import { readingStreak } from '#/lib/insights'
 import { periodStats } from '#/lib/stats'
-import { Cover } from './Dashboard'
+import { Cover } from './common'
 import { dayText, daysToFinish } from '#/lib/finishEstimate'
 import { useYearGoal } from './useYearGoal'
 

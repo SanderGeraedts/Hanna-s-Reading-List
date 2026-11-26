@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Book } from '#/lib/library'
 import { localDay, statusPatch } from '#/lib/library'
 import { bookOfTheDay, stoppedAtText } from '#/lib/didNotFinish'
-import { Cover } from './Dashboard'
+import { Cover } from './common'
 
 interface Props {
   books: Book[]

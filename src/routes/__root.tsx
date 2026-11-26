@@ -2,6 +2,10 @@ import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 
 import appCss from '../styles.css?url'
 
+/** The two faces the app is set in: Fraunces for headings, Inter for everything else. */
+const FONTS =
+  'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400&family=Inter:wght@400;500;600&display=swap'
+
 export const Route = createRootRoute({
   head: () => ({
     meta: [
@@ -26,9 +30,17 @@ export const Route = createRootRoute({
       { rel: 'icon', type: 'image/png', href: '/icons/icon-192.png' },
       { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
       { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
+      /**
+       * The fonts come from Google, and a plain stylesheet link there holds up the first
+       * paint until a second server has answered (D-0080 §4). Fetched as a preload and
+       * turned into a stylesheet the moment it lands, it is out of the way: the page draws
+       * at once in the fallback fonts, and the real ones swap in as they always did
+       * (`display=swap`). The <noscript> copy keeps it working without JavaScript.
+       */
       {
-        rel: 'stylesheet',
-        href: 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400&family=Inter:wght@400;500;600&display=swap',
+        rel: 'preload',
+        as: 'style',
+        href: FONTS,
       },
       {
         rel: 'stylesheet',

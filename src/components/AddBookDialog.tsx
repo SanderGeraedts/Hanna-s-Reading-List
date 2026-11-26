@@ -174,7 +174,19 @@ export function AddBookDialog({
         )}
         {tab === 'isbn' && <IsbnTab onAdd={addFrom('isbn')} />}
         {tab === 'manual' && <ManualTab onAdd={addFrom('manual')} isbn={manualIsbn} />}
-        {tab === 'wish' && <WishTab existing={existing} onAdd={addFrom('wish')} />}
+        {tab === 'wish' && (
+          <WishTab
+            existing={existing}
+            onAdd={addFrom('wish')}
+            onAddScanned={onAdd}
+            paused={!!followUp}
+            onClose={() => dialog.current?.close()}
+            onManual={(isbn) => {
+              setManualIsbn(isbn)
+              setTab('manual')
+            }}
+          />
+        )}
         {tab === 'storytel' && (
           <StorytelTab
             existing={existing}
@@ -323,8 +335,28 @@ function SearchTab({
  * **Add to wishlist** (T-0072): the same search, adding a wish instead of a
  * shelf book, with a small *By hand* form under it for a book Open Library
  * doesn't have (a pre-order, a small press).
+ *
+ * **Scan** is there too (D-0082): standing in a bookshop with a book she wants to
+ * read but isn't buying today, she points the camera at the barcode and it goes
+ * on the wishlist. The same scanner the shelf uses, in its wishlist mode.
  */
-function WishTab({ existing, onAdd }: { existing: Book[]; onAdd: (b: NewBook) => void }) {
+function WishTab({
+  existing,
+  onAdd,
+  onAddScanned,
+  onManual,
+  onClose,
+  paused,
+}: {
+  existing: Book[]
+  onAdd: (b: NewBook) => void
+  /** a scanned wish: added whole, without the follow-up that asks how she has it */
+  onAddScanned: (b: NewBook) => void
+  onManual: (isbn: string) => void
+  onClose: () => void
+  paused: boolean
+}) {
+  const [scanning, setScanning] = useState(false)
   const empty = { title: '', author: '', price: '', buy: '' }
   const [form, setForm] = useState(empty)
   const [problem, setProblem] = useState<string | null>(null)
@@ -357,8 +389,22 @@ function WishTab({ existing, onAdd }: { existing: Book[]; onAdd: (b: NewBook) =>
     setForm(empty)
   }
 
+  if (scanning) {
+    return (
+      <>
+        <button type="button" className="btn small wish-scan-back" onClick={() => setScanning(false)}>
+          ‹ Search instead
+        </button>
+        <BatchScan existing={existing} onAdd={onAddScanned} onManual={onManual} onClose={onClose} paused={paused} mode="wish" />
+      </>
+    )
+  }
+
   return (
     <>
+      <button type="button" className="btn wish-scan" onClick={() => setScanning(true)}>
+        <span aria-hidden>📷</span> Scan a book in a shop
+      </button>
       <SearchTab existing={existing} onAdd={onAdd} mode="wish" />
       <details className="tab-panel wish-by-hand">
         <summary>By hand</summary>

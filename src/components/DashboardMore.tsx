@@ -22,7 +22,8 @@ import { CompareNote } from './CompareNote'
 import { compareLine } from '#/lib/yearCompare'
 import { OpenLink } from './OpenLink'
 import { BookLine } from './DashboardExtras'
-import { Cover, PeriodSelect, PeriodTabs, monthName, periodLabel, toPeriod } from './Dashboard'
+import { PeriodSelect, PeriodTabs, periodLabel, toPeriod } from './Dashboard'
+import { Cover, monthName } from './common'
 import type { PeriodPick, Props } from './Dashboard'
 
 /** More for the dashboard: pace, heatmap, authors, spice, year in review and bingo. */

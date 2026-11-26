@@ -149,10 +149,14 @@ export function firstPriceProblem(
   return null
 }
 
-/** "Add all 4 books", "Add all 1 book", or plain "Add all" when there is nothing to add. */
-export function addAllLabel(rows: ScanRow[]): string {
+/**
+ * "Add all 4 books", "Add all 1 book", or plain "Add all" when there is nothing to add.
+ * On the wishlist it says where they are going (D-0082).
+ */
+export function addAllLabel(rows: ScanRow[], mode: 'shelf' | 'wish' = 'shelf'): string {
   const n = addableRows(rows).length
-  return n === 0 ? 'Add all' : `Add all ${n} book${n === 1 ? '' : 's'}`
+  const where = mode === 'wish' ? ' to the wishlist' : ''
+  return n === 0 ? `Add all${where}` : `Add all ${n} book${n === 1 ? '' : 's'}${where}`
 }
 
 /** The list's heading: "4 books", "1 book", or "Nothing to add yet". */
@@ -162,7 +166,8 @@ export function listHeading(rows: ScanRow[]): string {
 }
 
 /** What the summary says once **Add all** has run. */
-export const addedText = (n: number): string => `Added ${n} book${n === 1 ? '' : 's'}.`
+export const addedText = (n: number, mode: 'shelf' | 'wish' = 'shelf'): string =>
+  `Added ${n} book${n === 1 ? '' : 's'}${mode === 'wish' ? ' to your wishlist' : ''}.`
 
 /** How a row says it is had, when its own chips are shut: "Paperback", "Paperback · E-book", "Not set". */
 export function formatList(formats: BookFormat[]): string {

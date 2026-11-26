@@ -2,10 +2,10 @@
 id: T-0098
 title: "Make the app open faster: load only the page she is on, and paint the room at the size a phone can show"
 description: "The shelf page downloads every other page with it (one 255 kB app file) and the room's wood, floor and wallpaper are painted at up to 2048 px for a 390 px screen (22.6 MB of pictures); split the other pages out of the first download with React.lazy, and size the room's pictures to the device."
-status: Open
+status: Doing
 size: full
 depends_on: []
-decisions: [D-0002, D-0022, D-0035]
+decisions: [D-0002, D-0022, D-0035, D-0080]
 raised_on: 2026-11-24
 done_on: ""
 result: []
@@ -101,10 +101,49 @@ instant because it was already downloaded. The shelf keeps its "Building the she
 
 # Test
 
-Written by the tester.
+`pnpm test` and `pnpm run build` pass, and `pnpm exec harness check` is in step.
+
+**What the first visit downloads**, from the sizes `pnpm run build` prints, gzipped:
+
+| | before | after |
+|---|---|---|
+| Three.js | 268 kB | 258 kB |
+| the app in one file | 255 kB | 123 kB |
+| React and the runtime | 117 kB | 103 kB |
+| **together** | **640 kB** | **484 kB** |
+
+About **156 kB off the first visit**, against the 60 kB this task asked for. The pages are now
+files of their own — the dashboard's blocks (33 kB), the den (12 kB), the garden (10 kB), the
+challenges (6 kB), the calendar (4 kB), Stats, the search and the tropes — fetched when they are
+wanted instead of before the shelf can be drawn.
+
+The dashboard only split once the shared pieces left `Dashboard.tsx`: the build said
+"dynamically imported … but also statically imported by …, dynamic import will not move module
+into another chunk", because the shelf's own Quick update imports `Cover`. That warning is gone.
+
+**The room's pictures**: `roomPictures.test.ts` checks the rule and the saving — the two biggest
+pictures go from about 12 MB to about 3 MB on a phone, a quarter of the bytes, and the scale is
+read from the screen's **shorter** side so turning the phone changes nothing, decided once per
+visit even when the screen later changes.
+
+**The pages while they arrive**: `PageWhileLoading.test.tsx` checks the "One moment…" line
+appears and goes, that nothing is fetched before the shelf is up, that the light pages are asked
+for once it is, and that a browser without idle time falls back to a timer.
+
+Tried to break it: the first version of the room pictures scaled the canvas **and** the painting,
+which would have made the wood grain and the midnight stars twice as coarse on a phone. Painting
+at the old sizes into a smaller canvas (`roomCanvas`) keeps every proportion; a computer gets
+scale 1 and is byte-for-byte what it was.
+
+Remaining: Hanna says whether opening it feels quicker on her phone, and that nothing in the
+room looks different.
 
 # Log
 
 - 2026-11-24 architect: raised by Hanna ("I want to improve the loading speed of the page"),
   measured, and parked at her request ("do one but not today"). Sized full. The numbers above are
   from `main` at 7266428 and should be taken again before the work starts.
+- 2026-11-26 architect: Hanna agreed the brief in a feature chat; the three items plus the fonts.
+- 2026-11-26 developer: lazy pages + quiet prefetch, the shared pieces out of Dashboard.tsx, roomPictures, factCount, the font preload.
+- 2026-11-26 tester: 640 kB → 484 kB gzipped on the first visit; the room from ~12 MB to ~3 MB on a phone.
+- 2026-11-26 tester: Remaining: Hanna says whether it feels quicker on her phone and that the room looks unchanged.
