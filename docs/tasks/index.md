@@ -42,6 +42,7 @@ None.
 - [T-0100 Stop a fact coming round twice, and show each reading day's fact on the calendar](T-0100-a-fact-never-comes-round-twice.md): The count of facts becomes max(reading days, a mark that only grows), the mark rides in the choice log as one `place` event keyed `f:seen`, it is moved on by the page rather than by the Fact of the day block, and the calendar's day panel shows the fact that reading day unlocked.
 - [T-0111 Stop the cookie balance going below zero, and let a book be scanned onto the wishlist](T-0111-no-negative-cookies-and-scanning-onto-the-wishlist.md): The highest total of cookies ever earned rides in the choice log as one `place` event keyed `c:earned` and `earned` is never less than it, so correcting a past day cannot confiscate cookies she has spent; and BatchScan gains a wishlist mode, offered as 'Scan a book in a shop' on the Add to wishlist tab.
 - [T-0112 Make the garden more alive: weather from the date, scenery that arrives, and small kindnesses](T-0112-a-more-alive-garden.md): Weather invented from the day, seven pieces of scenery that arrive with her reading, and three kindnesses that are never needed — all without anything new being saved on the server.
+- [T-0113 Build Hanna's bookshop: an idle shop that trades while she is away, stocked by her reading](T-0113-the-bookshop.md): A dashboard block and a shop behind Open ›: her reading prints copies, customers turn them into coins while she is away, and coins buy eight things that change the numbers and the picture.
 
 ## Done
 
