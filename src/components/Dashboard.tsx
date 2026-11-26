@@ -113,6 +113,8 @@ interface DashboardProps extends Props {
   onOpenGarden?: () => void
   /** "Open ›" on My year: the Stats page (T-0080) */
   onOpenStats?: () => void
+  /** how far along her facts are (D-0079), so one can never come round twice */
+  factMark?: number
 }
 
 export interface PeriodPick {
@@ -176,6 +178,7 @@ export function Dashboard({
   onOpenCreatures,
   onOpenGarden,
   onOpenStats,
+  factMark = 0,
 }: DashboardProps) {
   const open = (section: ChallengeSection) => (onOpenChallenges ? () => onOpenChallenges(section) : undefined)
   // the year wrap-up story she opened with ▶ Play (T-0081); null: no story open
@@ -372,7 +375,7 @@ export function Dashboard({
     again: <AgainCard books={books} onShowBook={onShowBook} onUpdate={onUpdate} />,
     // Top 5 and the spice meter in one block, with a switch
     top: <RatingsCard books={books} onShowBook={onShowBook} />,
-    fact: <FactCard books={books} />,
+    fact: <FactCard books={books} seen={factMark} />,
     pace: <PaceCard books={books} onShowBook={onShowBook} />,
     authors: <AuthorsCard books={books} />,
     wrapped: <WrappedCard books={books} onShowBook={onShowBook} onPlay={setStoryYear} />,

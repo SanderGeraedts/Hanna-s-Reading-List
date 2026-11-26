@@ -659,33 +659,85 @@ function readingDays(books: Book[], todayKey: string): string[] {
   return [...days].sort()
 }
 
-/** The fact each reading day unlocked, oldest first. */
+/**
+ * The fact each reading day unlocked, oldest first, and then as many more as
+ * `atLeast` asks for (D-0079): a mark she has already passed stays passed, even
+ * when a reading day goes away. The extra ones carry on the same taking-turns,
+ * because any day after `mixFrom` does.
+ */
 export function unlockedSequence(
   days: string[],
   facts = FACTS,
   general = GENERAL_FACTS,
   mixFrom = MIX_FROM,
+  atLeast = 0,
 ): string[] {
   let book = 0
   let gen = 0
   let mixed = 0
-  return days.map((day) => {
-    if (day < mixFrom || !general.length) return facts[book++ % facts.length]
+  const next = (mixed_in: boolean) => {
+    if (!mixed_in || !general.length) return facts[book++ % facts.length]
     // from mixFrom on: general first, then book, taking turns
     return mixed++ % 2 === 0 ? general[gen++ % general.length] : facts[book++ % facts.length]
-  })
+  }
+  const out = days.map((day) => next(day >= mixFrom))
+  while (out.length < atLeast) out.push(next(true))
+  return out
 }
 
-/** Today's fact: one more for every day in the reading log up to today. */
-export function dailyFact(books: Book[], now = new Date(), facts = FACTS, general = GENERAL_FACTS): DailyFact {
+/**
+ * How many facts she has been given: her reading days, or the mark she has
+ * already reached, whichever is further on (D-0079). Only ever goes forward, so
+ * correcting a past day down to nothing, sliding a book back or removing a book
+ * can never hand her a fact she has already had.
+ */
+export const factCount = (days: readonly string[], seen = 0) => Math.max(days.length, seen)
+
+/** How many facts she has been given: her reading days up to today, and the mark. */
+export const factsUnlocked = (books: Book[], now = new Date(), seen = 0) =>
+  factCount(readingDays(books, localDay(now)), seen)
+
+/** Today's fact: one for every reading day, and never back behind the mark. */
+export function dailyFact(
+  books: Book[],
+  now = new Date(),
+  facts = FACTS,
+  general = GENERAL_FACTS,
+  seen = 0,
+): DailyFact {
   const todayKey = localDay(now)
   const days = readingDays(books, todayKey)
-  const seq = unlockedSequence(days, facts, general)
+  const seq = unlockedSequence(days, facts, general, MIX_FROM, factCount(days, seen))
   return { fact: seq.at(-1) ?? facts[0], today: days.at(-1) === todayKey }
 }
 
 /** Every fact unlocked so far, newest first, each once (#145). */
-export function unlockedFacts(books: Book[], now = new Date(), facts = FACTS, general = GENERAL_FACTS): string[] {
-  const seq = unlockedSequence(readingDays(books, localDay(now)), facts, general)
+export function unlockedFacts(
+  books: Book[],
+  now = new Date(),
+  facts = FACTS,
+  general = GENERAL_FACTS,
+  seen = 0,
+): string[] {
+  const days = readingDays(books, localDay(now))
+  const seq = unlockedSequence(days, facts, general, MIX_FROM, factCount(days, seen))
   return [...new Set(seq.reverse())]
+}
+
+/**
+ * The fact a reading day gave her, for the calendar's day panel: the day's own
+ * place in her reading days, counted the same way the dashboard counts it. A day
+ * she didn't read on, or one still to come, has no fact.
+ */
+export function factForDay(
+  books: Book[],
+  day: string,
+  now = new Date(),
+  facts = FACTS,
+  general = GENERAL_FACTS,
+): string | null {
+  const days = readingDays(books, localDay(now))
+  const at = days.indexOf(day)
+  if (at < 0) return null
+  return unlockedSequence(days, facts, general)[at] ?? null
 }

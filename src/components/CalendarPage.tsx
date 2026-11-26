@@ -11,6 +11,7 @@ import { WrapUpCard } from './WrapUpCard'
 import { dayStory } from './DashboardExtras'
 import { JournalNote } from './JournalNote'
 import { hasNote } from '#/lib/journal'
+import { factForDay } from '#/lib/facts'
 import { AddBookForDay, ChangeButton, DayChangeEditor } from './DayEditor'
 
 interface Props {
@@ -295,6 +296,7 @@ function CalendarDayAside({
     )
   }
   const day = dayKey(picked)
+  const dayFact = factForDay(books, day)
   return (
     <aside className="calendar-day" aria-live="polite">
       <h3 className="waiting-subtitle">
@@ -334,6 +336,12 @@ function CalendarDayAside({
             </li>
           ))}
         </ul>
+      )}
+      {/* the fact this reading day gave her (D-0079): a day she didn't read on has none */}
+      {dayFact && (
+        <p className="calendar-fact small-text">
+          <span aria-hidden>💡</span> <span className="muted">Your fact that day:</span> {dayFact}
+        </p>
       )}
       {pickedReleases.length > 0 && (
         <ul className="waiting-list">

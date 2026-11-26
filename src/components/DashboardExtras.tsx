@@ -895,12 +895,14 @@ export function StreakCard({ books }: { books: Book[] }) {
 
 // ---- book fact (#101) --------------------------------------------------------------------------------
 
-export function FactCard({ books }: { books: Book[] }) {
-  const { fact, today } = dailyFact(books)
+export function FactCard({ books, seen = 0 }: { books: Book[]; seen?: number }) {
+  // `seen` is how far along her facts are (D-0079): the count only goes forward, so a
+  // reading day she corrects away never hands her a fact she has already read
+  const { fact, today } = dailyFact(books, new Date(), undefined, undefined, seen)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const all = useMemo(() => (open ? unlockedFacts(books) : []), [books, open])
-  const count = useMemo(() => unlockedFacts(books).length, [books])
+  const all = useMemo(() => (open ? unlockedFacts(books, new Date(), undefined, undefined, seen) : []), [books, open, seen])
+  const count = useMemo(() => unlockedFacts(books, new Date(), undefined, undefined, seen).length, [books, seen])
   const q = query.trim().toLowerCase()
   const shown = q ? all.filter((f) => f.toLowerCase().includes(q)) : all
   return (

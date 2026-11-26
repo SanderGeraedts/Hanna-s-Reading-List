@@ -37,6 +37,7 @@ import { CalendarPage } from '#/components/CalendarPage'
 import { CreaturesPage } from '#/components/CreaturesPage'
 import { GardenPage } from '#/components/GardenPage'
 import { CreaturesProvider, useCreaturesValue } from '#/components/creatures/CreaturesContext'
+import { useFactMark } from '#/components/useFactMark'
 import { useShelfPet } from '#/components/creatures/useShelfPet'
 import { isCategory, ownedDecor } from '#/lib/creatures/shop'
 import type { ShopCategory } from '#/lib/creatures/shop'
@@ -304,6 +305,9 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   const wishChoices = useMemo(() => readNextChoices(books), [books])
   // her creature choices once for the whole page: the Creatures tab, the dashboard block and Waiting for you share them
   const creatures = useCreaturesValue(account?.id ?? null)
+  // how far along her facts are (D-0079): kept here, not in the block, so a reading day
+  // still moves it on when the Fact of the day block is hidden
+  const factMark = useFactMark(books, creatures.choices)
   // decorations she bought in the creature shop join the room on every device (T-0031 §11)
   const owned = useMemo(() => ownedDecor(creatures.choices.log), [creatures.choices.log])
   // the favourite creature on the shelf (T-0033): computed from books + log for its reactions
@@ -598,6 +602,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             onOpenCreatures={openCreatures}
             onOpenGarden={openGarden}
             onOpenStats={openStats}
+            factMark={factMark}
           />
         )}
         {view === 'stats' && (
