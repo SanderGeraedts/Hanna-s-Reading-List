@@ -4,7 +4,7 @@ import { letterPool } from '#/lib/alphabetSuggest'
 import type { Book } from '#/lib/library'
 import { LETTERS, alphabetYear, pickLetter, type AlphabetKind } from '#/lib/alphabet'
 import type { ShareSpec } from '#/lib/shareImage'
-import { Cover } from './Dashboard'
+import { Cover } from './common'
 import { ShareButton } from './ShareButton'
 import { OpenLink } from './OpenLink'
 

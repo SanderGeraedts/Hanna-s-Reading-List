@@ -3,6 +3,8 @@ import type { Book } from './library'
 import { mergeBooks } from './merge'
 import {
   boughtPatch,
+  boughtText,
+  boughtThisMonth,
   buyHref,
   cleanBuyLink,
   isWish,
@@ -83,7 +85,8 @@ describe('the wishlist, and how it is kept apart from the shelf (T-0072, D-0053)
   it('"I bought it" clears the flag and dates the book today, keeping its price', () => {
     const wish = book('1', { wish: true, price: 18.99, buyUrl: 'https://example.com/x' })
     const patch = boughtPatch(1_700_000_000_000)
-    expect(patch).toEqual({ wish: undefined, addedAt: 1_700_000_000_000 })
+    // and it is marked as a wish she bought, for the month's well-done (D-0086)
+    expect(patch).toEqual({ wish: undefined, wasWished: true, addedAt: 1_700_000_000_000 })
     const bought = { ...wish, ...patch }
     expect(isWish(bought)).toBe(false)
     expect(shelfBooks([bought]).map((b) => b.id)).toEqual(['1'])
@@ -118,5 +121,50 @@ describe('the wishlist, and how it is kept apart from the shelf (T-0072, D-0053)
     expect(both.wish).toBe(true)
     // the wish is the one she kept: it stays a wish
     expect(mergeBooks(wish, shelf).wish).toBe(true)
+  })
+})
+
+/** "You bought 3 of your wishes this month" (D-0086). */
+describe('the wishes she bought this month', () => {
+  const nov = new Date(2026, 10, 26, 12, 0)
+  const at = (y: number, m: number, d: number) => new Date(y, m, d, 9, 0).getTime()
+  const bought = (id: string, when: number): Book => ({
+    id,
+    title: `Book ${id}`,
+    authors: [],
+    color: '#888',
+    status: 'want',
+    addedAt: when,
+    wasWished: true,
+  })
+
+  it('counts the wishes she turned into books this month', () => {
+    const shelf = [bought('a', at(2026, 10, 3)), bought('b', at(2026, 10, 20)), bought('c', at(2026, 9, 28))]
+    expect(boughtThisMonth(shelf, nov)).toBe(2)
+    expect(boughtText(boughtThisMonth(shelf, nov))).toBe('You bought 2 of your wishes this month')
+  })
+
+  it('says nothing in a month she bought none', () => {
+    expect(boughtThisMonth([bought('c', at(2026, 9, 28))], nov)).toBe(0)
+    expect(boughtText(0)).toBe('')
+  })
+
+  it('leaves out a book that was never on the wishlist, and one still on it', () => {
+    const plain: Book = { id: 'p', title: 'Plain', authors: [], color: '#888', status: 'want', addedAt: at(2026, 10, 5) }
+    const stillWished: Book = { ...bought('w', at(2026, 10, 5)), wish: true }
+    expect(boughtThisMonth([plain, stillWished], nov)).toBe(0)
+  })
+
+  it('marks a wish as bought when she presses "I bought it"', () => {
+    const patch = boughtPatch(at(2026, 10, 26))
+    expect(patch.wish).toBeUndefined()
+    expect(patch.wasWished).toBe(true)
+    expect(patch.addedAt).toBe(at(2026, 10, 26))
+  })
+
+  it('counts nothing for the wishes she bought before this existed', () => {
+    // no mark, so it is not counted: inventing one would be guessing
+    const old: Book = { id: 'o', title: 'Old', authors: [], color: '#888', status: 'read', addedAt: at(2026, 10, 2) }
+    expect(boughtThisMonth([old], nov)).toBe(0)
   })
 })

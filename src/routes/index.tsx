@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ClientOnly, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { ZOOM_MAX, clampZoom } from '#/components/BookshelfScene'
 import { SafeBookshelf } from '#/components/SafeBookshelf'
@@ -22,7 +22,14 @@ import type { Account } from '#/lib/session'
 import { SignIn } from '#/components/SignIn'
 import { detectSeries, seriesGroups } from '#/lib/series'
 import { readNextChoices } from '#/lib/readNext'
-import { Dashboard } from '#/components/Dashboard'
+/**
+ * The pages that are not the shelf come in files of their own (D-0080 §1), so
+ * opening the app downloads the shelf and not Stats, the challenges, the
+ * calendar, the garden and the den as well. The light ones are fetched quietly
+ * once the shelf is up (`usePrefetchPages`); the two with their own 3D wait
+ * until she taps them.
+ */
+const Dashboard = lazy(() => import('#/components/Dashboard').then((m) => ({ default: m.Dashboard })))
 import { BadgeToasts } from '#/components/NewBlocks'
 import { QuickUpdate } from '#/components/QuickUpdate'
 import { SparkleLayer, sparkle } from '#/components/Sparkles'
@@ -30,14 +37,17 @@ import { ConfettiLayer } from '#/components/Confetti'
 import { useChallengeExtras } from '#/components/useChallengeExtras'
 import { WishCard } from '#/components/WishCard'
 import { RoomPanel, useRoom } from '#/components/RoomPanel'
-import { ChallengesPage } from '#/components/ChallengesPage'
+const ChallengesPage = lazy(() => import('#/components/ChallengesPage').then((m) => ({ default: m.ChallengesPage })))
 import { ReminderToggle } from '#/components/ReminderToggle'
-import { StatsPage } from '#/components/StatsPage'
-import { CalendarPage } from '#/components/CalendarPage'
-import { CreaturesPage } from '#/components/CreaturesPage'
-import { GardenPage } from '#/components/GardenPage'
+const StatsPage = lazy(() => import('#/components/StatsPage').then((m) => ({ default: m.StatsPage })))
+const CalendarPage = lazy(() => import('#/components/CalendarPage').then((m) => ({ default: m.CalendarPage })))
+const CreaturesPage = lazy(() => import('#/components/CreaturesPage').then((m) => ({ default: m.CreaturesPage })))
+const GardenPage = lazy(() => import('#/components/GardenPage').then((m) => ({ default: m.GardenPage })))
 import { CreaturesProvider, useCreaturesValue } from '#/components/creatures/CreaturesContext'
 import { useFactMark } from '#/components/useFactMark'
+import { PageWhileLoading, usePrefetchPages } from '#/components/PageWhileLoading'
+import { useCookieMark } from '#/components/useCookieMark'
+import { askText, keepWishEvent, keptWishes, wishToAsk } from '#/lib/wishFulfilled'
 import { useShelfPet } from '#/components/creatures/useShelfPet'
 import { isCategory, ownedDecor } from '#/lib/creatures/shop'
 import type { ShopCategory } from '#/lib/creatures/shop'
@@ -52,7 +62,7 @@ import { NO_GENRE, reorderShown } from '#/lib/genreFilter'
 import { START_VIEW, applyView, cleanFilters, filterOptions, viewSummary } from '#/lib/shelfFilter'
 import type { ShelfView } from '#/lib/shelfFilter'
 import { ShelfBar } from '#/components/ShelfBar'
-import { boughtPatch, shelfBooks, wishBooks, wishCountText } from '#/lib/wishlist'
+import { boughtPatch, boughtText, boughtThisMonth, shelfBooks, wishBooks, wishCountText } from '#/lib/wishlist'
 import { posePatch } from '#/lib/pose'
 import type { BookPose } from '#/lib/pose'
 import { FollowUpDialog } from '#/components/FollowUpDialog'
@@ -308,6 +318,24 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   // how far along her facts are (D-0079): kept here, not in the block, so a reading day
   // still moves it on when the Fact of the day block is hidden
   const factMark = useFactMark(books, creatures.choices)
+  // the light pages come along quietly once the shelf is up and still (D-0080 §1)
+  usePrefetchPages(loaded)
+  // cookies she has earned are never taken back (D-0081)
+  useCookieMark(books, creatures.choices)
+  /**
+   * A wish she already has on her shelf (D-0086): offered in "Waiting for you", never
+   * taken off by itself. Her "Keep it" rides in the choice log, so she is asked once.
+   */
+  const kept = useMemo(() => keptWishes(creatures.choices.log), [creatures.choices.log])
+  const fulfilled = useMemo(() => wishToAsk(allBooks, kept), [allBooks, kept])
+  const wishDone = fulfilled
+    ? {
+        text: askText(fulfilled),
+        title: fulfilled.wish.title,
+        onRemove: () => removeBook(fulfilled.wish.id),
+        onKeep: () => creatures.choices.record(keepWishEvent(fulfilled.wish.id)),
+      }
+    : undefined
   // decorations she bought in the creature shop join the room on every device (T-0031 §11)
   const owned = useMemo(() => ownedDecor(creatures.choices.log), [creatures.choices.log])
   // the favourite creature on the shelf (T-0033): computed from books + log for its reactions
@@ -476,8 +504,9 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             {/* the Wishlist bookcase counts in its own words: books and what they would cost (D-0074 §4) */}
             {shelfView.bookcase === 'wish'
               ? wishes.length
-                ? wishCountText(wishes)
-                : 'Nothing on your wishlist yet'
+                ? // "3 books · €41.48", and the month's well-done when there is one (D-0086)
+                  [wishCountText(wishes), boughtText(boughtThisMonth(allBooks))].filter(Boolean).join(' · ')
+                : boughtText(boughtThisMonth(allBooks)) || 'Nothing on your wishlist yet'
               : books.length === 0
               ? 'An empty shelf, waiting for stories'
               : summary.length
@@ -591,6 +620,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           </div>
         )}
         {onDashboard && (
+          <PageWhileLoading>
           <Dashboard
             books={books}
             onShowBook={showBook}
@@ -603,19 +633,28 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             onOpenGarden={openGarden}
             onOpenStats={openStats}
             factMark={factMark}
+            wishDone={wishDone}
           />
+          </PageWhileLoading>
         )}
         {view === 'stats' && (
+          <PageWhileLoading>
           <StatsPage
             books={books}
             accountId={account?.id ?? null}
             onShowBook={showBook}
             onOpenGoal={() => openChallenges('goal')}
           />
+          </PageWhileLoading>
         )}
-        {view === 'calendar' && <CalendarPage books={books} onShowBook={showBook} onUpdate={updateBook} startMonth={search.month} />}
+        {view === 'calendar' && (
+          <PageWhileLoading>
+            <CalendarPage books={books} onShowBook={showBook} onUpdate={updateBook} startMonth={search.month} />
+          </PageWhileLoading>
+        )}
         {view === 'creatures' && (
           <ClientOnly fallback={null}>
+            <PageWhileLoading>
             <CreaturesPage
               books={books}
               startChoose={search.step === 'choose'}
@@ -628,14 +667,18 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
               onRoom={setRoom}
               paused={!!selected || adding !== null || wishing}
             />
+            </PageWhileLoading>
           </ClientOnly>
         )}
         {view === 'garden' && (
           <ClientOnly fallback={null}>
-            <GardenPage books={books} paused={!!selected || adding !== null || wishing} onShowBook={showBook} />
+            <PageWhileLoading>
+              <GardenPage books={books} paused={!!selected || adding !== null || wishing} onShowBook={showBook} />
+            </PageWhileLoading>
           </ClientOnly>
         )}
         {view === 'challenges' && (
+          <PageWhileLoading>
           <ChallengesPage
             books={books}
             accountId={account?.id ?? null}
@@ -643,6 +686,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             onUpdate={updateBook}
             focus={search.focus}
           />
+          </PageWhileLoading>
         )}
       </main>
 

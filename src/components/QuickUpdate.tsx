@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Book } from '#/lib/library'
 import { finishPatch, parsePosition, position, quickBooks, stepOf, stepPatch } from '#/lib/quickUpdate'
-import { Cover } from './Dashboard'
+import { Cover } from './common'
 import { sparkle } from './Sparkles'
 import { daysLeftText, daysToFinish } from '#/lib/finishEstimate'
 

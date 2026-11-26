@@ -8,7 +8,7 @@ import { seasonChallenge, seasonsDone } from '#/lib/seasonChallenge'
 import { MINUTES_GOAL, minutesMonth, minutesYear } from '#/lib/minutesChallenge'
 import { newSeriesPick, pickableSeries, seriesDone, seriesRows } from '#/lib/seriesChallenge'
 import type { OwnChallenge } from '#/lib/ownChallenges'
-import { monthName } from './Dashboard'
+import { monthName } from './common'
 
 /**
  * The four ready-made challenges added in T-0091 (D-0065). Each is an ordinary

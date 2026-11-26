@@ -1,5 +1,16 @@
 import { useEffect, useState } from 'react'
-import { DECOR_NAMES, DEFAULT_ROOM, ROOM_EXTRAS, WALLPAPERS, WOODS, cleanRoom, moveDecor, toggleDecor } from '#/lib/room'
+import {
+  DECOR_NAMES,
+  DEFAULT_ROOM,
+  NIGHT_MODES,
+  ROOM_EXTRAS,
+  WALLPAPERS,
+  WOODS,
+  cleanRoom,
+  isNightNow,
+  moveDecor,
+  toggleDecor,
+} from '#/lib/room'
 import type { Room, Wallpaper, Wood } from '#/lib/room'
 import type { ShopDecorKind } from '#/lib/shelfLayout'
 
@@ -32,6 +43,21 @@ export function useRoom(owned: readonly ShopDecorKind[] = NONE) {
   useEffect(() => {
     document.documentElement.dataset.wallpaper = room.wallpaper
   }, [room.wallpaper])
+  /**
+   * Night mode on the pages (D-0085). With `auto` the hour is re-read every minute, so
+   * evening arrives by itself while she is looking, exactly as the room's own Day & night
+   * does (D-0045). It goes on <html>, so every page's CSS follows it.
+   */
+  const [hour, setHour] = useState(() => new Date().getHours())
+  useEffect(() => {
+    if (room.night !== 'auto') return
+    setHour(new Date().getHours())
+    const t = setInterval(() => setHour(new Date().getHours()), 60_000)
+    return () => clearInterval(t)
+  }, [room.night])
+  useEffect(() => {
+    document.documentElement.dataset.night = isNightNow(room.night, hour) ? 'on' : 'off'
+  }, [room.night, hour])
   const setRoom = (raw: Room) => {
     const next = cleanRoom(raw, owned)
     setState(next)
@@ -94,6 +120,24 @@ export function RoomPanel({ room, onRoom, onClose }: { room: Room; onRoom: (room
           <input type="checkbox" checked={room.detailedBooks} onChange={() => onRoom({ ...room, detailedBooks: !room.detailedBooks })} />
           <span>Detailed books</span>
         </label>
+      </div>
+
+      {/* night mode for the pages (D-0085): after dark by default, because she reads in bed */}
+      <div className="room-row" role="group" aria-label="Night mode">
+        <span className="muted small-text">Night mode</span>
+        <div className="segmented night-pick">
+          {NIGHT_MODES.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              className={room.night === id ? 'active' : undefined}
+              aria-pressed={room.night === id}
+              onClick={() => room.night !== id && onRoom({ ...room, night: id })}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* the cosy room extras (D-0045): one group, so the decorations below stay reachable on a phone */}

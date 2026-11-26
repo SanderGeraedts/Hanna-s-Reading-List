@@ -10,7 +10,10 @@ import { PLANT_KINDS, PLANT_KIND_IDS } from '#/lib/garden/plants'
 import { SEASONS } from '#/lib/garden/seasons'
 import { gardenLayout, slotPoint, spotPoint } from '#/lib/garden/view'
 import { sceneColumns, sceneView } from './gardenView'
-import { buildBeds, buildGround, buildItem, buildPlant, buildPlantField, buildShadows, buildVisitors, buildWeather, lookOf } from './plantModel'
+import { buildBeds, buildGround, buildItem, buildPlant, buildPlantField, buildScenery, buildShadows, buildVisitors, buildWeather, lookOf } from './plantModel'
+import { SCENERY_IDS } from '#/lib/garden/scenery'
+import { WEATHERS } from '#/lib/garden/weather'
+import type { GardenWeather } from '#/lib/garden/weather'
 
 /**
  * The 3D garden's budget (T-0062 Done when 1, D-0051 §6): the fullest garden on
@@ -51,7 +54,15 @@ function gardenOf(n: number, today: string) {
 }
 
 /** The whole scene the garden draws, as `GardenScene` builds it. */
-function build(plants: Plant[], beds: number, season: (typeof SEASONS)[number], items: number, visitors: number, front: 'low' | 'high' = 'low') {
+function build(
+  plants: Plant[],
+  beds: number,
+  season: (typeof SEASONS)[number],
+  items: number,
+  visitors: number,
+  front: 'low' | 'high' = 'low',
+  weather?: GardenWeather,
+) {
   const columns = sceneColumns(beds)
   const layout = gardenLayout(beds, columns)
   const root = new THREE.Group()
@@ -81,7 +92,10 @@ function build(plants: Plant[], beds: number, season: (typeof SEASONS)[number], 
   const guests = Array.from({ length: visitors }, (_, i) => ({ x: i, y: 1.2, z: i, colour: '#e2c05a' }))
   const flyers = buildVisitors(guests)
   if (flyers) root.add(flyers)
-  const sky = buildWeather(layout, season)
+  // every piece of scenery she can have, and the heaviest weather (D-0083)
+  const around = buildScenery(layout, SCENERY_IDS, season)
+  if (around) root.add(around)
+  const sky = buildWeather(layout, season, weather)
   if (sky) root.add(sky)
   return { root, layout }
 }
@@ -97,6 +111,27 @@ describe('one plant is one draw call', () => {
           expect(cost.triangles, `${id} ${season}`).toBeLessThanOrEqual(400)
           expect(mesh.geometry.attributes.color, `${id} colour`).toBeDefined()
         }
+  })
+
+  it('keeps the whole scenery to one draw call, however much has arrived (D-0083 §2)', () => {
+    for (const season of SEASONS) {
+      const layout = gardenLayout(9, sceneColumns(9))
+      const mesh = buildScenery(layout, SCENERY_IDS, season)
+      expect(mesh, season).not.toBeNull()
+      const cost = drawCost(mesh!, false)
+      expect(cost.calls, season).toBe(1)
+      expect(cost.triangles, season).toBeLessThanOrEqual(1500)
+    }
+    expect(buildScenery(gardenLayout(1, 1), [], 'summer')).toBeNull()
+  })
+
+  it('stays inside the budget in every weather (D-0083 §1)', () => {
+    const year = gardenOf(100, '2026-10-15').years[0]
+    for (const weather of WEATHERS) {
+      const cost = drawCost(build(year.plants, year.beds, 'autumn', GARDEN_ITEMS.length, 6, 'low', weather).root, false)
+      expect(cost.calls, weather).toBeLessThanOrEqual(CALLS)
+      expect(cost.triangles, weather).toBeLessThanOrEqual(TRIANGLES)
+    }
   })
 
   it('keeps a garden item to one draw call too', () => {

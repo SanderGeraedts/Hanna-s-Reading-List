@@ -54,7 +54,7 @@ import { amountText } from '#/lib/readingLog'
 import { addedText, recentlyAdded } from '#/lib/recent'
 import type { DayEntry } from '#/lib/readingLog'
 import type { Period } from '#/lib/stats'
-import { Cover, monthName } from './Dashboard'
+import { Cover, monthName } from './common'
 import { OpenLink } from './OpenLink'
 import type { Props } from './Dashboard'
 

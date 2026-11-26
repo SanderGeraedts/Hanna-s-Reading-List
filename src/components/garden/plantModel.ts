@@ -3,6 +3,8 @@ import type { Plant } from '#/lib/garden/garden'
 import type { PlantKind } from '#/lib/garden/plants'
 import type { Season } from '#/lib/garden/seasons'
 import type { GardenItemId } from '#/lib/garden/numbers'
+import type { GardenWeather } from '#/lib/garden/weather'
+import type { SceneryId } from '#/lib/garden/scenery'
 import { BED_D, BED_RIM, BED_W, type GardenLayout, plantHeight, spotPoint } from '#/lib/garden/view'
 import { leafColour } from './plantSvg'
 
@@ -401,10 +403,100 @@ export function buildItem(item: GardenItemId, season: Season, q: Quality = 'low'
   return mesh
 }
 
-/** Snow or falling leaves: one Points object, never one per flake (T-0062 §3). */
-export function buildWeather(layout: GardenLayout, season: Season, count = 120): THREE.Points | null {
-  if (season !== 'winter' && season !== 'autumn') return null
-  const position = new Float32Array(count * 3)
+/**
+ * Everything her reading has brought to the garden (D-0083 §2), merged into
+ * **one mesh**: a hedge along the back, a fence down the sides, a brook with
+ * stepping stones along the bottom, a birdhouse, a potting shed and a beehive
+ * in the corners. One draw call for the whole lot, whatever has arrived, so the
+ * garden's draw budget (D-0051 §6) hardly notices it.
+ *
+ * It stands in the grass border round the beds, never on them and never in the
+ * item strip, so it can't collide with a garden item she has placed herself.
+ */
+export function buildScenery(layout: GardenLayout, ids: readonly SceneryId[], season: Season, q: Quality = 'low'): THREE.Mesh | null {
+  if (!ids.length) return null
+  const snow = season === 'winter'
+  const parts: Part[] = []
+  const add = (geometry: THREE.BufferGeometry, colour: string, matrix: THREE.Matrix4) => parts.push({ geometry, colour, matrix })
+  const has = (id: SceneryId) => ids.includes(id)
+  const w = layout.width
+  const near = layout.stripZ
+  const leaf = snow ? '#9fb39c' : season === 'autumn' ? '#7f8b4f' : '#4e7f4a'
+  if (has('hedge')) {
+    const span = Math.max(0.6, w - 2.1)
+    add(box(), leaf, place(w / 2, 0.22, 0.36, span, 0.44, 0.44))
+    for (let i = 0; i < Math.max(2, Math.round(span / 1.2)); i++)
+      add(sphere(q), leaf, place(1.05 + 0.6 + i * 1.2, 0.44, 0.36, 0.5, 0.26, 0.42))
+  }
+  if (has('fence'))
+    for (const x of [0.28, w - 0.28]) {
+      const from = 1.3
+      const to = Math.max(from + 0.6, near - 1.3)
+      add(box(), '#b79b78', place(x, 0.3, (from + to) / 2, 0.06, 0.05, to - from))
+      for (let z = from; z <= to; z += 0.7) add(box(), '#c9ae8c', place(x, 0.2, z, 0.08, 0.4, 0.08))
+    }
+  if (has('brook')) add(box(), snow ? '#b9cadd' : '#7fa8c4', place(w / 2, 0.02, near - 0.35, Math.max(0.6, w - 1.6), 0.04, 0.3))
+  if (has('stones'))
+    for (let i = 0; i < 4; i++) add(cylinder(q), snow ? '#e4e9f3' : '#b9ad99', place(w * (0.22 + i * 0.19), 0.05, near - 0.35, 0.34, 0.08, 0.34))
+  if (has('birdhouse')) {
+    add(cylinder(q), '#8a7a66', place(w - 0.5, 0.35, 0.75, 0.07, 0.7, 0.07))
+    add(box(), '#d8b98f', place(w - 0.5, 0.8, 0.75, 0.34, 0.26, 0.3))
+    add(cone(q), '#8a6440', place(w - 0.5, 1, 0.75, 0.46, 0.2, 0.42))
+  }
+  if (has('shed')) {
+    add(box(), '#b08a63', place(0.7, 0.26, near - 0.8, 0.8, 0.52, 0.6))
+    add(cone(q), '#7d5c3e', place(0.7, 0.64, near - 0.8, 1, 0.3, 0.8))
+    add(box(), '#6f5339', place(0.7, 0.18, near - 0.5, 0.26, 0.36, 0.04))
+  }
+  if (has('beehive')) {
+    for (let i = 0; i < 3; i++) add(cylinder(q), '#d9b25f', place(w - 0.7, 0.08 + i * 0.16, near - 0.8, 0.5 - i * 0.06, 0.16, 0.5 - i * 0.06))
+    add(sphere(q), '#c89a46', place(w - 0.7, 0.58, near - 0.8, 0.3, 0.16, 0.3))
+  }
+  const mesh = new THREE.Mesh(mergeParts(parts), gardenMaterial)
+  mesh.name = 'scenery'
+  return mesh
+}
+
+/**
+ * The sky: falling snow, rain, or autumn leaves — one Points object, never one
+ * per flake (T-0062 §3). `weather` is the day's invented weather (D-0083 §1);
+ * without one the season decides on its own, as it did before.
+ *
+ * Only weather that **falls** is drawn here, because falling is all a Points
+ * object can do cheaply; a bright or a misty day is the flat view's wash and
+ * the scene's own light, and costs nothing at all.
+ */
+export function buildWeather(layout: GardenLayout, season: Season, weather?: GardenWeather, count = 120): THREE.Points | null {
+  const falling =
+    weather === 'snow' || weather === 'rain' || weather === 'shower'
+      ? weather
+      : weather === undefined && (season === 'winter' || season === 'autumn')
+        ? season === 'winter'
+          ? 'snow'
+          : 'leaves'
+        : // a dry day in autumn still drops its leaves: the season's own fall, beside the weather
+          season === 'autumn' && weather !== undefined && weather !== 'frost'
+          ? 'leaves'
+          : null
+  if (!falling) return null
+  const drops = falling === 'rain' ? count : falling === 'shower' ? Math.round(count * 0.6) : count
+  const position = new Float32Array(drops * 3)
+  const look =
+    falling === 'snow'
+      ? { size: 0.09, color: '#ffffff', opacity: 0.85 }
+      : falling === 'leaves'
+        ? { size: 0.11, color: '#d8a95a', opacity: 0.8 }
+        : { size: 0.06, color: '#cfe0f0', opacity: 0.7 }
+  return fallingPoints(layout, position, drops, look)
+}
+
+/** The points themselves, laid out over the garden and up into the air. */
+function fallingPoints(
+  layout: GardenLayout,
+  position: Float32Array,
+  count: number,
+  look: { size: number; color: string; opacity: number },
+): THREE.Points {
   for (let i = 0; i < count; i++) {
     position[i * 3] = Math.random() * layout.width
     position[i * 3 + 1] = Math.random() * 4
@@ -414,12 +506,7 @@ export function buildWeather(layout: GardenLayout, season: Season, count = 120):
   g.setAttribute('position', new THREE.BufferAttribute(position, 3))
   const points = new THREE.Points(
     g,
-    new THREE.PointsMaterial({
-      size: season === 'winter' ? 0.09 : 0.11,
-      color: season === 'winter' ? '#ffffff' : '#d8a95a',
-      transparent: true,
-      opacity: 0.8,
-    }),
+    new THREE.PointsMaterial({ size: look.size, color: look.color, transparent: true, opacity: look.opacity }),
   )
   points.name = 'weather'
   return points

@@ -60,4 +60,27 @@ export function wishCountText(wishes: Book[]): string {
  * from the day it arrived and not from the day she wished for it (D-0053). Its
  * price is kept, for the follow-up's price field.
  */
-export const boughtPatch = (at: number = Date.now()): Partial<Book> => ({ wish: undefined, addedAt: at })
+export const boughtPatch = (at: number = Date.now()): Partial<Book> => ({ wish: undefined, wasWished: true, addedAt: at })
+
+/**
+ * "You bought 3 of your wishes this month" (D-0086): a small well-done for the
+ * wishes she actually got round to.
+ *
+ * A bought wish is an ordinary shelf book whose `addedAt` is the day she bought
+ * it (above), marked `wasWished` so it can be told apart from a book that was
+ * never on the list. Nothing is counted for wishes bought before this shipped:
+ * they carry no mark, and inventing one would be guessing.
+ */
+export function boughtThisMonth(books: Book[], now: Date = new Date()): number {
+  const year = now.getFullYear()
+  const month = now.getMonth()
+  return books.filter((b) => {
+    if (!b.wasWished || b.wish) return false
+    const at = new Date(b.addedAt)
+    return at.getFullYear() === year && at.getMonth() === month
+  }).length
+}
+
+/** The well-done, or '' when there is nothing to say yet. */
+export const boughtText = (n: number): string =>
+  n > 0 ? `You bought ${n} of your wishes this month` : ''

@@ -2,6 +2,8 @@ import type { Garden, Stage } from './garden'
 import { itemSpec } from './numbers'
 import type { GardenItemId } from './numbers'
 import { withArticle } from './words'
+import { arrivalLines } from './scenery'
+import type { SceneryId } from './scenery'
 
 /**
  * What is new in the garden since she last looked (T-0066): a plant that has
@@ -22,6 +24,8 @@ export interface GardenSeen {
   plants: Record<string, Stage>
   /** the garden items that were already unlocked */
   items: GardenItemId[]
+  /** the scenery that had already arrived (D-0083 §2) */
+  scenery: SceneryId[]
 }
 
 export type Newness = 'new' | 'grown'
@@ -32,7 +36,7 @@ const ORDER: Record<Stage, number> = { sprout: 0, young: 1, grown: 2 }
 export function snapshot(garden: Garden): GardenSeen {
   const plants: Record<string, Stage> = {}
   for (const year of garden.years) for (const p of year.plants) plants[p.id] = p.stage
-  return { plants, items: [...garden.unlocked] }
+  return { plants, items: [...garden.unlocked], scenery: [...garden.scenery] }
 }
 
 /**
@@ -43,9 +47,15 @@ export function snapshot(garden: Garden): GardenSeen {
 export function readSeen(raw: unknown, garden: Garden): GardenSeen | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
   const o = raw as Record<string, unknown>
+  // a note written before the scenery existed counts every piece as already seen
+  const scenery = Array.isArray(o.scenery) ? (o.scenery as SceneryId[]) : [...garden.scenery]
   if (o.plants && typeof o.plants === 'object' && !Array.isArray(o.plants))
-    return { plants: o.plants as Record<string, Stage>, items: Array.isArray(o.items) ? (o.items as GardenItemId[]) : [...garden.unlocked] }
-  return { plants: o as Record<string, Stage>, items: [...garden.unlocked] }
+    return {
+      plants: o.plants as Record<string, Stage>,
+      items: Array.isArray(o.items) ? (o.items as GardenItemId[]) : [...garden.unlocked],
+      scenery,
+    }
+  return { plants: o as Record<string, Stage>, items: [...garden.unlocked], scenery }
 }
 
 /**
@@ -70,6 +80,17 @@ export function freshUnlocks(seen: GardenSeen | null, garden: Garden): GardenIte
   if (!seen) return []
   const had = new Set(seen.items)
   return garden.unlocked.filter((id) => !had.has(id))
+}
+
+/**
+ * The scenery that has arrived since she last looked, in the order it arrives
+ * (D-0083 §2). A first visit — no note at all — announces nothing: a garden
+ * that already has a hedge is simply a garden.
+ */
+export function freshScenery(seen: GardenSeen | null, garden: Garden): SceneryId[] {
+  if (!seen) return []
+  const had = new Set(seen.scenery)
+  return garden.scenery.filter((id) => !had.has(id))
 }
 
 export interface NewsCount {
@@ -97,7 +118,11 @@ export function newsLine(news: ReadonlyMap<string, Newness>): string {
  * pond has unlocked". Empty when nothing has happened, and the dashboard then
  * leaves the line out.
  */
-export function waitingLine(news: ReadonlyMap<string, Newness>, unlocked: readonly GardenItemId[]): string {
+export function waitingLine(
+  news: ReadonlyMap<string, Newness>,
+  unlocked: readonly GardenItemId[],
+  scenery: readonly SceneryId[] = [],
+): string {
   const { fresh, grew } = countNews(news)
   const parts: string[] = []
   if (fresh) parts.push(`${fresh} new plant${fresh === 1 ? '' : 's'}`)
@@ -107,7 +132,9 @@ export function waitingLine(news: ReadonlyMap<string, Newness>, unlocked: readon
     const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
     parts.push(`${list} ${unlocked.length === 1 && !names[0].endsWith('s') ? 'has' : 'have'} unlocked`)
   }
-  if (!parts.length) return ''
+  // the scenery says itself what it is, so it follows the sentence rather than joining it
+  const arrived = arrivalLines(scenery)
+  if (!parts.length) return arrived
   const line = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
-  return `In your garden: ${line}.`
+  return `In your garden: ${line}.${arrived ? ` ${arrived}` : ''}`
 }

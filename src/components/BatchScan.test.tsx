@@ -57,7 +57,7 @@ const lookup = async (isbn: string): Promise<IsbnLookup | null> => {
   return title ? { workKey: `/works/OL${isbn.slice(-4)}W`, title, authors: ['Someone'], isbn, genres: [], coverId: 7 } : null
 }
 
-function setup(opts: { lookup?: typeof lookup } = {}) {
+function setup(opts: { lookup?: typeof lookup; mode?: 'shelf' | 'wish' } = {}) {
   const state = { added: [] as NewBook[], manual: [] as string[], closed: 0 }
   render(
     <BatchScan
@@ -66,6 +66,7 @@ function setup(opts: { lookup?: typeof lookup } = {}) {
       onAdd={(b) => state.added.push(b)}
       onManual={(isbn) => state.manual.push(isbn)}
       onClose={() => state.closed++}
+      mode={opts.mode}
     />,
   )
   return state
@@ -313,3 +314,48 @@ describe('scanning a pile of books in one go (T-0071)', () => {
 })
 
 const i = (isbn: string) => isbn.slice(-4)
+
+/**
+ * Scanning onto the **wishlist** (D-0082): standing in a bookshop with a book she
+ * wants to read but isn't buying today.
+ */
+describe('scanning onto the wishlist', () => {
+  it('adds what it scans as a wish, not as a book on the shelf', async () => {
+    const state = setup({ mode: 'wish' })
+    await scan(NIGHT)
+    await act(async () => {
+      fireEvent.click(addAll())
+    })
+    expect(state.added).toHaveLength(1)
+    expect(state.added[0].title).toBe('The Night Circus')
+    expect(state.added[0].wish).toBe(true)
+    // a wish is not owned, so it is never given a format
+    expect(state.added[0].formats).toBeUndefined()
+  })
+
+  it('never asks how she has it, because she hasn’t', async () => {
+    setup({ mode: 'wish' })
+    await scan(NIGHT)
+    expect(screen.queryByRole('group', { name: 'How I have it' })).toBeNull()
+  })
+
+  it('says where the books are going, before and after', async () => {
+    setup({ mode: 'wish' })
+    await scan(NIGHT)
+    expect(addAll().textContent).toContain('to the wishlist')
+    await act(async () => {
+      fireEvent.click(addAll())
+    })
+    expect(screen.getByRole('status').textContent).toBe('Added 1 book to your wishlist.')
+  })
+
+  it('still puts books on the shelf when it is not in wishlist mode', async () => {
+    const state = setup()
+    await scan(NIGHT)
+    await act(async () => {
+      fireEvent.click(addAll())
+    })
+    expect(state.added[0].wish).toBeUndefined()
+    expect(screen.getByRole('status').textContent).toBe('Added 1 book.')
+  })
+})

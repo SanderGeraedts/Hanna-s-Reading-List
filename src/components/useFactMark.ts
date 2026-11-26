@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import type { Book } from '#/lib/library'
-import { factsUnlocked } from '#/lib/facts'
+import { factsUnlocked } from '#/lib/factCount'
 import { factsSeen, factsSeenEvent } from '#/lib/factsSeen'
 import type { CreatureChoices } from './useCreatureChoices'
 

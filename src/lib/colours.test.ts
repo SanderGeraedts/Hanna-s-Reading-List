@@ -67,6 +67,15 @@ const fadeIn = (block: string): string => {
 const fade = (rgb: string, alpha: number): RGBA => [...(rgb.split(',').map((x) => Number(x.trim())) as [number, number, number]), alpha]
 const lavFade = fadeIn(root)
 const midFade = midnight.includes('--header-fade') ? fadeIn(midnight) : lavFade
+
+// night mode (D-0085): its own tokens over the :root ones, like the midnight wallpaper's
+const nightStart = css.indexOf("html[data-night='on'] {")
+const nightBlock = css.slice(nightStart, css.indexOf('}', nightStart))
+const night = (name: string): RGBA => {
+  const m = nightBlock.match(new RegExp(`--${name}:\s*([^;]+);`))
+  return m ? parse(m[1]) : c(name)
+}
+const nightFade = nightBlock.includes('--header-fade') ? fadeIn(nightBlock) : lavFade
 /** The body of a rule in styles.css, by its exact selector. */
 const rule = (selector: string): string => {
   const at = css.indexOf(`\n${selector} {`)
@@ -114,6 +123,10 @@ describe('colour check: everything stays readable', () => {
   ]
   // on the midnight wallpaper: the text straight on it, and the cards on it
   const midWalls = ['wall-top', 'wall-page-bottom'].map(mid)
+  const nightWalls = ['wall-top', 'wall-page-bottom'].map(night)
+  const nightCards = nightWalls.map((w) => over(c('surface'), w))
+  const nightPill = (bg: RGBA) => over(night('pill-bg'), bg)
+  const nightBand = blackAndWhite.map((u) => over(fade(nightFade, bandAlpha), u))
   const midCards = midWalls.map((w) => over(c('surface'), w))
   cases.push(
     ['header text on the midnight wallpaper', mid('header-ink'), midWalls, 4.5],
@@ -134,6 +147,17 @@ describe('colour check: everything stays readable', () => {
     // the worst thing the pill can sit on is the dark wood of the bookcase, not the wallpaper
     ['an unchosen bookcase on its pill, over the darkest wood', c('pill-muted'), [over([255, 255, 255, 0.92], [43, 29, 18, 1])], 4.5],
     ['the chosen bookcase on its gold fill', c('accent-ink'), [c('accent')], 4.5],
+    // night mode (D-0085): the pages go dark after dark, and the white round buttons with them
+    ['header text on the pages at night', night('header-ink'), nightWalls, 4.5],
+    ['header helper text on the pages at night', night('header-muted'), nightWalls, 4.5],
+    ['text on a card at night', c('text'), nightCards, 4.5],
+    ['helper text on a card at night', c('muted'), nightCards, 4.5],
+    ['gold on a card at night', c('accent'), nightCards, 3],
+    ['text on a header button at night', night('pill-ink'), nightWalls.map(nightPill), 4.5],
+    ['an unchosen bookcase at night', night('pill-muted'), nightWalls.map(nightPill), 4.5],
+    ['a header button at night, over the darkest wood', night('pill-ink'), [nightPill([43, 29, 18, 1])], 4.5],
+    ['header text on the band at night', night('header-ink'), nightBand, 4.5],
+    ['header helper text on the band at night', night('header-muted'), nightBand, 4.5],
     // the header text over the header's haze, on the midnight wallpaper
     ['header text over the midnight haze', mid('header-ink'), midWalls.map((w) => over(fade(midFade, hazeAlpha), w)), 4.5],
     // the header's band on the pages, over black and over white underneath, on both wallpapers (T-0035)

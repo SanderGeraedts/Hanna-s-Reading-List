@@ -3,7 +3,7 @@ import type { Book } from '#/lib/library'
 import { timesRead } from '#/lib/library'
 import { tropeCounts } from '#/lib/tropes'
 import { favouriteCharacters } from '#/lib/characters'
-import { Cover } from './Dashboard'
+import { Cover } from './common'
 
 /** At most this many trope rows and favourite characters in the block. */
 const MAX_TROPES = 6

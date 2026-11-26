@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { Book } from '#/lib/library'
 import { REASON_TEXT, grantWish, wishOptions } from '#/lib/wish'
 import type { Granted, Length, Wish } from '#/lib/wish'
-import { Cover } from './Dashboard'
+import { Cover } from './common'
 import { sparkle } from './Sparkles'
 
 /**

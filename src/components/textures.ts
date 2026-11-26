@@ -5,6 +5,7 @@ import { hasMedal, timesRead } from '#/lib/library'
 import type { BookDims } from '#/lib/shelfLayout'
 import { formatDuration, listenOnly } from '#/lib/listening'
 import type { PageEdges } from '#/lib/edges'
+import { pictureScale } from '#/lib/roomPictures'
 
 /**
  * Procedural textures. No public API provides spine or back-cover images,
@@ -20,6 +21,21 @@ function canvas(w: number, h: number) {
   c.width = Math.max(2, Math.round(w))
   c.height = Math.max(2, Math.round(h))
   return c
+}
+
+/**
+ * A canvas for one of the room's big pictures (D-0080 §2). The picture is
+ * painted in the sizes it always had, so every line, fleck and star keeps its
+ * proportions; only the canvas underneath is smaller on a phone, which is where
+ * the megabytes are. On a computer the scale is 1 and this is exactly what it
+ * was.
+ */
+function roomCanvas(w: number, h: number) {
+  const s = pictureScale()
+  const c = canvas(w * s, h * s)
+  const ctx = c.getContext('2d', { willReadFrequently: true })!
+  if (s !== 1) ctx.scale(s, s)
+  return { c, ctx }
 }
 
 export function toTexture(c: HTMLCanvasElement) {
@@ -795,8 +811,8 @@ function paintOak(ctx: CanvasRenderingContext2D, W: number, H: number, p: OakPal
 export function woodTexture(wood: Wood = 'walnut') {
   const W = 2048
   const H = 512
-  const c = canvas(W, H)
-  paintOak(c.getContext('2d', { willReadFrequently: true })!, W, H, WOOD_PALETTES[wood])
+  const { c, ctx } = roomCanvas(W, H)
+  paintOak(ctx, W, H, WOOD_PALETTES[wood])
   const t = toTexture(c)
   t.wrapS = THREE.RepeatWrapping
   t.wrapT = THREE.RepeatWrapping
@@ -810,8 +826,7 @@ export function floorTexture() {
   const W = 2048
   const H = 1024
   const boards = 4
-  const c = canvas(W, H)
-  const ctx = c.getContext('2d', { willReadFrequently: true })!
+  const { c, ctx } = roomCanvas(W, H)
   paintOak(ctx, W, H, HONEY_OAK)
 
   const bh = H / boards
@@ -847,8 +862,7 @@ export function wallTexture(wallpaper: Wallpaper = 'lavender') {
   if (wallpaper === 'midnight') return midnightWall()
   const W = 48
   const H = 1024
-  const c = canvas(W, H)
-  const ctx = c.getContext('2d')!
+  const { c, ctx } = roomCanvas(W, H)
   // stops are placed by height above the floor (metres); canvas y=0 is the top
   const at = (metres: number) => 1 - metres / WALL_HEIGHT_M
   const g = ctx.createLinearGradient(0, 0, 0, H)
@@ -880,8 +894,7 @@ export function wallTexture(wallpaper: Wallpaper = 'lavender') {
 function midnightWall() {
   const W = 96
   const H = 2048
-  const c = canvas(W, H)
-  const ctx = c.getContext('2d')!
+  const { c, ctx } = roomCanvas(W, H)
   const at = (metres: number) => 1 - metres / WALL_HEIGHT_M
   const g = ctx.createLinearGradient(0, 0, 0, H)
   g.addColorStop(at(WALL_HEIGHT_M), '#2a3670')

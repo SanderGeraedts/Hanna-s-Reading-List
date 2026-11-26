@@ -40,6 +40,13 @@ interface Props {
   paused?: boolean
   /** injected in tests, so no network and no camera are needed */
   lookup?: (isbn: string) => Promise<IsbnLookup | null>
+  /**
+   * `'wish'` scans onto the **wishlist** instead of the shelf (D-0082): standing in a
+   * bookshop with a book she wants to read but isn't buying today. A wish is not owned,
+   * so there is no "How I have it" and no price she has paid; the price field asks what
+   * it will cost, which the wishlist already shows and adds up.
+   */
+  mode?: 'shelf' | 'wish'
 }
 
 const defaultLookup = (isbn: string) => lookupIsbn({ data: { isbn } })
@@ -50,9 +57,11 @@ const defaultLookup = (isbn: string) => lookupIsbn({ data: { isbn } })
  * covers the pile, every book has its own price field (D-0024) and **Add all**
  * puts them on the shelf. The list's rules live in `lib/batchScan.ts`.
  */
-export function BatchScan({ existing, onAdd, onManual, onClose, paused = false, lookup = defaultLookup }: Props) {
+export function BatchScan({ existing, onAdd, onManual, onClose, paused = false, lookup = defaultLookup, mode = 'shelf' }: Props) {
+  const wishing = mode === 'wish'
   const [rows, setRows] = useState<ScanRow[]>([])
-  const [pile, setPile] = useState<BookFormat[]>(DEFAULT_PILE_FORMATS)
+  // a wish is not owned, so it has no formats: the pile stays empty and the chips are not shown
+  const [pile, setPile] = useState<BookFormat[]>(mode === 'wish' ? [] : DEFAULT_PILE_FORMATS)
   const [event, setEvent] = useState('')
   const [adding, setAdding] = useState(false)
   const [added, setAdded] = useState<number | null>(null)
@@ -114,6 +123,7 @@ export function BatchScan({ existing, onAdd, onManual, onClose, paused = false, 
         const price = rowAsksPrice(row, pile) ? parsePrice(row.price) : null
         onAdd({
           ...book,
+          ...(wishing && { wish: true as const }),
           ...(formats.length > 0 && { formats }),
           ...(price?.ok && price.price !== undefined && { price: price.price }),
         })
@@ -135,7 +145,7 @@ export function BatchScan({ existing, onAdd, onManual, onClose, paused = false, 
     return (
       <div className="tab-panel scan-tab">
         <p className="success" role="status" tabIndex={-1} ref={summary}>
-          {addedText(added)}
+          {addedText(added, mode)}
         </p>
         <div className="follow-up-actions">
           <button type="button" className="btn" onClick={() => setAdded(null)}>
@@ -159,6 +169,8 @@ export function BatchScan({ existing, onAdd, onManual, onClose, paused = false, 
         {event}
       </p>
 
+      {/* a wish is not owned, so it is never asked how she has it (D-0082) */}
+      {!wishing && (
       <div className="field" role="group" aria-labelledby="batch-pile-formats">
         <span id="batch-pile-formats">How I have it</span>
         <div className="chips format-chips">
@@ -175,6 +187,7 @@ export function BatchScan({ existing, onAdd, onManual, onClose, paused = false, 
           ))}
         </div>
       </div>
+      )}
 
       <h3 className="batch-heading">{listHeading(rows)}</h3>
       <ul className="batch-list">
@@ -293,7 +306,7 @@ export function BatchScan({ existing, onAdd, onManual, onClose, paused = false, 
         disabled={adding || addable === 0 || anyLooking(rows)}
         onClick={addAll}
       >
-        {adding ? 'Adding…' : addAllLabel(rows)}
+        {adding ? 'Adding…' : addAllLabel(rows, mode)}
       </button>
     </div>
   )

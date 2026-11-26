@@ -48,6 +48,8 @@ export interface Book {
   wish?: boolean
   /** where to buy a wish, an https:// or http:// link (D-0053); see wishlist.ts */
   buyUrl?: string
+  /** this book came off the wishlist: she bought a wish (D-0086); `addedAt` is the day she did */
+  wasWished?: boolean
   /** ids of the copies merged into this book, so they don't come back */
   mergedIds?: string[]
   /** books Hanna said are not the same book, so they aren't suggested for merging */

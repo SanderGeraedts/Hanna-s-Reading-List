@@ -3,7 +3,11 @@ import type { Visitors, YearGarden } from '#/lib/garden/garden'
 import type { GardenItemId } from '#/lib/garden/numbers'
 import { itemSlotsFor } from '#/lib/garden/numbers'
 import type { Season } from '#/lib/garden/seasons'
+import type { GardenWeather } from '#/lib/garden/weather'
+import { isWet } from '#/lib/garden/weather'
+import type { SceneryId } from '#/lib/garden/scenery'
 import { BED_D, BED_W, gardenLayout, slotPoint, spotPoint } from '#/lib/garden/view'
+import type { GardenLayout } from '#/lib/garden/view'
 import { PlantShape } from './plantSvg'
 
 /**
@@ -46,9 +50,13 @@ export interface GardenFlatProps {
   picked?: string | null
   /** the plant she has just found by searching, drawn with a ring (T-0066) */
   found?: string | null
+  /** the day's weather, invented from the day (D-0083 §1); left out: a plain sky */
+  weather?: GardenWeather
+  /** the scenery that has arrived with her reading (D-0083 §2) */
+  scenery?: readonly SceneryId[]
 }
 
-export function GardenFlat({ year, season, night, columns = 1, compact, reduce, picked, found }: GardenFlatProps) {
+export function GardenFlat({ year, season, night, columns = 1, compact, reduce, picked, found, weather, scenery = [] }: GardenFlatProps) {
   const beds = compact ? Math.min(2, year.beds) : year.beds
   const layout = gardenLayout(beds, compact ? 2 : columns, !compact)
   const ground = night ? NIGHT[season] : GROUND[season]
@@ -69,6 +77,8 @@ export function GardenFlat({ year, season, night, columns = 1, compact, reduce, 
       {Array.from({ length: Math.ceil(layout.depth / 1.5) }, (_, i) => (
         <rect key={i} x={0} y={i * 1.5 + 0.75} width={layout.width} height={0.75} fill={ground.grass2} opacity={0.5} />
       ))}
+      {/* the scenery stands in the grass border, round the beds and never on them (D-0083 §2) */}
+      <SceneryLayer layout={layout} ids={scenery} season={season} compact={compact} />
       {layout.beds.map((box) => (
         <Fragment key={box.bed}>
           <rect x={box.x} y={box.z} width={BED_W} height={BED_D} rx={0.35} fill={ground.earth} stroke={ground.rim} strokeWidth={0.08} />
@@ -104,9 +114,178 @@ export function GardenFlat({ year, season, night, columns = 1, compact, reduce, 
         )
       })}
       {!compact && !night && <VisitorMarks visitors={year.visitors} layout={{ width: layout.width, depth: layout.depth }} reduce={reduce} />}
+      {weather && <WeatherLayer weather={weather} layout={layout} reduce={reduce} night={night} /> }
       {/* after dark the whole garden cools down; the night-bloomers keep their own glow */}
       {night && <rect x={0} y={0} width={layout.width} height={layout.depth} fill="#141d2e" opacity={0.3} rx={0.5} />}
     </svg>
+  )
+}
+
+/**
+ * The weather over the garden (D-0083 §1), as one cheap layer of plain shapes:
+ * a warm wash of sun, a grey veil of cloud, slanting lines of rain, a soft
+ * band of mist, white flakes, a cold shine of frost. It is drawn over
+ * everything and under the night, because the night darkens the weather too.
+ *
+ * Nothing here is a texture, an image or a filter: the flat garden stays the
+ * cheap drawing it was built to be (D-0051 §2).
+ */
+function WeatherLayer({
+  weather,
+  layout,
+  reduce,
+  night,
+}: {
+  weather: GardenWeather
+  layout: GardenLayout
+  reduce?: boolean
+  night?: boolean
+}) {
+  const { width, depth } = layout
+  const still = reduce ? ' still' : ''
+  if (weather === 'sun')
+    return (
+      <g aria-hidden="true">
+        {/* the sun comes in from the corner the light comes from in both views */}
+        <circle cx={width * 0.12} cy={depth * 0.1} r={Math.min(width, depth) * 0.3} fill={night ? '#cdd8ff' : '#ffeab0'} opacity={0.22} />
+        <circle cx={width * 0.12} cy={depth * 0.1} r={Math.min(width, depth) * 0.16} fill={night ? '#e2e8ff' : '#fff3cd'} opacity={0.26} />
+      </g>
+    )
+  if (weather === 'cloud')
+    return <rect x={0} y={0} width={width} height={depth} fill="#9aa3b4" opacity={0.16} rx={0.5} aria-hidden="true" />
+  if (weather === 'frost')
+    return (
+      <g aria-hidden="true">
+        <rect x={0} y={0} width={width} height={depth} fill="#dce6f6" opacity={0.2} rx={0.5} />
+        {Array.from({ length: 14 }, (_, i) => (
+          <circle key={i} cx={width * ((i * 0.37) % 1)} cy={depth * ((i * 0.23) % 1)} r={0.06} fill="#ffffff" opacity={0.5} />
+        ))}
+      </g>
+    )
+  if (weather === 'mist')
+    return (
+      // light enough to see the garden through it: mist that hides the plants is just a grey box
+      <g aria-hidden="true" className={`garden-mist${still}`}>
+        <rect x={0} y={0} width={width} height={depth} fill="#e6ebf2" opacity={0.12} rx={0.5} />
+        {[0.3, 0.55, 0.78].map((at, i) => (
+          <rect key={i} x={0} y={depth * at} width={width} height={depth * 0.1} fill="#f3f6fa" opacity={0.24} rx={0.3} />
+        ))}
+      </g>
+    )
+  if (weather === 'snow')
+    return (
+      <g aria-hidden="true" className={`garden-fall${still}`}>
+        {Array.from({ length: 34 }, (_, i) => (
+          <circle key={i} cx={width * ((i * 0.173) % 1)} cy={depth * ((i * 0.117) % 1)} r={0.08} fill="#ffffff" opacity={0.85} />
+        ))}
+      </g>
+    )
+  // rain and showers: slanting lines, and a shower keeps a bright corner
+  const drops = weather === 'shower' ? 22 : 40
+  return (
+    <g aria-hidden="true" className={`garden-fall${still}`}>
+      {weather === 'shower' && (
+        <circle cx={width * 0.85} cy={depth * 0.12} r={Math.min(width, depth) * 0.2} fill="#ffeab0" opacity={0.18} />
+      )}
+      <rect x={0} y={0} width={width} height={depth} fill="#8ea0b8" opacity={isWet(weather) ? 0.14 : 0} rx={0.5} />
+      {Array.from({ length: drops }, (_, i) => {
+        const x = width * ((i * 0.193) % 1)
+        const y = depth * ((i * 0.131) % 1)
+        return <path key={i} d={`M${x} ${y} L${x - 0.1} ${y + 0.32}`} stroke="#cfe0f0" strokeWidth={0.05} strokeLinecap="round" opacity={0.75} />
+      })}
+    </g>
+  )
+}
+
+/**
+ * The scenery that has arrived with her reading (D-0083 §2), drawn in the
+ * grass border round the beds: a hedge along the back, a fence down the sides,
+ * a brook with stepping stones along the bottom, and a birdhouse, a potting
+ * shed and a beehive in the corners. She never places these and never moves
+ * them — where each one stands is fixed, so every device draws it the same.
+ */
+function SceneryLayer({
+  layout,
+  ids,
+  season,
+  compact,
+}: {
+  layout: GardenLayout
+  ids: readonly SceneryId[]
+  season: Season
+  compact?: boolean
+}) {
+  if (!ids.length) return null
+  const { width } = layout
+  const near = layout.stripZ
+  const snow = season === 'winter'
+  // the dashboard block has no grass along the bottom to put anything in, so it keeps the
+  // hedge and the fence and leaves the rest to the Garden tab
+  const has = (id: SceneryId) => ids.includes(id) && (!compact || id === 'hedge' || id === 'fence')
+  const leaf = snow ? '#9fb39c' : season === 'autumn' ? '#7f8b4f' : '#4e7f4a'
+  return (
+    <g aria-hidden="true" className="garden-scenery">
+      {has('hedge') && (
+        <>
+          <rect x={1.05} y={0.14} width={Math.max(0.6, width - 2.1)} height={0.46} rx={0.22} fill={leaf} />
+          {Array.from({ length: Math.max(2, Math.round((width - 2.1) / 0.8)) }, (_, i) => (
+            <ellipse key={i} cx={1.05 + 0.4 + i * 0.8} cy={0.2} rx={0.3} ry={0.14} fill={leaf} opacity={0.85} />
+          ))}
+          {snow && <rect x={1.05} y={0.12} width={Math.max(0.6, width - 2.1)} height={0.12} rx={0.06} fill="#eef1f8" opacity={0.9} />}
+        </>
+      )}
+      {has('fence') &&
+        [0.28, width - 0.28].map((x) => (
+          <Fragment key={x}>
+            {/* the rail, and the posts along it */}
+            <rect x={x - 0.035} y={1.3} width={0.07} height={Math.max(0.3, near - 2.6)} rx={0.03} fill="#b79b78" opacity={0.9} />
+            {Array.from({ length: Math.max(2, Math.round((near - 2.6) / 0.6)) }, (_, i) => (
+              <rect key={i} x={x - 0.09} y={1.3 + i * 0.6} width={0.18} height={0.4} rx={0.06} fill="#c9ae8c" />
+            ))}
+          </Fragment>
+        ))}
+      {has('brook') && (
+        <>
+          <rect x={0.8} y={near - 0.5} width={Math.max(0.6, width - 1.6)} height={0.3} rx={0.15} fill={snow ? '#b9cadd' : '#7fa8c4'} />
+          <rect x={0.8} y={near - 0.46} width={Math.max(0.6, width - 1.6)} height={0.12} rx={0.06} fill="#a7c6dc" opacity={0.8} />
+        </>
+      )}
+      {has('stones') &&
+        Array.from({ length: 4 }, (_, i) => (
+          <ellipse
+            key={i}
+            cx={width * (0.22 + i * 0.19)}
+            cy={near - (has('brook') ? 0.35 : 0.3)}
+            rx={0.18}
+            ry={0.1}
+            fill={snow ? '#e4e9f3' : '#b9ad99'}
+          />
+        ))}
+      {has('birdhouse') && (
+        <g transform={`translate(${width - 0.5} 0.75)`}>
+          <rect x={-0.03} y={-0.1} width={0.06} height={0.42} fill="#8a7a66" />
+          <rect x={-0.2} y={-0.4} width={0.4} height={0.3} rx={0.04} fill="#d8b98f" />
+          <path d="M-0.26 -0.4 L0 -0.6 L0.26 -0.4 Z" fill="#8a6440" />
+          <circle cx={0} cy={-0.26} r={0.07} fill="#5b4433" />
+        </g>
+      )}
+      {has('shed') && (
+        <g transform={`translate(0.7 ${near - 0.8})`}>
+          <rect x={-0.4} y={-0.36} width={0.8} height={0.5} rx={0.04} fill="#b08a63" />
+          <path d="M-0.48 -0.36 L0 -0.64 L0.48 -0.36 Z" fill="#7d5c3e" />
+          <rect x={-0.14} y={-0.18} width={0.28} height={0.32} rx={0.03} fill="#6f5339" />
+          {snow && <path d="M-0.48 -0.36 L0 -0.64 L0.48 -0.36 Z" fill="#eef1f8" opacity={0.6} />}
+        </g>
+      )}
+      {has('beehive') && (
+        <g transform={`translate(${width - 0.7} ${near - 0.8})`}>
+          {[0, 1, 2].map((i) => (
+            <rect key={i} x={-0.26 + i * 0.03} y={-0.06 - i * 0.18} width={0.52 - i * 0.06} height={0.16} rx={0.06} fill="#d9b25f" />
+          ))}
+          <ellipse cx={0} cy={-0.56} rx={0.16} ry={0.08} fill="#c89a46" />
+        </g>
+      )}
+    </g>
   )
 }
 

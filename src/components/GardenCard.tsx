@@ -1,6 +1,7 @@
 import type { Garden } from '#/lib/garden/garden'
 import { startYear, yearOf } from '#/lib/garden/garden'
 import { countLine, gardenSentence, nextLine, seasonChip } from '#/lib/garden/words'
+import { weatherChip } from '#/lib/garden/weather'
 import { GardenFlat } from './garden/GardenFlat'
 import { gardenLayout } from '#/lib/garden/view'
 import { useReducedMotion } from './creatures/pose'
@@ -29,11 +30,15 @@ export function GardenCard({ garden, onOpen }: { garden: Garden; onOpen?: () => 
         <OpenLink onOpen={onOpen} label="Garden" />
       </div>
       <div className="garden-block-stage" style={{ aspectRatio: `${small.width} / ${small.depth}` }}>
-        <GardenFlat year={year} season={garden.season} compact reduce={reduce} />
+        {/* the block shows the day's own weather and scenery, and never follows a look (D-0071 §6, D-0083 §1) */}
+        <GardenFlat year={year} season={garden.season} compact reduce={reduce} weather={garden.weather} scenery={garden.scenery} />
       </div>
-      <p className="visually-hidden">{gardenSentence(year, garden.season)}</p>
+      <p className="visually-hidden">{gardenSentence(year, garden.season, garden.weather, garden.scenery)}</p>
       <p className="garden-counts">
-        <span className="garden-season">{seasonChip(garden.season)}</span> <span>{countLine(year)}</span>
+        <span className="garden-season">
+          {seasonChip(garden.season)} · {weatherChip(garden.weather)}
+        </span>{' '}
+        <span>{countLine(year)}</span>
       </p>
       {news && <p className="small-text garden-news">{news}</p>}
       <p className="small-text garden-next">{nextLine(garden)}</p>

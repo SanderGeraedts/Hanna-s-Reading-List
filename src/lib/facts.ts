@@ -1,5 +1,6 @@
 import type { Book } from './library'
 import { localDay } from './library'
+import { factCount, readingDays } from './factCount'
 import { GENERAL_FACTS } from './generalFacts'
 
 /**
@@ -652,13 +653,6 @@ export interface DailyFact {
   today: boolean
 }
 
-/** Every reading day up to today, oldest first. */
-function readingDays(books: Book[], todayKey: string): string[] {
-  const days = new Set<string>()
-  for (const b of books) for (const day of Object.keys(b.readingLog ?? {})) if (day <= todayKey) days.add(day)
-  return [...days].sort()
-}
-
 /**
  * The fact each reading day unlocked, oldest first, and then as many more as
  * `atLeast` asks for (D-0079): a mark she has already passed stays passed, even
@@ -685,17 +679,8 @@ export function unlockedSequence(
   return out
 }
 
-/**
- * How many facts she has been given: her reading days, or the mark she has
- * already reached, whichever is further on (D-0079). Only ever goes forward, so
- * correcting a past day down to nothing, sliding a book back or removing a book
- * can never hand her a fact she has already had.
- */
-export const factCount = (days: readonly string[], seen = 0) => Math.max(days.length, seen)
-
-/** How many facts she has been given: her reading days up to today, and the mark. */
-export const factsUnlocked = (books: Book[], now = new Date(), seen = 0) =>
-  factCount(readingDays(books, localDay(now)), seen)
+/** The counting lives in `factCount.ts`, away from the text (D-0080 §3). */
+export { factCount, factsUnlocked, readingDays } from './factCount'
 
 /** Today's fact: one for every reading day, and never back behind the mark. */
 export function dailyFact(

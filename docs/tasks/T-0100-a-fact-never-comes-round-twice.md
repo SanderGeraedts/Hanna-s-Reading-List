@@ -1,5 +1,5 @@
 ---
-id: T-0099
+id: T-0100
 title: "Stop a fact coming round twice, and show each reading day's fact on the calendar"
 description: "The count of facts becomes max(reading days, a mark that only grows), the mark rides in the choice log as one `place` event keyed `f:seen`, it is moved on by the page rather than by the Fact of the day block, and the calendar's day panel shows the fact that reading day unlocked."
 status: Doing

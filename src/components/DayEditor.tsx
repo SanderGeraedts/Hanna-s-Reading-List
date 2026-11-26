@@ -6,7 +6,7 @@ import type { DayEntry } from '#/lib/readingLog'
 import { progressFromPage, progressFromPercent, progressFromTime } from '#/lib/progress'
 import { searchShelf } from '#/lib/search'
 import { sleepReadIds } from '#/lib/sleepSeries'
-import { Cover } from './Dashboard'
+import { Cover } from './common'
 
 /**
  * Fix a past day (T-0045): the day panel on the dashboard's Calendar block
