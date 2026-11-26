@@ -48,6 +48,7 @@ import { useFactMark } from '#/components/useFactMark'
 import { PageWhileLoading, usePrefetchPages } from '#/components/PageWhileLoading'
 import { useCookieMark } from '#/components/useCookieMark'
 import { canKeepApp, keepAppOnThisDevice } from '#/lib/offline'
+import { troubleFromSync, troubleSentence } from '#/lib/trouble'
 import { askText, keepWishEvent, keptWishes, wishToAsk } from '#/lib/wishFulfilled'
 import { useShelfPet } from '#/components/creatures/useShelfPet'
 import { isCategory, ownedDecor } from '#/lib/creatures/shop'
@@ -249,12 +250,12 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
       if (storytel.login.saved) {
         // Storytel compares with the shelf just synced, so a book added on another device isn't added twice
         await storytel.refresh(shelf)
-        if (!ok) setNotice({ text: "The account server can't be reached: changes are kept here.", ok: false })
+        if (!ok) setNotice({ text: troubleSentence('shelf-not-sent'), ok: false })
       } else {
         setNotice(
           ok
             ? { text: 'Shelf synced.', ok: true }
-            : { text: "The account server can't be reached: changes are kept here.", ok: false },
+            : { text: troubleSentence('shelf-not-sent'), ok: false },
         )
       }
     } finally {
@@ -642,6 +643,11 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             onOpenStats={openStats}
             factMark={factMark}
             wishDone={wishDone}
+            trouble={
+              troubleFromSync(sync)
+                ? { kind: troubleFromSync(sync)!, onRetry: refreshAll, busy: syncing }
+                : undefined
+            }
           />
           </PageWhileLoading>
         )}
@@ -931,8 +937,8 @@ const SYNC_TEXT: Record<SyncStatus, string> = {
   loading: 'Loading your shelf…',
   saved: 'All changes saved',
   saving: 'Saving…',
-  offline: "Can't reach the server. Changes are kept on this device and saved when it's back.",
-  'too-big': 'The shelf is too large to save (too many uploaded covers). Changes are kept on this device.',
+  offline: troubleSentence('shelf-not-sent'),
+  'too-big': troubleSentence('shelf-too-big'),
 }
 
 function AccountMenu({
