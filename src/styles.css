@@ -4115,6 +4115,14 @@ button.alphabet-letter:focus-visible {
   background: var(--surface);
   border: 1px solid var(--border);
 }
+/* the fact a reading day gave her (D-0079): a quiet note under what she read, in a
+   sunken well so it reads as something that belongs to the day rather than to a book */
+.calendar-fact {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-card);
+  background: var(--surface-sunken);
+}
 /* the big month: taller days and bigger covers than the dashboard's */
 .calendar-big .day-cell {
   height: 6.5rem;
