@@ -6,7 +6,12 @@ import { startYear, yearOf } from '#/lib/garden/garden'
 import type { YearGarden } from '#/lib/garden/garden'
 import { SEASONS, SEASON_LABEL, isNight } from '#/lib/garden/seasons'
 import type { Season } from '#/lib/garden/seasons'
-import { EMPTY_GARDEN, countLine, emptyYear, gardenSentence, lockedLine, nextLine, seasonChip } from '#/lib/garden/words'
+import { EMPTY_GARDEN, countLine, emptyYear, gardenSentence, lockedLine, nextLine, nextSceneryLine, seasonChip } from '#/lib/garden/words'
+import { WEATHERS, WEATHER_LABEL, weatherChip } from '#/lib/garden/weather'
+import type { GardenWeather } from '#/lib/garden/weather'
+import { KINDNESSES, kindnessLine } from '#/lib/garden/kindness'
+import type { KindnessId } from '#/lib/garden/kindness'
+import { arrivalLines } from '#/lib/garden/scenery'
 import { findPlants } from '#/lib/garden/find'
 import type { Found } from '#/lib/garden/find'
 import { newsLine } from '#/lib/garden/seen'
@@ -68,11 +73,19 @@ export function GardenPage({ books, paused, onShowBook, hour }: Props) {
   // a look at another season or after dark: never saved, always back to now (D-0071 §5)
   const [look, setLook] = useState<Season | null>(null)
   const [dark, setDark] = useState<boolean | null>(null)
-  const { garden, place: placeItem, takeAway } = useGarden(books, { phone, season: look ?? undefined })
+  // and a look at another weather, which is a look in exactly the same way (D-0083 §1)
+  const [sky, setSky] = useState<GardenWeather | null>(null)
+  const {
+    garden,
+    place: placeItem,
+    takeAway,
+    beKind,
+  } = useGarden(books, { phone, season: look ?? undefined, weather: sky ?? undefined })
   const night = dark ?? isNight(hour ?? new Date().getHours())
-  const looking = look !== null || dark !== null
+  const looking = look !== null || dark !== null || sky !== null
   const seen = useSeen(garden, true)
   const news = seen.plants
+  const arrived = arrivalLines(seen.scenery)
   const shown = year !== null && garden.years.some((y) => y.year === year) ? year : startYear(garden)
   const current = yearOf(garden, shown)
   // the flat garden on a phone, and wherever 3D can't be drawn (D-0051 §4)
@@ -165,10 +178,27 @@ export function GardenPage({ books, paused, onShowBook, hour }: Props) {
                 style={{ aspectRatio: flat ? `${layout.width} / ${layout.depth}` : `${sceneAspect(layout)}` }}
               >
                 {flat ? (
-                  <GardenFlat year={drawn} season={garden.season} night={night} columns={1} reduce={reduce} found={foundId} />
+                  <GardenFlat
+                    year={drawn}
+                    season={garden.season}
+                    night={night}
+                    columns={1}
+                    reduce={reduce}
+                    found={foundId}
+                    weather={garden.weather}
+                    scenery={garden.scenery}
+                  />
                 ) : (
                   <SceneBoundary onFail={() => setGl(false)}>
-                    <GardenScene year={drawn} season={garden.season} night={night} reduce={reduce} paused={paused} />
+                    <GardenScene
+                      year={drawn}
+                      season={garden.season}
+                      night={night}
+                      reduce={reduce}
+                      paused={paused}
+                      weather={garden.weather}
+                      scenery={garden.scenery}
+                    />
                   </SceneBoundary>
                 )}
                 <SpotLayer
@@ -187,24 +217,37 @@ export function GardenPage({ books, paused, onShowBook, hour }: Props) {
                   <PlantPeek plant={peeked} at={place(peeked.bed, peeked.spot)} onClose={() => setPeek(null)} onShowBook={onShowBook} />
                 )}
               </div>
-              <p className="visually-hidden">{gardenSentence(drawn, garden.season)}</p>
+              <p className="visually-hidden">{gardenSentence(drawn, garden.season, garden.weather, garden.scenery)}</p>
               <div className="garden-tools">
                 <p className="garden-counts">{countLine(drawn)}</p>
                 <GardenShareButton stage={stage} label={`${current.label} garden`} line={countLine(drawn)} />
               </div>
+              {/* a piece of scenery that has arrived says so here, once, quietly: no pop-up (D-0013) */}
+              {arrived && <p className="small-text garden-arrived">{arrived}</p>}
+              <p className="small-text garden-coming">{nextSceneryLine(garden)}</p>
             </>
           )}
         </section>
         <Look
           season={garden.season}
+          weather={garden.weather}
           night={night}
           looking={looking}
           onSeason={setLook}
+          onWeather={setSky}
           onDark={setDark}
           onNow={() => {
             setLook(null)
             setDark(null)
+            setSky(null)
             say('Back to now.')
+          }}
+        />
+        <Kindnesses
+          done={new Set(garden.kindness)}
+          onDo={(id) => {
+            const line = beKind(id)
+            if (line) say(line)
           }}
         />
         <section className="dash-card garden-items-card" aria-labelledby="garden-items-title">
@@ -258,7 +301,7 @@ function Head({
       <h1>Garden</h1>
       <div className="garden-state">
         <span className="garden-season">
-          {seasonChip(garden.season)}
+          {seasonChip(garden.season)} · {weatherChip(garden.weather)}
           {night ? ' · 🌙 Night' : ''}
         </span>
         <span className="garden-total">
@@ -271,19 +314,28 @@ function Head({
   )
 }
 
-/** A look at another season or after dark, never saved (D-0071 §5). */
+/**
+ * A look at another season, at another weather or after dark, never saved
+ * (D-0071 §5, D-0083 §1). The weather belongs here for the same reason the
+ * season does: it is the day's own, and looking at another one changes nothing
+ * and keeps nothing.
+ */
 function Look({
   season,
+  weather,
   night,
   looking,
   onSeason,
+  onWeather,
   onDark,
   onNow,
 }: {
   season: Season
+  weather: GardenWeather
   night: boolean
   looking: boolean
   onSeason: (s: Season) => void
+  onWeather: (w: GardenWeather) => void
   onDark: (d: boolean) => void
   onNow: () => void
 }) {
@@ -293,8 +345,8 @@ function Look({
         <h2 id="garden-look-title">Have a look</h2>
         {looking && (
           <span className="muted small-text">
-            Looking at {SEASON_LABEL[season].toLowerCase()}
-            {night ? ' at night' : ''}
+            Looking at {SEASON_LABEL[season].toLowerCase()}, {WEATHER_LABEL[weather].toLowerCase()}
+            {night ? ', at night' : ''}
           </span>
         )}
       </div>
@@ -319,6 +371,50 @@ function Look({
           </button>
         )}
       </div>
+      <div className="chips garden-look-chips garden-weather-chips" role="group" aria-label="Have a look at the weather">
+        {WEATHERS.map((w) => (
+          <button
+            key={w}
+            type="button"
+            className={w === weather ? 'btn small active' : 'btn small'}
+            aria-pressed={w === weather}
+            onClick={() => onWeather(w)}
+          >
+            {weatherChip(w)}
+          </button>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+/**
+ * Small kindnesses (D-0083 §3): three things to do that are never needed.
+ * Nothing wilts and nothing dies (D-0050), there is no streak and no reminder,
+ * and the line under them says so plainly, so the card can never read as a
+ * list of chores.
+ */
+function Kindnesses({ done, onDo }: { done: ReadonlySet<KindnessId>; onDo: (id: KindnessId) => void }) {
+  return (
+    <section className="dash-card garden-kindness" aria-labelledby="garden-kindness-title">
+      <div className="dash-card-head">
+        <h2 id="garden-kindness-title">Small kindnesses</h2>
+      </div>
+      <div className="chips garden-kindness-chips" role="group" aria-label="Small kindnesses">
+        {KINDNESSES.map((k) => {
+          const did = done.has(k.id)
+          return did ? (
+            <span key={k.id} className="btn small garden-kind done" data-kindness={k.id} aria-disabled="true">
+              {k.done}
+            </span>
+          ) : (
+            <button key={k.id} type="button" className="btn small garden-kind" data-kindness={k.id} onClick={() => onDo(k.id)}>
+              {k.name}
+            </button>
+          )
+        })}
+      </div>
+      <p className="small-text garden-kindness-line">{kindnessLine(done)}</p>
     </section>
   )
 }

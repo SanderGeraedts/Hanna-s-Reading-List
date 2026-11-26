@@ -7868,3 +7868,79 @@ button.today-item:hover {
     min-width: 8rem;
   }
 }
+
+/* ---- D-0083: a garden with weather, scenery and small kindnesses -------------------------
+   The weather drifts and falls over the flat garden, the scenery stands behind everything,
+   and the kindnesses are three quiet chips that never ask for anything. */
+
+.garden-fall {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: garden-fall 1.6s linear infinite;
+}
+.garden-mist {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: garden-mist 18s ease-in-out infinite alternate;
+}
+.garden-fall.still,
+.garden-mist.still {
+  animation: none;
+}
+@keyframes garden-fall {
+  from {
+    transform: translate(0, -0.34px);
+  }
+  to {
+    transform: translate(-0.1px, 0.34px);
+  }
+}
+@keyframes garden-mist {
+  from {
+    transform: translate(-0.3px, 0);
+    opacity: 0.75;
+  }
+  to {
+    transform: translate(0.3px, 0);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .garden-fall,
+  .garden-mist {
+    animation: none !important;
+  }
+}
+
+/* The scenery is drawn, never tapped: it is never in the way of a plant. */
+.garden-scenery {
+  pointer-events: none;
+}
+
+/* The quiet lines under the garden: what has arrived, and what is on its way. */
+.garden-arrived {
+  margin: var(--space-1) 0 0;
+  color: var(--text);
+}
+.garden-coming {
+  margin: 0;
+  color: var(--muted);
+}
+
+/* Small kindnesses: never needed, so nothing here shouts or counts. */
+.garden-kindness-chips {
+  margin-top: var(--space-1);
+}
+.garden-kind.done {
+  opacity: 0.7;
+  cursor: default;
+}
+.garden-kindness-line {
+  margin: var(--space-1) 0 0;
+  color: var(--muted);
+}
+
+/* The weather of "Have a look" is its own row, under the seasons. */
+.garden-weather-chips {
+  margin-top: var(--space-1);
+}

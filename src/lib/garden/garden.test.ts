@@ -6,6 +6,7 @@ import { deriveGarden, freeSpots, growthOf, readingDayList, scaleOf, stageOf, st
 import { EARLIER_YEAR, GROW_READING_DAYS, SPOTS_PER_BED } from './numbers'
 import type { GardenItemId } from './numbers'
 import { itemKey, plantKey } from './spots'
+import { weatherOf } from './weather'
 
 /**
  * The garden worked out from her shelf (T-0060, D-0050): every count here is
@@ -279,5 +280,61 @@ describe('the garden and the creatures never meet', () => {
     const g = deriveGarden([b], creatureLog, { today: TODAY })
     expect(g.plants).toBe(1)
     expect(JSON.stringify(g)).not.toContain('cookie')
+  })
+})
+
+describe('a more alive garden (D-0083)', () => {
+  it('has the weather of the day, the same on every device', () => {
+    const g = deriveGarden([finished('2026-04-02')], [], { today: '2026-04-12' })
+    expect(g.weather).toBe(weatherOf('2026-04-12'))
+    expect(deriveGarden([finished('2026-04-02')], [], { today: '2026-04-12' }).weather).toBe(g.weather)
+  })
+
+  it('lets her look at another weather without anything being saved', () => {
+    const books = [finished('2026-04-02')]
+    const g = deriveGarden(books, [], { today: '2026-04-12', weather: 'snow' })
+    expect(g.weather).toBe('snow')
+    // the look changes the sky and nothing else
+    const real = deriveGarden(books, [], { today: '2026-04-12' })
+    expect(g.years[0].plants.map((p) => p.id)).toEqual(real.years[0].plants.map((p) => p.id))
+  })
+
+  it('brings scenery with her reading, and says what is on its way', () => {
+    const few = deriveGarden([finished('2026-01-01'), finished('2026-02-01')], [], { today: TODAY })
+    expect(few.scenery).toEqual([])
+    expect(few.nextScenery?.id).toBe('hedge')
+    const more = deriveGarden(
+      Array.from({ length: 12 }, (_, i) => finished(addDays('2026-01-01', i * 3))),
+      [],
+      { today: TODAY },
+    )
+    expect(more.scenery).toContain('hedge')
+    expect(more.scenery).toContain('fence')
+  })
+
+  it('saves nothing for the scenery: the same shelf gives the same scenery whatever the log holds', () => {
+    const books = Array.from({ length: 5 }, (_, i) => finished(addDays('2026-01-01', i * 3)))
+    expect(deriveGarden(books, [], { today: TODAY }).scenery).toEqual(
+      deriveGarden(books, log({ key: itemKey(2026, 'pond'), slot: 1 }), { today: TODAY }).scenery,
+    )
+  })
+
+  it('gives today’s kindnesses to the garden she is reading in', () => {
+    const books = [finished(`${TODAY.slice(0, 4)}-01-01`, { genres: ['Non-fiction'] })]
+    const kind = log({ key: 'g:k:water', day: TODAY }, { key: 'g:k:seed', day: TODAY })
+    const plain = deriveGarden(books, [], { today: TODAY })
+    const tended = deriveGarden(books, kind, { today: TODAY })
+    expect([...tended.kindness].sort()).toEqual(['seed', 'water'])
+    expect(tended.years[0].blooming).toBe(plain.years[0].blooming + 1)
+    expect(tended.years[0].visitors.birds).toBe(plain.years[0].visitors.birds + 1)
+  })
+
+  it('costs nothing to ignore: yesterday’s watering changes nothing today', () => {
+    const books = [finished(`${TODAY.slice(0, 4)}-01-01`)]
+    const old = log({ key: 'g:k:water', day: addDays(TODAY, -1) })
+    expect(deriveGarden(books, old, { today: TODAY }).years[0].blooming).toBe(
+      deriveGarden(books, [], { today: TODAY }).years[0].blooming,
+    )
+    expect(deriveGarden(books, old, { today: TODAY }).kindness).toEqual([])
   })
 })

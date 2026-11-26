@@ -1,17 +1,22 @@
 import { describe, expect, it } from 'vitest'
 import type { Garden, Plant, YearGarden } from './garden'
 import type { GardenItemId } from './numbers'
-import { countNews, freshUnlocks, newness, newsLine, readSeen, snapshot, waitingLine } from './seen'
+import { countNews, freshScenery, freshUnlocks, newness, newsLine, readSeen, snapshot, waitingLine } from './seen'
 import type { GardenSeen } from './seen'
+import type { SceneryId } from './scenery'
 
 /** What is new in the garden since she last looked (T-0066). */
 
 const plant = (id: string, stage: Plant['stage']): Plant => ({ id, stage }) as unknown as Plant
 
-const garden = (plants: Plant[], unlocked: GardenItemId[] = []): Garden =>
-  ({ years: [{ year: 2026, plants } as unknown as YearGarden], unlocked }) as unknown as Garden
+const garden = (plants: Plant[], unlocked: GardenItemId[] = [], scenery: SceneryId[] = []): Garden =>
+  ({ years: [{ year: 2026, plants } as unknown as YearGarden], unlocked, scenery }) as unknown as Garden
 
-const seen = (plants: Record<string, Plant['stage']>, items: GardenItemId[] = []): GardenSeen => ({ plants, items })
+const seen = (plants: Record<string, Plant['stage']>, items: GardenItemId[] = [], scenery: SceneryId[] = []): GardenSeen => ({
+  plants,
+  items,
+  scenery,
+})
 
 describe('what is new in the garden', () => {
   it('marks nothing on a first visit: a whole garden glowing is not news', () => {
@@ -39,6 +44,7 @@ describe('what is new in the garden', () => {
     expect(snapshot(garden([plant('a', 'sprout'), plant('b', 'grown')], ['path', 'bench']))).toEqual({
       plants: { a: 'sprout', b: 'grown' },
       items: ['path', 'bench'],
+      scenery: [],
     })
   })
 
@@ -64,18 +70,34 @@ describe('a garden item that has unlocked since she looked', () => {
   })
 })
 
+describe('scenery that has arrived since she looked (D-0083)', () => {
+  it('marks nothing on a first visit: a garden that already has a hedge is a garden', () => {
+    expect(freshScenery(null, garden([], [], ['hedge', 'fence']))).toEqual([])
+  })
+
+  it('names the pieces that have arrived since, and not the ones she had', () => {
+    expect(freshScenery(seen({}, [], ['hedge']), garden([], [], ['hedge', 'stones', 'fence']))).toEqual(['stones', 'fence'])
+  })
+
+  it('names none when nothing has arrived', () => {
+    expect(freshScenery(seen({}, [], ['hedge']), garden([], [], ['hedge']))).toEqual([])
+  })
+})
+
 describe('reading the note back from the device', () => {
   it('reads the note it wrote', () => {
     const g = garden([plant('a', 'young')], ['path'])
-    expect(readSeen(snapshot(g), g)).toEqual({ plants: { a: 'young' }, items: ['path'] })
+    expect(readSeen(snapshot(g), g)).toEqual({ plants: { a: 'young' }, items: ['path'], scenery: [] })
   })
 
   it('reads the first shape, counting every unlock as already seen', () => {
     // the note used to be the plain plant map: an update may not announce an old pond
-    const g = garden([plant('a', 'young')], ['path', 'pond'])
+    const g = garden([plant('a', 'young')], ['path', 'pond'], ['hedge'])
     const old = readSeen({ a: 'sprout' }, g)
-    expect(old).toEqual({ plants: { a: 'sprout' }, items: ['path', 'pond'] })
+    expect(old).toEqual({ plants: { a: 'sprout' }, items: ['path', 'pond'], scenery: ['hedge'] })
     expect(freshUnlocks(old, g)).toEqual([])
+    // and a hedge that arrived before the app knew about scenery is not announced either
+    expect(freshScenery(old, g)).toEqual([])
     expect(newness(old, g).get('a')).toBe('grown')
   })
 
@@ -111,5 +133,13 @@ describe('the line for "Waiting for you"', () => {
 
   it('says only the plants when nothing unlocked', () => {
     expect(waitingLine(news(1, 0), [])).toBe('In your garden: 1 new plant.')
+  })
+
+  it('adds the scenery that has arrived, in its own words (D-0083)', () => {
+    expect(waitingLine(news(1, 0), [], ['hedge'])).toBe('In your garden: 1 new plant. A hedge has grown up along the back.')
+  })
+
+  it('says an arrival on its own when nothing else has happened', () => {
+    expect(waitingLine(new Map(), [], ['fence'])).toBe('A low fence has gone up round the garden.')
   })
 })

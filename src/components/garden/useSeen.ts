@@ -1,8 +1,9 @@
 import { useMemo, useRef } from 'react'
 import type { Garden } from '#/lib/garden/garden'
 import type { GardenItemId } from '#/lib/garden/numbers'
-import { freshUnlocks, newness, readSeen, snapshot } from '#/lib/garden/seen'
+import { freshScenery, freshUnlocks, newness, readSeen, snapshot } from '#/lib/garden/seen'
 import type { Newness } from '#/lib/garden/seen'
+import type { SceneryId } from '#/lib/garden/scenery'
 
 /**
  * What is new in the garden since she last looked (T-0066). The note of how it
@@ -19,9 +20,11 @@ const KEY = 'hannas-reading-list:garden-seen'
 export interface GardenNews {
   plants: Map<string, Newness>
   unlocked: GardenItemId[]
+  /** the scenery that has arrived since she last looked (D-0083 §2) */
+  scenery: SceneryId[]
 }
 
-const NOTHING: GardenNews = { plants: new Map(), unlocked: [] }
+const NOTHING: GardenNews = { plants: new Map(), unlocked: [], scenery: [] }
 
 function load(garden: Garden) {
   try {
@@ -46,7 +49,7 @@ export function useSeen(garden: Garden, read: boolean): GardenNews {
   return useMemo(() => {
     if (typeof window === 'undefined' || done.current) return NOTHING
     const seen = load(garden)
-    const news: GardenNews = { plants: newness(seen, garden), unlocked: freshUnlocks(seen, garden) }
+    const news: GardenNews = { plants: newness(seen, garden), unlocked: freshUnlocks(seen, garden), scenery: freshScenery(seen, garden) }
     if (read) {
       done.current = true
       save(garden)
