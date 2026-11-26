@@ -7744,14 +7744,18 @@ button.today-item:hover {
   padding: 0;
 }
 .myyear-months > li {
-  display: grid;
-  align-content: end;
-  justify-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
   gap: 2px;
   height: 100%;
 }
+/* the bar's height is the month's share of her busiest one, never smaller than a stub */
 .myyear-bar {
   width: 100%;
+  min-height: 3px;
+  height: calc(0.25rem + var(--share, 0) * 2.1rem);
   border-radius: 3px 3px 0 0;
   background: var(--accent);
 }
@@ -7772,6 +7776,12 @@ button.today-item:hover {
   margin: var(--space-3) 0 0;
   padding: 0;
   align-items: center;
+}
+.myyear-covers .dash-cover.small,
+.myyear-covers .dash-cover {
+  width: 2rem;
+  height: 3rem;
+  aspect-ratio: auto;
 }
 .myyear-more {
   color: var(--muted);

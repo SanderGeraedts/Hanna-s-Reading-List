@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import type React from 'react'
 import type { Book } from '#/lib/library'
 import { formatDuration } from '#/lib/listening'
 import { periodStats } from '#/lib/stats'
@@ -92,7 +93,8 @@ export function MyYearCard({
             <li key={i} title={`${monthName(i + 1)}: ${n === 1 ? '1 book' : `${n} books`}`}>
               <span
                 className={n > 0 ? 'myyear-bar' : 'myyear-bar none'}
-                style={{ height: `${Math.max(6, Math.round((n / busiest) * 100))}%` }}
+                // a share of the tallest month, 0 to 1; the height itself is in the stylesheet
+                style={{ '--share': n / busiest } as React.CSSProperties}
                 aria-label={`${monthName(i + 1)}: ${n === 1 ? '1 book' : `${n} books`}`}
               />
               <span aria-hidden className="myyear-month">
