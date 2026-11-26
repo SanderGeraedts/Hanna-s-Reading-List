@@ -44,20 +44,25 @@ export function useRoom(owned: readonly ShopDecorKind[] = NONE) {
     document.documentElement.dataset.wallpaper = room.wallpaper
   }, [room.wallpaper])
   /**
-   * Night mode on the pages (D-0085). With `auto` the hour is re-read every minute, so
-   * evening arrives by itself while she is looking, exactly as the room's own Day & night
-   * does (D-0045). It goes on <html>, so every page's CSS follows it.
+   * Night mode on the pages (D-0085). With `auto` it follows **the phone's own dark
+   * setting**, and follows it live: turn the phone dark and the pages turn with it, without
+   * a reload. It goes on <html>, so every page's CSS follows it. The 3D room keeps its own
+   * evening by the clock (D-0045).
    */
-  const [hour, setHour] = useState(() => new Date().getHours())
+  const [deviceDark, setDeviceDark] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches === true,
+  )
   useEffect(() => {
-    if (room.night !== 'auto') return
-    setHour(new Date().getHours())
-    const t = setInterval(() => setHour(new Date().getHours()), 60_000)
-    return () => clearInterval(t)
-  }, [room.night])
+    const m = window.matchMedia?.('(prefers-color-scheme: dark)')
+    if (!m) return
+    const on = () => setDeviceDark(m.matches)
+    on()
+    m.addEventListener('change', on)
+    return () => m.removeEventListener('change', on)
+  }, [])
   useEffect(() => {
-    document.documentElement.dataset.night = isNightNow(room.night, hour) ? 'on' : 'off'
-  }, [room.night, hour])
+    document.documentElement.dataset.night = isNightNow(room.night, deviceDark) ? 'on' : 'off'
+  }, [room.night, deviceDark])
   const setRoom = (raw: Room) => {
     const next = cleanRoom(raw, owned)
     setState(next)

@@ -356,7 +356,7 @@ export function Dashboard({
       />
     ),
     // the one block about her reading left on the dashboard (D-0060); the charts are on the Stats page
-    myyear: <MyYearCard books={books} accountId={accountId} onOpen={onOpenStats} />,
+    myyear: <MyYearCard books={books} accountId={accountId} onOpen={onOpenStats} onShowBook={onShowBook} />,
     next: <ReadNextCard books={books} onShowBook={onShowBook} />,
     newforyou: <NewForYouCard books={books} accountId={accountId} onAdd={onAdd ?? (() => {})} />,
     reading: <CurrentlyReadingCard books={books} onShowBook={onShowBook} />,

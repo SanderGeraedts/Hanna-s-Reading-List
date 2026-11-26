@@ -30,8 +30,8 @@ that way and written down in D-0085 and D-0086.
 # Done when
 
 - `pnpm test` and `pnpm run build` pass, and `harness check` is in step.
-- Night mode: the pages are dark between 20:00 and 06:00 with the room's `night` on `auto`, and
-  *Always* / *Never* hold it; a room saved before it existed follows the clock.
+- Night mode: with `night` on `auto` the pages follow the phone's own dark setting, live, and
+  *Always* / *Never* hold it; a room saved before it existed is on `auto`.
 - Every colour in night mode is checked by `colours.test.ts`, not by eye.
 - The Wishlist bookcase says "You bought 2 of your wishes this month" when she has.
 - A shelf book matching a wish is offered in Waiting for you, with Take it off the wishlist and
@@ -53,8 +53,8 @@ that way and written down in D-0085 and D-0086.
 
 **Night mode**: the wallpaper behind the pages becomes a deep warm brown and the white round
 buttons go dark with light ink. The cards, which were always dark walnut with cream text, are
-left exactly as they are, and so is the 3D room, which dims itself. The switch is *After dark ·
-Always · Never* in the 🎨 room panel, above the cosy extras.
+left exactly as they are, and so is the 3D room, which dims itself by the clock. The switch is
+*Follow my phone · Always · Never* in the 🎨 room panel, above the cosy extras.
 
 **The wishlist**: its count line gains "· You bought 2 of your wishes this month" when there is
 something to say. The question in Waiting for you is one line and two buttons, never a pop-up.
@@ -64,9 +64,9 @@ something to say. The question in Waiting for you is one line and two buttons, n
 `pnpm test`: 211 files, 2668 tests passed (22 skipped), together with the garden (T-0112) and
 the bookshop (T-0113) in the same pull request. `pnpm run build`: built. `harness check`: in step.
 
-- `src/lib/room.test.ts` — night mode follows the clock from 20:00 to 06:00, `on` and `off` hold
-  it at any hour, the three choices read in her words, and a room saved before it existed (or
-  with nonsense in the field) comes back on `auto`.
+- `src/lib/room.test.ts` — `auto` follows the phone's dark setting, `on` and `off` hold it
+  whatever the phone says, the three choices read in her words, and a room saved before it
+  existed (or with nonsense in the field) comes back on `auto`.
 - `src/lib/colours.test.ts` — ten new cases read the night block out of `styles.css`: the header
   text and helper text on the pages and on the band, the cards, the gold, and the ink on the dark
   buttons including over the darkest wood of the bookcase.
@@ -82,8 +82,7 @@ things were wrong on the screenshot and fixed: the seven page tabs were still br
 circles (they hard-coded their own white, now the same token as the other pills), and the mist
 over the night garden was heavy enough to hide the plants (halved).
 
-Remaining: Hanna sees the pages go dark in the evening, and says whether *After dark* is the
-right default for her.
+Remaining: Hanna sees the pages follow her phone, and says whether that is right for her.
 
 # Log
 
@@ -93,4 +92,6 @@ right default for her.
   Waiting for you question.
 - 2026-11-26 tester: ran the suite, the build and the colour check; looked at three pages at
   430 × 932 and fixed the bright page tabs and the heavy mist.
-- 2026-11-26 tester: Remaining: Hanna sees it in the evening and says whether the default is right.
+- 2026-11-26 developer: first built on the clock (20:00–06:00); Hanna saw it and chose the phone's
+  own dark setting instead, so `isNightNow` takes that and the room panel follows it live.
+- 2026-11-26 tester: Remaining: Hanna sees the pages follow her phone.

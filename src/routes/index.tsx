@@ -47,6 +47,7 @@ import { CreaturesProvider, useCreaturesValue } from '#/components/creatures/Cre
 import { useFactMark } from '#/components/useFactMark'
 import { PageWhileLoading, usePrefetchPages } from '#/components/PageWhileLoading'
 import { useCookieMark } from '#/components/useCookieMark'
+import { canKeepApp, keepAppOnThisDevice } from '#/lib/offline'
 import { askText, keepWishEvent, keptWishes, wishToAsk } from '#/lib/wishFulfilled'
 import { useShelfPet } from '#/components/creatures/useShelfPet'
 import { isCategory, ownedDecor } from '#/lib/creatures/shop'
@@ -320,6 +321,13 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   const factMark = useFactMark(books, creatures.choices)
   // the light pages come along quietly once the shelf is up and still (D-0080 §1)
   usePrefetchPages(loaded)
+  // keep the app on this device, so it opens at once next time and works with no signal
+  // (D-0089). After the shelf is up, so it never competes for the connection.
+  useEffect(() => {
+    if (!loaded || !canKeepApp()) return
+    const id = setTimeout(() => void keepAppOnThisDevice(), 3000)
+    return () => clearTimeout(id)
+  }, [loaded])
   // cookies she has earned are never taken back (D-0081)
   useCookieMark(books, creatures.choices)
   /**

@@ -56,9 +56,9 @@ export interface Room {
   plant: boolean
   seasonal: boolean
   /**
-   * Night mode for the pages (D-0085): `auto` follows the clock, the way the room's
-   * Day & night already does, and the other two hold it. Kept on this device like the
-   * rest of the room (D-0022) and never sent anywhere.
+   * Night mode for the pages (D-0085): `auto` follows **the phone's own dark setting**,
+   * so the app matches everything else on it, and the other two hold it. Kept on this
+   * device like the rest of the room (D-0022) and never sent anywhere.
    */
   night: NightMode
 }
@@ -67,18 +67,21 @@ export interface Room {
 export type NightMode = 'auto' | 'on' | 'off'
 
 export const NIGHT_MODES: Array<{ id: NightMode; label: string }> = [
-  { id: 'auto', label: 'After dark' },
+  { id: 'auto', label: 'Follow my phone' },
   { id: 'on', label: 'Always' },
   { id: 'off', label: 'Never' },
 ]
 
 /**
- * Whether the pages are in night mode right now. `hour` is the device's own hour;
- * `auto` uses the app's night, eight in the evening until six in the morning, the
- * same one the garden and the room already use (D-0050, D-0045).
+ * Whether the pages are in night mode right now (D-0085). `deviceDark` is the phone's
+ * own dark setting (`prefers-color-scheme: dark`), which `auto` follows, so the app is
+ * dark exactly when everything else on her phone is. Hanna chose this over the clock on
+ * 26 November 2026: a clock cannot know she is in a dark room at four in the afternoon.
+ *
+ * The 3D room keeps its own evening by the clock (D-0045, Day & night) and is untouched.
  */
-export const isNightNow = (night: NightMode, hour: number): boolean =>
-  night === 'on' ? true : night === 'off' ? false : hour >= 20 || hour < 6
+export const isNightNow = (night: NightMode, deviceDark: boolean): boolean =>
+  night === 'on' ? true : night === 'off' ? false : deviceDark
 
 /** The cosy room extras, in the order they stand in the 🎨 panel (D-0045 §1). */
 export const ROOM_EXTRAS: Array<{ key: RoomExtra; label: string }> = [
@@ -100,7 +103,7 @@ export const DEFAULT_ROOM: Room = {
   dayNight: true,
   plant: true,
   seasonal: true,
-  // after dark by default: she reads in bed, and the pages were bright whatever the hour
+  // follows the phone by default: she reads in bed, and the pages were bright whatever the hour
   night: 'auto',
 }
 
