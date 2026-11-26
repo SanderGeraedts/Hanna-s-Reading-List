@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { BookshelfSceneProps } from './BookshelfScene'
+import { troubleLine } from '#/lib/trouble'
 
 // stands in for the 3D scene: it fails the way three.js does when the browser
 // can't start WebGL, or hands out its "context lost" callback
@@ -37,8 +38,8 @@ describe('the bookshelf when the 3D drawing fails (#181)', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     render(<SafeBookshelf {...props} />)
     const note = screen.getByRole('status')
-    expect(note.textContent).toContain("The bookshelf can't be drawn on this phone right now.")
-    expect(note.textContent).toContain('Your books are safe. The Dashboard, Challenges and Calendar still work.')
+    expect(note.textContent).toContain(troubleLine('shelf-not-drawn').what)
+    expect(note.textContent).toContain(troubleLine('shelf-not-drawn').safe)
     expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy()
     expect(screen.queryByTestId('shelf')).toBeNull()
   })
@@ -57,7 +58,7 @@ describe('the bookshelf when the 3D drawing fails (#181)', () => {
     render(<SafeBookshelf {...props} />)
     expect(screen.getByTestId('shelf')).toBeTruthy()
     act(() => scene.lost?.())
-    expect(screen.getByRole('status').textContent).toContain("can't be drawn")
+    expect(screen.getByRole('status').textContent).toContain('can’t be drawn')
     expect(screen.queryByTestId('shelf')).toBeNull()
   })
 

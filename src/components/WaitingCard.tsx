@@ -9,6 +9,8 @@ import type { Badge } from '#/lib/badges'
 import type { Egg } from '#/lib/creatures/eggs'
 import type { SpeciesId } from '#/lib/creatures/species'
 import { eggReason, eggsWaitingLine, speciesWord } from '#/lib/creatures/words'
+import { deviceKeepsBooks, troubleLine } from '#/lib/trouble'
+import type { TroubleKind } from '#/lib/trouble'
 import { StarRating } from './StarRating'
 import { Cover } from './common'
 
@@ -41,6 +43,13 @@ interface Props {
    * list, so it says what will happen and waits for her yes; "Keep it" is remembered.
    */
   wishDone?: { text: string; title: string; onRemove: () => void; onKeep: () => void }
+  /**
+   * something has gone wrong and is still wrong (D-0088): the shelf hasn't
+   * reached the server at Sander's home, or is too big to send. One honest
+   * line — what happened, whether her books are safe, what she can do — and
+   * Try again where trying again can help. No pop-up (D-0013).
+   */
+  trouble?: { kind: TroubleKind; onRetry?: () => void; busy?: boolean }
 }
 
 /**
@@ -64,8 +73,11 @@ export function WaitingCard({
   creatureLevelUp,
   garden,
   wishDone,
+  trouble,
 }: Props) {
   const heading = useRef<HTMLHeadingElement>(null)
+  // "safe on this device" is only said when this browser really is keeping a copy
+  const troubleText = trouble && troubleLine(trouble.kind, { deviceKeeps: deviceKeepsBooks() })
   return (
     <section className="dash-card waiting-card" aria-labelledby="waiting-title">
       <h2 id="waiting-title" ref={heading} tabIndex={-1}>
@@ -80,7 +92,31 @@ export function WaitingCard({
         !creatureEggs &&
         !creatureDuplicate &&
         !creatureLevelUp &&
+        !trouble &&
         !wishDone && <p className="muted small-text">Nothing waiting.</p>}
+      {troubleText && (
+        <ul className="waiting-list">
+          <li>
+            <span className="badge-icon" aria-hidden>
+              ⚠️
+            </span>
+            <div className="waiting-info">
+              <p className="waiting-title">
+                <strong>{troubleText.what}</strong>
+              </p>
+              <p className="muted small-text">{troubleText.safe}</p>
+              <p className="muted small-text">{troubleText.fix}</p>
+              {troubleText.retry && trouble?.onRetry && (
+                <div className="chips">
+                  <button type="button" className="btn small primary" disabled={trouble.busy} onClick={trouble.onRetry}>
+                    {trouble.busy ? 'Trying…' : troubleText.retry}
+                  </button>
+                </div>
+              )}
+            </div>
+          </li>
+        </ul>
+      )}
       {wishDone && (
         <div className="waiting-row waiting-wish">
           <p className="small-text">{wishDone.text}</p>
