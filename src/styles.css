@@ -7783,3 +7783,179 @@ button.today-item:hover {
     min-width: 8rem;
   }
 }
+
+/* ---- the bookshop (D-0084) -------------------------------------------
+   The shop that trades while she is away: the dashboard block, the drawn
+   shop, and the whole shop behind "Open ›". One block at the very end of
+   the file, so no rule above it is disturbed. */
+.shop-stage {
+  border-radius: var(--radius-small);
+  overflow: hidden;
+  background: #d9c9ae;
+  aspect-ratio: 120 / 72;
+}
+.shop-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.shop-stage .shop-svg {
+  max-height: 11rem;
+}
+.shop-stage.big .shop-svg {
+  max-height: 16rem;
+}
+.bookshop-away {
+  margin: 0;
+  font-family: var(--serif);
+}
+.bookshop-counts {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.shop-coins {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.bookshop-next {
+  margin: 0;
+}
+.bookshop-dialog .dialog-body {
+  gap: var(--space-3);
+}
+.bookshop-body h3 {
+  margin: 0 0 0.25rem;
+  font-size: var(--fs-body);
+}
+.bookshop-body p {
+  margin: 0 0 0.25rem;
+}
+.shop-till {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.shop-days,
+.shop-shelf-list,
+.shop-things {
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.shop-days li {
+  line-height: 1.35;
+}
+.shop-day {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.shop-shelf-list {
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+}
+.shop-shelf-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.shop-spine-dot {
+  display: inline-block;
+  width: 0.45rem;
+  height: 1rem;
+  border-radius: 1px;
+  flex: none;
+}
+.shop-things li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 0.4rem 0;
+  border-top: 1px solid var(--border);
+}
+.shop-thing-text {
+  min-width: 0;
+}
+.shop-thing-name {
+  margin: 0;
+  font-weight: 600;
+}
+.shop-have {
+  font-weight: 400;
+  font-size: var(--fs-small);
+  color: #6f9a58;
+  white-space: nowrap;
+}
+.shop-note {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-2);
+}
+/* the customers browse and the cat breathes; both stop with reduce motion */
+.shop-customer,
+.shop-cat {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.shop-customer.browse-0 {
+  animation: shop-browse-0 13s ease-in-out infinite alternate;
+}
+.shop-customer.browse-1 {
+  animation: shop-browse-1 17s ease-in-out infinite alternate;
+}
+.shop-customer.browse-2 {
+  animation: shop-browse-2 11s ease-in-out infinite alternate;
+}
+.shop-cat {
+  animation: shop-cat-breathe 6s ease-in-out infinite alternate;
+}
+@keyframes shop-browse-0 {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(5px);
+  }
+}
+@keyframes shop-browse-1 {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-6px);
+  }
+}
+@keyframes shop-browse-2 {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(4px);
+  }
+}
+@keyframes shop-cat-breathe {
+  from {
+    transform: scaleY(1);
+  }
+  to {
+    transform: scaleY(1.04);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shop-customer,
+  .shop-cat {
+    animation: none !important;
+  }
+}
+@media (max-width: 720px) {
+  .shop-shelf-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .shop-things li {
+    flex-wrap: wrap;
+  }
+}
