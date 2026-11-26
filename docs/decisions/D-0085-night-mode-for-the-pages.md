@@ -1,7 +1,7 @@
 ---
 id: D-0085
 title: "Night mode for the pages: dark after dark by default, with Always and Never in the room panel"
-description: "A `night: 'auto' | 'on' | 'off'` on Room, kept on this device like the rest of it, puts `data-night` on <html>; `auto` is the app's own night, eight in the evening until six; the wallpaper behind the pages goes deep warm brown and the white round buttons in the header go dark with light ink, while the cards, which were always dark walnut, are left alone."
+description: "A `night: 'auto' | 'on' | 'off'` on Room, kept on this device like the rest of it, puts `data-night` on <html>; `auto` follows the phone's own dark setting, live; the wallpaper behind the pages goes deep warm brown and the white round buttons in the header go dark with light ink, while the cards, which were always dark walnut, are left alone."
 status: Accepted
 date: 2026-11-26
 decided_by: requester
@@ -33,12 +33,15 @@ She was asleep, so this was built on her standing instruction to go with the rec
 1. **`Room` gains `night: 'auto' | 'on' | 'off'`**, kept in this browser like the rest of the
    room (D-0022). It is never sent anywhere and never touches her books.
 
-2. **`auto` is the default, and is the app's own night**: from 20:00 to 06:00 by the device's
-   clock — the same night the garden and the room already use (D-0050, D-0045). The hour is
-   re-read every minute, so evening arrives by itself while she is looking.
+2. **`auto` is the default, and follows the phone's own dark setting**
+   (`prefers-color-scheme: dark`), live: turn the phone dark and the pages turn with it, with no
+   reload. Hanna chose this over the clock when she saw it (26 November 2026): a clock cannot
+   know she is in a dark room at four in the afternoon, and this way the app matches everything
+   else on her phone. **The 3D room keeps its own evening by the clock** (D-0045, Day & night),
+   which she also chose to leave alone.
 
 3. **Her two other choices are `Always` and `Never`**, in the 🎨 room panel above the cosy
-   extras, as *After dark · Always · Never*.
+   extras, as *Follow my phone · Always · Never*.
 
 4. **It is one attribute on `<html>`** (`data-night="on" | "off"`), like `data-wallpaper`, so
    every page's CSS follows it with no component knowing about it.
@@ -73,3 +76,6 @@ full second palette would have been a far bigger change with far more to get wro
 - `RoomPanel` keeps the hour while `auto` is on, and sets the attribute.
 - The night is a look on this device, not a setting on her account: her phone can be dark while
   her laptop is not.
+- Because `auto` follows the phone and the room follows the clock, the two can disagree for an
+  evening — the pages bright at 21:00 on a phone set to light. That is the price of matching the
+  phone, and *Always* is one tap away.

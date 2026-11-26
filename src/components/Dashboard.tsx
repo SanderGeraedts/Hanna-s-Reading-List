@@ -69,6 +69,7 @@ import { useCreatures } from './creatures/CreaturesContext'
 import { useGarden } from './garden/useGarden'
 import { GardenCard } from './GardenCard'
 import { BookshopCard } from './bookshop/BookshopCard'
+import type { TroubleKind } from '#/lib/trouble'
 import { useSeen } from './garden/useSeen'
 import { waitingLine } from '#/lib/garden/seen'
 
@@ -115,6 +116,8 @@ interface DashboardProps extends Props {
   factMark?: number
   /** a wish she already has on her shelf, to offer in Waiting for you (D-0086) */
   wishDone?: { text: string; title: string; onRemove: () => void; onKeep: () => void }
+  /** something has gone wrong and is still wrong (D-0088): one line in Waiting for you */
+  trouble?: { kind: TroubleKind; onRetry?: () => void; busy?: boolean }
 }
 
 export interface PeriodPick {
@@ -167,6 +170,7 @@ export function Dashboard({
   onOpenStats,
   factMark = 0,
   wishDone,
+  trouble,
 }: DashboardProps) {
   const open = (section: ChallengeSection) => (onOpenChallenges ? () => onOpenChallenges(section) : undefined)
   // the year wrap-up story she opened with ▶ Play (T-0081); null: no story open
@@ -302,7 +306,8 @@ export function Dashboard({
     !creatureEggs &&
     !creatureDuplicate &&
     !creatureLevelUp &&
-    !gardenWaiting
+    !gardenWaiting &&
+    !trouble
 
   // nothing noted anywhere yet: the Tropes & characters block keeps out of the way
   const noTropes = tropesBlock(books).empty
@@ -324,6 +329,7 @@ export function Dashboard({
         creatureLevelUp={creatureLevelUp}
         garden={gardenWaiting}
         wishDone={wishDone}
+        trouble={trouble}
       />
     ),
     creatures: (
@@ -356,7 +362,7 @@ export function Dashboard({
       />
     ),
     // the one block about her reading left on the dashboard (D-0060); the charts are on the Stats page
-    myyear: <MyYearCard books={books} accountId={accountId} onOpen={onOpenStats} />,
+    myyear: <MyYearCard books={books} accountId={accountId} onOpen={onOpenStats} onShowBook={onShowBook} />,
     next: <ReadNextCard books={books} onShowBook={onShowBook} />,
     newforyou: <NewForYouCard books={books} accountId={accountId} onAdd={onAdd ?? (() => {})} />,
     reading: <CurrentlyReadingCard books={books} onShowBook={onShowBook} />,

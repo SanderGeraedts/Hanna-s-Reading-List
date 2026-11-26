@@ -12,6 +12,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "measure:shelf": "node scripts/measure-shelf.mjs",
+    "measure:contrast": "node scripts/measure-contrast.mjs",
     "render:creatures": "node scripts/render-creature-stills.mjs",
     "preinstall": "node -e \"if(!/^pnpm\\//.test(process.env.npm_config_user_agent||'')){console.error('Use pnpm (G-0016): pnpm install');process.exit(1)}\"",
     "prepare": "harness hooks"

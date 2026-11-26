@@ -20,6 +20,7 @@ import { cleanTwoColumns, showIn } from '#/lib/twoColumns'
 import type { TwoColumns } from '#/lib/twoColumns'
 import { NewChallengeForm, OwnChallengeCard, useOwnChallenges } from './OwnChallenges'
 import { PILE_CHALLENGE } from '#/lib/ownChallenges'
+import { troubleLine } from '#/lib/trouble'
 import { useCreatureChoices } from './useCreatureChoices'
 
 export type ChallengeSection = 'goal' | 'monthly' | 'bingo' | 'alphabet' | 'world' | 'season' | 'minutes' | 'series'
@@ -94,7 +95,7 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
   const [editing, setEditing] = useState(false)
   // the order of the challenges, which she arranges like the dashboard (per device)
   const [savedLayout, setLayout] = useChallengeLayout(accountId)
-  const [own, setOwn] = useOwnChallenges(accountId)
+  const [own, setOwn, ownNotSent] = useOwnChallenges(accountId)
   // her choices, for the bingo swaps (D-0067): the same log as the creatures and the garden
   const choices = useCreatureChoices(accountId)
   const swaps = useMemo(() => bingoSwaps(choices.log), [choices.log])
@@ -255,6 +256,12 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
           }}
           onCancel={() => setAdding(false)}
         />
+      )}
+      {ownNotSent && (
+        <p className="muted small-text" role="status">
+          {troubleLine('challenge-not-sent').what} {troubleLine('challenge-not-sent').safe}{' '}
+          {troubleLine('challenge-not-sent').fix}
+        </p>
       )}
       <ArrangeGrid
         layout={layout}

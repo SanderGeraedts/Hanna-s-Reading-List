@@ -5,7 +5,10 @@
 :root {
   /* colours */
   --bg: #231a15; /* deep walnut, behind everything */
-  --surface: rgba(38, 29, 23, 0.88); /* cards and panels, over the shelf */
+  /* cards and panels, over the shelf. Dense enough that a pale wallpaper behind a page
+     hardly lightens them: at 0.88 the lavender came through and the quieter text on a
+     card (a calendar day, a chip) dropped under 4.5:1 there (T-0115, D-0087). */
+  --surface: rgba(38, 29, 23, 0.96);
   --surface-solid: #261d17; /* dialogs and sheets */
   --surface-sunken: rgba(0, 0, 0, 0.22); /* inputs, wells, empty squares */
   --surface-raised: rgba(255, 240, 215, 0.06); /* secondary buttons: readable over the shelf too */
@@ -247,6 +250,12 @@ h2 {
 .topbar .muted {
   color: var(--header-muted);
 }
+/* the ☰ menu hangs from the header but is a dark card, not the light band: its helper
+   text keeps the card's own cream, or the header's deep plum stands on dark walnut
+   at about 2:1 (T-0115) */
+.topbar .view-menu-list .muted {
+  color: var(--muted);
+}
 /* the sort menu sits on the light band, so give it light styling too */
 .topbar .input {
   background: var(--pill-bg-soft);
@@ -411,6 +420,13 @@ h2 {
 .input:focus {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
+}
+/* the grey hint inside an empty box is the browser's own, and it is too faint on a dark
+   card (about 3.5:1): give it the card's quiet cream. Firefox fades a placeholder as well,
+   so the fading is turned off (T-0115). */
+.input::placeholder {
+  color: var(--muted);
+  opacity: 1;
 }
 textarea.input {
   resize: vertical;
@@ -1511,7 +1527,10 @@ textarea.input {
    The pill is nearly solid and the ink is full strength (T-0096): at 0.75 white with the
    ink at 0.72 the room showed through the words, and on dark wood there was hardly
    anything left of them — which is what Hanna reported. */
-.shelf-cases {
+/* .segmented comes later in this file and would otherwise win with the same weight and
+   put its dark sunken fill back under the switch, which is exactly what T-0096 fixed:
+   name both classes, so the white pill holds whatever the order (T-0115) */
+.segmented.shelf-cases {
   justify-self: start;
   max-width: 100%;
   flex-wrap: wrap;
@@ -2247,9 +2266,11 @@ html[data-wallpaper='midnight'] .shelf-none {
 .calendar .day-cell:hover:not(:disabled) {
   background: var(--surface-raised);
 }
+/* a day with nothing on it cannot be opened, but its date is still something she reads:
+   fading the whole cell to 0.6 put the number at about 2.7:1, so the cell only stops
+   being a button (T-0115). --muted on a card says "quiet" well enough. */
 .calendar .day-cell:disabled {
   cursor: default;
-  opacity: 0.6;
 }
 .calendar td.picked {
   outline: 2px solid var(--accent);
@@ -2523,8 +2544,10 @@ html[data-wallpaper='midnight'] .shelf-none {
   position: relative;
   display: inline-block;
 }
+/* an empty star still says "out of five", so it is an outline that has to be seen:
+   at 0.18 it was about 1.8:1 on a card, under the 3:1 an icon needs (T-0115) */
 .star-empty {
-  color: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.42);
 }
 .star-full {
   position: absolute;
@@ -2533,10 +2556,11 @@ html[data-wallpaper='midnight'] .shelf-none {
   color: var(--accent);
 }
 /* the spice level: peppers in colour when on, faded grey when off */
+/* the same for an unlit pepper: grey, but grey you can see (3:1 on a card, T-0115) */
 .stars.spice .star-empty {
   color: inherit;
   filter: grayscale(1);
-  opacity: 0.25;
+  opacity: 0.45;
 }
 .stars.spice .star-full {
   color: inherit;
@@ -6848,9 +6872,26 @@ button.today-item:hover {
 .garden-years {
   margin: 0;
 }
-.garden-years .btn.active {
-  background: var(--accent-soft);
+/* the year and bed switches and the search box stand straight on the wallpaper, not on a
+   card, and both are built for a dark backdrop: a button's fill is a whisper of cream and
+   the box is a sunken well. On the lavender paper that left cream letters at about 1.3:1
+   and the hint in the box at 1.9:1. Give them the card's own dark fill, and lay the gold
+   wash of the chosen switch over that fill instead of over the wallpaper (T-0115). */
+.garden-years .btn,
+.garden-beds .btn,
+.garden-find .input {
+  background: var(--surface);
+}
+.garden-years .btn.active,
+.garden-beds .btn.active {
+  background-color: var(--surface);
+  background-image: linear-gradient(var(--accent-soft), var(--accent-soft));
   border-color: var(--accent-line);
+}
+.garden-years .btn:hover:not(:disabled),
+.garden-beds .btn:hover:not(:disabled) {
+  background-color: var(--surface);
+  background-image: linear-gradient(var(--surface-hover), var(--surface-hover));
 }
 .garden-card {
   padding: var(--space-3);
@@ -7719,10 +7760,73 @@ button.today-item:hover {
   height: 5.5rem;
   flex: none;
 }
+.myyear-said {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
 .myyear-numbers {
   margin: 0;
   font-size: var(--fs-large);
   min-width: 0;
+}
+.myyear-pace {
+  margin: 0;
+}
+/* a bar per month: the quiet and the busy stretches of her year, without opening Stats */
+.myyear-months {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  align-items: end;
+  gap: 3px;
+  height: 3.2rem;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+}
+.myyear-months > li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  height: 100%;
+}
+/* the bar's height is the month's share of her busiest one, never smaller than a stub */
+.myyear-bar {
+  width: 100%;
+  min-height: 3px;
+  height: calc(0.25rem + var(--share, 0) * 2.1rem);
+  border-radius: 3px 3px 0 0;
+  background: var(--accent);
+}
+.myyear-bar.none {
+  background: var(--surface-raised);
+}
+.myyear-month {
+  font-size: 0.65rem;
+  color: var(--muted);
+  line-height: 1;
+}
+/* what the year was made of */
+.myyear-covers {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  align-items: center;
+}
+.myyear-covers .dash-cover.small,
+.myyear-covers .dash-cover {
+  width: 2rem;
+  height: 3rem;
+  aspect-ratio: auto;
+}
+.myyear-more {
+  color: var(--muted);
+  font-size: var(--fs-small);
 }
 
 /* Year in review: the numbers and ▶ Play */

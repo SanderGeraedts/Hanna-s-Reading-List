@@ -85,3 +85,46 @@ describe('My year on the dashboard', () => {
       expect(screen.queryByRole('heading', { name })).toBeNull()
   })
 })
+
+/** What fills the block beside the ring (D-0090): covers, the goal line, a bar per month. */
+describe('what My year shows besides the numbers', () => {
+  const card = () => document.querySelector<HTMLElement>('.myyear-card')!
+
+  it('shows a cover for each book she finished this year, which opens the book', () => {
+    const shown: string[] = []
+    render(
+      <Dashboard books={BOOKS} onShowBook={(id) => shown.push(id)} accountId={null} onUpdate={() => {}} />,
+    )
+    const covers = card().querySelectorAll('.myyear-covers li')
+    expect(covers).toHaveLength(2)
+    fireEvent.click(card().querySelector<HTMLButtonElement>('.myyear-covers button')!)
+    expect(shown).toHaveLength(1)
+  })
+
+  it('shows a bar for every month of the year', () => {
+    show()
+    expect(card().querySelectorAll('.myyear-months li')).toHaveLength(12)
+    // March and July have a book; the rest are empty
+    const full = [...card().querySelectorAll('.myyear-months .myyear-bar')].filter((b) => !b.classList.contains('none'))
+    expect(full).toHaveLength(2)
+  })
+
+  it('says how she is doing against the goal, once there is one', () => {
+    show()
+    // no goal yet: no line about it
+    expect(card().textContent).not.toContain('to go')
+    cleanup()
+    localStorage.setItem(goalKey(null, 2026), '5')
+    show()
+    expect(card().textContent).toContain('to go')
+  })
+
+  it('says nothing of the sort in a year she has finished nothing', () => {
+    vi.setSystemTime(new Date('2027-01-05T12:00:00'))
+    show()
+    expect(card().textContent).toContain('Nothing finished in 2027 yet')
+    expect(card().querySelector('.myyear-covers')).toBeNull()
+    expect(card().querySelector('.myyear-months')).toBeNull()
+    vi.setSystemTime(new Date('2026-11-23T12:00:00'))
+  })
+})

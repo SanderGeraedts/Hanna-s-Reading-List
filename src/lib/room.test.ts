@@ -57,22 +57,22 @@ describe('make the room yours', () => {
 
 /** Night mode for the pages (D-0085). */
 describe('night mode', () => {
-  it('follows the clock by default: dark from eight in the evening until six', () => {
+  it('follows the phone’s own dark setting by default', () => {
     expect(DEFAULT_ROOM.night).toBe('auto')
-    for (const hour of [20, 21, 23, 0, 3, 5]) expect(isNightNow('auto', hour)).toBe(true)
-    for (const hour of [6, 9, 13, 17, 19]) expect(isNightNow('auto', hour)).toBe(false)
+    expect(isNightNow('auto', true)).toBe(true)
+    expect(isNightNow('auto', false)).toBe(false)
   })
 
-  it('holds it on or off whatever the hour', () => {
-    for (const hour of [3, 13, 22]) {
-      expect(isNightNow('on', hour)).toBe(true)
-      expect(isNightNow('off', hour)).toBe(false)
+  it('holds it on or off whatever the phone says', () => {
+    for (const deviceDark of [true, false]) {
+      expect(isNightNow('on', deviceDark)).toBe(true)
+      expect(isNightNow('off', deviceDark)).toBe(false)
     }
   })
 
   it('offers her three choices, in her words', () => {
     expect(NIGHT_MODES.map((m) => m.id)).toEqual(['auto', 'on', 'off'])
-    expect(NIGHT_MODES.map((m) => m.label)).toEqual(['After dark', 'Always', 'Never'])
+    expect(NIGHT_MODES.map((m) => m.label)).toEqual(['Follow my phone', 'Always', 'Never'])
   })
 
   it('keeps a room saved before it existed on the clock, and keeps her choice', () => {

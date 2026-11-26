@@ -168,6 +168,60 @@ describe('colour check: everything stays readable', () => {
     ['header helper text on the band (midnight)', mid('header-muted'), midBand, 4.5],
     ['text on a header button over the band (midnight)', mid('pill-ink'), midBand.map(headerButton), 4.5],
   )
+  // ---- every page readable in every look (T-0115, D-0087) ------------------
+  // measured with scripts/measure-contrast.mjs on the Dashboard, Stats, Challenges,
+  // Calendar, Creatures and Garden pages, in all three looks.
+  const starEmpty = parse(rule('.star-empty').match(/color:\s*([^;]+);/)![1])
+  for (const [look, cards] of [
+    ['lavender', cardsOnWall],
+    ['midnight', midCards],
+    ['night', nightCards],
+  ] as const) {
+    // a calendar day that has books: the day number is helper text on the gold wash.
+    // On the pale lavender paper the card let the wallpaper through and this was 3.9:1.
+    cases.push([`helper text on a gold wash over a card (${look})`, c('muted'), cards.map((card) => over(c('accent-soft'), card)), 4.5])
+    // an empty star and an unlit pepper say "out of five": outlines, so 3:1
+    cases.push([`an empty star on a card (${look})`, over(starEmpty, cards[0]), [cards[0]], 3])
+    cases.push([`an empty star on a gold wash over a card (${look})`, over(starEmpty, over(c('accent-soft'), cards[0])), [over(c('accent-soft'), cards[0])], 3])
+    // the ☰ menu's panel is a dark card hanging from the light header
+    cases.push([`helper text in the ☰ menu (${look})`, c('muted'), [c('surface-solid')], 4.5])
+    // the garden's year and bed switches stand on the wallpaper, on the card's own fill
+    cases.push([`text on a garden switch on the wallpaper (${look})`, c('text'), cards, 4.5])
+    // the grey hint in an empty box: in a sunken well on a card, and in the garden's box,
+    // which is a card of its own on the wallpaper
+    cases.push([`the hint in an empty box on a card (${look})`, c('muted'), cards.map((card) => over(c('surface-sunken'), card)), 4.5])
+    cases.push([`the hint in the garden's search box (${look})`, c('muted'), cards, 4.5])
+    cases.push([`text on the chosen garden switch (${look})`, c('text'), cards.map((card) => over(c('accent-soft'), card)), 4.5])
+  }
+  it('keeps the ☰ menu’s helper text on the card’s cream, not the header’s plum (T-0115)', () => {
+    expect(rule('.topbar .view-menu-list .muted')).toContain('color: var(--muted)')
+  })
+  it('gives the bookcase switch its white pill whatever the order of the file (T-0115)', () => {
+    // .segmented comes later and would otherwise put its sunken dark fill back
+    expect(rule('.segmented.shelf-cases')).toContain('background: var(--pill-bg)')
+  })
+  it('does not fade a calendar day that cannot be opened (T-0115)', () => {
+    expect(rule('.calendar .day-cell:disabled')).not.toContain('opacity')
+  })
+  it('keeps an unlit pepper visible (T-0115)', () => {
+    const opacity = Number(rule('.stars.spice .star-empty').match(/opacity:\s*([\d.]+);/)![1])
+    expect(opacity).toBeGreaterThanOrEqual(0.4)
+  })
+  it('gives the hint in an empty box the card’s cream, not the browser’s grey (T-0115)', () => {
+    const body = rule('.input::placeholder')
+    expect(body).toContain('color: var(--muted)')
+    expect(body).toContain('opacity: 1')
+  })
+  it('puts the garden’s year and bed switches and its search box on the card’s own fill (T-0115)', () => {
+    // a rule over several lines, so written out here (the file may have Windows line endings)
+    const lines = css.replace(/\r\n/g, '\n')
+    const at = lines.indexOf('\n.garden-years .btn,\n.garden-beds .btn,\n.garden-find .input {')
+    expect(at).toBeGreaterThan(0)
+    expect(lines.slice(at, lines.indexOf('}', at))).toContain('background: var(--surface)')
+    const active = lines.indexOf('\n.garden-years .btn.active,\n.garden-beds .btn.active {')
+    expect(active).toBeGreaterThan(0)
+    expect(lines.slice(active, lines.indexOf('}', active))).toContain('background-color: var(--surface)')
+  })
   // the badge medals (T-0042, D-0038): the rims are outlines (3:1) on a card and on the earned
   // face over a card; a hidden medal's "?" is text (4.5:1) on its dark face over a card
   for (const [wallpaper, cards] of [

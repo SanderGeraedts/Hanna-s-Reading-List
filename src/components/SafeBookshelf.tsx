@@ -3,6 +3,7 @@ import type { ErrorInfo, ReactNode } from 'react'
 import { BookshelfScene } from './BookshelfScene'
 import type { BookshelfSceneProps } from './BookshelfScene'
 import { describeFailure, deviceInfo } from '#/lib/shelfDiagnosis'
+import { troubleLine } from '#/lib/trouble'
 import type { ShelfFailure } from '#/lib/shelfDiagnosis'
 import { DEFAULT_ROOM } from '#/lib/room'
 import type { Room } from '#/lib/room'
@@ -57,15 +58,21 @@ export function SafeBookshelf({ onRoom, ...props }: BookshelfSceneProps & { onRo
   )
 }
 
-/** The note in the middle of the page, styled like the empty-shelf note. */
+/**
+ * The note in the middle of the page, styled like the empty-shelf note. Its
+ * words come from `trouble.ts`, like every other failure (D-0088): what
+ * happened, what it means for her books, and what she can do.
+ */
 export function ShelfError({ onRetry, onSimpleBooks, details }: { onRetry: () => void; onSimpleBooks?: () => void; details?: string }) {
+  const line = troubleLine('shelf-not-drawn')
   return (
     <div className="empty shelf-error" role="status">
-      <p>The bookshelf can't be drawn on this phone right now.</p>
-      <p className="shelf-error-sub">Your books are safe. The Dashboard, Challenges and Calendar still work.</p>
+      <p>{line.what}</p>
+      <p className="shelf-error-sub">{line.safe}</p>
+      <p className="shelf-error-sub">{onSimpleBooks ? line.fix : 'Try again — it often works the second time.'}</p>
       <div className="shelf-error-actions">
         <button type="button" className="btn primary" onClick={onRetry}>
-          Try again
+          {line.retry}
         </button>
         {onSimpleBooks && (
           <button type="button" className="btn" onClick={onSimpleBooks}>
