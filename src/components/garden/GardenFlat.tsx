@@ -164,10 +164,11 @@ function WeatherLayer({
     )
   if (weather === 'mist')
     return (
+      // light enough to see the garden through it: mist that hides the plants is just a grey box
       <g aria-hidden="true" className={`garden-mist${still}`}>
-        <rect x={0} y={0} width={width} height={depth} fill="#e6ebf2" opacity={0.26} rx={0.5} />
+        <rect x={0} y={0} width={width} height={depth} fill="#e6ebf2" opacity={0.12} rx={0.5} />
         {[0.3, 0.55, 0.78].map((at, i) => (
-          <rect key={i} x={0} y={depth * at} width={width} height={depth * 0.1} fill="#f3f6fa" opacity={0.42} rx={0.3} />
+          <rect key={i} x={0} y={depth * at} width={width} height={depth * 0.1} fill="#f3f6fa" opacity={0.24} rx={0.3} />
         ))}
       </g>
     )

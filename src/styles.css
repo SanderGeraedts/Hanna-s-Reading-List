@@ -844,9 +844,9 @@ textarea.input {
   gap: var(--space-1);
   min-height: 2.2rem;
   padding: var(--space-1) var(--space-3);
-  border: 1px solid rgba(45, 32, 56, 0.2);
+  border: 1px solid var(--pill-border);
   border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--pill-bg-soft);
   color: var(--pill-ink);
   font: inherit;
   font-size: var(--fs-small);
@@ -6324,7 +6324,7 @@ button.today-item:hover {
   gap: var(--space-1);
   min-height: var(--tap);
   padding: var(--space-1) var(--space-4);
-  border: 1px solid rgba(45, 32, 56, 0.2);
+  border: 1px solid var(--pill-border);
   border-radius: var(--radius-pill);
   background: var(--pill-bg-soft);
   color: var(--pill-ink);

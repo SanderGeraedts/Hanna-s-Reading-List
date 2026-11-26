@@ -68,6 +68,7 @@ import { CreaturesCard } from './CreaturesCard'
 import { useCreatures } from './creatures/CreaturesContext'
 import { useGarden } from './garden/useGarden'
 import { GardenCard } from './GardenCard'
+import { BookshopCard } from './bookshop/BookshopCard'
 import { useSeen } from './garden/useSeen'
 import { waitingLine } from '#/lib/garden/seen'
 
@@ -289,7 +290,7 @@ export function Dashboard({
     : undefined
   // the garden's news, without clearing it: only opening the Garden tab counts as looking
   const gardenSeen = useSeen(garden.garden, false)
-  const gardenLine = waitingLine(gardenSeen.plants, gardenSeen.unlocked)
+  const gardenLine = waitingLine(gardenSeen.plants, gardenSeen.unlocked, gardenSeen.scenery)
   const gardenWaiting = gardenLine && onOpenGarden ? { line: gardenLine, onVisit: onOpenGarden } : undefined
   const nothingWaiting =
     toRate.length === 0 &&
@@ -335,6 +336,10 @@ export function Dashboard({
       />
     ),
     garden: <GardenCard garden={garden.garden} onOpen={onOpenGarden} />,
+    // the shop that trades while she is away (D-0084); "Open ›" opens it over the dashboard
+    bookshop: (
+      <BookshopCard books={books} log={creatures.api.choices.log} record={creatures.api.choices.record} accountId={accountId} />
+    ),
     badges: <BadgesCard books={books} extras={badgeExtras} />,
     tropes: <TropesCard books={books} onShowBook={onShowBook} />,
     covers: <CoverWallCard books={books} onShowBook={onShowBook} />,
