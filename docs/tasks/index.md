@@ -44,6 +44,7 @@ None.
 - [T-0112 Make the garden more alive: weather from the date, scenery that arrives, and small kindnesses](T-0112-a-more-alive-garden.md): Weather invented from the day, seven pieces of scenery that arrive with her reading, and three kindnesses that are never needed — all without anything new being saved on the server.
 - [T-0113 Build Hanna's bookshop: an idle shop that trades while she is away, stocked by her reading](T-0113-the-bookshop.md): A dashboard block and a shop behind Open ›: her reading prints copies, customers turn them into coins while she is away, and coins buy eight things that change the numbers and the picture.
 - [T-0114 Give the pages a night mode, and let the wishlist notice what she bought and what she already has](T-0114-night-mode-and-a-wishlist-that-notices.md): A `night` setting on Room puts `data-night` on <html> and darkens the pages and the white header buttons after dark by default; the Wishlist bookcase says how many wishes she bought this month; and a shelf book with the same title as a wish is offered in Waiting for you, asking before anything leaves her list.
+- [T-0116 Say what happened, whether her books are safe and what she can do, every time something goes wrong](T-0116-kinder-when-something-goes-wrong.md): One honest line per real failure from src/lib/trouble.ts: the shelf not reaching the server at Sander's home, a shelf too big to send, the 3D shelf that can't be drawn, a Storytel refresh, and the goal and challenge saves that used to fail silently.
 
 ## Done
 

@@ -4,6 +4,7 @@ import { loadGoals, saveGoal } from '#/server/shelf'
 import type { Book } from '#/lib/library'
 import { dailyFact, unlockedFacts } from '#/lib/facts'
 import { formatDuration } from '#/lib/listening'
+import { troubleLine } from '#/lib/trouble'
 import {
   breakdown,
   goalProgress,
@@ -141,6 +142,8 @@ export function GoalCard({
   const [goal, setGoal] = useState(() => readLocalGoal(key))
   const [draft, setDraft] = useState(goal?.toString() ?? '')
   const [editing, setEditing] = useState(false)
+  // the goal was kept here but didn't reach the server (D-0088): a quiet line, never a pop-up
+  const [notSent, setNotSent] = useState(false)
   const done = useMemo(() => periodStats(books, { kind: 'year', year }).books, [books, year])
 
   // the goal on the server wins; a goal only this browser knows is sent up
@@ -171,10 +174,22 @@ export function GoalCard({
     const n = Number(draft)
     const next = Number.isInteger(n) && n > 0 && n <= 1000 ? n : null
     writeLocalGoal(key, next)
-    if (accountId) saveGoal({ data: { year, goal: next } }).catch(() => {})
+    if (accountId) {
+      setNotSent(false)
+      saveGoal({ data: { year, goal: next } })
+        .then(() => setNotSent(false))
+        .catch(() => setNotSent(true))
+    }
     setGoal(next)
     setEditing(false)
   }
+
+  const goalTrouble = notSent ? troubleLine('goal-not-sent') : null
+  const goalNote = goalTrouble && (
+    <p className="muted small-text" role="status">
+      {goalTrouble.what} {goalTrouble.safe} {goalTrouble.fix}
+    </p>
+  )
 
   const form = (
     <form
@@ -216,6 +231,7 @@ export function GoalCard({
         <h2 id="goal-title">Reading goal</h2>
         {!goal && <p className="muted">How many books would you like to read this year?</p>}
         {form}
+        {goalNote}
       </section>
     )
   }
@@ -272,6 +288,7 @@ export function GoalCard({
           {!past && <p className="muted small-text">By now {Math.floor(p.expected)} at an even pace</p>}
         </div>
       </div>
+      {goalNote}
     </section>
   )
 }

@@ -3,6 +3,7 @@ import { refreshStorytelLibrary, storytelLoginStatus } from '#/server/storytel'
 import { importStorytelBooks } from './storytelImport'
 import type { ImportCallbacks } from './storytelImport'
 import type { Book } from './library'
+import { troubleFromStorytelError, troubleLine } from './trouble'
 
 export interface StorytelLogin {
   saved: boolean
@@ -45,7 +46,11 @@ export function useStorytelSync(books: Book[], cb: Omit<ImportCallbacks, 'onProg
       ].filter(Boolean)
       setState({ kind: 'done', message: parts.length ? `Storytel: ${parts.join(', ')}.` : 'Storytel: all up to date.' })
     } catch (e) {
-      setState({ kind: 'error', message: e instanceof Error ? e.message : 'Refresh failed' })
+      // Storytel's own wording (status codes, "refused the bookshelf request") never
+      // reaches her: one honest line instead, and what she can do (D-0088)
+      const kind = troubleFromStorytelError(e)
+      const line = troubleLine(kind)
+      setState({ kind: 'error', message: `${line.what} ${line.safe} ${line.fix}` })
       // the server drops a login Storytel no longer accepts
       storytelLoginStatus().then(setLogin).catch(() => {})
     }

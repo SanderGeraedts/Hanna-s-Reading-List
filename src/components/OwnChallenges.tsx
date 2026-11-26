@@ -63,6 +63,8 @@ const markSynced = (key: string) => {
 export function useOwnChallenges(accountId: string | null) {
   const key = localKey(accountId)
   const [list, setList] = useState<OwnChallenge[]>(() => readLocal(key))
+  /** her challenge is kept here but hasn't reached the server at Sander's home (D-0088) */
+  const [notSent, setNotSent] = useState(false)
 
   useEffect(() => {
     setList(readLocal(key))
@@ -95,12 +97,17 @@ export function useOwnChallenges(accountId: string | null) {
     const clean = cleanChallenges(next)
     setList(clean)
     writeLocal(key, clean)
-    if (accountId)
+    if (accountId) {
+      setNotSent(false)
       saveChallenges({ data: { challenges: clean } })
-        .then((ok) => ok && markSynced(key))
-        .catch(() => {})
+        .then((ok) => {
+          if (ok) markSynced(key)
+          setNotSent(false)
+        })
+        .catch(() => setNotSent(true))
+    }
   }
-  return [list, save] as const
+  return [list, save, notSent] as const
 }
 
 /** Making (or changing) a challenge: a name, how many books, pages or hours, and what counts. */
