@@ -77,14 +77,13 @@ export function PaceCard({ books, onShowBook }: Props) {
                   </span>
                   {e.perReadingDay > 0 && (
                     <span className="muted small-text">
-                      at about {amountText(e.book, e.perReadingDay)} a day, reading {e.readingDays} of the last{' '}
-                      {plural(e.days, 'day')}
+                      about {amountText(e.book, e.perReadingDay)} a day
                     </span>
                   )}
                 </>
               ) : (
                 <span className="muted small-text">
-                  Read a little more over the next few days and this guesses when you'll finish.
+                  A few more reading days for a guess.
                 </span>
               )}
             </BookLine>

@@ -152,8 +152,7 @@ export function ChallengeCard({ books, onShowBook, onUpdate, editing, onEditing,
       </div>
       {c.notStarted && !pastYear && (
         <p className="small-text">
-          Pick a book for each month, and read along through the year. You can start with{' '}
-          {today.slice(5, 7) === '12' ? 'next year' : 'next month'}.
+          Pick a book for each month, starting {today.slice(5, 7) === '12' ? 'next year' : 'next month'}.
         </p>
       )}
       {/* nothing picked yet: a single line of months instead of twelve empty boxes, a whole

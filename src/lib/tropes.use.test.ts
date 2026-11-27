@@ -124,7 +124,7 @@ describe('her own challenges', () => {
 })
 
 describe('the dashboard layout', () => {
-  it('gives a layout saved before the block existed its default place, after Badges', () => {
+  it('drops Tropes & characters from a saved layout: it lives on the Stats page now (T-0121)', () => {
     const saved = {
       sections: {
         today: [['waiting'], []],
@@ -137,8 +137,10 @@ describe('the dashboard layout', () => {
       favourites: [],
     }
     const layout = cleanLayout(saved)
-    expect(layout.sections.fun[0]).toEqual(['badges', 'tropes', 'fact', 'wrapped'])
-    // nothing she arranged moved
-    expect(layout.sections.fun[1][0]).toBe('covers')
+    const all = Object.values(layout.sections).flat(2)
+    expect(all).not.toContain('tropes')
+    expect(all).not.toContain('badges')
+    // what is still on the dashboard stays where she put it
+    expect(layout.sections.fun[0]).toEqual(['fact'])
   })
 })

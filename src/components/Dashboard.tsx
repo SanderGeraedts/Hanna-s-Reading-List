@@ -713,6 +713,24 @@ export function Dashboard({
         if (ids.length === 0 && (!arranging || section !== 'today')) return null
         // while arranging every section is open, so blocks can be dropped in
         const folded = layout.folded.includes(section) && !arranging
+        // Today on its own needs no heading: the whole dashboard is about today (T-0122)
+        const alone = !arranging && SECTION_IDS.every((s) => s === section || layout.sections[s].flat().filter(showing).length === 0)
+        if (alone)
+          return (
+            <section key={section} className="dash-section" aria-label={SECTIONS[section]}>
+              <div className={`dashboard-grid dash-section-grid${drag ? ' dragging' : ''}`} data-section={section}>
+                {columnsOf(section).map((col, visual) => (
+                  <div className="dash-column" key={visual}>
+                    {col.filter(showing).map((id) => (
+                      <div key={id} data-block={id} className="dash-block">
+                        {blocks[id]}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )
         return (
           <section key={section} className="dash-section" aria-labelledby={`section-${section}`}>
             <button
@@ -899,8 +917,7 @@ function TopRatedCard({ books, onShowBook, switcher }: Props & { switcher?: Reac
       <PeriodSelect books={books} pick={pick} onPick={setPick} />
       {top.length === 0 ? (
         <p className="muted small-text">
-          No rated books {periodLabel(pick) === 'all time' ? 'yet' : periodLabel(pick)}. Give a finished book stars to
-          see your favourites here.
+          No rated books {periodLabel(pick) === 'all time' ? 'yet' : periodLabel(pick)}.
         </p>
       ) : (
         <ol className="top-list">

@@ -67,7 +67,7 @@ const theSwitch = () => screen.queryByRole('group', { name: 'Which part of the p
 const buttonNames = () => within(theSwitch()!).getAllByRole('button').map((b) => b.getAttribute('aria-pressed') + ':' + b.textContent)
 const press = (name: string) => fireEvent.click(within(theSwitch()!).getByRole('button', { name }))
 
-const PACE = /At your pace of|Once some books have|so there's no pace yet/
+const PACE = /At your pace of|Finish a few books to see|so there's no pace yet/
 
 /** The pace line (or a no-pace line), if there is one. */
 const paceLine = (container: HTMLElement) => [...container.querySelectorAll('p')].find((p) => PACE.test(p.textContent ?? ''))
@@ -419,10 +419,10 @@ describe('PileCard: the pace line follows the switch (T-0024, D-0031)', () => {
 
   it('with no finish day at all: All shows the “Finished on” line, a kind its no-pace line', () => {
     const { container } = render(<PileCard books={mixed().filter((b) => b.id !== 'done')} />)
-    expect(paceLine(container)!.textContent).toBe('Once some books have a “Finished on” date, this shows how long the pile would take.')
+    expect(paceLine(container)!.textContent).toBe('Finish a few books to see how long the pile would take.')
     press('E-book')
     expect(paceLine(container)!.textContent).toBe("You haven't finished an e-book in the last year, so there's no pace yet.")
-    expect(container.textContent).not.toMatch(/Once some books have/)
+    expect(container.textContent).not.toMatch(/Finish a few books to see/)
   })
 
   it('a pile with one kind only (no switch) shows the All line only', () => {

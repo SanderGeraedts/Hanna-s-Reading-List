@@ -24,10 +24,11 @@ vi.mock('#/server/openLibrary', () => ({
 vi.mock('#/server/favourites', () => ({ loadFavourites: async () => ({ kept: false }), saveFavourites: async () => ({ kept: false }) }))
 
 const { Dashboard } = await import('./Dashboard')
+const { MyYearCard } = await import('./MyYearCard')
 
 /**
- * "My year" on the dashboard (T-0080, D-0060): the one block about her reading
- * left there, and the blocks that moved to the Stats page are gone.
+ * "My year" (T-0080, D-0060). Since T-0121 the dashboard is about today and the block is no
+ * longer on it; what it shows is tested on the block itself.
  */
 
 const book = (b: Partial<Book> & { id: string }): Book =>
@@ -49,10 +50,7 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
-const show = (onOpenStats?: () => void) =>
-  render(
-    <Dashboard books={BOOKS} onShowBook={() => {}} accountId={null} onUpdate={() => {}} onOpenStats={onOpenStats} />,
-  )
+const show = (onOpen?: () => void) => render(<MyYearCard books={BOOKS} accountId={null} onOpen={onOpen} onShowBook={() => {}} />)
 
 describe('My year on the dashboard', () => {
   it('shows this year’s books, pages and hours, with Open › to the Stats page', () => {
@@ -79,9 +77,9 @@ describe('My year on the dashboard', () => {
     expect(ring.getAttribute('aria-label')).toBe('2 of 12 books read')
   })
 
-  it('the blocks that moved to the Stats page are not on the dashboard any more', () => {
-    show()
-    for (const name of ['Books read', 'Reading goal 2026', 'A year of reading', 'Genre flower', 'When I read most', 'What I read', 'Records'])
+  it('the blocks that moved to the Stats page are not on the dashboard any more, My year included', () => {
+    render(<Dashboard books={BOOKS} onShowBook={() => {}} accountId={null} onUpdate={() => {}} />)
+    for (const name of ['My year', 'Books read', 'Reading goal 2026', 'A year of reading', 'Genre flower', 'When I read most', 'What I read', 'Records'])
       expect(screen.queryByRole('heading', { name })).toBeNull()
   })
 })
@@ -92,9 +90,7 @@ describe('what My year shows besides the numbers', () => {
 
   it('shows a cover for each book she finished this year, which opens the book', () => {
     const shown: string[] = []
-    render(
-      <Dashboard books={BOOKS} onShowBook={(id) => shown.push(id)} accountId={null} onUpdate={() => {}} />,
-    )
+    render(<MyYearCard books={BOOKS} accountId={null} onShowBook={(id) => shown.push(id)} />)
     const covers = card().querySelectorAll('.myyear-covers li')
     expect(covers).toHaveLength(2)
     fireEvent.click(card().querySelector<HTMLButtonElement>('.myyear-covers button')!)
