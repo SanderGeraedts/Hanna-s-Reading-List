@@ -8,7 +8,7 @@ depends_on: []
 decisions: [D-0033, D-0039, D-0083, D-0084, D-0091]
 raised_on: 2026-11-27
 done_on: ""
-result: []
+result: [https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/281]
 ---
 
 # Goal
@@ -53,4 +53,5 @@ The bookshop tests, the full suite and the build run locally; see *Log*.
 - 2026-11-28 developer: shop logic built on `fix/unfinished-bits` (quicker start, eight more things, staff picks, best sellers, the notes board); D-0091 recorded.
 - 2026-11-28 developer: the moving picture, evening and decorations built.
 - 2026-11-28 tester: `pnpm test`: 220 files passed, 2 skipped; 2809 tests passed, 22 skipped. `tsc --noEmit` clean, `harness check` all ✓, `pnpm run build` ✓. Screenshots of every page at phone and computer size, 13:00 and 21:00, full and empty shelf, looked at. An independent review found three bugs (a pick taken out lost the day's extra coins; More › Bookshop could open the shop later by itself; old layouts kept lone section headings); all three fixed with tests.
+- 2026-11-28 developer: merged in #281 and live on the site.
 - 2026-11-28 developer: Remaining: Hanna checks it on the preview/live site.
