@@ -546,6 +546,18 @@ textarea.input {
     font-size: var(--fs-heading);
     white-space: nowrap;
   }
+  .brand .summary-long {
+    /* still read out in full; only the eye gets the short line (T-0120) */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .brand .summary-short {
+    display: inline;
+  }
   .brand .muted {
     font-size: var(--fs-tiny);
     white-space: nowrap;
@@ -1610,8 +1622,23 @@ html[data-wallpaper='midnight'] .shelf-none {
     flex-wrap: nowrap;
     overflow-x: auto;
     overflow-y: hidden;
-    padding-right: 1rem;
     scrollbar-width: none;
+    /* on a solid pill like the bookcase switch, so the names never sit straight on the
+       bookcase, and the right edge fades out so it shows there is more to slide to (T-0120) */
+    background: var(--pill-bg);
+    border: 1px solid var(--pill-border);
+    border-radius: 999px;
+    padding: 0.25rem 2.5rem 0.25rem 0.75rem;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+  }
+  .shelf-filters .muted {
+    color: var(--pill-ink);
+    text-shadow: none;
+  }
+  html[data-night='on'] .shelf-filters .muted,
+  html[data-wallpaper='midnight'] .shelf-filters .muted {
+    text-shadow: none;
   }
   .shelf-filters::-webkit-scrollbar {
     display: none;
@@ -1627,6 +1654,32 @@ html[data-wallpaper='midnight'] .shelf-none {
   .shelf-filter > span {
     display: inline;
   }
+}
+
+.summary-short {
+  display: none;
+}
+
+/* the monthly challenge before anything is picked: one quiet line of months (T-0120) */
+.challenge-months-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.25rem;
+  margin: 0.5rem 0 0.75rem;
+}
+.challenge-months-row span {
+  flex: 1;
+  text-align: center;
+  padding: 0.3rem 0;
+  border: 1px dashed var(--border, rgba(255, 255, 255, 0.18));
+  border-radius: 0.4rem;
+  font-size: var(--fs-small);
+  opacity: 0.7;
+}
+.challenge-months-row span.current {
+  border-style: solid;
+  border-color: var(--accent);
+  opacity: 1;
 }
 
 /* ---- ISBN and publication date (#43, #44) --------------------------- */
@@ -1805,7 +1858,9 @@ html[data-wallpaper='midnight'] .shelf-none {
   z-index: 1;
   overflow-y: auto;
   /* starts under the header's real height (set on .app as --header-h), so the tabs cover nothing (#181) */
-  padding: max(6.5rem, calc(var(--header-h, 0px) + var(--space-3))) 1.5rem 2rem;
+  /* room at the bottom for the round 📖 Quick update button, so the end of a page never sits under it (T-0120) */
+  padding: max(6.5rem, calc(var(--header-h, 0px) + var(--space-3))) 1.5rem calc(var(--tap) + 2.5rem);
+  scroll-padding-bottom: calc(var(--tap) + 2rem);
   /* and whatever is scrolled to or focused (Tab, scrollIntoView, a search result) lands below the
      header too, never under it (T-0035, WCAG 2.4.11) */
   scroll-padding-top: max(6.5rem, calc(var(--header-h, 0px) + var(--space-3)));
@@ -2498,7 +2553,7 @@ html[data-wallpaper='midnight'] .shelf-none {
 }
 @media (max-width: 720px) {
   .dashboard {
-    padding: max(5.25rem, calc(var(--header-h, 0px) + var(--space-2))) 0.75rem 1.5rem;
+    padding: max(5.25rem, calc(var(--header-h, 0px) + var(--space-2))) 0.75rem calc(var(--tap) + 2.5rem);
   }
   .dashboard-bar.arranging {
     top: var(--space-1);
@@ -3210,14 +3265,16 @@ html[data-wallpaper='midnight'] .shelf-none {
 }
 
 /* heatmap: scrolls sideways inside the card on a narrow screen, starting at today */
-.heatmap-scroll {
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scrollbar-width: thin;
+/* the year in two rows of half a year, each fitted to the card (T-0120) */
+.heatmap-rows {
+  display: grid;
+  gap: 0.4rem;
   padding-bottom: 0.2rem;
 }
 .heatmap {
   display: block;
+  width: 100%;
+  height: auto;
 }
 .heatmap .axis {
   fill: var(--muted);

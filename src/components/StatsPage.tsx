@@ -53,7 +53,7 @@ export function StatsPage({ books, accountId, onShowBook, onOpenGoal }: Props) {
 
   const rows: Array<{ key: string; value: string; label: string; now: number; then: number | undefined }> = [
     { key: 'books', value: numbers.books.toLocaleString('en-GB'), label: numbers.books === 1 ? 'book' : 'books', now: numbers.books, then: other?.books },
-    { key: 'pages', value: numbers.pages.toLocaleString('en-GB'), label: 'pages', now: numbers.pages, then: other?.pages },
+    { key: 'pages', value: numbers.pages.toLocaleString('en-GB'), label: 'pages in finished books', now: numbers.pages, then: other?.pages },
     { key: 'hours', value: numbers.hours.toLocaleString('en-GB'), label: 'hours listened', now: numbers.hours, then: other?.hours },
     {
       key: 'days',

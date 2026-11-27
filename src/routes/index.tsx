@@ -520,11 +520,21 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
               ? 'An empty shelf, waiting for stories'
               : summary.length
                 ? `${shown.length} of ${books.length} books · ${summary.join(' · ')}`
-                : `${books.length} book${books.length === 1 ? '' : 's'} · ` +
-                (['reading', 'paused', 'want', 'read', 'dnf'] as const)
-                  .filter((s) => counts[s])
-                  .map((s) => `${counts[s]} ${STATUS_LABELS[s].toLowerCase()}`)
-                  .join(' · ')}
+                : (
+                  <>
+                    <span className="summary-long">
+                      {`${books.length} book${books.length === 1 ? '' : 's'} · ` +
+                        (['reading', 'paused', 'want', 'read', 'dnf'] as const)
+                          .filter((s) => counts[s])
+                          .map((s) => `${counts[s]} ${STATUS_LABELS[s].toLowerCase()}`)
+                          .join(' · ')}
+                    </span>
+                    {/* a phone has room for the three that matter; the long line was cut off mid-word (T-0120) */}
+                    <span className="summary-short" aria-hidden="true">
+                      {[`${books.length} book${books.length === 1 ? '' : 's'}`, ...(['reading', 'read'] as const).filter((s) => counts[s]).map((s) => `${counts[s]} ${STATUS_LABELS[s].toLowerCase()}`)].join(' · ')}
+                    </span>
+                  </>
+                )}
           </p>
           {/* on a phone the brand's children sit in the header's grid: the tabs get a row of their own (#181) */}
           <PageTabs view={view} onView={showView} />
