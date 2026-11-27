@@ -154,13 +154,15 @@ export function BookshopShop({ shop, away, onBuy, onClose }: BookshopShopProps) 
                 </button>
               </li>
             ))}
-            {Array.from({ length: Math.max(0, MAX_PICKS - shop.window.length) }, (_, i) => (
-              <li key={`empty${i}`} className="shop-pick-empty">
-                <span className="small-text muted">Pick a book from the shelves below.</span>
+            {shop.window.length > 0 && shop.window.length < MAX_PICKS && (
+              <li className="shop-pick-empty">
+                <span className="small-text muted">Room for {MAX_PICKS - shop.window.length} more.</span>
               </li>
-            ))}
+            )}
           </ul>
-          <p className="small-text muted">A pick earns 1 coin more each time it sells.</p>
+          <p className="small-text muted">
+            {shop.window.length === 0 ? `Pick up to ${MAX_PICKS} books from the shelves below for the window. ` : ''}A pick earns 1 coin more each time it sells.
+          </p>
         </section>
 
         <section aria-labelledby="shop-best-title">

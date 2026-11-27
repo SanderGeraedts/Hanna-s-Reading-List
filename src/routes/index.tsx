@@ -968,7 +968,7 @@ function BottomBar({ view, onView, onBookshop }: { view: View; onView: (view: Vi
             </button>
           </div>
         )}
-        {VIEWS.filter((v) => BAR.includes(v.view)).map((v) => (
+        {BAR.map((id) => VIEWS.find((v) => v.view === id)!).map((v) => (
           <button
             key={v.view}
             type="button"

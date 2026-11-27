@@ -1711,11 +1711,12 @@ html[data-wallpaper='midnight'] .shelf-none {
   .bottom-tab.active {
     opacity: 1;
   }
-  .bottom-tab.active .bottom-tab-label {
+  .bottom-bar .bottom-tab.active .bottom-tab-label {
     font-weight: 700;
   }
   .bottom-tab-label {
     font-size: 0.72rem;
+    font-weight: 400;
   }
   .bottom-more-backdrop {
     display: block;
@@ -1752,17 +1753,17 @@ html[data-wallpaper='midnight'] .shelf-none {
     background: var(--surface-hover);
     font-weight: 700;
   }
-  /* out of the bar's way */
-  .quick-fab {
+  /* out of the bar's way (with html in front: these rules come before the buttons' own) */
+  html .quick-fab {
     bottom: calc(1rem + var(--bottom-bar-h));
   }
-  .zoom-controls {
+  html .zoom-controls {
     bottom: calc(var(--space-4) + var(--bottom-bar-h));
   }
-  .toast {
+  html .toast {
     bottom: calc(1.25rem + var(--bottom-bar-h));
   }
-  .badge-toast {
+  html .badge-toast {
     bottom: calc(1rem + var(--bottom-bar-h));
   }
   .dashboard {
