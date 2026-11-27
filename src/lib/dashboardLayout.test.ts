@@ -313,3 +313,17 @@ describe('the Wishlist block is gone (D-0074 §6)', () => {
     expect(loaded.sections.today[1].filter((id) => ['recent', 'challenge'].includes(id))).toEqual(['recent', 'challenge'])
   })
 })
+
+describe('a layout saved before the dashboard was about today (T-0121)', () => {
+  it('moves what is left in the other sections into Today, same column, so no lone headings remain', () => {
+    const saved = structuredClone(DEFAULT_LAYOUT)
+    saved.sections.today = [['waiting', 'reading'], ['challenge']]
+    saved.sections.stats = [['myyear'], ['calendar', 'pile']]
+    saved.sections.fun = [['fact', 'badges'], []]
+    const l = cleanLayout(JSON.parse(JSON.stringify(saved)))
+    for (const s of SECTION_IDS) if (s !== 'today') expect(l.sections[s]).toEqual([[], []])
+    const [left, right] = l.sections.today
+    expect(left.indexOf('fact')).toBeGreaterThan(left.indexOf('reading'))
+    expect(right.indexOf('calendar')).toBeGreaterThan(right.indexOf('challenge'))
+  })
+})

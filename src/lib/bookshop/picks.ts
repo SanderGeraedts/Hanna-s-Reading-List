@@ -1,6 +1,7 @@
 import type { ChoiceEvent } from '../creatures/choices'
 import { mixedHash } from '../creatures/hash'
 import { MAX_PICKS } from './numbers'
+import { addDays } from '../creatures/days'
 
 /**
  * Staff picks (T-0123, D-0091): up to three of her books in the shop window.
@@ -80,9 +81,13 @@ export function pickEvent(bookId: string, today: string, picks: readonly Pick[])
   return { kind: 'place', key: pickKey(bookId), item: 'on', book: bookId, since: before?.since ?? today } as const
 }
 
-/** The event for taking a book out of the window on `today`. */
+/**
+ * The event for taking a book out of the window on `today`. It counts as picked to the end of
+ * today: what it already sold today keeps its extra coin, so taking it out never empties the till.
+ */
 export function unpickEvent(pick: Pick, today: string) {
-  return { kind: 'place', key: pickKey(pick.id), item: 'off', book: pick.id, since: pick.since, until: today < pick.since ? pick.since : today } as const
+  const end = addDays(today < pick.since ? pick.since : today, 1)
+  return { kind: 'place', key: pickKey(pick.id), item: 'off', book: pick.id, since: pick.since, until: end } as const
 }
 
 export type PickRefusal = 'full' | 'picked' | 'long'

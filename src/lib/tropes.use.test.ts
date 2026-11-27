@@ -140,7 +140,8 @@ describe('the dashboard layout', () => {
     const all = Object.values(layout.sections).flat(2)
     expect(all).not.toContain('tropes')
     expect(all).not.toContain('badges')
-    // what is still on the dashboard stays where she put it
-    expect(layout.sections.fun[0]).toEqual(['fact'])
+    // what is still on the dashboard joins Today, in the same column
+    expect(layout.sections.fun).toEqual([[], []])
+    expect(layout.sections.today[0]).toContain('fact')
   })
 })

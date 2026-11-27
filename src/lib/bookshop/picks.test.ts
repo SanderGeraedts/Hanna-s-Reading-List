@@ -29,7 +29,7 @@ describe('the picks in the choice log', () => {
     const log = [
       ev(pickEvent('a', day(0), [])!, 1),
       ev(pickEvent('b', day(1), [])!, 2),
-      ev(unpickEvent({ id: 'a', since: day(0), at: 1 }, day(3)), 3),
+      ev(unpickEvent({ id: 'a', since: day(0), at: 1 }, day(2)), 3),
     ]
     const picks = picksFrom(log)
     expect(picks.map((p) => [p.id, p.since, p.until])).toEqual([
@@ -37,8 +37,8 @@ describe('the picks in the choice log', () => {
       ['a', day(0), day(3)],
     ])
     expect(currentPicks(picks).map((p) => p.id)).toEqual(['b'])
+    // the day she took it out still counts to its end; the day after does not
     expect(pickedOn(picks, 'a', day(2))).toBe(true)
-    // the day it came out does not count any more
     expect(pickedOn(picks, 'a', day(3))).toBe(false)
     expect(pickedOn(picks, 'b', day(0))).toBe(false)
   })
@@ -88,11 +88,13 @@ describe('picks in the shop', () => {
     expect(picked.earned - plain.earned).toBe(babelSold * PICK_BONUS)
   })
 
-  it('taking a pick out never takes a coin back', () => {
+  it('taking a pick out never takes a coin back, also late in the day after sales', () => {
     const on = ev(pickEvent('babel', day(0), [])!, midnight(0))
-    const kept = deriveBookshop(books, [on], midnight(3))
-    const off = ev(unpickEvent({ id: 'babel', since: day(0), at: on.at }, day(3)), midnight(3))
-    const later = deriveBookshop(books, [on, off], midnight(3))
+    const evening = midnight(3) + 20 * 3600_000
+    const kept = deriveBookshop(books, [on], evening)
+    const off = ev(unpickEvent({ id: 'babel', since: day(0), at: on.at }, day(3)), evening)
+    const later = deriveBookshop(books, [on, off], evening)
+    expect(kept.sold).toBeGreaterThan(deriveBookshop(books, [on], midnight(3)).sold)
     expect(later.earned).toBe(kept.earned)
   })
 

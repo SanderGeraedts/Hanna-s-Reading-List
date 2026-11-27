@@ -145,7 +145,7 @@ describe('the second edition of the shop (T-0123, D-0091)', () => {
     const { record } = open([on as unknown as ChoiceEvent])
     expect(screen.queryByRole('button', { name: 'Pick Babel for the window' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Take Babel out of the window' }))
-    expect(record).toHaveBeenCalledWith(expect.objectContaining({ item: 'off', book: 'babel', since: '2026-11-30', until: '2026-12-01' }))
+    expect(record).toHaveBeenCalledWith(expect.objectContaining({ item: 'off', book: 'babel', since: '2026-11-30', until: '2026-12-02' }))
   })
 
   it('names her best sellers and keeps every customer note on the board', () => {

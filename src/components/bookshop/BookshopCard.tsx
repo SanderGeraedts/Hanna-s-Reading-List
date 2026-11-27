@@ -46,7 +46,12 @@ let wanted = false
 const OPEN_EVENT = 'hrl:open-bookshop'
 export function requestBookshop() {
   wanted = true
-  if (typeof window !== 'undefined') window.dispatchEvent(new Event(OPEN_EVENT))
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new Event(OPEN_EVENT))
+  // nobody took it (the block is hidden): forget it, so the shop never pops open by itself later
+  window.setTimeout(() => {
+    wanted = false
+  }, 3000)
 }
 
 export function BookshopCard({ books, log, record, accountId = null, onOpen }: BookshopCardProps) {

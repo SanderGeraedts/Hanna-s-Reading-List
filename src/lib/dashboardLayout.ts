@@ -174,6 +174,13 @@ export function cleanLayout(raw: unknown): DashboardLayout {
     for (const c of [0, 1] as const) for (const id of take((r.columns as unknown[])[c])) sections[HOME[id]][c].push(id)
   }
   const hidden = take(r.hidden)
+  // the other sections were emptied (T-0121): what is still on the dashboard joins Today, same column
+  for (const s of SECTION_IDS)
+    if (s !== 'today')
+      for (const c of [0, 1] as const) {
+        sections.today[c].push(...sections[s][c])
+        sections[s][c] = []
+      }
 
   // "Waiting for you" goes first, also on a dashboard arranged before it existed
   if (!seen.has('waiting')) sections.today[0].unshift('waiting'), seen.add('waiting')
