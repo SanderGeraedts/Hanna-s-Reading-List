@@ -35,7 +35,7 @@ const { Dashboard } = await import('./Dashboard')
  */
 
 const KEY = 'hannas-reading-list:dashboard:local'
-const FOUR: BlockId[] = ['myyear', 'reading', 'calendar', 'pace']
+const FOUR: BlockId[] = ['lent', 'reading', 'calendar', 'pace']
 const saved = () => JSON.parse(localStorage.getItem(KEY)!)
 
 beforeAll(() => {
@@ -68,13 +68,13 @@ describe('moving within Favourites in Arrange (T-0020)', () => {
     for (const h of handles) expect(h.getAttribute('title')).toBe('Drag to move')
     expect(within(favourites()).queryAllByRole('button', { name: /^Hide / })).toHaveLength(0)
     // tools: handle first, then the star
-    const tools = handle('My year').parentElement!
+    const tools = handle('Lent out').parentElement!
     expect([...tools.querySelectorAll('button')].map((b) => b.getAttribute('aria-label'))).toEqual([
-      'Move My year within the favourites: drag it, or use the arrow keys',
-      'Take My year out of the favourites',
+      'Move Lent out within the favourites: drag it, or use the arrow keys',
+      'Take Lent out out of the favourites',
     ])
     // the sections keep their own handle, which still says Shift
-    expect(screen.getAllByRole('button', { name: /^Move My year: drag it/ })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: /^Move Lent out: drag it/ })).toHaveLength(1)
     fireEvent.click(screen.getByRole('button', { name: 'Done' }))
     expect(screen.queryAllByRole('button', { name: /within the favourites/ })).toHaveLength(0)
   })
@@ -83,13 +83,13 @@ describe('moving within Favourites in Arrange (T-0020)', () => {
     show()
     arrange()
     const sections = structuredClone(saved().sections)
-    fireEvent.keyDown(handle('My year'), { key: 'ArrowDown' })
-    expect(saved().favourites).toEqual(['reading', 'calendar', 'myyear', 'pace'])
+    fireEvent.keyDown(handle('Lent out'), { key: 'ArrowDown' })
+    expect(saved().favourites).toEqual(['reading', 'calendar', 'lent', 'pace'])
     expect(saved().sections).toEqual(sections)
     expect(saved().hidden).toEqual([])
-    expect(within(favourites()).getByRole('status').textContent).toBe('My year: left column, row 2 of the favourites.')
+    expect(within(favourites()).getByRole('status').textContent).toBe('Lent out: left column, row 2 of the favourites.')
     fireEvent.keyDown(handle('Finish by'), { key: 'ArrowUp' })
-    expect(saved().favourites).toEqual(['reading', 'pace', 'calendar', 'myyear'])
+    expect(saved().favourites).toEqual(['reading', 'pace', 'calendar', 'lent'])
     expect(saved().sections).toEqual(sections)
     // signed out: nothing is asked of the server
     expect(favouritesServer.calls).toBe(0)
@@ -105,7 +105,7 @@ describe('moving within Favourites in Arrange (T-0020)', () => {
     }
     expect(saved().favourites).toEqual(FOUR)
     const edge = new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true })
-    act(() => void handle('My year').dispatchEvent(edge))
+    act(() => void handle('Lent out').dispatchEvent(edge))
     expect(edge.defaultPrevented).toBe(false)
     expect(saved().favourites).toEqual(FOUR)
     expect(within(favourites()).getByRole('status').textContent).toBe('')
@@ -114,24 +114,24 @@ describe('moving within Favourites in Arrange (T-0020)', () => {
   it('focus stays on the moved block’s handle after Left/Right, also when it changes column', () => {
     show()
     arrange()
-    handle('My year').focus()
-    fireEvent.keyDown(handle('My year'), { key: 'ArrowRight' })
-    expect(saved().favourites).toEqual(['reading', 'myyear', 'calendar', 'pace'])
-    expect(document.activeElement).toBe(handle('My year'))
-    expect(within(favourites()).getByRole('status').textContent).toBe('My year: right column, row 1 of the favourites.')
-    fireEvent.keyDown(handle('My year'), { key: 'ArrowLeft' })
+    handle('Lent out').focus()
+    fireEvent.keyDown(handle('Lent out'), { key: 'ArrowRight' })
+    expect(saved().favourites).toEqual(['reading', 'lent', 'calendar', 'pace'])
+    expect(document.activeElement).toBe(handle('Lent out'))
+    expect(within(favourites()).getByRole('status').textContent).toBe('Lent out: right column, row 1 of the favourites.')
+    fireEvent.keyDown(handle('Lent out'), { key: 'ArrowLeft' })
     expect(saved().favourites).toEqual(FOUR)
-    expect(document.activeElement).toBe(handle('My year'))
-    fireEvent.keyDown(handle('My year'), { key: 'ArrowDown' })
-    expect(document.activeElement).toBe(handle('My year'))
+    expect(document.activeElement).toBe(handle('Lent out'))
+    fireEvent.keyDown(handle('Lent out'), { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(handle('Lent out'))
   })
 
   it('a key move in a section leaves the Favourites order alone', () => {
     show()
     arrange()
-    fireEvent.keyDown(screen.getByRole('button', { name: /^Move My year: drag it/ }), { key: 'ArrowDown' })
+    fireEvent.keyDown(screen.getByRole('button', { name: /^Move Lent out: drag it/ }), { key: 'ArrowDown' })
     expect(saved().favourites).toEqual(FOUR)
-    expect(saved().sections.stats).not.toEqual(DEFAULT_LAYOUT.sections.stats)
+    expect(saved().sections.today).not.toEqual(DEFAULT_LAYOUT.sections.today)
   })
 
   it('with no favourites only the empty note shows in Arrange', () => {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Book } from '#/lib/library'
 import type { ChoiceEvent } from '#/lib/creatures/choices'
 import { awaySentence, coinsWord, savingSentence, stockSentence } from '#/lib/bookshop/words'
@@ -37,6 +37,17 @@ export interface BookshopCardProps {
   onOpen?: () => void
 }
 
+/**
+ * Opening the shop from elsewhere (T-0121): More › Bookshop on the phone's page bar. The bar
+ * goes to the dashboard and asks here; the block opens the shop as soon as it is on screen.
+ */
+let wanted = false
+const OPEN_EVENT = 'hrl:open-bookshop'
+export function requestBookshop() {
+  wanted = true
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(OPEN_EVENT))
+}
+
 export function BookshopCard({ books, log, record, accountId = null, onOpen }: BookshopCardProps) {
   const { shop, away, seen } = useBookshop(books, log, accountId)
   const reduce = useReducedMotion()
@@ -47,6 +58,18 @@ export function BookshopCard({ books, log, record, accountId = null, onOpen }: B
     if (onOpen) onOpen()
     else setOpen(true)
   }
+  const showRef = useRef(show)
+  showRef.current = show
+  useEffect(() => {
+    const take = () => {
+      if (!wanted) return
+      wanted = false
+      showRef.current()
+    }
+    take()
+    window.addEventListener(OPEN_EVENT, take)
+    return () => window.removeEventListener(OPEN_EVENT, take)
+  }, [])
 
   return (
     <section className="dash-card bookshop-block" aria-labelledby="bookshop-title">

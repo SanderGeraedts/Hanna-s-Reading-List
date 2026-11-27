@@ -99,10 +99,10 @@ describe('a layout and a star saved before the blocks moved', () => {
       hidden: ['heatmap', 'heatmap'],
       favourites: ['goal', 'goal', 'flower', 7],
     })
+    // My year itself left the dashboard for the Stats page (T-0121): the old ids load as nothing
     const all = [...l.sections.stats.flat(), ...l.hidden]
-    expect(all.filter((id) => id === 'myyear')).toHaveLength(1)
-    expect(l.favourites).toEqual(['myyear'])
-    expect(l.hidden).not.toContain('myyear')
+    expect(all).not.toContain('myyear')
+    expect(l.favourites).toEqual([])
   })
 
   it('an unstar clears the old ids too, so a star on the account cannot come back', () => {
