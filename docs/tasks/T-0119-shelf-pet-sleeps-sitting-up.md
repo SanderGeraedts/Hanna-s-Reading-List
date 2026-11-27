@@ -8,7 +8,7 @@ depends_on: []
 decisions: [D-0001, D-0077]
 raised_on: 2026-11-27
 done_on: 2026-11-27
-result: []
+result: [https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/281]
 ---
 
 # Goal
@@ -48,3 +48,4 @@ See *Log*: the new unit tests, the full suite and the build ran locally.
 # Log
 
 - 2026-11-27 developer: built on `fix/sleeping-shelf-pet`, small task done in one session on Hanna's instance (feature chat instead of a separate architect/UX pass).
+- 2026-11-28 developer: merged in #281 and live on the site.
