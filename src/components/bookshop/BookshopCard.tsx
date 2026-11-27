@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Book } from '#/lib/library'
 import type { ChoiceEvent } from '#/lib/creatures/choices'
-import { awaySentence, coinsWord, savingSentence, stockSentence } from '#/lib/bookshop/words'
+import { awaySentence, coinsWord, customerNotes, stockSentence, weekBestSentence } from '#/lib/bookshop/words'
+import { useShopScene } from './useShopScene'
 import { OpenLink } from '../OpenLink'
 import { useReducedMotion } from '../creatures/pose'
 import { ShopFlat } from './ShopFlat'
@@ -51,7 +52,9 @@ export function requestBookshop() {
 export function BookshopCard({ books, log, record, accountId = null, onOpen }: BookshopCardProps) {
   const { shop, away, seen } = useBookshop(books, log, accountId)
   const reduce = useReducedMotion()
+  const scene = useShopScene(shop)
   const [open, setOpen] = useState(false)
+  const [note] = customerNotes(shop, 1)
 
   const show = () => {
     seen()
@@ -78,13 +81,22 @@ export function BookshopCard({ books, log, record, accountId = null, onOpen }: B
         <OpenLink onOpen={show} label="Bookshop" />
       </div>
       <div className="shop-stage">
-        <ShopFlat shop={shop} compact reduce={reduce} />
+        <ShopFlat shop={shop} compact reduce={reduce} night={scene.night} weather={scene.weather} decorations={scene.decorations} />
       </div>
       <p className="bookshop-away">{awaySentence(away)}</p>
       <p className="bookshop-counts">
         <span className="shop-coins">🪙 {coinsWord(shop.coins)}</span> <span className="small-text">{stockSentence(shop)}</span>
       </p>
-      <p className="small-text bookshop-next">{savingSentence(shop)}</p>
+      {note && (
+        <p className="bookshop-note small-text">
+          📌 “{note.text}” <span className="muted">— {note.by}</span>
+        </p>
+      )}
+      {shop.weekBest && (
+        <p className="small-text bookshop-next">
+          <strong>Book of the week:</strong> {weekBestSentence(shop)}
+        </p>
+      )}
       {open && <BookshopShop shop={shop} away={away} onBuy={record} onClose={() => setOpen(false)} />}
     </section>
   )

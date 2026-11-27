@@ -8231,7 +8231,7 @@ button.today-item:hover {
   border-radius: var(--radius-small);
   overflow: hidden;
   background: #d9c9ae;
-  aspect-ratio: 120 / 72;
+  aspect-ratio: 150 / 80;
 }
 .shop-svg {
   display: block;
@@ -8334,60 +8334,353 @@ button.today-item:hover {
   border-top: 1px solid var(--border);
   padding-top: var(--space-2);
 }
-/* the customers browse and the cat breathes; both stop with reduce motion */
+/* the shop comes alive (T-0123): customers walk in at the door, browse, pay at the till and
+   leave with a book; the cat wanders the counter, the dog wags, tea steams, the lights twinkle.
+   All of it stops with reduce motion, and the dashboard block never moves at all. */
 .shop-customer,
-.shop-cat {
+.shop-cat,
+.shop-dog,
+.shop-tail,
+.shop-wag,
+.shop-flame,
+.shop-bell,
+.shop-steam {
   transform-box: fill-box;
-  transform-origin: center;
 }
-.shop-customer.browse-0 {
-  animation: shop-browse-0 13s ease-in-out infinite alternate;
+.shop-customer[class*='walk-'] {
+  animation: shop-walk 32s linear infinite;
+  opacity: 0;
 }
-.shop-customer.browse-1 {
-  animation: shop-browse-1 17s ease-in-out infinite alternate;
+.shop-customer.walk-1 {
+  animation-delay: -8s;
 }
-.shop-customer.browse-2 {
-  animation: shop-browse-2 11s ease-in-out infinite alternate;
+.shop-customer.walk-2 {
+  animation-delay: -16s;
+}
+.shop-customer.walk-3 {
+  animation-delay: -24s;
+}
+.shop-customer[class*='walk-'] .shop-carry {
+  animation: shop-carry 32s linear infinite;
+  animation-delay: inherit;
+}
+.shop-customer.walk-1 .shop-carry {
+  animation-delay: -8s;
+}
+.shop-customer.walk-2 .shop-carry {
+  animation-delay: -16s;
+}
+.shop-customer.walk-3 .shop-carry {
+  animation-delay: -24s;
+}
+/* from the door (x 134) to the shelves, a browse, to the till (x 26), and out again */
+@keyframes shop-walk {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  4% {
+    opacity: 1;
+  }
+  18% {
+    transform: translateX(-50px);
+  }
+  30% {
+    transform: translateX(-44px);
+  }
+  42% {
+    transform: translateX(-56px);
+  }
+  58% {
+    transform: translateX(-106px);
+  }
+  66% {
+    transform: translateX(-106px);
+  }
+  92% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  97%,
+  100% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+}
+@keyframes shop-carry {
+  0%,
+  63% {
+    opacity: 0;
+  }
+  64%,
+  100% {
+    opacity: 1;
+  }
 }
 .shop-cat {
-  animation: shop-cat-breathe 6s ease-in-out infinite alternate;
+  animation: shop-cat-wander 24s ease-in-out infinite;
 }
-@keyframes shop-browse-0 {
-  from {
+@keyframes shop-cat-wander {
+  0%,
+  40% {
+    transform: translateX(0) scaleY(1);
+  }
+  45% {
+    transform: translateX(0) scaleY(1.06);
+  }
+  60%,
+  75% {
+    transform: translateX(-7px);
+  }
+  90%,
+  100% {
     transform: translateX(0);
   }
-  to {
-    transform: translateX(5px);
-  }
 }
-@keyframes shop-browse-1 {
+.shop-tail,
+.shop-wag {
+  transform-origin: right bottom;
+  animation: shop-wag 1.6s ease-in-out infinite alternate;
+}
+.shop-wag {
+  animation-duration: 0.5s;
+}
+@keyframes shop-wag {
   from {
-    transform: translateX(0);
+    transform: rotate(-8deg);
   }
   to {
-    transform: translateX(-6px);
+    transform: rotate(8deg);
   }
 }
-@keyframes shop-browse-2 {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(4px);
-  }
+.shop-dog {
+  transform-origin: center bottom;
+  animation: shop-breathe 5s ease-in-out infinite alternate;
 }
-@keyframes shop-cat-breathe {
+@keyframes shop-breathe {
   from {
     transform: scaleY(1);
   }
   to {
-    transform: scaleY(1.04);
+    transform: scaleY(1.05);
   }
 }
+.shop-steam {
+  animation: shop-steam 3s ease-in-out infinite;
+}
+@keyframes shop-steam {
+  0% {
+    transform: translateY(0);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-3px);
+    opacity: 0;
+  }
+}
+.shop-flame {
+  transform-origin: center bottom;
+  animation: shop-breathe 0.7s ease-in-out infinite alternate;
+}
+.shop-bell {
+  transform-origin: center top;
+  animation: shop-ring 32s ease-in-out infinite;
+}
+@keyframes shop-ring {
+  0%,
+  3%,
+  95%,
+  100% {
+    transform: rotate(0);
+  }
+  1%,
+  96% {
+    transform: rotate(18deg);
+  }
+  2%,
+  97% {
+    transform: rotate(-18deg);
+  }
+}
+.shop-twinkle {
+  animation: shop-twinkle 2.4s ease-in-out infinite alternate;
+}
+.shop-twinkle.t1 {
+  animation-delay: -0.8s;
+}
+.shop-twinkle.t2 {
+  animation-delay: -1.6s;
+}
+@keyframes shop-twinkle {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.35;
+  }
+}
+.shop-fall {
+  animation: shop-fall 1.4s linear infinite;
+}
+.shop-snow.shop-fall {
+  animation-duration: 5s;
+}
+@keyframes shop-fall {
+  from {
+    transform: translateY(-2px);
+  }
+  to {
+    transform: translateY(2px);
+  }
+}
+.shop-shelf-hit {
+  cursor: zoom-in;
+}
+/* the shelf she tapped, close up: the titles big enough to read and to tap (T-0123) */
+.shop-zoom {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+}
+.shop-zoom-spines {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.25rem;
+  width: 100%;
+  overflow-x: auto;
+  padding: 0.5rem;
+  border-radius: var(--radius-small);
+  background: #d7c4a5;
+  border-bottom: 0.5rem solid #7a5435;
+}
+.shop-zoom-spine {
+  flex: none;
+  width: 2.6rem;
+  height: 9rem;
+  border: 0;
+  border-radius: 3px;
+  color: #fff;
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+  box-shadow: inset -3px 0 0 rgba(0, 0, 0, 0.18);
+}
+.shop-zoom-spine span {
+  display: block;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  max-height: 8rem;
+  overflow: hidden;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+.shop-zoom-spine.active {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+.shop-picks,
+.shop-best,
+.shop-board {
+  margin: 0.25rem 0;
+  padding: 0;
+}
+.shop-picks {
+  list-style: none;
+  display: grid;
+  gap: 0.4rem;
+}
+.shop-picks li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.shop-pick-title {
+  flex: 1;
+  min-width: 0;
+}
+.shop-pick-empty {
+  min-height: 2.4rem;
+  padding-left: 0.6rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: 0.5rem;
+}
+.shop-best {
+  padding-left: 1.4rem;
+}
+/* the magnetic board: notes held up by a magnet each, a little crooked */
+.shop-board {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 0.75rem;
+  padding: 0.9rem;
+  border-radius: var(--radius-small);
+  background: #4f5d66;
+}
+.shop-magnet {
+  position: relative;
+  padding: 0.7rem 0.6rem 0.5rem;
+  color: #2d2420;
+  border-radius: 2px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  font-family: var(--serif);
+}
+.shop-magnet p {
+  margin: 0;
+  color: inherit;
+}
+.shop-magnet::before {
+  content: '';
+  position: absolute;
+  top: -0.35rem;
+  left: 50%;
+  width: 0.8rem;
+  height: 0.8rem;
+  margin-left: -0.4rem;
+  border-radius: 50%;
+  background: #d9534f;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.shop-magnet.m0 {
+  background: #fff3b0;
+  transform: rotate(-1.5deg);
+}
+.shop-magnet.m1 {
+  background: #ffd6d6;
+  transform: rotate(1deg);
+}
+.shop-magnet.m1::before {
+  background: #3f6b8a;
+}
+.shop-magnet.m2 {
+  background: #d6ecff;
+  transform: rotate(-0.5deg);
+}
+.shop-magnet.m2::before {
+  background: #6f9a58;
+}
+.shop-magnet.m3 {
+  background: #e3f5d6;
+  transform: rotate(1.5deg);
+}
+.shop-magnet.m3::before {
+  background: #d9a85b;
+}
+.shop-shelf-list li .btn {
+  margin-left: auto;
+}
+.shop-line-text {
+  min-width: 0;
+}
+.bookshop-note {
+  margin: 0;
+  font-family: var(--serif);
+}
 @media (prefers-reduced-motion: reduce) {
-  .shop-customer,
-  .shop-cat {
+  .shop-svg * {
     animation: none !important;
+  }
+  .shop-customer[class*='walk-'] {
+    opacity: 1;
   }
 }
 @media (max-width: 720px) {
