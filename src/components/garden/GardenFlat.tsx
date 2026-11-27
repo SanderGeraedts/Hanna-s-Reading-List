@@ -130,6 +130,18 @@ export function GardenFlat({ year, season, night, columns = 1, compact, reduce, 
  * Nothing here is a texture, an image or a filter: the flat garden stays the
  * cheap drawing it was built to be (D-0051 §2).
  */
+/** Where the mist drifts lie, as shares of the garden: [x, y, half-width, half-height]. */
+const MIST_PUFFS: readonly (readonly [number, number, number, number])[] = [
+  [0.15, 0.32, 0.3, 0.07],
+  [0.55, 0.28, 0.35, 0.06],
+  [0.9, 0.36, 0.25, 0.07],
+  [0.3, 0.58, 0.32, 0.06],
+  [0.75, 0.6, 0.3, 0.07],
+  [0.1, 0.8, 0.25, 0.06],
+  [0.5, 0.82, 0.35, 0.07],
+  [0.92, 0.78, 0.22, 0.06],
+]
+
 function WeatherLayer({
   weather,
   layout,
@@ -166,9 +178,17 @@ function WeatherLayer({
     return (
       // light enough to see the garden through it: mist that hides the plants is just a grey box
       <g aria-hidden="true" className={`garden-mist${still}`}>
-        <rect x={0} y={0} width={width} height={depth} fill="#e6ebf2" opacity={0.12} rx={0.5} />
-        {[0.3, 0.55, 0.78].map((at, i) => (
-          <rect key={i} x={0} y={depth * at} width={width} height={depth * 0.1} fill="#f3f6fa" opacity={0.24} rx={0.3} />
+        {/* soft drifts that fade out at their edges (a gradient, not a filter): hard-edged bands read as grey boxes (T-0120) */}
+        <defs>
+          <radialGradient id="garden-mist-puff">
+            <stop offset="0%" stopColor="#f3f6fa" stopOpacity={0.42} />
+            <stop offset="60%" stopColor="#f3f6fa" stopOpacity={0.18} />
+            <stop offset="100%" stopColor="#f3f6fa" stopOpacity={0} />
+          </radialGradient>
+        </defs>
+        <rect x={0} y={0} width={width} height={depth} fill="#e6ebf2" opacity={0.1} rx={0.5} />
+        {MIST_PUFFS.map(([x, y, rx, ry], i) => (
+          <ellipse key={i} cx={width * x} cy={depth * y} rx={width * rx} ry={depth * ry} fill="url(#garden-mist-puff)" />
         ))}
       </g>
     )

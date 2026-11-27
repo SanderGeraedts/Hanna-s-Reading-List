@@ -23,7 +23,7 @@ vi.mock('#/server/openLibrary', () => ({
 vi.mock('#/server/favourites', () => ({ loadFavourites: async () => ({ kept: false }), saveFavourites: async () => ({ kept: false }) }))
 
 const { YearStory } = await import('./YearStory')
-const { Dashboard } = await import('./Dashboard')
+const { StatsPage } = await import('./StatsPage')
 
 /**
  * The year wrap-up story (T-0081): ▶ Play opens it and nothing else does
@@ -124,13 +124,14 @@ describe('the story on its own', () => {
   })
 })
 
-describe('▶ Play on the dashboard', () => {
+// Year in review left the dashboard for the Stats page (T-0121)
+describe('▶ Play on the Stats page', () => {
   const show = (books = BOOKS) => {
     localStorage.setItem(
       'hannas-reading-list:dashboard:local',
       JSON.stringify({ ...DEFAULT_LAYOUT, favourites: [] }),
     )
-    return render(<Dashboard books={books} onShowBook={() => {}} accountId={null} onUpdate={() => {}} />)
+    return render(<StatsPage books={books} onShowBook={() => {}} accountId={null} />)
   }
   const play = () => screen.getByRole('button', { name: 'Play your 2026 in books' })
 

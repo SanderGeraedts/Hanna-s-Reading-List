@@ -58,10 +58,11 @@ export function GardenScene({ year, season, night, reduce, paused, weather, scen
       <Rig target={target} scale={view.scale} />
       {night ? (
         <>
-          <hemisphereLight args={['#aebbe6', '#1d2231', 0.5]} />
-          <ambientLight intensity={0.22} color="#9fb0dd" />
+          {/* moonlit, but light enough to tell the plants apart (T-0120): it was nearly black */}
+          <hemisphereLight args={['#aebbe6', '#2a3044', 0.85]} />
+          <ambientLight intensity={0.4} color="#9fb0dd" />
           {/* the moon, low and cool, and a last warm glow from the house */}
-          <directionalLight position={[-4, 7, 4]} intensity={0.75} color="#c3cff2" />
+          <directionalLight position={[-4, 7, 4]} intensity={1.1} color="#c3cff2" />
           <directionalLight position={[3, 4, -5]} intensity={0.25} color="#e8c58a" />
         </>
       ) : (

@@ -46,7 +46,10 @@ export function gardenLayout(beds: number, columns = 1, strip = true): GardenLay
   for (let b = 0; b < beds; b++) {
     const c = b % cols
     const r = Math.floor(b / cols)
-    boxes.push({ bed: b, x: BED_GAP + c * (BED_W + BED_GAP), z: BED_GAP + r * (BED_D + BED_GAP) })
+    // a last row that isn't full sits in the middle, so five beds never look like six with one missing (T-0120)
+    const inRow = r === rows - 1 ? beds - r * cols : cols
+    const shift = ((cols - inRow) * (BED_W + BED_GAP)) / 2
+    boxes.push({ bed: b, x: BED_GAP + shift + c * (BED_W + BED_GAP), z: BED_GAP + r * (BED_D + BED_GAP) })
   }
   const width = BED_GAP + cols * (BED_W + BED_GAP)
   const depth = BED_GAP + rows * (BED_D + BED_GAP) + (strip ? STRIP_D : 0)

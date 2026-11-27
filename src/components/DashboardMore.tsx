@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { Book } from '#/lib/library'
 import { formatDuration } from '#/lib/listening'
 import { amountText } from '#/lib/readingLog'
@@ -77,14 +77,13 @@ export function PaceCard({ books, onShowBook }: Props) {
                   </span>
                   {e.perReadingDay > 0 && (
                     <span className="muted small-text">
-                      at about {amountText(e.book, e.perReadingDay)} a day, reading {e.readingDays} of the last{' '}
-                      {plural(e.days, 'day')}
+                      about {amountText(e.book, e.perReadingDay)} a day
                     </span>
                   )}
                 </>
               ) : (
                 <span className="muted small-text">
-                  Read a little more over the next few days and this guesses when you'll finish.
+                  A few more reading days for a guess.
                 </span>
               )}
             </BookLine>
@@ -125,17 +124,18 @@ export function HeatmapCard({
 }) {
   const h = useMemo(() => heatmap(books, undefined, year), [books, year])
   const days = compareLine(h.readingDays, compareDays, compareYear)
-  const scroller = useRef<HTMLDivElement>(null)
-  // the last twelve months: the newest weeks are on the right, so start there.
-  // One year: start in January, where the year starts.
-  useLayoutEffect(() => {
-    const el = scroller.current
-    if (el) el.scrollLeft = year === undefined ? el.scrollWidth : 0
-  }, [h.weeks.length, year])
-  const W = LEFT + h.weeks.length * STEP
+  // the whole year in two rows of half a year, each fitted to the card (T-0120): one long
+  // row ran off the card on a phone and on a computer, and nothing said it could slide
+  const half = Math.ceil(h.weeks.length / 2)
+  const rows = [
+    { from: 0, weeks: h.weeks.slice(0, half) },
+    { from: half, weeks: h.weeks.slice(half) },
+  ].filter((r) => r.weeks.length > 0)
+  const W = LEFT + half * STEP
   const H = TOP + 7 * STEP
   const summary = [
-    h.pages > 0 && `${h.pages.toLocaleString('en-GB')} pages`,
+    // pages read on these days, finished or not: the Stats page's "in numbers" counts finished books
+    h.pages > 0 && `${h.pages.toLocaleString('en-GB')} pages read`,
     h.minutes > 0 && `${formatDuration(h.minutes)} listened`,
   ]
     .filter(Boolean)
@@ -154,44 +154,45 @@ export function HeatmapCard({
           )}
         </span>
       </div>
-      <div className="heatmap-scroll" ref={scroller}>
-        <svg
-          className="heatmap"
-          width={W}
-          height={H}
-          viewBox={`0 0 ${W} ${H}`}
-          role="img"
-          aria-label={`Reading days ${year === undefined ? 'over the last twelve months' : `in ${year}`}: ${plural(h.readingDays, 'day')} with reading${summary ? `, ${summary}` : ''}.`}
-        >
-          {h.months.map((m) => (
-            <text key={`${m.column}-${m.month}`} className="axis" x={LEFT + m.column * STEP} y={9}>
-              {monthName(m.month, 'short')}
-            </text>
-          ))}
-          {['Mon', 'Wed', 'Fri'].map((d, i) => (
-            <text key={d} className="axis" x={0} y={TOP + (i * 2) * STEP + CELL - 2}>
-              {d}
-            </text>
-          ))}
-          {h.weeks.map((week, c) =>
-            week.map(
-              (d, r) =>
-                d && (
-                  <rect
-                    key={d.day}
-                    className={`heat l${d.level}`}
-                    x={LEFT + c * STEP}
-                    y={TOP + r * STEP}
-                    width={CELL}
-                    height={CELL}
-                    rx={2}
-                  >
-                    <title>{heatTitle(d)}</title>
-                  </rect>
-                ),
-            ),
-          )}
-        </svg>
+      <div className="heatmap-rows">
+        {rows.map((row) => (
+          <svg
+            key={row.from}
+            className="heatmap"
+            viewBox={`0 0 ${W} ${H}`}
+            style={{ maxWidth: W }}
+            role="img"
+            aria-label={
+              row.from === 0
+                ? `Reading days ${year === undefined ? 'over the last twelve months' : `in ${year}`}: ${plural(h.readingDays, 'day')} with reading${summary ? `, ${summary}` : ''}.`
+                : undefined
+            }
+            aria-hidden={row.from === 0 ? undefined : true}
+          >
+            {h.months
+              .filter((m) => m.column >= row.from && m.column < row.from + row.weeks.length)
+              .map((m) => (
+                <text key={`${m.column}-${m.month}`} className="axis" x={LEFT + (m.column - row.from) * STEP} y={9}>
+                  {monthName(m.month, 'short')}
+                </text>
+              ))}
+            {['Mon', 'Wed', 'Fri'].map((d, i) => (
+              <text key={d} className="axis" x={0} y={TOP + i * 2 * STEP + CELL - 2}>
+                {d}
+              </text>
+            ))}
+            {row.weeks.map((week, c) =>
+              week.map(
+                (d, r) =>
+                  d && (
+                    <rect key={d.day} className={`heat l${d.level}`} x={LEFT + c * STEP} y={TOP + r * STEP} width={CELL} height={CELL} rx={2}>
+                      <title>{heatTitle(d)}</title>
+                    </rect>
+                  ),
+              ),
+            )}
+          </svg>
+        ))}
       </div>
       <div className="heat-legend muted small-text" aria-hidden>
         <span>{summary || 'Move a book on to fill this in.'}</span>

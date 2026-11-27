@@ -12,6 +12,13 @@ import { GenreFlowerCard, PagesPerMonthCard } from './PictureBlocks'
 import { RhythmCard } from './NewBlocks'
 import { WrappedCard } from './DashboardMore'
 import { YearStory } from './YearStory'
+import { AuthorsCard } from './DashboardMore'
+import { OnThisDayCard, PileCard, SeriesCard } from './DashboardExtras'
+import { RatingsCard } from './Dashboard'
+import { BooksWorldMapCard } from './PictureBlocks'
+import { BadgesCard, CoverWallCard } from './NewBlocks'
+import { TropesCard, tropesBlock } from './TropesCard'
+import { useChallengeExtras } from './useChallengeExtras'
 
 /**
  * The Stats page (T-0080, D-0060): everything about how much Hanna read, for
@@ -49,11 +56,14 @@ export function StatsPage({ books, accountId, onShowBook, onOpenGoal }: Props) {
   const against = year === 'all' || compare === null ? undefined : compare
 
   const numbers = useMemo(() => yearNumbers(books, year), [books, year])
+  // the blocks that left the dashboard (T-0121): her books over all the years, one place only
+  const badgeExtras = useChallengeExtras(accountId)
+  const noTropes = useMemo(() => tropesBlock(books).empty, [books])
   const other = useMemo(() => (against === undefined ? null : yearNumbers(books, against)), [books, against])
 
   const rows: Array<{ key: string; value: string; label: string; now: number; then: number | undefined }> = [
     { key: 'books', value: numbers.books.toLocaleString('en-GB'), label: numbers.books === 1 ? 'book' : 'books', now: numbers.books, then: other?.books },
-    { key: 'pages', value: numbers.pages.toLocaleString('en-GB'), label: 'pages', now: numbers.pages, then: other?.pages },
+    { key: 'pages', value: numbers.pages.toLocaleString('en-GB'), label: 'pages in finished books', now: numbers.pages, then: other?.pages },
     { key: 'hours', value: numbers.hours.toLocaleString('en-GB'), label: 'hours listened', now: numbers.hours, then: other?.hours },
     {
       key: 'days',
@@ -147,6 +157,23 @@ export function StatsPage({ books, accountId, onShowBook, onOpenGoal }: Props) {
               year={year === 'all' ? new Date().getFullYear() : year}
               onPlay={setStoryYear}
             />
+          </div>
+        </div>
+
+        <h2 className="stats-section-title">Your books, all the years</h2>
+        <div className="stats-grid">
+          <div className="dash-column">
+            <RatingsCard books={books} onShowBook={onShowBook} />
+            <AuthorsCard books={books} />
+            <SeriesCard books={books} onShowBook={onShowBook} />
+            <PileCard books={books} />
+            {!noTropes && <TropesCard books={books} onShowBook={onShowBook} />}
+          </div>
+          <div className="dash-column">
+            <BadgesCard books={books} extras={badgeExtras} />
+            <OnThisDayCard books={books} onShowBook={onShowBook} />
+            <CoverWallCard books={books} onShowBook={onShowBook} />
+            <BooksWorldMapCard books={books} onShowBook={onShowBook} />
           </div>
         </div>
       </div>

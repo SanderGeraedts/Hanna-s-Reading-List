@@ -51,6 +51,7 @@ import { canKeepApp, keepAppOnThisDevice } from '#/lib/offline'
 import { troubleFromSync, troubleSentence } from '#/lib/trouble'
 import { askText, keepWishEvent, keptWishes, wishToAsk } from '#/lib/wishFulfilled'
 import { useShelfPet } from '#/components/creatures/useShelfPet'
+import { requestBookshop } from '#/components/bookshop/BookshopCard'
 import { isCategory, ownedDecor } from '#/lib/creatures/shop'
 import type { ShopCategory } from '#/lib/creatures/shop'
 import type { ChallengeSection } from '#/components/ChallengesPage'
@@ -520,11 +521,21 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
               ? 'An empty shelf, waiting for stories'
               : summary.length
                 ? `${shown.length} of ${books.length} books · ${summary.join(' · ')}`
-                : `${books.length} book${books.length === 1 ? '' : 's'} · ` +
-                (['reading', 'paused', 'want', 'read', 'dnf'] as const)
-                  .filter((s) => counts[s])
-                  .map((s) => `${counts[s]} ${STATUS_LABELS[s].toLowerCase()}`)
-                  .join(' · ')}
+                : (
+                  <>
+                    <span className="summary-long">
+                      {`${books.length} book${books.length === 1 ? '' : 's'} · ` +
+                        (['reading', 'paused', 'want', 'read', 'dnf'] as const)
+                          .filter((s) => counts[s])
+                          .map((s) => `${counts[s]} ${STATUS_LABELS[s].toLowerCase()}`)
+                          .join(' · ')}
+                    </span>
+                    {/* a phone has room for the three that matter; the long line was cut off mid-word (T-0120) */}
+                    <span className="summary-short" aria-hidden="true">
+                      {[`${books.length} book${books.length === 1 ? '' : 's'}`, ...(['reading', 'read'] as const).filter((s) => counts[s]).map((s) => `${counts[s]} ${STATUS_LABELS[s].toLowerCase()}`)].join(' · ')}
+                    </span>
+                  </>
+                )}
           </p>
           {/* on a phone the brand's children sit in the header's grid: the tabs get a row of their own (#181) */}
           <PageTabs view={view} onView={showView} />
@@ -721,6 +732,17 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
         />
       )}
       <QuickUpdate books={books} onUpdate={updateBook} onShowBook={showBook} hidden={!loaded || !!selected} />
+      {/* the phone's page bar; hidden by CSS on a computer, where the tabs at the top do this */}
+      {!selected && (
+        <BottomBar
+          view={view}
+          onView={showView}
+          onBookshop={() => {
+            requestBookshop()
+            showView('dashboard')
+          }}
+        />
+      )}
 
       {selected && (
         <BookPanel
@@ -900,6 +922,76 @@ function PageTabs({ view, onView }: { view: View; onView: (view: View) => void }
         </button>
       ))}
     </nav>
+  )
+}
+
+/**
+ * The phone's page bar (T-0121): the four pages she opens every day in reach of her thumb, and
+ * More for the rest. On a computer the tabs at the top stay; this bar is only shown on a phone.
+ */
+const BAR: readonly View[] = ['shelf', 'dashboard', 'calendar', 'challenges']
+const MORE: readonly View[] = ['stats', 'creatures', 'garden']
+
+function BottomBar({ view, onView, onBookshop }: { view: View; onView: (view: View) => void; onBookshop: () => void }) {
+  const [more, setMore] = useState(false)
+  const inMore = MORE.includes(view)
+  useEffect(() => {
+    if (!more) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMore(false)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [more])
+  const go = (to: View) => {
+    setMore(false)
+    onView(to)
+  }
+  return (
+    <>
+      {more && <div className="bottom-more-backdrop" onClick={() => setMore(false)} />}
+      <nav className="bottom-bar" aria-label="Pages">
+        {more && (
+          <div className="bottom-more" role="menu" aria-label="More pages">
+            {VIEWS.filter((v) => MORE.includes(v.view)).map((v) => (
+              <button key={v.view} type="button" role="menuitem" aria-current={v.view === view ? 'page' : undefined} onClick={() => go(v.view)}>
+                <span aria-hidden>{v.icon}</span> {v.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMore(false)
+                onBookshop()
+              }}
+            >
+              <span aria-hidden>🪙</span> Bookshop
+            </button>
+          </div>
+        )}
+        {BAR.map((id) => VIEWS.find((v) => v.view === id)!).map((v) => (
+          <button
+            key={v.view}
+            type="button"
+            className={v.view === view ? 'bottom-tab active' : 'bottom-tab'}
+            aria-current={v.view === view ? 'page' : undefined}
+            onClick={() => go(v.view)}
+          >
+            <span aria-hidden>{v.icon}</span>
+            <span className="bottom-tab-label">{v.view === 'shelf' ? 'Shelf' : v.label}</span>
+          </button>
+        ))}
+        <button
+          type="button"
+          className={inMore || more ? 'bottom-tab active' : 'bottom-tab'}
+          aria-expanded={more}
+          aria-haspopup="menu"
+          onClick={() => setMore((m) => !m)}
+        >
+          <span aria-hidden>⋯</span>
+          <span className="bottom-tab-label">More</span>
+        </button>
+      </nav>
+    </>
   )
 }
 

@@ -96,3 +96,20 @@ describe('putting the garden on screen', () => {
     expect(plantHeight(0.24, 0.3)).toBeGreaterThan(0.1)
   })
 })
+
+describe('gardenLayout: a half-full last row (T-0120)', () => {
+  it('puts the beds of an unfinished last row in the middle, with equal room either side', () => {
+    const l = gardenLayout(5, 3)
+    const gap = l.beds[0].x
+    const bedW = l.beds[1].x - l.beds[0].x - gap
+    const [a, b] = l.beds.slice(3)
+    expect(a.x).toBeGreaterThan(l.beds[0].x)
+    expect(a.x).toBeCloseTo(l.width - (b.x + bedW), 5)
+  })
+
+  it('leaves full rows where they were', () => {
+    const l = gardenLayout(6, 3)
+    expect(l.beds[3].x).toBe(l.beds[0].x)
+    expect(l.beds[5].x).toBe(l.beds[2].x)
+  })
+})

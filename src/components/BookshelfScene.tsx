@@ -686,7 +686,7 @@ function Scene({
     <>
       <Lights caseHeight={caseLayout.caseHeight} caseWidth={caseLayout.caseWidth} cameraBase={cameraBase} lite={lite} night={night} />
       <Room wallpaper={room.wallpaper} />
-      {anyExtra && <RoomExtras room={room} caseWidth={caseLayout.caseWidth} night={night} stage={stage} season={season} lite={lite} />}
+      {anyExtra && <RoomExtras room={room} caseWidth={caseLayout.caseWidth} night={night} stage={stage} season={season} lite={lite} corner={!portrait} />}
       <Bookcase layout={caseLayout} wood={room.wood} />
       <StillDecorations.Provider value={lite}>
         <ShelfPetContext.Provider value={shelfPet}>

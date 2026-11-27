@@ -708,10 +708,29 @@ export function Dashboard({
       )}
       {SECTION_IDS.map((section) => {
         const ids = layout.sections[section].flat().filter(showing)
-        // an empty section stays out of the way, except while arranging (to drop blocks into)
-        if (ids.length === 0 && !arranging) return null
+        // an empty section stays out of the way; while arranging only Today stays open to drop
+        // blocks into, the others are emptied now their blocks live on their own pages (T-0121)
+        if (ids.length === 0 && (!arranging || section !== 'today')) return null
         // while arranging every section is open, so blocks can be dropped in
         const folded = layout.folded.includes(section) && !arranging
+        // Today on its own needs no heading: the whole dashboard is about today (T-0122)
+        const alone = !arranging && SECTION_IDS.every((s) => s === section || layout.sections[s].flat().filter(showing).length === 0)
+        if (alone)
+          return (
+            <section key={section} className="dash-section" aria-label={SECTIONS[section]}>
+              <div className={`dashboard-grid dash-section-grid${drag ? ' dragging' : ''}`} data-section={section}>
+                {columnsOf(section).map((col, visual) => (
+                  <div className="dash-column" key={visual}>
+                    {col.filter(showing).map((id) => (
+                      <div key={id} data-block={id} className="dash-block">
+                        {blocks[id]}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )
         return (
           <section key={section} className="dash-section" aria-labelledby={`section-${section}`}>
             <button
@@ -783,7 +802,7 @@ export function Dashboard({
 }
 
 /** Top 5 and the spice meter in one block, with a Stars | Spice switch. */
-function RatingsCard({ books, onShowBook }: Props) {
+export function RatingsCard({ books, onShowBook }: Props) {
   const [kind, setKind] = useState<'stars' | 'spice'>('stars')
   const switcher = (
     <div className="segmented" role="group" aria-label="Stars or spice">
@@ -898,8 +917,7 @@ function TopRatedCard({ books, onShowBook, switcher }: Props & { switcher?: Reac
       <PeriodSelect books={books} pick={pick} onPick={setPick} />
       {top.length === 0 ? (
         <p className="muted small-text">
-          No rated books {periodLabel(pick) === 'all time' ? 'yet' : periodLabel(pick)}. Give a finished book stars to
-          see your favourites here.
+          No rated books {periodLabel(pick) === 'all time' ? 'yet' : periodLabel(pick)}.
         </p>
       ) : (
         <ol className="top-list">
@@ -998,8 +1016,8 @@ function Calendar({
   onUpdate?: (id: string, patch: Partial<Book> | ((book: Book) => Partial<Book>)) => void
 }) {
   const now = new Date()
-  const [year, setYear] = useState(now.getFullYear())
-  const [month, setMonth] = useState(now.getMonth() + 1)
+  const year = now.getFullYear()
+  const month = now.getMonth() + 1
   /** which book is on top of each day's pile; new each time the dashboard opens */
   const [shuffle] = useState(() => Math.floor(Math.random() * 1000))
   /** the day picked, in the month shown */
@@ -1007,38 +1025,17 @@ function Calendar({
   const byDay = useMemo(() => monthEntries(books, year, month), [books, year, month])
   const started = useMemo(() => startedIn(books, year, month), [books, year, month])
   const finished = useMemo(() => finishedIn(books, year, month), [books, year, month])
-  const weeks = monthWeeks(year, month)
+  // the dashboard is about today (T-0121): this week only; the month is one tap away on the Calendar page
+  const weeks = monthWeeks(year, month).filter((w) => w.includes(now.getDate()))
   const isToday = (d: number) => year === now.getFullYear() && month === now.getMonth() + 1 && d === now.getDate()
   const isFuture = (d: number) => new Date(year, month - 1, d) > now
-  const show = (y: number, m: number) => {
-    setYear(y)
-    setMonth(m)
-    setPicked(null)
-  }
-  const step = (by: number) => {
-    const d = new Date(year, month - 1 + by, 1)
-    show(d.getFullYear(), d.getMonth() + 1)
-  }
   const name = monthName(month)
 
   return (
     <section className="dash-card calendar-card" aria-labelledby="calendar-title">
       <div className="dash-card-head">
-        <h2 id="calendar-title">
-          {name} {year}
-        </h2>
+        <h2 id="calendar-title">This week</h2>
         <OpenLink onOpen={onOpen && (() => onOpen(`${year}-${String(month).padStart(2, '0')}`))} label="Calendar" />
-        <div className="period-pick">
-          <button className="btn icon small" aria-label="Previous month" onClick={() => step(-1)}>
-            ‹
-          </button>
-          <button className="btn small" onClick={() => show(now.getFullYear(), now.getMonth() + 1)}>
-            Today
-          </button>
-          <button className="btn icon small" aria-label="Next month" onClick={() => step(1)}>
-            ›
-          </button>
-        </div>
       </div>
       <table className="calendar">
         <thead>

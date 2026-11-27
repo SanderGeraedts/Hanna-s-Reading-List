@@ -107,7 +107,7 @@ describe('buying, before anything is written', () => {
   const none = new Set<string>()
 
   it('refuses what she cannot afford, and says why', () => {
-    expect(buyUpgrade(none, 39, 'sign')).toEqual({ ok: false, why: 'coins' })
+    expect(buyUpgrade(none, 29, 'sign')).toEqual({ ok: false, why: 'coins' })
   })
 
   it('refuses a thing she has already', () => {
@@ -119,9 +119,9 @@ describe('buying, before anything is written', () => {
   })
 
   it('lets her buy when she has exactly enough', () => {
-    const r = buyUpgrade(none, 40, 'sign')
+    const r = buyUpgrade(none, 30, 'sign')
     expect(r.ok).toBe(true)
-    if (r.ok) expect(r.event).toEqual({ kind: 'place', key: 's:up:sign', item: 'sign', price: 40 })
+    if (r.ok) expect(r.event).toEqual({ kind: 'place', key: 's:up:sign', item: 'sign', price: 30 })
   })
 
   it('never lets her buy with nothing in the till', () => {

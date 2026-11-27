@@ -45,12 +45,14 @@ describe('the block on the dashboard', () => {
 
   it('names the book that sold, by name', () => {
     show()
-    expect(screen.getByText(/Babel/)).toBeTruthy()
+    expect(screen.getAllByText(/Babel/).length).toBeGreaterThan(0)
   })
 
-  it('says what she is saving up for', () => {
+  it('shows the newest customer note and the book of the week (T-0123); what she saves for is in the shop', () => {
     show()
-    expect(screen.getByText(/A sign over the door costs 40 coins|You can afford/)).toBeTruthy()
+    expect(document.querySelector('.bookshop-note')!.textContent).toMatch(/^📌 “.+” — [A-Z][a-z]+$/)
+    expect(screen.getByText('Book of the week:')).toBeTruthy()
+    expect(screen.queryByText(/A sign over the door costs/)).toBeNull()
   })
 
   it('has nothing to collect: the only way in is Open ›', () => {
@@ -79,7 +81,7 @@ describe('the shop behind Open ›', () => {
     expect(screen.getAllByText(/× Babel/).length).toBeGreaterThan(0)
   })
 
-  it('offers the eight things coins buy, each with what it does', () => {
+  it('offers the things coins buy, each with what it does', () => {
     open()
     expect(screen.getByText('A sign over the door')).toBeTruthy()
     expect(screen.getByText('A shop cat')).toBeTruthy()
@@ -90,10 +92,10 @@ describe('the shop behind Open ›', () => {
 
   it('saves a purchase in the choice log as a place with its own key, never as a buy', () => {
     const { record } = open()
-    const sign = screen.getByRole('button', { name: '40 coins' })
+    const sign = screen.getByRole('button', { name: '30 coins' })
     expect((sign as HTMLButtonElement).disabled).toBe(false)
     fireEvent.click(sign)
-    expect(record).toHaveBeenCalledWith({ kind: 'place', key: 's:up:sign', item: 'sign', price: 40 })
+    expect(record).toHaveBeenCalledWith({ kind: 'place', key: 's:up:sign', item: 'sign', price: 30 })
     // the creature shop sees nothing of it: no cookie is spent (D-0084 §5)
     const saved = [{ id: 'e1', at: Date.now(), ...record.mock.calls[0][0] }] as unknown as ChoiceEvent[]
     expect(deriveShop(saved).spent).toBe(0)
@@ -109,5 +111,56 @@ describe('the shop behind Open ›', () => {
     open([{ id: 'e0', at: new Date(2026, 10, 27).getTime(), kind: 'place', key: 's:up:sign', item: 'sign', price: 40 } as unknown as ChoiceEvent])
     expect(screen.getByText('✓ in the shop')).toBeTruthy()
     expect(screen.queryByRole('button', { name: '40 coins' })).toBeNull()
+  })
+})
+
+describe('the second edition of the shop (T-0123, D-0091)', () => {
+  const open = (log: ChoiceEvent[] = [], record = vi.fn()) => {
+    const r = render(<BookshopCard books={BOOKS} log={log} record={record} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Open Bookshop' }))
+    return { ...r, record }
+  }
+
+  it('offers all sixteen things, the new ones after the tea counter', () => {
+    open()
+    for (const name of ['A tea counter', 'Fairy lights', 'A rolling ladder', "A children's corner", 'A record player', 'A window seat', 'A fireplace', 'A shop dog', 'A bookbinding table'])
+      expect(screen.getByText(name)).toBeTruthy()
+  })
+
+  it('picks a book for the window as a place event in the choice log, never a buy', () => {
+    const { record } = open()
+    fireEvent.click(screen.getByRole('button', { name: 'Pick Babel for the window' }))
+    const e = record.mock.calls[0][0]
+    expect(e).toMatchObject({ kind: 'place', item: 'on', book: 'babel', since: '2026-12-01' })
+    expect(e.key).toMatch(/^s:pick:/)
+  })
+
+  it('shows a picked book in the window with Take out, which saves it as off', () => {
+    const on = { id: 'p1', at: new Date(2026, 10, 30).getTime(), kind: 'place', key: '', item: 'on', book: 'babel', since: '2026-11-30' }
+    // the key is the book's hash: take it from a real pick
+    const first = open()
+    fireEvent.click(screen.getByRole('button', { name: 'Pick Babel for the window' }))
+    on.key = first.record.mock.calls[0][0].key
+    cleanup()
+    const { record } = open([on as unknown as ChoiceEvent])
+    expect(screen.queryByRole('button', { name: 'Pick Babel for the window' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Take Babel out of the window' }))
+    expect(record).toHaveBeenCalledWith(expect.objectContaining({ item: 'off', book: 'babel', since: '2026-11-30', until: '2026-12-02' }))
+  })
+
+  it('names her best sellers and keeps every customer note on the board', () => {
+    open()
+    expect(screen.getByRole('heading', { name: 'Best sellers' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Notes from customers' })).toBeTruthy()
+    expect(document.querySelectorAll('.shop-board .shop-magnet').length).toBeGreaterThan(0)
+  })
+
+  it('a tap on the top shelf shows its titles big enough to tap, and how many copies are left', () => {
+    open()
+    fireEvent.click(screen.getByRole('button', { name: 'Look at the top shelf' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Babel' }))
+    expect(screen.getByText(/^Babel: \d+ cop(y|ies) left\.$/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the shop' }))
+    expect(screen.queryByRole('button', { name: 'Back to the shop' })).toBeNull()
   })
 })

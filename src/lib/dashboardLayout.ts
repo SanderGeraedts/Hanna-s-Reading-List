@@ -66,31 +66,46 @@ export interface DashboardLayout {
   favourites: BlockId[]
 }
 
+/**
+ * The dashboard is about today (T-0121): what is waiting, what she is reading, this week,
+ * the month's challenge, the fact of the day and a peek at the creatures, the garden and the
+ * bookshop. Everything else lives in one place only: the stats and memories on the Stats
+ * page, bingo and A–Z on the Challenges page.
+ */
+export const OFF_DASHBOARD: readonly BlockId[] = [
+  'myyear',
+  'authors',
+  'series',
+  'pile',
+  'top',
+  'onthisday',
+  'badges',
+  'tropes',
+  'covers',
+  'world',
+  'wrapped',
+  'alphabet',
+  'bingo',
+]
+const isOff = (id: BlockId) => OFF_DASHBOARD.includes(id)
+
 export const DEFAULT_LAYOUT: DashboardLayout = {
   sections: {
     today: [
-      ['waiting', 'reading', 'pace', 'lent', 'again'],
-      ['challenge', 'creatures', 'garden', 'bookshop', 'next', 'newforyou', 'recent'],
+      ['waiting', 'reading', 'calendar', 'pace', 'lent', 'again'],
+      ['challenge', 'fact', 'creatures', 'garden', 'bookshop', 'next', 'newforyou', 'recent'],
     ],
-    challenges: [['alphabet'], ['bingo']],
-    stats: [
-      ['myyear', 'authors'],
-      ['calendar', 'series', 'pile'],
-    ],
-    fun: [
-      ['badges', 'tropes', 'fact', 'wrapped'],
-      ['covers', 'world', 'top', 'onthisday'],
-    ],
+    challenges: [[], []],
+    stats: [[], []],
+    fun: [[], []],
   },
   hidden: [],
   folded: [],
   favourites: [],
 }
 
-/** The section each block starts in (and comes back to when shown again). */
-const HOME = Object.fromEntries(
-  SECTION_IDS.flatMap((s) => DEFAULT_LAYOUT.sections[s].flat().map((id) => [id, s])),
-) as Record<BlockId, SectionId>
+/** The section each block starts in (and comes back to when shown again): today, for all of them now. */
+const HOME = Object.fromEntries((Object.keys(BLOCKS) as BlockId[]).map((id) => [id, 'today'])) as Record<BlockId, SectionId>
 
 /**
  * Blocks that became another block (T-0080, D-0060). A saved layout or a
@@ -140,7 +155,8 @@ export function cleanLayout(raw: unknown): DashboardLayout {
   const take = (list: unknown): BlockId[] =>
     (Array.isArray(list) ? list : [])
       .map(asBlock)
-      .filter((id): id is BlockId => isBlock(id) && !seen.has(id) && !!seen.add(id))
+      // a block that moved off the dashboard (T-0121) is dropped, wherever it was saved
+      .filter((id): id is BlockId => isBlock(id) && !isOff(id) && !seen.has(id) && !!seen.add(id))
   const sections = emptySections()
   const hasSections = !!r.sections && typeof r.sections === 'object'
   if (!hasSections && !Array.isArray(r.columns)) return structuredClone(DEFAULT_LAYOUT)
@@ -158,6 +174,13 @@ export function cleanLayout(raw: unknown): DashboardLayout {
     for (const c of [0, 1] as const) for (const id of take((r.columns as unknown[])[c])) sections[HOME[id]][c].push(id)
   }
   const hidden = take(r.hidden)
+  // the other sections were emptied (T-0121): what is still on the dashboard joins Today, same column
+  for (const s of SECTION_IDS)
+    if (s !== 'today')
+      for (const c of [0, 1] as const) {
+        sections.today[c].push(...sections[s][c])
+        sections[s][c] = []
+      }
 
   // "Waiting for you" goes first, also on a dashboard arranged before it existed
   if (!seen.has('waiting')) sections.today[0].unshift('waiting'), seen.add('waiting')
@@ -177,7 +200,7 @@ export function cleanLayout(raw: unknown): DashboardLayout {
   // favourites: known blocks, each once, not hidden
   const favourites = [
     ...new Set((Array.isArray(r.favourites) ? r.favourites : []).map(asBlock).filter(isBlock)),
-  ].filter((id) => !hidden.includes(id))
+  ].filter((id) => !hidden.includes(id) && !isOff(id))
   return { sections, hidden, folded: [...new Set(folded)], favourites }
 }
 

@@ -12,7 +12,8 @@ import { sparkleTexture } from './eggModel'
  * The favourite creature on the top shelf (T-0033 §8c–§8d). Keeps a short
  * state machine of its own (sit · yawn · stretch · sleep), reacts to her
  * reading (cheer on a finish day, point at a reading book), and holds a sign
- * on streak days. Never walks the shelf.
+ * on streak days. Never walks the shelf. At night it nods off sitting up, with
+ * a little pile of books beside it (T-0119): it never tips over.
  */
 
 export interface ShelfPetShows {
@@ -54,25 +55,26 @@ export function ShelfPet({ shows, phone }: { shows: ShelfPetShows; phone: boolea
 
   useFrame(({ clock }) => {
     const t = clock.elapsedTime
-    // breathing
-    if (rig.body) {
-      const b = 1 + 0.015 * Math.sin((t / 4) * Math.PI * 2)
-      rig.body.scale.set(rig.base.body.x, rig.base.body.y * b, rig.base.body.z)
-    }
+    const pose = shelfPetPose(shows.night, t)
+    // breathing: slower and deeper while asleep
+    if (rig.body) rig.body.scale.set(rig.base.body.x, rig.base.body.y * pose.breathe, rig.base.body.z)
+    // asleep it stays sitting, head drooped forward and a little to the side: it never tips over
+    if (rig.head) rig.head.rotation.set(rig.base.head.x + pose.headX, rig.base.head.y, rig.base.head.z + pose.headZ)
     // blink
     let open = 1
     if (t >= blink.current.next) {
       if (t < blink.current.next + 0.15) open = 0.1
       else blink.current.next = t + 4 + Math.random() * 3
     }
-    // sleep: eyes almost shut, lie down a bit (rotate z 90°)
-    if (shows.night) {
-      open = Math.min(open, 0.05)
-      if (holder.current) holder.current.rotation.z = Math.PI / 2
-    } else if (holder.current) {
-      holder.current.rotation.z = 0
-    }
+    open = Math.min(open, pose.eyesOpen)
     if (rig.eyes) rig.eyes.scale.set(rig.base.eyes.x, rig.base.eyes.y * open, rig.base.eyes.z)
+
+    // arms back where they were built, before a cheer or a point raises one
+    const armL = rig.root.getObjectByName('part:armL')
+    const armR = rig.root.getObjectByName('part:armR')
+    if (armL) armL.rotation.x = 0
+    if (armR) armR.rotation.x = 0
+    if (holder.current) holder.current.position.y = 0
 
     // cheer: hop + arms up for 0.5 s
     if (shows.cheer && !cheered.current) {
@@ -80,39 +82,53 @@ export function ShelfPet({ shows, phone }: { shows: ShelfPetShows; phone: boolea
       const k = t - cheerStart.current
       if (k < 0.5) {
         if (holder.current) holder.current.position.y = Math.sin((k / 0.5) * Math.PI) * 0.06
-        const armL = rig.root.getObjectByName('part:armL')
-        const armR = rig.root.getObjectByName('part:armR')
         if (armL) armL.rotation.x = -1.0
         if (armR) armR.rotation.x = -1.0
       } else {
         cheered.current = true
         shows.onCheered?.()
       }
-    } else if (shows.pointAt) {
-      // point at the reading book: right paw raised
-      const armR = rig.root.getObjectByName('part:armR')
+    } else if (shows.pointAt && !shows.night) {
+      // point at the reading book: right paw raised (not in its sleep)
       if (armR) armR.rotation.x = -0.9
     }
   })
 
   return (
-    <group ref={holder} scale={scale}>
-      <primitive object={rig.root} />
+    <>
+      <group ref={holder} scale={scale}>
+        <primitive object={rig.root} />
+        {shows.streak > 0 && <StreakSign n={shows.streak} />}
+        {shows.shiny && <ShelfSparkles height={rig.height} />}
+      </group>
+      {/* beside the pet on the shelf, in shelf units: not scaled with the pet, not under it */}
       {shows.night && <BookPile phone={phone} />}
-      {shows.streak > 0 && <StreakSign n={shows.streak} />}
-      {shows.shiny && <ShelfSparkles height={rig.height} />}
-    </group>
+    </>
   )
 }
+
+/**
+ * How the pet holds itself (T-0119): awake it sits up and breathes gently; asleep it still
+ * sits, head drooped forward and tipped a little to one side with a slow nod, eyes shut,
+ * and slower, deeper breaths. Rotations in radians, added to the pose it was built with.
+ */
+export function shelfPetPose(night: boolean, t: number): { headX: number; headZ: number; breathe: number; eyesOpen: number } {
+  if (!night) return { headX: 0, headZ: 0, breathe: 1 + 0.015 * Math.sin((t / 4) * Math.PI * 2), eyesOpen: 1 }
+  const nod = Math.sin((t / 6) * Math.PI * 2)
+  return { headX: 0.38 + 0.04 * nod, headZ: 0.16, breathe: 1 + 0.03 * nod, eyesOpen: 0.05 }
+}
+
+/** Where the night book pile sits, in shelf units: behind the pet and to its right, on the shelf. */
+export const BOOK_PILE_AT: readonly [number, number, number] = [0.045, 0, -0.075]
 
 function BookPile({ phone }: { phone: boolean }) {
   const colors = ['#b85a3a', '#5a7fb2', '#b29149'] as const
   const boxes = phone ? 1 : 3
   return (
-    <group position={[0, -0.01, 0]}>
+    <group position={BOOK_PILE_AT} rotation={[0, 0.35, 0]}>
       {Array.from({ length: boxes }, (_, i) => (
-        <mesh key={i} position={[0, 0.015 * (i + 0.5), 0]}>
-          <boxGeometry args={[0.09, 0.015, 0.07]} />
+        <mesh key={i} position={[0.004 * (i % 2), 0.012 * (i + 0.5), 0]} rotation={[0, i * 0.12, 0]} castShadow receiveShadow>
+          <boxGeometry args={[0.07, 0.012, 0.05]} />
           <meshStandardMaterial color={colors[i % colors.length]} roughness={0.9} />
         </mesh>
       ))}

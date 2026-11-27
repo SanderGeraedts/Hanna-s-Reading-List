@@ -2,7 +2,6 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Book } from '#/lib/library'
 import { PLANT_KINDS, PLANT_KIND_IDS } from '#/lib/garden/plants'
-import { SPOTS_PER_BED } from '#/lib/garden/numbers'
 import { weatherChip, weatherOf } from '#/lib/garden/weather'
 
 // no server: signed out, every server function mocked like the other page tests

@@ -2,11 +2,11 @@ import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame, useThree } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
-import type { Pet } from '#/lib/creatures/creature'
+import type { Pet, Stage } from '#/lib/creatures/creature'
 import type { DenSlot, OutfitSlot } from '#/lib/creatures/shop'
 import { creatureFor, eyeOpen, headTilt, rigOf } from './pose'
 import type { Rig } from './pose'
-import { dressCreature } from './shopModels'
+import { DEN_FILL, DEN_VIEW_H, dressCreature } from './shopModels'
 import { ROAM_RANGE, HOP, WALK, isHopper, pickRoam, roamTarget } from '#/lib/creatures/denRoam'
 import type { RoamState } from '#/lib/creatures/denRoam'
 import { FLOOR_Y, clearTarget, clearanceFor, denFootprints, insideAny, pushOutOf, stepAround } from '#/lib/creatures/denProps'
@@ -21,7 +21,13 @@ import type { Footprint } from '#/lib/creatures/denProps'
  * is a plain keep-out rather than something to stand on.
  */
 
-const SIZE = 0.3 // target height of a roaming pet in world units
+/**
+ * How tall a roaming pet stands, in world units (T-0120): its own age's height on the
+ * cushion, a little smaller so the floor doesn't crowd. Before this every roaming pet was
+ * 0.3 whatever its age, so a baby on the cushion stood twice as tall as a grown pet passing by.
+ */
+const ROAM_SHARE = 0.6
+export const roamHeight = (stage: Stage): number => DEN_FILL[stage] * DEN_VIEW_H * ROAM_SHARE
 
 interface Props {
   pets: readonly Pet[]
@@ -84,8 +90,9 @@ function WalkingPet({
   useEffect(() => {
     dressCreature(rig.root, dress ?? {}, 'high')
   }, [rig, dress])
-  const scale = SIZE / Math.max(0.1, rig.height)
-  const clear = clearanceFor(SIZE)
+  const size = roamHeight(pet.stage)
+  const scale = size / Math.max(0.1, rig.height)
+  const clear = clearanceFor(size)
   const holder = useRef<THREE.Group>(null)
   const blink = useRef({ next: 2 + Math.random() * 3 })
   const state = useRef<{ s: RoamState; until: number; target: THREE.Vector3; counter: number } | null>(null)

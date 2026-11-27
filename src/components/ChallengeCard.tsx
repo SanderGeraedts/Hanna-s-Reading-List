@@ -152,10 +152,20 @@ export function ChallengeCard({ books, onShowBook, onUpdate, editing, onEditing,
       </div>
       {c.notStarted && !pastYear && (
         <p className="small-text">
-          Pick a book for each month, and read along through the year. You can start with{' '}
-          {today.slice(5, 7) === '12' ? 'next year' : 'next month'}.
+          Pick a book for each month, starting {today.slice(5, 7) === '12' ? 'next year' : 'next month'}.
         </p>
       )}
+      {/* nothing picked yet: a single line of months instead of twelve empty boxes, a whole
+          screen of nothing on a phone (T-0120) */}
+      {pickedCount === 0 && !pastYear ? (
+        <p className="challenge-months-row" aria-hidden="true">
+          {calendar.map((m) => (
+            <span key={m.month} className={m.current ? 'current' : undefined}>
+              {monthName(Number(m.month.slice(5, 7)), 'short').slice(0, 1)}
+            </span>
+          ))}
+        </p>
+      ) : (
       <ol className="challenge-calendar" aria-label={title}>
         {calendar.map((m) => {
           const name = monthName(Number(m.month.slice(5, 7)))
@@ -198,6 +208,7 @@ export function ChallengeCard({ books, onShowBook, onUpdate, editing, onEditing,
           )
         })}
       </ol>
+      )}
       {!pastYear && carried.length > 0 && (
         <ul className="waiting-list">
           {carried.map((item) => (

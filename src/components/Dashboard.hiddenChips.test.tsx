@@ -33,7 +33,7 @@ const { Dashboard } = await import('./Dashboard')
  */
 
 const KEY = 'hannas-reading-list:dashboard:local'
-const HIDDEN: BlockId[] = ['myyear', 'reading', 'pace']
+const HIDDEN: BlockId[] = ['lent', 'reading', 'pace']
 
 /** A saved layout with these blocks hidden, taken out of their sections as hiding does. */
 const withHidden = (hidden: BlockId[]): DashboardLayout => ({
@@ -63,11 +63,11 @@ describe('Enter on a Hidden chip keeps focus on the row (T-0044, F7)', () => {
   it('after Enter on a chip, focus moves to the next chip', () => {
     show()
     arrange()
-    const first = chips().find((c) => c.dataset.hidden === 'myyear')!
+    const first = chips().find((c) => c.dataset.hidden === 'lent')!
     first.focus()
     expect(document.activeElement).toBe(first)
     fireEvent.click(first)
-    // 'myyear' is gone, the first remaining chip is 'reading'
+    // 'lent' is gone, the first remaining chip is 'reading'
     const next = chips()
     expect(next.map((c) => c.dataset.hidden)).toEqual(['reading', 'pace'])
     expect(document.activeElement).toBe(next[0])

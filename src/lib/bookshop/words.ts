@@ -1,6 +1,7 @@
 import { UPGRADES } from './numbers'
 import type { Upgrade } from './numbers'
 import type { Away, Bookshop, Line } from './shop'
+import { mixedHash } from '../creatures/hash'
 
 /**
  * The bookshop in her words (T-0113). Every sentence the block and the shop
@@ -99,3 +100,73 @@ export function shopSentence(shop: Bookshop): string {
   if (!shop.open) return 'The bookshop has not opened yet.'
   return `${coinsWord(shop.coins)} in the till. ${stockSentence(shop)} ${tradeSentence(shop)}`
 }
+
+// ---- customer notes (T-0123, D-0091) ------------------------------------------------------
+
+/**
+ * Little cards from made-up customers about books that sold this week. Always kind, also about
+ * a book she rated low ("not for everyone, but…"): the shop is a cosy place. Worked out from the
+ * day and the book, so every device shows the same three notes all day, and nothing is stored.
+ */
+export interface CustomerNote {
+  id: string
+  title: string
+  text: string
+  by: string
+}
+
+const NAMES = ['Mira', 'Joost', 'Ada', 'Ilse', 'Tomas', 'Noor', 'Femke', 'Rafael', 'Lotte', 'Sami', 'Greta', 'Bram', 'Yara', 'Owen', 'Liv', 'Kees']
+
+const GENERAL = [
+  (t: string) => `Picked up ${t} on a whim. No regrets.`,
+  (t: string) => `Came in for something else, left with ${t}.`,
+  (t: string) => `${t} kept me up far too late.`,
+  (t: string) => `Bought ${t} for my sister. Reading it first.`,
+  (t: string) => `Started ${t} on the tram home and missed my stop.`,
+]
+const LOVED = [(t: string) => `The staff were right about ${t}.`, (t: string) => `${t}. That's it, that's the note. Read it.`]
+const SOFT = [(t: string) => `${t} is not for everyone, but I couldn't put it down.`, (t: string) => `Everyone argues about ${t}. I loved it.`]
+const BY_GENRE: Array<[RegExp, Array<(t: string) => string>]> = [
+  [/fantasy|magic|dragon/i, [(t) => `${t}: I want to live in that world.`, (t) => `Finished ${t} and checked the wardrobe for a door.`]],
+  [/romance|love/i, [(t) => `${t} made me cry on the bus. Happy tears.`, (t) => `Swooned at ${t}. Twice.`]],
+  [/mystery|thriller|crime|detective/i, [(t) => `Guessed wrong all the way through ${t}.`, (t) => `${t}: read it in one sitting, lights on.`]],
+  [/science fiction|sci-fi|space/i, [(t) => `${t} made the night sky feel bigger.`, (t) => `Can't stop thinking about the ending of ${t}.`]],
+  [/histor/i, [(t) => `${t} smelled of old letters and rain.`, (t) => `Learned more from ${t} than from school.`]],
+]
+
+function linesFor(book: { title: string; genres?: string[]; rating?: number }) {
+  const genre = (book.genres ?? []).join(' ')
+  const own = BY_GENRE.find(([re]) => re.test(genre))?.[1] ?? []
+  const r = book.rating
+  // a low rating gets the kind "different taste" lines: customers may love what she didn't
+  const mood = typeof r === 'number' ? (r >= 4.5 ? LOVED : r <= 2.5 ? SOFT : []) : []
+  return [...own, ...mood, ...GENERAL]
+}
+
+/** A note about one book on one day: the same on every device, for ever. */
+function noteFor(line: Line, day: string, i: number): CustomerNote & { day: string } {
+  const h = mixedHash(`shop-note:${day}:${line.id}`)
+  const lines = linesFor(line.book)
+  return { id: `${day}:${line.id}`, day, title: line.book.title, text: lines[h % lines.length](line.book.title), by: NAMES[((h >>> 8) + i) % NAMES.length] }
+}
+
+/**
+ * The magnetic board (T-0123): every note the shop's customers ever left, newest first. Each
+ * day something sold leaves a note about each of its (up to three) best sellers, and they stay.
+ * Nothing is saved: the board is written again from the shop's own history every time.
+ */
+export function noteBoard(shop: Bookshop, perDay = 3): Array<CustomerNote & { day: string }> {
+  const out: Array<CustomerNote & { day: string }> = []
+  for (let d = shop.sales.length - 1; d >= 0; d--) {
+    const { day, titles } = shop.sales[d]
+    titles.slice(0, perDay).forEach((line, i) => out.push(noteFor(line, day, i)))
+  }
+  return out
+}
+
+/** The newest notes on the board, for the block and the top of the board. */
+export const customerNotes = (shop: Bookshop, count = 3) => noteBoard(shop).slice(0, count)
+
+/** "Babel — 14 sold this week", for the book of the week. */
+export const weekBestSentence = (shop: Bookshop) =>
+  shop.weekBest ? `${shop.weekBest.book.title}, ${copiesWord(shop.weekBest.copies)} this week` : 'No book of the week yet.'

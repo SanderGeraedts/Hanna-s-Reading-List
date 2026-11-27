@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { SHELF } from '#/lib/shelfLayout'
 import type { Room } from '#/lib/room'
 import { lampLightOn } from '#/lib/roomExtras'
@@ -42,8 +43,9 @@ function merge(pieces: Piece[]): THREE.BufferGeometry {
   return out
 }
 
-const box = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d)
 const cyl = (r: number, h: number, seg = 10) => new THREE.CylinderGeometry(r, r, h, seg)
+/** A padded box: soft edges, so a cushion looks like a cushion and not a crate (T-0120). */
+const soft = (w: number, h: number, d: number, r = 0.04) => new RoundedBoxGeometry(w, h, d, 3, Math.min(r, w / 2, h / 2, d / 2) * 0.99)
 const ball = (r: number, seg = 10) => new THREE.SphereGeometry(r, seg, Math.max(6, seg - 2))
 
 /** The accent of the wallpaper she chose, for the blanket, the flowers and the blooms. */
@@ -55,25 +57,31 @@ const accentFor = (room: Room) => (room.wallpaper === 'midnight' ? '#8da7d8' : '
 
 function ReadingCorner({ room, night }: { room: Room; night: boolean }) {
   const g = useMemo(() => {
-    const seatH = 0.4
+    // an upholstered armchair (T-0120): a padded base, a reclined back with its own cushion,
+    // rolled arms and a deep seat cushion. Still one geometry for the cloth and one for the wood.
+    const tilt = -0.12
     const chair = merge([
-      // seat, back and two arms
-      { geometry: box(0.56, 0.14, 0.52), position: [0, seatH, 0] },
-      { geometry: box(0.56, 0.46, 0.12), position: [0, seatH + 0.22, -0.2] },
-      { geometry: box(0.08, 0.2, 0.52), position: [-0.24, seatH + 0.1, 0] },
-      { geometry: box(0.08, 0.2, 0.52), position: [0.24, seatH + 0.1, 0] },
-      // a cushion in the seat
-      { geometry: box(0.44, 0.08, 0.4), position: [0, seatH + 0.1, 0.02] },
-      // four legs
-      ...[-0.22, 0.22].flatMap((x) =>
-        [-0.2, 0.2].map((z) => ({ geometry: cyl(0.022, seatH - 0.07, 6), position: [x, (seatH - 0.07) / 2, z] as [number, number, number] })),
-      ),
+      { geometry: soft(0.64, 0.22, 0.58, 0.05), position: [0, 0.37, 0] },
+      { geometry: soft(0.46, 0.11, 0.48, 0.045), position: [0, 0.525, 0.03] },
+      { geometry: soft(0.64, 0.52, 0.15, 0.06), position: [0, 0.72, -0.23], rotation: [tilt, 0, 0] },
+      { geometry: soft(0.46, 0.34, 0.1, 0.045), position: [0, 0.73, -0.15], rotation: [tilt, 0, 0] },
+      ...[-1, 1].flatMap((s) => [
+        { geometry: soft(0.1, 0.25, 0.58, 0.04), position: [s * 0.27, 0.53, 0] as [number, number, number] },
+        // the rolled top of the arm
+        { geometry: cyl(0.065, 0.58, 14), position: [s * 0.285, 0.655, 0] as [number, number, number], rotation: [Math.PI / 2, 0, 0] as [number, number, number] },
+      ]),
     ])
-    // a blanket folded over the near arm
+    // four short tapered wooden legs
+    const legs = merge(
+      [-0.26, 0.26].flatMap((x) =>
+        [-0.22, 0.22].map((z) => ({ geometry: new THREE.CylinderGeometry(0.026, 0.016, 0.26, 8), position: [x, 0.13, z] as [number, number, number] })),
+      ),
+    )
+    // a soft blanket draped over the near arm, falling both sides of it
     const blanket = merge([
-      { geometry: box(0.12, 0.03, 0.34), position: [0.24, seatH + 0.21, 0.04] },
-      { geometry: box(0.03, 0.22, 0.34), position: [0.295, seatH + 0.1, 0.04] },
-      { geometry: box(0.03, 0.16, 0.34), position: [0.185, seatH + 0.13, 0.04] },
+      { geometry: soft(0.18, 0.03, 0.34, 0.012), position: [0.285, 0.725, 0.06] },
+      { geometry: soft(0.03, 0.3, 0.34, 0.012), position: [0.37, 0.58, 0.06], rotation: [0, 0, -0.08] },
+      { geometry: soft(0.03, 0.18, 0.34, 0.012), position: [0.2, 0.64, 0.06], rotation: [0, 0, 0.1] },
     ])
     // the lamp: a slim pole on a disc, standing at the bookcase's shoulder
     const pole = merge([
@@ -83,13 +91,14 @@ function ReadingCorner({ room, night }: { room: Room; night: boolean }) {
     const shade = new THREE.CylinderGeometry(0.1, 0.13, 0.17, 14, 1, true)
     shade.translate(0, 1.18, 0)
     shade.deleteAttribute('uv')
-    return { chair, blanket, pole, shade }
+    return { chair, legs, blanket, pole, shade }
   }, [])
   useEffect(() => () => Object.values(g).forEach((x) => x.dispose()), [g])
 
   const m = useMemo(
     () => ({
-      chair: new THREE.MeshStandardMaterial({ color: '#8e6b54', roughness: 0.85 }),
+      chair: new THREE.MeshStandardMaterial({ color: '#8e6b54', roughness: 0.92 }),
+      wood: new THREE.MeshStandardMaterial({ color: '#4a3020', roughness: 0.6 }),
       blanket: new THREE.MeshStandardMaterial({ color: accentFor(room), roughness: 1 }),
       pole: new THREE.MeshStandardMaterial({ color: '#b08d57', metalness: 0.6, roughness: 0.4 }),
       shade: new THREE.MeshStandardMaterial({
@@ -109,6 +118,7 @@ function ReadingCorner({ room, night }: { room: Room; night: boolean }) {
   return (
     <group>
       <mesh castShadow receiveShadow geometry={g.chair} material={m.chair} />
+      <mesh castShadow receiveShadow geometry={g.legs} material={m.wood} />
       <mesh castShadow receiveShadow geometry={g.blanket} material={m.blanket} />
       <mesh castShadow receiveShadow geometry={g.pole} material={m.pole} position={LAMP} />
       <mesh geometry={g.shade} material={m.shade} position={LAMP} />
@@ -304,6 +314,8 @@ export function RoomExtras({
   season,
   /** a phone: one extra light is never added (D-0045 §3) */
   lite,
+  /** the reading corner fits beside the case: false on an upright phone, where only slivers of it showed (T-0120) */
+  corner = true,
 }: {
   room: Room
   caseWidth: number
@@ -311,6 +323,7 @@ export function RoomExtras({
   stage: PlantStage
   season: Season
   lite: boolean
+  corner?: boolean
 }) {
   const side = caseWidth / 2
   const front = SHELF.depth / 2
@@ -319,7 +332,7 @@ export function RoomExtras({
       {/* the camera frames the whole case with only a hand's width of floor beside it, so the
           corner is tucked against the case's left shoulder: the lamp stands where it can be
           seen, and the chair's near arm and blanket come into the frame beside it */}
-      {room.readingCorner && (
+      {room.readingCorner && corner && (
         <group position={[-side - 0.3, 0, front + 0.06]} rotation={[0, 0.5, 0]}>
           <ReadingCorner room={room} night={night} />
           {/* on a computer the lamp lights its corner at night; never on a phone */}

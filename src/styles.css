@@ -546,6 +546,18 @@ textarea.input {
     font-size: var(--fs-heading);
     white-space: nowrap;
   }
+  .brand .summary-long {
+    /* still read out in full; only the eye gets the short line (T-0120) */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .brand .summary-short {
+    display: inline;
+  }
   .brand .muted {
     font-size: var(--fs-tiny);
     white-space: nowrap;
@@ -1610,8 +1622,23 @@ html[data-wallpaper='midnight'] .shelf-none {
     flex-wrap: nowrap;
     overflow-x: auto;
     overflow-y: hidden;
-    padding-right: 1rem;
     scrollbar-width: none;
+    /* on a solid pill like the bookcase switch, so the names never sit straight on the
+       bookcase, and the right edge fades out so it shows there is more to slide to (T-0120) */
+    background: var(--pill-bg);
+    border: 1px solid var(--pill-border);
+    border-radius: 999px;
+    padding: 0.25rem 2.5rem 0.25rem 0.75rem;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+  }
+  .shelf-filters .muted {
+    color: var(--pill-ink);
+    text-shadow: none;
+  }
+  html[data-night='on'] .shelf-filters .muted,
+  html[data-wallpaper='midnight'] .shelf-filters .muted {
+    text-shadow: none;
   }
   .shelf-filters::-webkit-scrollbar {
     display: none;
@@ -1627,6 +1654,150 @@ html[data-wallpaper='midnight'] .shelf-none {
   .shelf-filter > span {
     display: inline;
   }
+}
+
+.summary-short {
+  display: none;
+}
+
+/* ---- the phone's page bar (T-0121) ------------------------------------------------------
+   Four pages in reach of the thumb and More for the rest. Only on a phone: on a computer the
+   tabs at the top do this. Everything else pinned to the bottom moves up by --bottom-bar-h. */
+:root {
+  --bottom-bar-h: 0px;
+}
+.bottom-bar,
+.bottom-more-backdrop {
+  display: none;
+}
+@media (max-width: 720px) {
+  :root {
+    --bottom-bar-h: calc(3.6rem + env(safe-area-inset-bottom, 0px));
+  }
+  .page-tabs {
+    display: none !important;
+  }
+  .bottom-bar {
+    position: fixed;
+    z-index: 2;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    height: var(--bottom-bar-h);
+    padding: 0 0.25rem env(safe-area-inset-bottom, 0px);
+    background: var(--pill-bg);
+    border-top: 1px solid var(--pill-border);
+    box-shadow: 0 -4px 14px rgba(0, 0, 0, 0.12);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+  .bottom-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.1rem;
+    min-width: 0;
+    border: 0;
+    background: none;
+    color: var(--pill-ink);
+    font: inherit;
+    font-size: 1.25rem;
+    opacity: 0.7;
+    cursor: pointer;
+  }
+  .bottom-tab.active {
+    opacity: 1;
+  }
+  .bottom-bar .bottom-tab.active .bottom-tab-label {
+    font-weight: 700;
+  }
+  .bottom-tab-label {
+    font-size: 0.72rem;
+    font-weight: 400;
+  }
+  .bottom-more-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+  }
+  .bottom-more {
+    position: absolute;
+    right: 0.5rem;
+    bottom: calc(100% + 0.5rem);
+    display: grid;
+    min-width: 11rem;
+    padding: 0.35rem;
+    border-radius: 14px;
+    background: var(--surface-solid);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  }
+  .bottom-more button {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    min-height: var(--tap);
+    padding: 0 0.75rem;
+    border: 0;
+    border-radius: 10px;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .bottom-more button[aria-current='page'] {
+    background: var(--surface-hover);
+    font-weight: 700;
+  }
+  /* out of the bar's way (with html in front: these rules come before the buttons' own) */
+  html .quick-fab {
+    bottom: calc(1rem + var(--bottom-bar-h));
+  }
+  html .zoom-controls {
+    bottom: calc(var(--space-4) + var(--bottom-bar-h));
+  }
+  html .toast {
+    bottom: calc(1.25rem + var(--bottom-bar-h));
+  }
+  html .badge-toast {
+    bottom: calc(1rem + var(--bottom-bar-h));
+  }
+  .dashboard {
+    padding-bottom: calc(var(--tap) + 2.5rem + var(--bottom-bar-h)) !important;
+  }
+}
+
+/* the Stats page's second half: the blocks that left the dashboard (T-0121) */
+.stats-section-title {
+  margin: var(--space-4, 1.5rem) 0 var(--space-2, 0.75rem);
+  color: var(--header-ink);
+  font-size: var(--fs-large);
+}
+
+/* the monthly challenge before anything is picked: one quiet line of months (T-0120) */
+.challenge-months-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.25rem;
+  margin: 0.5rem 0 0.75rem;
+}
+.challenge-months-row span {
+  flex: 1;
+  text-align: center;
+  padding: 0.3rem 0;
+  border: 1px dashed var(--border, rgba(255, 255, 255, 0.18));
+  border-radius: 0.4rem;
+  font-size: var(--fs-small);
+  opacity: 0.7;
+}
+.challenge-months-row span.current {
+  border-style: solid;
+  border-color: var(--accent);
+  opacity: 1;
 }
 
 /* ---- ISBN and publication date (#43, #44) --------------------------- */
@@ -1805,7 +1976,9 @@ html[data-wallpaper='midnight'] .shelf-none {
   z-index: 1;
   overflow-y: auto;
   /* starts under the header's real height (set on .app as --header-h), so the tabs cover nothing (#181) */
-  padding: max(6.5rem, calc(var(--header-h, 0px) + var(--space-3))) 1.5rem 2rem;
+  /* room at the bottom for the round 📖 Quick update button, so the end of a page never sits under it (T-0120) */
+  padding: max(6.5rem, calc(var(--header-h, 0px) + var(--space-3))) 1.5rem calc(var(--tap) + 2.5rem);
+  scroll-padding-bottom: calc(var(--tap) + 2rem);
   /* and whatever is scrolled to or focused (Tab, scrollIntoView, a search result) lands below the
      header too, never under it (T-0035, WCAG 2.4.11) */
   scroll-padding-top: max(6.5rem, calc(var(--header-h, 0px) + var(--space-3)));
@@ -2498,7 +2671,7 @@ html[data-wallpaper='midnight'] .shelf-none {
 }
 @media (max-width: 720px) {
   .dashboard {
-    padding: max(5.25rem, calc(var(--header-h, 0px) + var(--space-2))) 0.75rem 1.5rem;
+    padding: max(5.25rem, calc(var(--header-h, 0px) + var(--space-2))) 0.75rem calc(var(--tap) + 2.5rem);
   }
   .dashboard-bar.arranging {
     top: var(--space-1);
@@ -3210,14 +3383,16 @@ html[data-wallpaper='midnight'] .shelf-none {
 }
 
 /* heatmap: scrolls sideways inside the card on a narrow screen, starting at today */
-.heatmap-scroll {
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scrollbar-width: thin;
+/* the year in two rows of half a year, each fitted to the card (T-0120) */
+.heatmap-rows {
+  display: grid;
+  gap: 0.4rem;
   padding-bottom: 0.2rem;
 }
 .heatmap {
   display: block;
+  width: 100%;
+  height: auto;
 }
 .heatmap .axis {
   fill: var(--muted);
@@ -8057,7 +8232,7 @@ button.today-item:hover {
   border-radius: var(--radius-small);
   overflow: hidden;
   background: #d9c9ae;
-  aspect-ratio: 120 / 72;
+  aspect-ratio: 150 / 80;
 }
 .shop-svg {
   display: block;
@@ -8160,60 +8335,353 @@ button.today-item:hover {
   border-top: 1px solid var(--border);
   padding-top: var(--space-2);
 }
-/* the customers browse and the cat breathes; both stop with reduce motion */
+/* the shop comes alive (T-0123): customers walk in at the door, browse, pay at the till and
+   leave with a book; the cat wanders the counter, the dog wags, tea steams, the lights twinkle.
+   All of it stops with reduce motion, and the dashboard block never moves at all. */
 .shop-customer,
-.shop-cat {
+.shop-cat,
+.shop-dog,
+.shop-tail,
+.shop-wag,
+.shop-flame,
+.shop-bell,
+.shop-steam {
   transform-box: fill-box;
-  transform-origin: center;
 }
-.shop-customer.browse-0 {
-  animation: shop-browse-0 13s ease-in-out infinite alternate;
+.shop-customer[class*='walk-'] {
+  animation: shop-walk 32s linear infinite;
+  opacity: 0;
 }
-.shop-customer.browse-1 {
-  animation: shop-browse-1 17s ease-in-out infinite alternate;
+.shop-customer.walk-1 {
+  animation-delay: -8s;
 }
-.shop-customer.browse-2 {
-  animation: shop-browse-2 11s ease-in-out infinite alternate;
+.shop-customer.walk-2 {
+  animation-delay: -16s;
+}
+.shop-customer.walk-3 {
+  animation-delay: -24s;
+}
+.shop-customer[class*='walk-'] .shop-carry {
+  animation: shop-carry 32s linear infinite;
+  animation-delay: inherit;
+}
+.shop-customer.walk-1 .shop-carry {
+  animation-delay: -8s;
+}
+.shop-customer.walk-2 .shop-carry {
+  animation-delay: -16s;
+}
+.shop-customer.walk-3 .shop-carry {
+  animation-delay: -24s;
+}
+/* from the door (x 134) to the shelves, a browse, to the till (x 26), and out again */
+@keyframes shop-walk {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  4% {
+    opacity: 1;
+  }
+  18% {
+    transform: translateX(-50px);
+  }
+  30% {
+    transform: translateX(-44px);
+  }
+  42% {
+    transform: translateX(-56px);
+  }
+  58% {
+    transform: translateX(-106px);
+  }
+  66% {
+    transform: translateX(-106px);
+  }
+  92% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  97%,
+  100% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+}
+@keyframes shop-carry {
+  0%,
+  63% {
+    opacity: 0;
+  }
+  64%,
+  100% {
+    opacity: 1;
+  }
 }
 .shop-cat {
-  animation: shop-cat-breathe 6s ease-in-out infinite alternate;
+  animation: shop-cat-wander 24s ease-in-out infinite;
 }
-@keyframes shop-browse-0 {
-  from {
+@keyframes shop-cat-wander {
+  0%,
+  40% {
+    transform: translateX(0) scaleY(1);
+  }
+  45% {
+    transform: translateX(0) scaleY(1.06);
+  }
+  60%,
+  75% {
+    transform: translateX(-7px);
+  }
+  90%,
+  100% {
     transform: translateX(0);
   }
-  to {
-    transform: translateX(5px);
-  }
 }
-@keyframes shop-browse-1 {
+.shop-tail,
+.shop-wag {
+  transform-origin: right bottom;
+  animation: shop-wag 1.6s ease-in-out infinite alternate;
+}
+.shop-wag {
+  animation-duration: 0.5s;
+}
+@keyframes shop-wag {
   from {
-    transform: translateX(0);
+    transform: rotate(-8deg);
   }
   to {
-    transform: translateX(-6px);
+    transform: rotate(8deg);
   }
 }
-@keyframes shop-browse-2 {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(4px);
-  }
+.shop-dog {
+  transform-origin: center bottom;
+  animation: shop-breathe 5s ease-in-out infinite alternate;
 }
-@keyframes shop-cat-breathe {
+@keyframes shop-breathe {
   from {
     transform: scaleY(1);
   }
   to {
-    transform: scaleY(1.04);
+    transform: scaleY(1.05);
   }
 }
+.shop-steam {
+  animation: shop-steam 3s ease-in-out infinite;
+}
+@keyframes shop-steam {
+  0% {
+    transform: translateY(0);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-3px);
+    opacity: 0;
+  }
+}
+.shop-flame {
+  transform-origin: center bottom;
+  animation: shop-breathe 0.7s ease-in-out infinite alternate;
+}
+.shop-bell {
+  transform-origin: center top;
+  animation: shop-ring 32s ease-in-out infinite;
+}
+@keyframes shop-ring {
+  0%,
+  3%,
+  95%,
+  100% {
+    transform: rotate(0);
+  }
+  1%,
+  96% {
+    transform: rotate(18deg);
+  }
+  2%,
+  97% {
+    transform: rotate(-18deg);
+  }
+}
+.shop-twinkle {
+  animation: shop-twinkle 2.4s ease-in-out infinite alternate;
+}
+.shop-twinkle.t1 {
+  animation-delay: -0.8s;
+}
+.shop-twinkle.t2 {
+  animation-delay: -1.6s;
+}
+@keyframes shop-twinkle {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.35;
+  }
+}
+.shop-fall {
+  animation: shop-fall 1.4s linear infinite;
+}
+.shop-snow.shop-fall {
+  animation-duration: 5s;
+}
+@keyframes shop-fall {
+  from {
+    transform: translateY(-2px);
+  }
+  to {
+    transform: translateY(2px);
+  }
+}
+.shop-shelf-hit {
+  cursor: zoom-in;
+}
+/* the shelf she tapped, close up: the titles big enough to read and to tap (T-0123) */
+.shop-zoom {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+}
+.shop-zoom-spines {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.25rem;
+  width: 100%;
+  overflow-x: auto;
+  padding: 0.5rem;
+  border-radius: var(--radius-small);
+  background: #d7c4a5;
+  border-bottom: 0.5rem solid #7a5435;
+}
+.shop-zoom-spine {
+  flex: none;
+  width: 2.6rem;
+  height: 9rem;
+  border: 0;
+  border-radius: 3px;
+  color: #fff;
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+  box-shadow: inset -3px 0 0 rgba(0, 0, 0, 0.18);
+}
+.shop-zoom-spine span {
+  display: block;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  max-height: 8rem;
+  overflow: hidden;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+.shop-zoom-spine.active {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+.shop-picks,
+.shop-best,
+.shop-board {
+  margin: 0.25rem 0;
+  padding: 0;
+}
+.shop-picks {
+  list-style: none;
+  display: grid;
+  gap: 0.4rem;
+}
+.shop-picks li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.shop-pick-title {
+  flex: 1;
+  min-width: 0;
+}
+.shop-pick-empty {
+  min-height: 2.4rem;
+  padding-left: 0.6rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: 0.5rem;
+}
+.shop-best {
+  padding-left: 1.4rem;
+}
+/* the magnetic board: notes held up by a magnet each, a little crooked */
+.shop-board {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 0.75rem;
+  padding: 0.9rem;
+  border-radius: var(--radius-small);
+  background: #4f5d66;
+}
+.shop-magnet {
+  position: relative;
+  padding: 0.7rem 0.6rem 0.5rem;
+  color: #2d2420;
+  border-radius: 2px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  font-family: var(--serif);
+}
+.shop-magnet p {
+  margin: 0;
+  color: inherit;
+}
+.shop-magnet::before {
+  content: '';
+  position: absolute;
+  top: -0.35rem;
+  left: 50%;
+  width: 0.8rem;
+  height: 0.8rem;
+  margin-left: -0.4rem;
+  border-radius: 50%;
+  background: #d9534f;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.shop-magnet.m0 {
+  background: #fff3b0;
+  transform: rotate(-1.5deg);
+}
+.shop-magnet.m1 {
+  background: #ffd6d6;
+  transform: rotate(1deg);
+}
+.shop-magnet.m1::before {
+  background: #3f6b8a;
+}
+.shop-magnet.m2 {
+  background: #d6ecff;
+  transform: rotate(-0.5deg);
+}
+.shop-magnet.m2::before {
+  background: #6f9a58;
+}
+.shop-magnet.m3 {
+  background: #e3f5d6;
+  transform: rotate(1.5deg);
+}
+.shop-magnet.m3::before {
+  background: #d9a85b;
+}
+.shop-shelf-list li .btn {
+  margin-left: auto;
+}
+.shop-line-text {
+  min-width: 0;
+}
+.bookshop-note {
+  margin: 0;
+  font-family: var(--serif);
+}
 @media (prefers-reduced-motion: reduce) {
-  .shop-customer,
-  .shop-cat {
+  .shop-svg * {
     animation: none !important;
+  }
+  .shop-customer[class*='walk-'] {
+    opacity: 1;
   }
 }
 @media (max-width: 720px) {

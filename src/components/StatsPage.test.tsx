@@ -136,7 +136,8 @@ describe('the Stats page', () => {
       expect(screen.getByRole('heading', { name })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Play your 2026 in books' })).toBeTruthy()
     // the page's picker says the year, so the flower has no switch of its own
-    expect(screen.queryByRole('group', { name: 'Period' })).toBeNull()
+    const flower = screen.getByRole('heading', { name: 'Genre flower' }).closest('section')!
+    expect(flower.querySelector('[role="group"][aria-label="Period"]')).toBeNull()
   })
 
   it('the Year in review block follows the page’s year', () => {

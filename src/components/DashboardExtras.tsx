@@ -326,7 +326,7 @@ export function CurrentlyReadingCard({ books, onShowBook }: Props) {
       )}
       {rest.length > 0 && (
         <>
-          <p className="muted small-text">Paused, waiting to be picked up again:</p>
+          <p className="muted small-text">Paused:</p>
           <ul className="book-list">
             {rest.map((b) => (
               <BookLine key={b.id} book={b} onShowBook={onShowBook}>
@@ -759,7 +759,7 @@ function PilePaceLine({ books, shown }: { books: Book[]; shown: PileChoice }) {
     if (pile.months === undefined) {
       return (
         <p className="muted small-text">
-          Once some books have a “Finished on” date, this shows how long the pile would take.
+          Finish a few books to see how long the pile would take.
         </p>
       )
     }
