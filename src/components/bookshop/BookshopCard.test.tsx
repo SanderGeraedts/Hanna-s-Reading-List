@@ -50,7 +50,7 @@ describe('the block on the dashboard', () => {
 
   it('says what she is saving up for', () => {
     show()
-    expect(screen.getByText(/A sign over the door costs 40 coins|You can afford/)).toBeTruthy()
+    expect(screen.getByText(/A sign over the door costs 30 coins|You can afford/)).toBeTruthy()
   })
 
   it('has nothing to collect: the only way in is Open ›', () => {
@@ -79,7 +79,7 @@ describe('the shop behind Open ›', () => {
     expect(screen.getAllByText(/× Babel/).length).toBeGreaterThan(0)
   })
 
-  it('offers the eight things coins buy, each with what it does', () => {
+  it('offers the things coins buy, each with what it does', () => {
     open()
     expect(screen.getByText('A sign over the door')).toBeTruthy()
     expect(screen.getByText('A shop cat')).toBeTruthy()
@@ -90,10 +90,10 @@ describe('the shop behind Open ›', () => {
 
   it('saves a purchase in the choice log as a place with its own key, never as a buy', () => {
     const { record } = open()
-    const sign = screen.getByRole('button', { name: '40 coins' })
+    const sign = screen.getByRole('button', { name: '30 coins' })
     expect((sign as HTMLButtonElement).disabled).toBe(false)
     fireEvent.click(sign)
-    expect(record).toHaveBeenCalledWith({ kind: 'place', key: 's:up:sign', item: 'sign', price: 40 })
+    expect(record).toHaveBeenCalledWith({ kind: 'place', key: 's:up:sign', item: 'sign', price: 30 })
     // the creature shop sees nothing of it: no cookie is spent (D-0084 §5)
     const saved = [{ id: 'e1', at: Date.now(), ...record.mock.calls[0][0] }] as unknown as ChoiceEvent[]
     expect(deriveShop(saved).spent).toBe(0)

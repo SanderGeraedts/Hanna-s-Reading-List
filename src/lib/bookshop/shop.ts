@@ -2,7 +2,9 @@ import type { Book } from '../library'
 import { localDay } from '../library'
 import type { ChoiceEvent } from '../creatures/choices'
 import { addDays, daysBetween } from '../creatures/days'
-import { MAX_TRADING_DAYS, RECENT_DAYS, SHOP_START } from './numbers'
+import { MAX_PICKS, MAX_TRADING_DAYS, PICK_BONUS, RECENT_DAYS, SHOP_START, WEEK_DAYS } from './numbers'
+import { currentPicks, pickedOn, picksFrom } from './picks'
+import type { Pick } from './picks'
 import type { UpgradeId } from './numbers'
 import { stocking } from './stock'
 import type { Title } from './stock'
@@ -87,6 +89,20 @@ export interface Bookshop {
   trading: Trading
   /** the last 30 days, oldest first; a day with no sale at all is left out */
   recent: DayTrade[]
+  /** every book she ever picked for the window, with when (T-0123) */
+  picks: Pick[]
+  /** the staff picks in the window now: picked, with copies on the shelf, oldest pick first */
+  window: Line[]
+  /** her three best sellers since opening day, most sold first (copies = sold) */
+  bestsellers: Line[]
+  /** the best seller of the last seven days (copies = sold), or none in a week without sales */
+  weekBest: Line | null
+  /**
+   * Every day something sold since opening day, oldest first, with that day's three best
+   * sellers: what the customer notes on the board are written about (T-0123). Worked out
+   * again each time like everything else, so the board never needs saving.
+   */
+  sales: Array<{ day: string; titles: Line[] }>
   /** the oldest day `recent` could reach back to, sale or no sale */
   recentFrom: string
 }
@@ -121,6 +137,11 @@ const empty = (start: string, today: string, bought: Bought[], spent: number): B
   trading: tradingWith(bought.map((b) => b.id)),
   recent: [],
   recentFrom: today,
+  picks: [],
+  window: [],
+  bestsellers: [],
+  weekBest: null,
+  sales: [],
 })
 
 /**
@@ -169,13 +190,14 @@ export function deriveBookshop(
   const start = opts.start ?? SHOP_START
   const bought = boughtUpgrades(log)
   const spent = bought.reduce((n, b) => n + b.price, 0)
+  const picks = picksFrom(log)
 
   const at = new Date(now)
   const clockDay = localDay(at)
   // the clock never goes backwards: a device that has already seen a later day keeps it
   let today = opts.floorDay && opts.floorDay > clockDay ? opts.floorDay : clockDay
   let todayShare = today === clockDay ? dayShare(at) : 1
-  if (today < start) return empty(start, today, bought, spent)
+  if (today < start) return { ...empty(start, today, bought, spent), picks }
   if (daysBetween(start, today) > MAX_TRADING_DAYS) {
     today = addDays(start, MAX_TRADING_DAYS)
     todayShare = 1
@@ -197,6 +219,8 @@ export function deriveBookshop(
     .sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : a.id < b.id ? -1 : 1))
 
   const stock = new Map<string, number>()
+  /** copies of each title sold since opening day, for the best sellers */
+  const soldBy = new Map<string, number>()
   let total = 0
   let earned = 0
   let sold = 0
@@ -206,6 +230,7 @@ export function deriveBookshop(
   const live: UpgradeId[] = []
   let trading = tradingWith(live)
   const recent: DayTrade[] = []
+  const sales: Array<{ day: string; titles: Line[] }> = []
   const window = addDays(today, -(RECENT_DAYS - 1))
   const firstRecent = window < start ? start : window
 
@@ -231,15 +256,29 @@ export function deriveBookshop(
         // most copies first, then the title that opened first: a settled order
         .sort((a, b) => b.copies - a.copies || cmpTitle(titleOf, a.id, b.id))
       const part = shareOut(took, entries, total)
-      for (const [id, n] of part) stock.set(id, (stock.get(id) ?? 0) - n)
+      // staff picks sell like any other book, and bring one coin more each (T-0123)
+      let bonus = 0
+      for (const [id, n] of part) {
+        stock.set(id, (stock.get(id) ?? 0) - n)
+        soldBy.set(id, (soldBy.get(id) ?? 0) + n)
+        if (picks.length > 0 && pickedOn(picks, id, day)) bonus += n * PICK_BONUS
+      }
       total -= took
       sold += took
-      earned += took * trading.price
+      const coins = took * trading.price + bonus
+      earned += coins
+      sales.push({
+        day,
+        titles: [...part]
+          .map(([id, copies]) => ({ id, book: titleOf.get(id)!.book, copies }))
+          .sort((a, b) => b.copies - a.copies || cmpTitle(titleOf, a.id, b.id))
+          .slice(0, 3),
+      })
       if (day >= firstRecent) {
         const titles = [...part]
           .map(([id, copies]) => ({ id, book: titleOf.get(id)!.book, copies }))
           .sort((a, b) => b.copies - a.copies || cmpTitle(titleOf, a.id, b.id))
-        recent.push({ day, copies: took, coins: took * trading.price, titles })
+        recent.push({ day, copies: took, coins, titles })
       }
     }
   }
@@ -248,6 +287,20 @@ export function deriveBookshop(
     .filter(([, copies]) => copies > 0)
     .map(([id, copies]) => ({ id, book: titleOf.get(id)!.book, copies }))
     .sort((a, b) => b.copies - a.copies || cmpTitle(titleOf, a.id, b.id))
+
+  // the window: picks still picked that have copies left; a sold-out one has left by itself
+  const inWindow = currentPicks(picks)
+    .filter((p) => (stock.get(p.id) ?? 0) > 0 && titleOf.has(p.id))
+    .slice(0, MAX_PICKS)
+    .map((p) => ({ id: p.id, book: titleOf.get(p.id)!.book, copies: stock.get(p.id)! }))
+  const ranked = (counts: Map<string, number>) =>
+    [...counts]
+      .filter(([id, n]) => n > 0 && titleOf.has(id))
+      .map(([id, copies]) => ({ id, book: titleOf.get(id)!.book, copies }))
+      .sort((a, b) => b.copies - a.copies || cmpTitle(titleOf, a.id, b.id))
+  const week = new Map<string, number>()
+  const weekFrom = addDays(today, -(WEEK_DAYS - 1))
+  for (const d of recent) if (d.day >= weekFrom) for (const t of d.titles) week.set(t.id, (week.get(t.id) ?? 0) + t.copies)
 
   return {
     start,
@@ -266,6 +319,11 @@ export function deriveBookshop(
     trading,
     recent,
     recentFrom: firstRecent,
+    picks,
+    window: inWindow,
+    bestsellers: ranked(soldBy).slice(0, 3),
+    weekBest: ranked(week)[0] ?? null,
+    sales,
   }
 }
 

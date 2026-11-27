@@ -26,6 +26,11 @@ const shop = (over: Partial<Bookshop> = {}): Bookshop => ({
   trading: { customers: 6, price: 2 },
   recent: [],
   recentFrom: '2026-11-26',
+  picks: [],
+  window: [],
+  bestsellers: [],
+  weekBest: null,
+  sales: [],
   ...over,
 })
 
@@ -70,10 +75,10 @@ describe('the till', () => {
     expect(tradeSentence(shop())).toBe('6 customers a day, 2 coins a copy.')
   })
   it('says what she is saving up for and how far off it is', () => {
-    expect(savingSentence(shop({ coins: 22 }))).toBe('A sign over the door costs 40 coins — 18 to go.')
+    expect(savingSentence(shop({ coins: 22 }))).toBe('A sign over the door costs 30 coins — 8 to go.')
   })
   it('says when she can afford it', () => {
-    expect(savingSentence(shop({ coins: 40 }))).toBe('You can afford a sign over the door.')
+    expect(savingSentence(shop({ coins: 30 }))).toBe('You can afford a sign over the door.')
   })
   it('says when there is nothing left to buy', () => {
     const all = shop({ owned: new Set(UPGRADES.map((u) => u.id)), coins: 9999 })
@@ -94,5 +99,45 @@ describe('small bits', () => {
   it('says what every thing in the shop does', () => {
     for (const u of UPGRADES) expect(upgradeEffect(u)).not.toBe('')
     expect(upgradeEffect(UPGRADES[0])).toBe('+2 customers a day')
+  })
+})
+
+describe('customer notes and the magnetic board (T-0123)', async () => {
+  const { customerNotes, noteBoard, weekBestSentence } = await import('./words')
+  const b = (id: string, title: string, extra: Partial<Line['book']> = {}) =>
+    ({ id, title, authors: [], color: '#333', status: 'read', addedAt: 0, ...extra }) as Line['book']
+  const day = (d: string, lines: Array<[Line['book'], number]>) => ({ day: d, titles: lines.map(([book, copies]) => ({ id: book.id, book, copies })) })
+
+  it('leaves a note about each of a day’s best sellers, and every note stays on the board, newest first', () => {
+    const sales = [day('2026-11-28', [[b('a', 'Babel'), 5], [b('c', 'Circe'), 2]]), day('2026-11-29', [[b('p', 'Piranesi'), 4]])]
+    const board = noteBoard(shop({ sales }))
+    expect(board.map((n) => [n.day, n.title])).toEqual([
+      ['2026-11-29', 'Piranesi'],
+      ['2026-11-28', 'Babel'],
+      ['2026-11-28', 'Circe'],
+    ])
+    for (const n of board) {
+      expect(n.text).toContain(n.title)
+      expect(n.by.length).toBeGreaterThan(0)
+    }
+    // the same on every device, every time: nothing is saved
+    expect(noteBoard(shop({ sales }))).toEqual(board)
+    // a later day only adds notes; the old ones stay exactly as they were
+    const later = noteBoard(shop({ sales: [...sales, day('2026-11-30', [[b('d', 'Dune'), 1]])] }))
+    expect(later.slice(1)).toEqual(board)
+    expect(customerNotes(shop({ sales }), 1).map((n) => n.title)).toEqual(['Piranesi'])
+  })
+
+  it('is kind about a book she rated low', () => {
+    for (const d of ['2026-12-01', '2026-12-02', '2026-12-03', '2026-12-04', '2026-12-05', '2026-12-06']) {
+      const [note] = noteBoard(shop({ sales: [day(d, [[b('x', 'Quiet Book', { rating: 1.5 }), 3]])] }))
+      expect(note.text).not.toMatch(/boring|bad|awful|disappoint|waste/i)
+    }
+  })
+
+  it('says nothing before anything has sold', () => {
+    expect(noteBoard(shop())).toEqual([])
+    expect(weekBestSentence(shop())).toBe('No book of the week yet.')
+    expect(weekBestSentence(shop({ weekBest: { id: 'a', book: b('a', 'Babel'), copies: 14 } }))).toBe('Babel, 14 copies this week')
   })
 })

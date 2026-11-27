@@ -22,6 +22,12 @@
  *   of reading away — an idle game should still have something left to want.
  */
 
+/*
+ * T-0123 (D-0091) changed the opening numbers: 4 coins a copy instead of 2, the first three
+ * things cheaper, and eight more things after the tea counter. The shop is worked out again
+ * from her reading each time, so the new price counts from opening day.
+ */
+
 /** The day the shop opened its door. Nothing before it was ever sold, and no coin was earned. */
 export const SHOP_START = '2026-11-26'
 
@@ -45,8 +51,25 @@ export const OPENING_COPIES = 1
 /** Customers through the door on a day, with nothing bought yet. */
 export const BASE_CUSTOMERS = 6
 
-/** Coins a customer leaves for one copy, with nothing bought yet. */
-export const BASE_PRICE = 2
+/**
+ * Coins a customer leaves for one copy, with nothing bought yet. Was 2 on opening day; Hanna
+ * asked for a quicker start (T-0123), so the sign is a day or two away instead of a week.
+ */
+export const BASE_PRICE = 4
+
+// ---- staff picks (T-0123, D-0091) --------------------------------------------------------
+
+/** Books she can put in the window at once. */
+export const MAX_PICKS = 3
+
+/** Extra coins for every copy of a staff pick sold while it is picked. Picks sell like any other book. */
+export const PICK_BONUS = 1
+
+/** Customer notes on the noticeboard each day. */
+export const NOTES_PER_DAY = 3
+
+/** Days counted for the book of the week. */
+export const WEEK_DAYS = 7
 
 /**
  * A customer who finds the shelves bare leaves again; the sale is not saved up
@@ -67,7 +90,23 @@ export const MAX_TRADING_DAYS = 3650
 
 // ---- the things coins buy (D-0084 §4) -------------------------------------------------------
 
-export type UpgradeId = 'sign' | 'till' | 'shelf' | 'chair' | 'window' | 'cat' | 'lamp' | 'tea'
+export type UpgradeId =
+  | 'sign'
+  | 'till'
+  | 'shelf'
+  | 'chair'
+  | 'window'
+  | 'cat'
+  | 'lamp'
+  | 'tea'
+  | 'lights'
+  | 'ladder'
+  | 'kids'
+  | 'records'
+  | 'seat'
+  | 'fire'
+  | 'dog'
+  | 'bindery'
 
 export interface Upgrade {
   readonly id: UpgradeId
@@ -88,14 +127,24 @@ export interface Upgrade {
  * she cannot see standing in her shop afterwards.
  */
 export const UPGRADES: readonly Upgrade[] = [
-  { id: 'sign', name: 'A sign over the door', price: 40, customers: 2, coins: 0, says: 'People walking past can finally tell it is a bookshop.' },
-  { id: 'till', name: 'A proper till', price: 90, customers: 0, coins: 1, says: 'No more counting coins into a biscuit tin.' },
-  { id: 'shelf', name: 'A second shelf', price: 160, customers: 2, coins: 0, says: 'Twice as much to browse, so more people come in.' },
+  // the first three got cheaper for a quicker start (T-0123): a purchase already made keeps what she paid
+  { id: 'sign', name: 'A sign over the door', price: 30, customers: 2, coins: 0, says: 'People walking past can finally tell it is a bookshop.' },
+  { id: 'till', name: 'A proper till', price: 60, customers: 0, coins: 1, says: 'No more counting coins into a biscuit tin.' },
+  { id: 'shelf', name: 'A second shelf', price: 120, customers: 2, coins: 0, says: 'Twice as much to browse, so more people come in.' },
   { id: 'chair', name: 'A reading chair', price: 260, customers: 2, coins: 0, says: 'People sit down, read a chapter, and then buy the book.' },
   { id: 'window', name: 'A window display', price: 400, customers: 0, coins: 1, says: 'The good ones face the street, and nobody haggles.' },
   { id: 'cat', name: 'A shop cat', price: 600, customers: 3, coins: 0, says: 'Half the town comes in for the cat. They leave with a book.' },
   { id: 'lamp', name: 'A warm lamp', price: 850, customers: 0, coins: 1, says: 'The shop glows, and people linger instead of leaving.' },
   { id: 'tea', name: 'A tea counter', price: 1200, customers: 3, coins: 1, says: 'Tea, a book, an afternoon gone. Her favourite kind of customer.' },
+  // eight more to save up for after the tea counter (T-0123, D-0091)
+  { id: 'lights', name: 'Fairy lights', price: 1600, customers: 2, coins: 0, says: 'Strung along the shelves. The shop looks like a present.' },
+  { id: 'ladder', name: 'A rolling ladder', price: 1900, customers: 0, coins: 1, says: 'The top shelf, finally in reach.' },
+  { id: 'kids', name: "A children's corner", price: 2300, customers: 3, coins: 0, says: 'Small chairs, big picture books, parents who stay.' },
+  { id: 'records', name: 'A record player', price: 2700, customers: 0, coins: 1, says: 'Something quiet and crackly in the background.' },
+  { id: 'seat', name: 'A window seat', price: 3200, customers: 2, coins: 0, says: 'Cushions in the window, and a view of the street.' },
+  { id: 'fire', name: 'A fireplace', price: 3700, customers: 0, coins: 1, says: 'Nobody hurries out into the cold any more.' },
+  { id: 'dog', name: 'A shop dog', price: 4300, customers: 3, coins: 0, says: 'The cat has opinions. The customers adore him.' },
+  { id: 'bindery', name: 'A bookbinding table', price: 5000, customers: 1, coins: 1, says: 'Old books mended, new ones bound by hand.' },
 ]
 
 const BY_ID = new Map(UPGRADES.map((u) => [u.id, u]))
@@ -103,5 +152,5 @@ const BY_ID = new Map(UPGRADES.map((u) => [u.id, u]))
 export const upgrade = (id: string): Upgrade | undefined => BY_ID.get(id as UpgradeId)
 export const isUpgradeId = (id: unknown): id is UpgradeId => typeof id === 'string' && BY_ID.has(id as UpgradeId)
 
-/** What all eight together would cost, for the "everything bought" line. */
+/** What all of them together would cost, for the "everything bought" line. */
 export const ALL_UPGRADES_COST = UPGRADES.reduce((n, u) => n + u.price, 0)
