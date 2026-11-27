@@ -1,5 +1,6 @@
 import type { Book } from './library'
 import { localDay } from './library'
+import { finishEstimate } from './insightsMore'
 
 /**
  * Finish estimates: when Hanna will finish a book at the pace she's reading
@@ -22,20 +23,12 @@ const fromNumber = (n: number) => new Date(n * 86_400_000).toISOString().slice(0
  */
 export function daysToFinish(book: Book, today = localDay()): number | null {
   if (book.status !== 'reading') return null
-  const left = 1 - (book.progress ?? 0)
-  if (left <= 0) return null
-  const now = dayNumber(today)
-  let read = 0
-  let days = 0
-  for (const [day, amount] of Object.entries(book.readingLog ?? {})) {
-    const ago = now - dayNumber(day)
-    if (ago < 0 || ago >= PACE_DAYS || amount <= 0) continue
-    read += amount
-    days++
-  }
-  if (days < MIN_READING_DAYS || read <= 0) return null
-  const n = Math.ceil(left / (read / PACE_DAYS))
-  return n > 365 ? null : n
+  if (1 - (book.progress ?? 0) <= 0) return null
+  // the same sum as the Finish by block (T-0120): the strip and the block named two different
+  // days for one book. This one stays a little more careful: it wants 3 reading days.
+  const e = finishEstimate(book, new Date(`${today}T12:00:00`))
+  if (!e.known || e.readingDays < MIN_READING_DAYS) return null
+  return e.daysAway > 365 ? null : e.daysAway
 }
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']

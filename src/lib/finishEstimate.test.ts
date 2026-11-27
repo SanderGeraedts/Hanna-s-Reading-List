@@ -1,15 +1,23 @@
 import { describe, expect, it } from 'vitest'
 import type { Book } from './library'
 import { dayText, daysLeftText, daysToFinish, goalForecast } from './finishEstimate'
+import { finishEstimate } from './insightsMore'
 
 const book = (extra: Partial<Book>): Book => ({ id: 'b', title: 'B', authors: [], color: '#888888', status: 'reading', addedAt: 0, ...extra })
 const TODAY = '2026-11-21' // a Saturday
 
 describe('finish estimates', () => {
   it('works out the days left from the last 14 days, days without reading included', () => {
-    // 3 reading days of 10% each in the last two weeks: 30% / 14 days; 50% left -> 24 days
+    // 3 reading days of 10% each in the last two weeks: 30% / 14 days; 50% left -> 24 days of
+    // reading, and today (not read in yet) is the first of them -> 23 days away, as Finish by says
     const b = book({ progress: 0.5, readingLog: { '2026-11-20': 0.1, '2026-11-15': 0.1, '2026-11-10': 0.1 } })
-    expect(daysToFinish(b, TODAY)).toBe(24)
+    expect(daysToFinish(b, TODAY)).toBe(23)
+  })
+
+  it('names the same day as the Finish by block (T-0120)', () => {
+    const b = book({ progress: 0.35, started: ['2026-11-01'], readingLog: { '2026-11-20': 0.05, '2026-11-18': 0.05, '2026-11-17': 0.05, '2026-11-12': 0.05 } })
+    const e = finishEstimate(b, new Date(`${TODAY}T12:00:00`))
+    expect(e.known && e.daysAway).toBe(daysToFinish(b, TODAY))
   })
 
   it('says nothing with fewer than 3 reading days, for older reading, or a paused or finished book', () => {

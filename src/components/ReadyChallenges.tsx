@@ -175,7 +175,8 @@ export function SeriesChallengeCard({
     <section className="dash-card series-challenge" aria-labelledby="challenge-series-title">
       <div className="dash-card-head">
         <h2 id="challenge-series-title">Read the series</h2>
-        <span className="muted small-text">{`${done} of ${rows.length}`}</span>
+        {/* no "0 of 0" before she has picked a series (T-0120) */}
+        {rows.length > 0 && <span className="muted small-text">{`${done} of ${rows.length}`}</span>}
       </div>
       {rows.length === 0 ? (
         <p className="muted small-text">Pick a series to finish this year.</p>
