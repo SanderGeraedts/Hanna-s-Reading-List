@@ -91,6 +91,7 @@ global one replaced ends its line with `Replaced by G-NNNN.`
 - [D-0095 In every monthly challenge, a month's book is fixed once the month starts](D-0095-a-month-is-fixed-once-it-starts.md): Replaces only the change rule of D-0094 §4: pick or change a month before it starts, for the original and her own monthly challenges.
 - [D-0096 A started month without a book can still get one](D-0096-an-empty-month-can-still-get-a-book.md): Adds to D-0095: an empty month can be filled after it starts, and is fixed once filled.
 - [D-0097 Missing details: look up back texts, genres and countries for her to review, and go through the rest one book at a time](D-0097-missing-details.md): A list of books missing a back text, genres, country, tropes or characters; Open Library finds are reviewed before saving and only fill empty fields; one-by-one mode opens each book on the right tab.
+- [D-0098 A pile challenge counts books on the shelf before it was made; the Challenges page goes one year ahead](D-0098-pile-from-the-challenge-start-and-next-year.md): From my pile counts books added before the challenge was made, not before 1 January; next year can be drafted on the Challenges page.
 
 ## Open questions
 

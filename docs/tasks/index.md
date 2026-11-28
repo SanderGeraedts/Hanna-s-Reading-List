@@ -58,6 +58,7 @@ None.
 - [T-0127 Fix a month's book once the month starts, in every monthly challenge](T-0127-month-fixed-once-started.md) (small): Back to the original rule for all monthly challenges: pick or change a month only before it starts.
 - [T-0128 Fill empty months, open the map from the 📍 line, show the book of the week, and fewer words](T-0128-small-follow-ups.md) (small): Empty started months can still get a book (D-0096); the 📍 line in Reading today opens the Stats page at the map; Today in your world names the bookshop's book of the week; three more sentences trimmed.
 - [T-0129 List the books missing details, look up what Open Library knows, and go through the rest one by one](T-0129-missing-details.md): Missing details: back text, genres, country, tropes and characters per book; Open Library finds reviewed before saving; a one-book-at-a-time mode.
+- [T-0130 Count the pile from the day the challenge was made, and let her draft next year's challenges](T-0130-pile-and-next-year.md) (small): From my pile counts books on the shelf before the challenge was made; the Challenges page steps one year ahead for drafting.
 
 ## Done
 

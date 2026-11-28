@@ -122,7 +122,7 @@ describe('two rules with AND', () => {
     expect(ruleText(challenge({ rule: 'author', value: 'Sarah J. Maas' }), books)).toBe('Books by Sarah J. Maas')
     // two halves that cannot share one "books" fall back to a dot
     expect(ruleText(challenge({ rule: 'pile', and: 'genre', andValue: 'Fantasy' }), books)).toBe(
-      'Books on your shelf before 2026 · and fantasy books',
+      'Books on your shelf before 1 Jan 2026 · and fantasy books',
     )
   })
 })
@@ -163,5 +163,25 @@ describe('sleep reads never count, in any unit, with or without an AND', () => {
       const withAnd = challenge({ rule: 'genre', value: 'Fantasy', and: 'rating4', ...(unit && { unit }) })
       expect(challengeBooks(withAnd, shelf)).toEqual([])
     }
+  })
+})
+
+describe('the pile counts from the day the challenge was made (T-0130, D-0098)', async () => {
+  const { challengeBooks, challengeStart, ruleText } = await import('./ownChallenges')
+  const made = new Date(2026, 5, 15, 12).getTime() // 15 June 2026
+  const id = `c${made.toString(36)}abcd`
+  const pile = { id, name: 'Pile', target: 12, year: 2026, rule: 'pile' as const }
+  const b = (bid: string, added: Date, finished: string) =>
+    ({ id: bid, title: bid, authors: [], color: '#333', status: 'read', addedAt: added.getTime(), finished: [finished] }) as Parameters<typeof challengeBooks>[1][number]
+
+  it('reads the day from the challenge itself', () => {
+    expect(challengeStart(pile)).toBe(made)
+    expect(challengeStart({ id: 'old-id', year: 2026 })).toBe(new Date(2026, 0, 1).getTime())
+  })
+
+  it('counts books on the shelf before that day, not only before 1 January', () => {
+    const books = [b('march', new Date(2026, 2, 1), '2026-08-01'), b('july', new Date(2026, 6, 1), '2026-08-02'), b('old', new Date(2025, 0, 1), '2026-08-03')]
+    expect(challengeBooks(pile, books).map((x) => x.id).sort()).toEqual(['march', 'old'])
+    expect(ruleText(pile, books)).toBe('Books on your shelf before 15 Jun 2026')
   })
 })
