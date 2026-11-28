@@ -360,6 +360,7 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
               editable={year >= thisYear}
               onAdd={(c) => setOwn([...own, c])}
               onRemove={(cid) => setOwn(own.filter((x) => x.id !== cid))}
+              onShowBook={onShowBook}
             />
           ) : (
             <AlphabetCard key={`alphabet-${year}`} books={books} onShowBook={onShowBook} onUpdate={onUpdate} year={year} />

@@ -8,7 +8,7 @@ depends_on: [T-0130]
 decisions: [D-0099]
 raised_on: 2026-11-28
 done_on: ""
-result: []
+result: [https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/290]
 ---
 
 # Goal
@@ -34,4 +34,5 @@ The form: [A number of books | A book a month], then [For 2026 | Until I reach t
 # Log
 
 - 2026-11-28 developer: built.
+- 2026-11-28 developer: merged in #290 and live.
 - 2026-11-28 developer: Remaining: Hanna switches her pile challenge on the live site.
