@@ -53,6 +53,20 @@ export const TABS = [
 
 export type TabId = (typeof TABS)[number][0]
 
+/**
+ * Opening a book on a given tab (T-0129): Missing details opens a book where the missing
+ * detail is filled in. The next panel to open takes it once; otherwise it opens on Reading.
+ */
+let wantedTab: TabId | null = null
+export function openNextBookOn(tab: TabId) {
+  wantedTab = tab
+}
+function takeWantedTab(): TabId | null {
+  const t = wantedTab
+  wantedTab = null
+  return t
+}
+
 interface Props {
   book: Book
   onFace: (face: Face) => void
@@ -391,8 +405,8 @@ export function BookPanel({
    * remembers the last tab: the state starts at 'reading' on every mount, and a
    * different book resets it.
    */
-  const [tab, setTab] = useState<TabId>('reading')
-  useEffect(() => setTab('reading'), [book.id])
+  const [tab, setTab] = useState<TabId>(() => takeWantedTab() ?? 'reading')
+  useEffect(() => setTab(takeWantedTab() ?? 'reading'), [book.id])
   const tabRefs = useRef<Partial<Record<TabId, HTMLButtonElement | null>>>({})
   const openTab = (next: TabId) => {
     // switching tab unmounts the fields, so what she typed is saved first
