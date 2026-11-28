@@ -8,7 +8,7 @@ depends_on: [T-0126]
 decisions: [D-0098]
 raised_on: 2026-11-28
 done_on: ""
-result: []
+result: [https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/289]
 ---
 
 # Goal
@@ -34,4 +34,5 @@ The pile rule reads "Books on your shelf before <day>"; the year switch on the C
 # Log
 
 - 2026-11-28 developer: built.
+- 2026-11-28 developer: merged in #289 and live; Hanna then asked for no year at all (T-0131, D-0099).
 - 2026-11-28 developer: Remaining: Hanna checks it on the live site.

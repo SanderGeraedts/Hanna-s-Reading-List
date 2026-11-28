@@ -81,3 +81,21 @@ describe('making one', () => {
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ name: 'From my TBR', target: 12, year: 2026, kind: 'monthly', months: {} }))
   })
 })
+
+describe('until I reach the goal (T-0131, D-0099)', () => {
+  it('the form offers For 2026 or Until I reach the goal, and saves the choice', () => {
+    const onSave = vi.fn()
+    render(<NewChallengeForm books={BOOKS} year={2026} onSave={onSave} onCancel={() => {}} />)
+    expect(screen.getByRole('button', { name: 'For 2026' }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: 'Until I reach the goal' }))
+    fireEvent.change(screen.getByPlaceholderText('e.g. Fantasy year'), { target: { value: 'Ten fantasy' } })
+    fireEvent.submit(screen.getByRole('form', { name: 'New challenge' }))
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ name: 'Ten fantasy', untilDone: true }))
+  })
+
+  it('a book a month has no such choice', () => {
+    render(<NewChallengeForm books={BOOKS} year={2026} onSave={() => {}} onCancel={() => {}} />)
+    fireEvent.click(screen.getByRole('button', { name: 'A book a month' }))
+    expect(screen.queryByRole('button', { name: 'Until I reach the goal' })).toBeNull()
+  })
+})

@@ -185,3 +185,28 @@ describe('the pile counts from the day the challenge was made (T-0130, D-0098)',
     expect(ruleText(pile, books)).toBe('Books on your shelf before 15 Jun 2026')
   })
 })
+
+describe('until she reaches the goal (T-0131, D-0099)', async () => {
+  const { challengeBooks, cleanChallenges, doneYear, showsIn, PILE_CHALLENGE } = await import('./ownChallenges')
+  const made = new Date(2026, 10, 28, 10).getTime()
+  const c = { id: `c${made.toString(36)}abcd`, name: 'Pile', target: 2, year: 2026, rule: 'pile' as const, untilDone: true as const }
+  const b = (bid: string, added: Date, finished: string) =>
+    ({ id: bid, title: bid, authors: [], color: '#333', status: 'read', addedAt: added.getTime(), finished: [finished] }) as Parameters<typeof challengeBooks>[1][number]
+
+  it('counts from the day it was made across New Year, and is done when the goal is reached', () => {
+    const books = [b('before', new Date(2025, 0, 1), '2026-11-01'), b('dec', new Date(2025, 0, 1), '2026-12-20'), b('jan', new Date(2025, 0, 1), '2027-01-05')]
+    expect(challengeBooks(c, books).map((x) => x.id).sort()).toEqual(['dec', 'jan'])
+    expect(doneYear(c, books)).toBe(2027)
+    expect(showsIn(c, 2026, books, 2027)).toBe(true)
+    expect(showsIn(c, 2027, books, 2027)).toBe(true)
+    expect(showsIn(c, 2028, books, 2028)).toBe(false)
+  })
+
+  it('keeps showing while it runs, and survives saving', () => {
+    expect(showsIn(c, 2027, [], 2027)).toBe(true)
+    expect(cleanChallenges([c])[0].untilDone).toBe(true)
+    // a book a month is always one year
+    expect(cleanChallenges([{ ...c, kind: 'monthly', months: {} }])[0].untilDone).toBeUndefined()
+    expect(PILE_CHALLENGE.untilDone).toBe(true)
+  })
+})

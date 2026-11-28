@@ -8918,3 +8918,10 @@ button.today-item:hover {
   display: flex;
   gap: 0.4rem;
 }
+
+/* the round 📖 button steps aside while she fills in a form or types (T-0131): it covered
+   "Sleep reads don't count" and the buttons of the new-challenge form on a phone */
+body:has(.own-challenge-form) .quick-fab,
+body:has(input:focus, textarea:focus, select:focus) .quick-fab {
+  display: none;
+}
