@@ -14,7 +14,7 @@ const { periodStats } = await import('./stats')
 const { reading, readingStreak } = await import('./insights')
 const { searchShelf } = await import('./search')
 const { readNextChoices } = await import('./readNext')
-const { DEFAULT_LAYOUT, cleanLayout } = await import('./dashboardLayout')
+const { DEFAULT_LAYOUT, SECTION_IDS, cleanLayout } = await import('./dashboardLayout')
 const { bookOfTheDay, putAside, stoppedAtText } = await import('./didNotFinish')
 
 const book = (id: string, extra: Partial<Book> = {}): Book => ({
@@ -210,10 +210,11 @@ describe('Give it another try (#187)', () => {
     expect(stoppedAtText(book('a'))).toBeNull()
   })
 
-  it('is at the bottom of the left column of Today, also on a dashboard arranged before it', () => {
-    expect(DEFAULT_LAYOUT.sections.today[0].at(-1)).toBe('again')
+  it('is one of the turns of Pick of the day now, not a block of its own (T-0124)', () => {
+    expect(SECTION_IDS.flatMap((s) => DEFAULT_LAYOUT.sections[s].flat())).not.toContain('again')
+    expect(DEFAULT_LAYOUT.sections.today.flat()).toContain('pick')
     const saved = structuredClone(DEFAULT_LAYOUT)
-    saved.sections.today[0] = saved.sections.today[0].filter((id) => id !== 'again')
-    expect(cleanLayout(saved).sections.today[0].at(-1)).toBe('again')
+    saved.sections.today[0] = [...saved.sections.today[0], 'again']
+    expect(cleanLayout(saved).sections.today.flat()).not.toContain('again')
   })
 })

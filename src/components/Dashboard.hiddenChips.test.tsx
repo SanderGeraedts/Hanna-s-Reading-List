@@ -33,7 +33,7 @@ const { Dashboard } = await import('./Dashboard')
  */
 
 const KEY = 'hannas-reading-list:dashboard:local'
-const HIDDEN: BlockId[] = ['lent', 'reading', 'pace']
+const HIDDEN: BlockId[] = ['readingtoday', 'challenge', 'fact']
 
 /** A saved layout with these blocks hidden, taken out of their sections as hiding does. */
 const withHidden = (hidden: BlockId[]): DashboardLayout => ({
@@ -63,25 +63,25 @@ describe('Enter on a Hidden chip keeps focus on the row (T-0044, F7)', () => {
   it('after Enter on a chip, focus moves to the next chip', () => {
     show()
     arrange()
-    const first = chips().find((c) => c.dataset.hidden === 'lent')!
+    const first = chips().find((c) => c.dataset.hidden === 'readingtoday')!
     first.focus()
     expect(document.activeElement).toBe(first)
     fireEvent.click(first)
-    // 'lent' is gone, the first remaining chip is 'reading'
+    // 'readingtoday' is gone, the first remaining chip is 'challenge'
     const next = chips()
-    expect(next.map((c) => c.dataset.hidden)).toEqual(['reading', 'pace'])
+    expect(next.map((c) => c.dataset.hidden)).toEqual(['challenge', 'fact'])
     expect(document.activeElement).toBe(next[0])
   })
 
   it('after Enter on the last chip, focus moves to the restored block\'s handle', () => {
-    localStorage.setItem(KEY, JSON.stringify(withHidden(['reading'])))
+    localStorage.setItem(KEY, JSON.stringify(withHidden(['challenge'])))
     show()
     arrange()
     const last = chips()[0]
-    expect(last.dataset.hidden).toBe('reading')
+    expect(last.dataset.hidden).toBe('challenge')
     fireEvent.click(last)
     expect(chips()).toHaveLength(0)
-    const handle = document.querySelector<HTMLElement>('.dashboard-grid [data-block="reading"] .block-handle')
+    const handle = document.querySelector<HTMLElement>('.dashboard-grid [data-block="challenge"] .block-handle')
     expect(handle).toBeTruthy()
     expect(document.activeElement).toBe(handle)
   })

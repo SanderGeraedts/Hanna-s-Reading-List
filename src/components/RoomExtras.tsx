@@ -27,7 +27,9 @@ interface Piece {
 /** One geometry out of many little boxes and cylinders, so a whole prop is one draw. */
 function merge(pieces: Piece[]): THREE.BufferGeometry {
   const parts = pieces.map(({ geometry, position, rotation, scale }) => {
-    const g = geometry.clone()
+    // all pieces the same shape of data: a rounded box comes without an index, a box or a
+    // cylinder with one, and mergeGeometries refuses (returns null) on a mix (T-0124)
+    const g = geometry.index ? geometry.toNonIndexed() : geometry.clone()
     const m = new THREE.Matrix4().compose(
       new THREE.Vector3(...(position ?? [0, 0, 0])),
       new THREE.Quaternion().setFromEuler(new THREE.Euler(...(rotation ?? [0, 0, 0]))),
@@ -37,8 +39,10 @@ function merge(pieces: Piece[]): THREE.BufferGeometry {
     g.deleteAttribute('uv')
     return g
   })
-  const out = mergeGeometries(parts, false)!
+  const merged = mergeGeometries(parts, false)
   for (const g of parts) g.dispose()
+  if (!merged) throw new Error('RoomExtras: pieces that cannot be merged')
+  const out = merged
   out.computeVertexNormals()
   return out
 }

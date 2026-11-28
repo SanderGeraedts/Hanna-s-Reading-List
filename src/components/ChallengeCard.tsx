@@ -28,6 +28,8 @@ interface Props {
   /** on the dashboard: no share */
   compact?: boolean
   onOpen?: () => void
+  /** the today dashboard (T-0124): this month's book only; the year is on the Challenges page */
+  thisMonthOnly?: boolean
 }
 
 /**
@@ -36,7 +38,7 @@ interface Props {
  * a reminder in December, and an editor to pick a book for each month that
  * hasn't started yet. See monthChallenge.ts.
  */
-export function ChallengeCard({ books, onShowBook, onUpdate, editing, onEditing, year: forYear, compact = false, onOpen }: Props) {
+export function ChallengeCard({ books, onShowBook, onUpdate, editing, onEditing, year: forYear, compact = false, onOpen, thisMonthOnly = false }: Props) {
   const today = localDay()
   const year = Number(today.slice(0, 4))
   const now = thisMonth(today)
@@ -109,6 +111,42 @@ export function ChallengeCard({ books, onShowBook, onUpdate, editing, onEditing,
         <button type="button" className="btn small" onClick={() => onEditing(false)}>
           Done
         </button>
+      </section>
+    )
+  }
+
+  if (thisMonthOnly) {
+    const cur = c.current
+    const monthName_ = monthName(Number(now.slice(5, 7)))
+    const lastDay = new Date(Number(now.slice(0, 4)), Number(now.slice(5, 7)), 0).getDate()
+    const left = lastDay - Number(today.slice(8, 10))
+    const pct = cur ? Math.round((cur.book.progress ?? 0) * 100) : 0
+    return (
+      <section className="dash-card challenge-card challenge-today" aria-labelledby="challenge-title">
+        <div className="dash-card-head">
+          <h2 id="challenge-title">This month’s challenge</h2>
+          <OpenLink onOpen={onOpen} label="Monthly challenge" />
+        </div>
+        {cur ? (
+          <div className="challenge-now">
+            <button className="cover-btn" aria-label={`Open ${cur.book.title}`} onClick={() => onShowBook(cur.book.id)}>
+              <Cover book={cur.book} small />
+            </button>
+            <div>
+              <strong>{cur.book.title}</strong>
+              <p className="muted small-text">
+                {cur.doneOn ? `✓ Done for ${monthName_}` : `${pct}% · ${left === 0 ? 'last day of' : `${left} ${left === 1 ? 'day' : 'days'} left in`} ${monthName_}`}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="challenge-actions">
+            <p className="small-text">No book picked for {monthName_}.</p>
+            <button type="button" className="btn small" onClick={() => onEditing(true)}>
+              Set up
+            </button>
+          </div>
+        )}
       </section>
     )
   }

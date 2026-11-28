@@ -731,7 +731,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           onClose={() => setWishing(false)}
         />
       )}
-      <QuickUpdate books={books} onUpdate={updateBook} onShowBook={showBook} hidden={!loaded || !!selected} />
+      {/* not on the dashboard: Reading today logs there (T-0124) */}
+      <QuickUpdate books={books} onUpdate={updateBook} onShowBook={showBook} hidden={!loaded || !!selected || view === 'dashboard'} />
       {/* the phone's page bar; hidden by CSS on a computer, where the tabs at the top do this */}
       {!selected && (
         <BottomBar

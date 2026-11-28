@@ -54,18 +54,8 @@ export function requestBookshop() {
   }, 3000)
 }
 
-export function BookshopCard({ books, log, record, accountId = null, onOpen }: BookshopCardProps) {
-  const { shop, away, seen } = useBookshop(books, log, accountId)
-  const reduce = useReducedMotion()
-  const scene = useShopScene(shop)
-  const [open, setOpen] = useState(false)
-  const [note] = customerNotes(shop, 1)
-
-  const show = () => {
-    seen()
-    if (onOpen) onOpen()
-    else setOpen(true)
-  }
+/** Opens the shop when More › Bookshop (or a line elsewhere) asks: `show` is called once per ask. */
+export function useBookshopRequest(show: () => void) {
   const showRef = useRef(show)
   showRef.current = show
   useEffect(() => {
@@ -78,6 +68,35 @@ export function BookshopCard({ books, log, record, accountId = null, onOpen }: B
     window.addEventListener(OPEN_EVENT, take)
     return () => window.removeEventListener(OPEN_EVENT, take)
   }, [])
+}
+
+/**
+ * The shop over the dashboard (T-0124): always there, out of sight, so More › Bookshop and the
+ * bookshop line in Today in your world open it whether or not a bookshop card is on screen.
+ */
+export function BookshopHost({ books, log, record, accountId = null }: BookshopCardProps) {
+  const { shop, away, seen } = useBookshop(books, log, accountId)
+  const [open, setOpen] = useState(false)
+  useBookshopRequest(() => {
+    seen()
+    setOpen(true)
+  })
+  return open ? <BookshopShop shop={shop} away={away} onBuy={record} onClose={() => setOpen(false)} /> : null
+}
+
+export function BookshopCard({ books, log, record, accountId = null, onOpen }: BookshopCardProps) {
+  const { shop, away, seen } = useBookshop(books, log, accountId)
+  const reduce = useReducedMotion()
+  const scene = useShopScene(shop)
+  const [open, setOpen] = useState(false)
+  const [note] = customerNotes(shop, 1)
+
+  const show = () => {
+    seen()
+    if (onOpen) onOpen()
+    else setOpen(true)
+  }
+  useBookshopRequest(show)
 
   return (
     <section className="dash-card bookshop-block" aria-labelledby="bookshop-title">
