@@ -57,7 +57,11 @@ import {
   stepFavourite,
 } from '#/lib/dashboardLayout'
 import type { ArrowKey, BlockId, SectionId } from '#/lib/dashboardLayout'
-import { TodayStrip } from './TodayStrip'
+import { ReadingTodayCard } from './ReadingTodayCard'
+import { YourWorldCard, hasWorldNews, useWorldNews } from './YourWorldCard'
+import { BookshopHost } from './bookshop/BookshopCard'
+import { addedToday, longLent, pickKind, showPick } from '#/lib/todayDashboard'
+import { onThisDay } from '#/lib/insights'
 import { useDashboardLayout } from './useDashboardLayout'
 import { useArrangeBarHeight } from './useArrangeBarHeight'
 import { BadgesCard, CoverWallCard, useBirthday } from './NewBlocks'
@@ -177,6 +181,8 @@ export function Dashboard({
   const [storyYear, setStoryYear] = useState<number | null>(null)
   const [layout, setLayout] = useDashboardLayout(accountId)
   const [arranging, setArranging] = useState(false)
+  /** quiet blocks she opened from "Hidden today", for this visit */
+  const [openedAnyway, setOpenedAnyway] = useState<BlockId[]>([])
   const arrangeBar = useArrangeBarHeight()
   // the monthly challenge's editor is open (#144)
   const [challengeEditing, setChallengeEditing] = useState(false)
@@ -309,6 +315,8 @@ export function Dashboard({
     !gardenWaiting &&
     !trouble
 
+  const world = useWorldNews(creatures.c, garden.garden, books, creatures.api.choices.log, accountId)
+
   // nothing noted anywhere yet: the Tropes & characters block keeps out of the way
   const noTropes = tropesBlock(books).empty
 
@@ -342,6 +350,24 @@ export function Dashboard({
       />
     ),
     garden: <GardenCard garden={garden.garden} onOpen={onOpenGarden} />,
+    readingtoday: (
+      <ReadingTodayCard
+        books={books}
+        onShowBook={onShowBook}
+        onUpdate={onUpdate}
+        onOpenCalendar={onOpenCalendar && (() => onOpenCalendar(localDay().slice(0, 7)))}
+        onOpenMap={onOpenStats}
+      />
+    ),
+    yourworld: (
+      <YourWorldCard
+        news={world}
+        onFeed={creatures.c.pet ? () => void creatures.feed() : undefined}
+        onOpenCreatures={onOpenCreatures ? () => onOpenCreatures() : undefined}
+        onOpenGarden={onOpenGarden}
+      />
+    ),
+    pick: <PickOfTheDay books={books} accountId={accountId} onShowBook={onShowBook} onUpdate={onUpdate} onAdd={onAdd ?? (() => {})} />,
     // the shop that trades while she is away (D-0084); "Open ›" opens it over the dashboard
     bookshop: (
       <BookshopCard books={books} log={creatures.api.choices.log} record={creatures.api.choices.record} accountId={accountId} />
@@ -359,6 +385,7 @@ export function Dashboard({
         onEditing={setChallengeEditing}
         compact
         onOpen={open('monthly')}
+        thisMonthOnly
       />
     ),
     // the one block about her reading left on the dashboard (D-0060); the charts are on the Stats page
@@ -370,7 +397,8 @@ export function Dashboard({
     calendar: <Calendar books={books} onShowBook={onShowBook} onOpen={onOpenCalendar} onUpdate={onUpdate} />,
     pile: <PileCard books={books} />,
     onthisday: <OnThisDayCard books={books} onShowBook={onShowBook} />,
-    lent: <LentCard books={books} onShowBook={onShowBook} />,
+    // only the books away a month or more (T-0124)
+    lent: <LentCard books={longLent(books)} onShowBook={onShowBook} />,
     again: <AgainCard books={books} onShowBook={onShowBook} onUpdate={onUpdate} />,
     // Top 5 and the spice meter in one block, with a switch
     top: <RatingsCard books={books} onShowBook={onShowBook} />,
@@ -378,20 +406,25 @@ export function Dashboard({
     pace: <PaceCard books={books} onShowBook={onShowBook} />,
     authors: <AuthorsCard books={books} />,
     wrapped: <WrappedCard books={books} onShowBook={onShowBook} onPlay={setStoryYear} />,
-    recent: <RecentCard books={books} onShowBook={onShowBook} />,
+    // only what she added today (T-0124)
+    recent: <RecentCard books={addedToday(books)} onShowBook={onShowBook} />,
     alphabet: <AlphabetCard books={books} onShowBook={onShowBook} onUpdate={onUpdate} compact onOpen={open('alphabet')} />,
     bingo: <BingoCard books={books} onUpdate={onUpdate} compact onOpen={open('bingo')} onShowBook={onShowBook} />,
   }
 
-  /** a block that has nothing to say right now stays out of the way (still shown while arranging) */
-  const showing = (id: BlockId) =>
-    arranging ||
-    !(
-      (id === 'waiting' && nothingWaiting) ||
-      (id === 'creatures' && !creatures.c.pet && !creatures.c.egg) ||
-      (id === 'garden' && garden.garden.plants === 0) ||
-      (id === 'tropes' && noTropes)
-    )
+  /** a block with nothing to say today (T-0124): it hides, and "Hidden today" names it */
+  const quiet = (id: BlockId) =>
+    (id === 'waiting' && nothingWaiting) ||
+    (id === 'yourworld' && !hasWorldNews(world)) ||
+    (id === 'pick' && !showPick(books)) ||
+    (id === 'onthisday' && onThisDay(books).length === 0) ||
+    (id === 'lent' && longLent(books).length === 0) ||
+    (id === 'recent' && addedToday(books).length === 0) ||
+    (id === 'tropes' && noTropes)
+  /** shown: always while arranging, else unless quiet (or she opened it from Hidden today) */
+  const showing = (id: BlockId) => arranging || !quiet(id) || openedAnyway.includes(id)
+  /** the quiet ones she can open anyway, in the dashboard's order (Waiting for you never: nothing waits) */
+  const quietToday = SECTION_IDS.flatMap((s) => layout.sections[s].flat()).filter((id) => id !== 'waiting' && !showing(id))
   const columnsOf = (section: SectionId): BlockId[][] =>
     narrow ? [singleColumn(layout.sections[section])] : layout.sections[section]
   const scroller = () => root.current
@@ -599,7 +632,8 @@ export function Dashboard({
       {storyYear !== null && (
         <YearStory books={books} year={storyYear} onShowBook={onShowBook} onClose={() => setStoryYear(null)} />
       )}
-      <TodayStrip books={books} accountId={accountId} onShowBook={onShowBook} />
+      {/* the shop over the dashboard, for More › Bookshop and the bookshop line (T-0124) */}
+      <BookshopHost books={books} log={creatures.api.choices.log} record={creatures.api.choices.record} accountId={accountId} />
       <div className={`dashboard-bar${arranging ? ' arranging' : ''}`} ref={arrangeBar}>
         {arranging ? (
           <>
@@ -797,6 +831,20 @@ export function Dashboard({
           </section>
         )
       })}
+      {/* the cards with nothing to say today, to open anyway (T-0124) */}
+      {!arranging && quietToday.length > 0 && (
+        <p className="hidden-today small-text">
+          Hidden today:{' '}
+          {quietToday.map((id, i) => (
+            <span key={id}>
+              {i > 0 && ', '}
+              <button type="button" className="link-btn" onClick={() => setOpenedAnyway((o) => [...o, id])}>
+                {BLOCKS[id]}
+              </button>
+            </span>
+          ))}
+        </p>
+      )}
     </div>
   )
 }
@@ -945,6 +993,37 @@ function TopRatedCard({ books, onShowBook, switcher }: Props & { switcher?: Reac
 }
 
 // ---------------------------------------------------------------------------
+
+/**
+ * Pick of the day (T-0124, D-0093): What next?, Give it another try and New for you in one card,
+ * one kind a day taking turns, with Another for the next kind. Shown while she has room for
+ * another book (`showPick`).
+ */
+function PickOfTheDay({
+  books,
+  accountId,
+  onShowBook,
+  onUpdate,
+  onAdd,
+}: Props & { accountId: string | null; onUpdate: (id: string, patch: Partial<Book> | ((book: Book) => Partial<Book>)) => void; onAdd: (book: NewBook) => void }) {
+  const [another, setAnother] = useState(0)
+  const kind = pickKind(localDay(), another)
+  return (
+    <section className="dash-card pick-card" aria-labelledby="pick-title">
+      <div className="dash-card-head">
+        <h2 id="pick-title">Pick of the day</h2>
+        <button type="button" className="btn small" onClick={() => setAnother((n) => n + 1)}>
+          Another
+        </button>
+      </div>
+      <div className="pick-embed">
+        {kind === 'next' && <ReadNextCard books={books} onShowBook={onShowBook} />}
+        {kind === 'again' && <AgainCard books={books} onShowBook={onShowBook} onUpdate={onUpdate} />}
+        {kind === 'newforyou' && <NewForYouCard books={books} accountId={accountId} onAdd={onAdd} />}
+      </div>
+    </section>
+  )
+}
 
 function ReadNextCard({ books, onShowBook }: Props) {
   const choices = useMemo(() => readNextChoices(books), [books])

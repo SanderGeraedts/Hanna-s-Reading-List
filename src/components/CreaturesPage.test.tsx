@@ -324,15 +324,14 @@ describe('Waiting for you and the dashboard block', () => {
     expect(within(waiting).getByText('A welcome egg is waiting for you!')).toBeTruthy()
     fireEvent.click(within(waiting).getByRole('button', { name: 'Hatch' }))
     expect(open).toHaveBeenCalledWith('choose')
-    const block = screen.getByRole('region', { name: 'Creatures' })
-    expect(within(block).getByText('A welcome egg')).toBeTruthy()
+    // the Creatures block left the dashboard for Today in your world (T-0124)
+    expect(screen.queryByRole('region', { name: 'Creatures' })).toBeNull()
   })
 
-  it('has no egg line once hatched, and the block shows the creature', () => {
+  it('has no egg line once hatched', () => {
     hatchSaved('cat', 'Biscuit')
     dash()
     expect(screen.queryByText('A welcome egg is waiting for you!')).toBeNull()
-    expect(within(screen.getByRole('region', { name: 'Creatures' })).getByText('Biscuit')).toBeTruthy()
   })
 
   it('shows only the newest level-up, once, until Nice! on this device', () => {

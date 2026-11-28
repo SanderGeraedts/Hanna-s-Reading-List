@@ -8692,3 +8692,132 @@ button.today-item:hover {
     flex-wrap: wrap;
   }
 }
+
+/* ---- the today dashboard (T-0124, D-0093) ---------------------------------------------- */
+.week-dots {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.25rem;
+  width: 100%;
+  margin: 0.25rem 0 0.4rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.week-dot {
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  flex: 1;
+}
+.week-dot-mark {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+}
+.week-dot.read .week-dot-mark {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.week-dot.today .week-dot-mark {
+  box-shadow: 0 0 0 2px var(--surface-solid), 0 0 0 4px var(--accent-line);
+}
+.week-dot.future {
+  opacity: 0.45;
+}
+.week-dot-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+.week-dot.today .week-dot-label {
+  color: var(--text);
+  font-weight: 700;
+}
+.reading-streak {
+  margin: 0 0 0.5rem;
+}
+.reading-today-list {
+  list-style: none;
+  margin: 0 0 0.4rem;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+.reading-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.reading-row-text {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 0.2rem;
+}
+.reading-row-text strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.reading-place {
+  justify-self: start;
+  text-align: left;
+}
+.reading-row-steps {
+  display: flex;
+  gap: 0.3rem;
+  flex: none;
+}
+/* Pick of the day holds one of the suggestion blocks, without a card around the card */
+.pick-embed > .dash-card {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+.pick-embed > .dash-card h2 {
+  font-size: var(--fs-body);
+  color: var(--muted);
+}
+.your-world-lines {
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.your-world-lines li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 0.5rem;
+}
+.your-world-lines .link-btn {
+  text-align: left;
+}
+.your-world-shop .small-text {
+  flex-basis: 100%;
+  font-family: var(--serif);
+}
+.challenge-now {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.challenge-now p {
+  margin: 0.15rem 0 0;
+}
+.hidden-today {
+  margin: var(--space-2) 0 0;
+  color: var(--header-muted);
+}
+.hidden-today .link-btn {
+  color: inherit;
+  text-decoration: underline;
+}

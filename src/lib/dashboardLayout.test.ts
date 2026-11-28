@@ -38,11 +38,11 @@ describe('dashboard layout with sections', () => {
     // moved off the dashboard (T-0121): My year, ratings and bingo live on their own pages now
     const all = everyBlock(old)
     for (const id of ['streak', 'myyear', 'top', 'bingo']) expect(all).not.toContain(id)
-    // what stays keeps her order: fact before reading, all in Today now
+    // what stays is all in Today now; Reading today and Waiting for you come first (T-0124)
     const today = old.sections.today[0]
-    expect(today.indexOf('fact')).toBeLessThan(today.indexOf('reading'))
-    // Waiting for you first; hidden stays hidden; every block once
-    expect(today[0]).toBe('waiting')
+    expect(today).toContain('fact')
+    expect(today[0]).toBe('readingtoday')
+    expect(old.sections.today.flat()).toContain('waiting')
     expect(old.hidden).toEqual(['lent'])
     expect(new Set(all).size).toBe(all.length)
     expect(all.length).toBe(Object.keys(BLOCKS).length - OFF_DASHBOARD.length)
@@ -128,7 +128,7 @@ describe('moving within Favourites (T-0020, D-0028)', async () => {
     './dashboardLayout'
   )
   // a, b, c, d, e: columns [a, c, e] / [b, d]
-  const [a, b, c, d, e] = ['next', 'reading', 'calendar', 'pace', 'fact'] as BlockId[]
+  const [a, b, c, d, e] = ['readingtoday', 'challenge', 'pick', 'lent', 'fact'] as BlockId[]
   const five: DashboardLayout = { ...structuredClone(DEFAULT_LAYOUT), favourites: [a, b, c, d, e] }
 
   it('a drop in column c before row r is list place 2r + c of the others, or the end', () => {
@@ -221,19 +221,17 @@ describe('moving within Favourites (T-0020, D-0028)', async () => {
   })
 })
 
-describe('the Creatures block (T-0029)', () => {
-  it('stands in Today right after Monthly challenge, also on a layout saved before it, with her favourites kept', () => {
-    expect(BLOCKS.creatures).toBe('Creatures')
-    // after the fact of the day since T-0121
-    expect(DEFAULT_LAYOUT.sections.today[1].slice(0, 3)).toEqual(['challenge', 'fact', 'creatures'])
+describe('the Creatures, Garden and Bookshop blocks (T-0029, T-0124)', () => {
+  it('are folded into Today in your world, and a saved layout or star that names them loads without them', () => {
+    const today = DEFAULT_LAYOUT.sections.today.flat()
+    for (const id of ['creatures', 'garden', 'bookshop'] as const) expect(today).not.toContain(id)
+    expect(today).toContain('yourworld')
     const before = structuredClone(DEFAULT_LAYOUT)
-    before.sections.today[1] = before.sections.today[1].filter((id) => id !== 'creatures')
-    before.favourites = ['next', 'challenge']
+    before.sections.today[1] = ['creatures', ...before.sections.today[1]]
+    before.favourites = ['creatures', 'challenge']
     const loaded = cleanLayout(JSON.parse(JSON.stringify(before)))
-    expect(loaded.sections.today[1].slice(0, 3)).toEqual(['challenge', 'fact', 'creatures'])
-    expect(loaded.favourites).toEqual(['next', 'challenge'])
-    // and it can be starred like every block
-    expect(cleanLayout({ ...loaded, favourites: ['creatures'] }).favourites).toEqual(['creatures'])
+    expect(loaded.sections.today.flat()).not.toContain('creatures')
+    expect(loaded.favourites).toEqual(['challenge'])
   })
 })
 
@@ -273,13 +271,13 @@ describe('the blocks that moved to the Stats page (T-0080, D-0060)', async () =>
   })
 
   it('a layout saved before either move loads with only the blocks still on the dashboard (T-0121)', () => {
-    const l = cleanLayout(savedBefore({ favourites: ['heatmap', 'records', 'again', 'flower'] }))
+    const l = cleanLayout(savedBefore({ favourites: ['heatmap', 'records', 'lent', 'flower'] }))
     const all = everyBlock(l)
     expect(new Set(all).size).toBe(all.length)
     expect([...all].sort()).toEqual((Object.keys(BLOCKS) as BlockId[]).filter((id) => !OFF_DASHBOARD.includes(id)).sort())
     // stars on blocks that now live on the Stats page are dropped, the rest kept
-    expect(l.favourites).toEqual(['again'])
-    expect(favouriteColumns(l)).toEqual([['again'], []])
+    expect(l.favourites).toEqual(['lent'])
+    expect(favouriteColumns(l)).toEqual([['lent'], []])
   })
 
   it('a block she really hid stays hidden', () => {
@@ -303,27 +301,28 @@ describe('the Wishlist block is gone (D-0074 §6)', () => {
     saved.sections.today = saved.sections.today.map((col) => col.filter((id) => id !== 'fact'))
     saved.sections.today[1] = ['recent', 'wishlist', 'challenge']
     saved.hidden = ['fact', 'wishlist']
-    saved.favourites = ['wishlist', 'next']
+    saved.favourites = ['wishlist', 'lent']
     const loaded = cleanLayout(JSON.parse(JSON.stringify(saved)))
     const all = SECTION_IDS.flatMap((s) => loaded.sections[s].flat())
     expect(all).not.toContain('wishlist')
     expect(loaded.hidden).not.toContain('wishlist')
-    expect(loaded.favourites).toEqual(['next'])
+    expect(loaded.favourites).toEqual(['lent'])
     expect(loaded.hidden).toContain('fact')
-    expect(loaded.sections.today[1].filter((id) => ['recent', 'challenge'].includes(id))).toEqual(['recent', 'challenge'])
+    // both still on the dashboard, once each (Today's columns changed in T-0124)
+    expect(loaded.sections.today.flat().filter((id) => ['recent', 'challenge'].includes(id)).sort()).toEqual(['challenge', 'recent'])
   })
 })
 
 describe('a layout saved before the dashboard was about today (T-0121)', () => {
   it('moves what is left in the other sections into Today, same column, so no lone headings remain', () => {
     const saved = structuredClone(DEFAULT_LAYOUT)
-    saved.sections.today = [['waiting', 'reading'], ['challenge']]
-    saved.sections.stats = [['myyear'], ['calendar', 'pile']]
+    saved.sections.today = [['waiting', 'lent'], ['challenge']]
+    saved.sections.stats = [['myyear'], ['pick', 'pile']]
     saved.sections.fun = [['fact', 'badges'], []]
     const l = cleanLayout(JSON.parse(JSON.stringify(saved)))
     for (const s of SECTION_IDS) if (s !== 'today') expect(l.sections[s]).toEqual([[], []])
     const [left, right] = l.sections.today
-    expect(left.indexOf('fact')).toBeGreaterThan(left.indexOf('reading'))
-    expect(right.indexOf('calendar')).toBeGreaterThan(right.indexOf('challenge'))
+    expect(left.indexOf('fact')).toBeGreaterThan(left.indexOf('lent'))
+    expect(right.indexOf('pick')).toBeGreaterThan(right.indexOf('challenge'))
   })
 })

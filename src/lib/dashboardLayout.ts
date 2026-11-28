@@ -28,7 +28,7 @@ export const BLOCKS = {
   authors: 'Favourite authors',
   wrapped: 'Year in review',
   bingo: 'Book bingo',
-  recent: 'Newly added',
+  recent: 'Added today',
   alphabet: 'A–Z challenge',
   badges: 'Badges',
   tropes: 'Tropes & characters',
@@ -38,6 +38,10 @@ export const BLOCKS = {
   creatures: 'Creatures',
   garden: 'Garden',
   bookshop: 'Bookshop',
+  // the today dashboard (T-0124, D-0093)
+  readingtoday: 'Reading today',
+  yourworld: 'Today in your world',
+  pick: 'Pick of the day',
 } as const
 
 export type BlockId = keyof typeof BLOCKS
@@ -73,12 +77,21 @@ export interface DashboardLayout {
  * page, bingo and A–Z on the Challenges page.
  */
 export const OFF_DASHBOARD: readonly BlockId[] = [
+  // folded into Reading today, Today in your world and Pick of the day (T-0124, D-0093)
+  'reading',
+  'pace',
+  'calendar',
+  'creatures',
+  'garden',
+  'bookshop',
+  'next',
+  'newforyou',
+  'again',
   'myyear',
   'authors',
   'series',
   'pile',
   'top',
-  'onthisday',
   'badges',
   'tropes',
   'covers',
@@ -91,9 +104,11 @@ const isOff = (id: BlockId) => OFF_DASHBOARD.includes(id)
 
 export const DEFAULT_LAYOUT: DashboardLayout = {
   sections: {
+    // on a phone the two columns take turns: Reading today, Waiting, this month's challenge,
+    // your world, the pick, the fact, On this day, Lent out, Added today (T-0124)
     today: [
-      ['waiting', 'reading', 'calendar', 'pace', 'lent', 'again'],
-      ['challenge', 'fact', 'creatures', 'garden', 'bookshop', 'next', 'newforyou', 'recent'],
+      ['readingtoday', 'challenge', 'pick', 'onthisday', 'recent'],
+      ['waiting', 'yourworld', 'fact', 'lent'],
     ],
     challenges: [[], []],
     stats: [[], []],
@@ -184,6 +199,8 @@ export function cleanLayout(raw: unknown): DashboardLayout {
 
   // "Waiting for you" goes first, also on a dashboard arranged before it existed
   if (!seen.has('waiting')) sections.today[0].unshift('waiting'), seen.add('waiting')
+  // and Reading today before everything, on a dashboard arranged before the today dashboard (T-0124)
+  if (!seen.has('readingtoday')) sections.today[0].unshift('readingtoday'), seen.add('readingtoday')
   // blocks added to the app later go where they are by default: after the
   // block they follow there when she has it in that column, else at the end
   for (const s of SECTION_IDS)

@@ -105,13 +105,10 @@ describe('New for you (#186)', () => {
     expect(await findSuggestions(shelf, [], browse)).toEqual({ suggestions: [], note: NOTES.nothingNew })
   })
 
-  it('stands in Today right after What next?, also on a dashboard arranged before it', () => {
-    expect(DEFAULT_LAYOUT.sections.today[1]).toEqual(['challenge', 'fact', 'creatures', 'garden', 'bookshop', 'next', 'newforyou', 'recent'])
+  it('is one of the turns of Pick of the day now, not a block of its own (T-0124)', () => {
+    expect(DEFAULT_LAYOUT.sections.today.flat()).not.toContain('newforyou')
     const saved = structuredClone(DEFAULT_LAYOUT)
-    saved.sections.today[1] = ['challenge', 'next', 'recent']
-    expect(cleanLayout(saved).sections.today[1]).toEqual(['challenge', 'fact', 'creatures', 'garden', 'bookshop', 'next', 'newforyou', 'recent'])
-    // moved elsewhere by her: still right after What next?
-    saved.sections.today[1] = ['recent', 'next', 'challenge']
-    expect(cleanLayout(saved).sections.today[1]).toEqual(['recent', 'next', 'newforyou', 'challenge', 'fact', 'creatures', 'garden', 'bookshop'])
+    saved.sections.today[1] = ['newforyou', ...saved.sections.today[1]]
+    expect(cleanLayout(saved).sections.today.flat()).not.toContain('newforyou')
   })
 })

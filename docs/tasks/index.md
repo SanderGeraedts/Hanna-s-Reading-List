@@ -52,6 +52,7 @@ None.
 - [T-0121 Make the dashboard about today, with a page bar at the bottom on a phone](T-0121-dashboard-about-today-and-a-phone-page-bar.md): The dashboard keeps only today's blocks; the looking-back ones move to Stats and A–Z and Book bingo stay on Challenges; on a phone a bottom bar (Shelf, Dashboard, Calendar, Challenges, More) replaces the tabs at the top.
 - [T-0122 Fewer words](T-0122-fewer-words.md) (small): Long sentences across the dashboard, Stats and the bookshop cut down to the point, in the spirit of D-0014.
 - [T-0123 A cosier, livelier bookshop that shows off her books](T-0123-a-cosier-livelier-bookshop.md): The bookshop's second edition (D-0091): a quicker start, sixteen things to buy, staff picks, best sellers and a book of the week, a board of kind customer notes, and a moving room that turns to evening, shows the garden's weather and decorates for the season.
+- [T-0124 Make every dashboard card show only today](T-0124-the-today-dashboard.md): Reading today, Today in your world and Pick of the day replace nine blocks; quiet cards hide behind a Hidden today line; On this day comes back; and the armchair no longer breaks the room on a computer.
 
 ## Done
 

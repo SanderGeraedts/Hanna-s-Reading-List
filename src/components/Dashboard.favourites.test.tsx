@@ -35,7 +35,7 @@ const { Dashboard } = await import('./Dashboard')
  */
 
 const KEY = 'hannas-reading-list:dashboard:local'
-const FOUR: BlockId[] = ['lent', 'reading', 'calendar', 'pace']
+const FOUR: BlockId[] = ['readingtoday', 'challenge', 'pick', 'fact']
 const saved = () => JSON.parse(localStorage.getItem(KEY)!)
 
 beforeAll(() => {
@@ -68,13 +68,13 @@ describe('moving within Favourites in Arrange (T-0020)', () => {
     for (const h of handles) expect(h.getAttribute('title')).toBe('Drag to move')
     expect(within(favourites()).queryAllByRole('button', { name: /^Hide / })).toHaveLength(0)
     // tools: handle first, then the star
-    const tools = handle('Lent out').parentElement!
+    const tools = handle('Reading today').parentElement!
     expect([...tools.querySelectorAll('button')].map((b) => b.getAttribute('aria-label'))).toEqual([
-      'Move Lent out within the favourites: drag it, or use the arrow keys',
-      'Take Lent out out of the favourites',
+      'Move Reading today within the favourites: drag it, or use the arrow keys',
+      'Take Reading today out of the favourites',
     ])
     // the sections keep their own handle, which still says Shift
-    expect(screen.getAllByRole('button', { name: /^Move Lent out: drag it/ })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: /^Move Reading today: drag it/ })).toHaveLength(1)
     fireEvent.click(screen.getByRole('button', { name: 'Done' }))
     expect(screen.queryAllByRole('button', { name: /within the favourites/ })).toHaveLength(0)
   })
@@ -83,13 +83,13 @@ describe('moving within Favourites in Arrange (T-0020)', () => {
     show()
     arrange()
     const sections = structuredClone(saved().sections)
-    fireEvent.keyDown(handle('Lent out'), { key: 'ArrowDown' })
-    expect(saved().favourites).toEqual(['reading', 'calendar', 'lent', 'pace'])
+    fireEvent.keyDown(handle('Reading today'), { key: 'ArrowDown' })
+    expect(saved().favourites).toEqual(['challenge', 'pick', 'readingtoday', 'fact'])
     expect(saved().sections).toEqual(sections)
     expect(saved().hidden).toEqual([])
-    expect(within(favourites()).getByRole('status').textContent).toBe('Lent out: left column, row 2 of the favourites.')
-    fireEvent.keyDown(handle('Finish by'), { key: 'ArrowUp' })
-    expect(saved().favourites).toEqual(['reading', 'pace', 'calendar', 'lent'])
+    expect(within(favourites()).getAllByRole('status').at(-1)!.textContent).toBe('Reading today: left column, row 2 of the favourites.')
+    fireEvent.keyDown(handle('Fact of the day'), { key: 'ArrowUp' })
+    expect(saved().favourites).toEqual(['challenge', 'fact', 'pick', 'readingtoday'])
     expect(saved().sections).toEqual(sections)
     // signed out: nothing is asked of the server
     expect(favouritesServer.calls).toBe(0)
@@ -100,36 +100,36 @@ describe('moving within Favourites in Arrange (T-0020)', () => {
     arrange()
     for (const key of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']) {
       const event = new KeyboardEvent('keydown', { key, shiftKey: true, bubbles: true, cancelable: true })
-      act(() => void handle('Calendar').dispatchEvent(event))
+      act(() => void handle('Pick of the day').dispatchEvent(event))
       expect(event.defaultPrevented).toBe(false)
     }
     expect(saved().favourites).toEqual(FOUR)
     const edge = new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true })
-    act(() => void handle('Lent out').dispatchEvent(edge))
+    act(() => void handle('Reading today').dispatchEvent(edge))
     expect(edge.defaultPrevented).toBe(false)
     expect(saved().favourites).toEqual(FOUR)
-    expect(within(favourites()).getByRole('status').textContent).toBe('')
+    expect(within(favourites()).getAllByRole('status').at(-1)!.textContent).toBe('')
   })
 
   it('focus stays on the moved block’s handle after Left/Right, also when it changes column', () => {
     show()
     arrange()
-    handle('Lent out').focus()
-    fireEvent.keyDown(handle('Lent out'), { key: 'ArrowRight' })
-    expect(saved().favourites).toEqual(['reading', 'lent', 'calendar', 'pace'])
-    expect(document.activeElement).toBe(handle('Lent out'))
-    expect(within(favourites()).getByRole('status').textContent).toBe('Lent out: right column, row 1 of the favourites.')
-    fireEvent.keyDown(handle('Lent out'), { key: 'ArrowLeft' })
+    handle('Reading today').focus()
+    fireEvent.keyDown(handle('Reading today'), { key: 'ArrowRight' })
+    expect(saved().favourites).toEqual(['challenge', 'readingtoday', 'pick', 'fact'])
+    expect(document.activeElement).toBe(handle('Reading today'))
+    expect(within(favourites()).getAllByRole('status').at(-1)!.textContent).toBe('Reading today: right column, row 1 of the favourites.')
+    fireEvent.keyDown(handle('Reading today'), { key: 'ArrowLeft' })
     expect(saved().favourites).toEqual(FOUR)
-    expect(document.activeElement).toBe(handle('Lent out'))
-    fireEvent.keyDown(handle('Lent out'), { key: 'ArrowDown' })
-    expect(document.activeElement).toBe(handle('Lent out'))
+    expect(document.activeElement).toBe(handle('Reading today'))
+    fireEvent.keyDown(handle('Reading today'), { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(handle('Reading today'))
   })
 
   it('a key move in a section leaves the Favourites order alone', () => {
     show()
     arrange()
-    fireEvent.keyDown(screen.getByRole('button', { name: /^Move Lent out: drag it/ }), { key: 'ArrowDown' })
+    fireEvent.keyDown(screen.getByRole('button', { name: /^Move Reading today: drag it/ }), { key: 'ArrowDown' })
     expect(saved().favourites).toEqual(FOUR)
     expect(saved().sections.today).not.toEqual(DEFAULT_LAYOUT.sections.today)
   })
@@ -140,6 +140,6 @@ describe('moving within Favourites in Arrange (T-0020)', () => {
     arrange()
     expect(within(favourites()).getByText('Star blocks with ☆ to see them here, on top.')).toBeTruthy()
     expect(within(favourites()).queryAllByRole('button', { name: /within the favourites/ })).toHaveLength(0)
-    expect(within(favourites()).getByRole('status').textContent).toBe('')
+    expect(within(favourites()).getAllByRole('status').at(-1)!.textContent).toBe('')
   })
 })
