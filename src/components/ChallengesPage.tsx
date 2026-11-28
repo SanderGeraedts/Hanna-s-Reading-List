@@ -90,8 +90,12 @@ interface Props {
  * after one is finished drops a short burst of confetti.
  */
 export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }: Props) {
-  const years = useMemo(() => challengeYears(books), [books])
-  const thisYear = years[years.length - 1]
+  // next year too, so she can draft its challenges already (T-0130, D-0098)
+  const years = useMemo(() => {
+    const past = challengeYears(books)
+    return [...past, past[past.length - 1] + 1]
+  }, [books])
+  const thisYear = years[years.length - 2]
   const [year, setYear] = useState(thisYear)
   const [editing, setEditing] = useState(false)
   /** which monthly own challenge's months are open for picking (T-0126) */
@@ -240,7 +244,7 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
           </>
         ) : (
           <div className="dashboard-bar-actions">
-            {year === thisYear && (
+            {year >= thisYear && (
               <>
                 <button className="btn small tall" onClick={() => setAdding('new')} disabled={!!adding}>
                   ＋ New challenge
@@ -307,7 +311,7 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
                   challenge={c}
                   books={books}
                   onShowBook={onShowBook}
-                  editable={year === thisYear}
+                  editable={year >= thisYear}
                   onChange={(next) => setOwn(own.map((x) => (x.id === c.id ? next : x)))}
                   onDelete={() => setOwn(own.filter((x) => x.id !== c.id))}
                 />
@@ -348,7 +352,7 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
               books={books}
               year={year}
               own={own}
-              editable={year === thisYear}
+              editable={year >= thisYear}
               onAdd={(c) => setOwn([...own, c])}
               onRemove={(cid) => setOwn(own.filter((x) => x.id !== cid))}
             />

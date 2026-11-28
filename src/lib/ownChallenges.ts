@@ -194,6 +194,18 @@ export const PILE_CHALLENGE: Omit<OwnChallenge, 'id' | 'year'> = { name: 'Pile c
 
 export const newChallengeId = () => `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
 
+/**
+ * When a challenge was made: its id starts with the moment (`newChallengeId`). An id that
+ * doesn't (a challenge from before ids carried it) reads as 1 January of its year, the old rule.
+ */
+export function challengeStart(c: Pick<OwnChallenge, 'id' | 'year'>): number {
+  const m = /^c([0-9a-z]+)[0-9a-z]{4}$/.exec(c.id)
+  const t = m ? parseInt(m[1], 36) : NaN
+  // a sensible moment only: after 2020 and not in the future
+  if (Number.isFinite(t) && t > Date.UTC(2020, 0, 1) && t <= Date.now() + 86_400_000) return t
+  return new Date(c.year, 0, 1).getTime()
+}
+
 /** The decade a book was published in (1990 for 1990…1999), or undefined. */
 export const decadeOf = (b: Book): number | undefined => {
   const y = pubYear(b)
@@ -201,13 +213,13 @@ export const decadeOf = (b: Book): number | undefined => {
 }
 
 /** Whether a book fits one rule (sleep reads aside). */
-function fitsRule(rule: RuleKind, value: string | undefined, year: number, book: Book, series: ReturnType<typeof seriesGroups>) {
+function fitsRule(rule: RuleKind, value: string | undefined, book: Book, series: ReturnType<typeof seriesGroups>, pileFrom: number) {
   switch (rule) {
     case 'any':
       return true
     case 'pile':
-      // on her shelf before the year began
-      return book.addedAt < new Date(year, 0, 1).getTime()
+      // on her shelf before the challenge was made (T-0130, D-0098), not before 1 January
+      return book.addedAt < pileFrom
     case 'genre':
       return !!book.genres?.includes(value!)
     case 'trope':
@@ -230,8 +242,9 @@ function fitsRule(rule: RuleKind, value: string | undefined, year: number, book:
 
 /** Whether a book fits the challenge: its rule, and the second rule too when it has one. */
 export function fits(c: OwnChallenge, book: Book, series: ReturnType<typeof seriesGroups>) {
-  if (!fitsRule(c.rule, c.value, c.year, book, series)) return false
-  return !c.and || fitsRule(c.and, c.andValue, c.year, book, series)
+  const pileFrom = challengeStart(c)
+  if (!fitsRule(c.rule, c.value, book, series, pileFrom)) return false
+  return !c.and || fitsRule(c.and, c.andValue, book, series, pileFrom)
 }
 
 /**
@@ -342,13 +355,13 @@ const labelFor = (rule: RuleKind, value: string | undefined, books: Book[]) =>
  * comes after, so two rules fold into one sentence ("Fantasy books by Sarah J.
  * Maas"). A rule that fits neither half gets `whole`.
  */
-function rulePhrase(rule: RuleKind, value: string | undefined, year: number, books: Book[]) {
+function rulePhrase(rule: RuleKind, value: string | undefined, year: number, books: Book[], pileFrom = new Date(year, 0, 1).getTime()) {
   const label = labelFor(rule, value, books)
   switch (rule) {
     case 'any':
       return { whole: 'Any book you finish' }
     case 'pile':
-      return { whole: `Books on your shelf before ${year}` }
+      return { whole: `Books on your shelf before ${new Date(pileFrom).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` }
     case 'genre':
     case 'trope':
       return { before: label }
@@ -381,9 +394,9 @@ const lowerFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1)
 
 /** A short line saying what counts, e.g. "Fantasy books by Sarah J. Maas". */
 export function ruleText(c: OwnChallenge, books: Book[]): string {
-  const a = rulePhrase(c.rule, c.value, c.year, books) as Phrase
+  const a = rulePhrase(c.rule, c.value, c.year, books, challengeStart(c)) as Phrase
   if (!c.and) return onePhrase(a)
-  const b = rulePhrase(c.and, c.andValue, c.year, books) as Phrase
+  const b = rulePhrase(c.and, c.andValue, c.year, books, challengeStart(c)) as Phrase
   // both halves fit around one "books": "Fantasy books by Sarah J. Maas"
   if (!a.whole && !b.whole && !(a.before && b.before) && !(a.after && b.after))
     return onePhrase({ before: a.before ?? b.before, after: a.after ?? b.after })

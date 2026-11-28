@@ -8,7 +8,7 @@ depends_on: []
 decisions: [D-0097]
 raised_on: 2026-11-28
 done_on: ""
-result: []
+result: [https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/288]
 ---
 
 # Goal
@@ -34,4 +34,5 @@ From the feature chat of 28 November 2026 (D-0097).
 # Log
 
 - 2026-11-28 developer: built on `feat/missing-details`.
+- 2026-11-28 developer: merged in #288 and live.
 - 2026-11-28 developer: Remaining: Hanna runs it on the live site.
