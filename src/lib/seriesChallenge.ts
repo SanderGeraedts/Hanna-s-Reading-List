@@ -62,5 +62,16 @@ export function seriesRows(own: OwnChallenge[], books: Book[], year: number): Se
   })
 }
 
+/**
+ * The next book of a series she hasn't read, in the series' order (T-0132): the one Read the
+ * series opens when she taps a series. None once every book is read.
+ */
+export function nextInSeries(row: Pick<SeriesProgressRow, 'books'>, books: Book[]): Book | undefined {
+  const groups = seriesGroups(books)
+  return [...row.books]
+    .sort((a, b) => (groups.get(a.id)?.index ?? 999) - (groups.get(b.id)?.index ?? 999) || a.title.localeCompare(b.title))
+    .find((b) => timesRead(b) === 0)
+}
+
 /** Series completed out of the ones she picked. */
 export const seriesDone = (rows: SeriesProgressRow[]) => rows.filter((r) => r.complete).length

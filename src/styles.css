@@ -8925,3 +8925,111 @@ body:has(.own-challenge-form) .quick-fab,
 body:has(input:focus, textarea:focus, select:focus) .quick-fab {
   display: none;
 }
+
+/* ---- the Series page (T-0132, D-0100) ---------------------------------------------------- */
+.series-page {
+  max-width: 72rem;
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-3, 1rem);
+}
+.series-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  color: var(--header-ink);
+}
+.series-head h1 {
+  margin: 0;
+}
+.series-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.series-tools .sort .muted {
+  color: var(--header-muted);
+}
+.series-rows-page {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3, 1rem);
+}
+.series-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.2rem 0.75rem;
+  margin-bottom: 0.6rem;
+}
+.series-row-head h2 {
+  margin: 0;
+}
+.series-covers {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0.3rem;
+  display: flex;
+  gap: 0.6rem;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.series-cover,
+.series-gap {
+  flex: none;
+  width: 5.2rem;
+  display: grid;
+  gap: 0.25rem;
+  justify-items: center;
+}
+.series-cover .dash-cover {
+  width: 5.2rem;
+  height: 7.8rem;
+  object-fit: cover;
+  border-radius: 4px;
+}
+/* not read yet: greyed; read (and the one she is reading): in colour */
+.series-cover:not(.lit) .dash-cover {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+.series-progress {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+.series-progress span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.series-gap {
+  height: 7.8rem;
+  align-content: center;
+  border: 2px dashed var(--border-strong);
+  border-radius: 4px;
+  color: var(--muted);
+  text-align: center;
+  padding: 0.3rem;
+}
+.series-page-row {
+  display: grid;
+  gap: 0.5rem;
+}
+/* on the wallpaper, like the filters above the shelf: solid and readable */
+.series-tools .input {
+  background: var(--pill-bg);
+  color: var(--pill-ink);
+  border-color: var(--pill-border);
+}
+.series-tools .input::placeholder {
+  color: var(--pill-muted);
+}

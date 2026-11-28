@@ -53,6 +53,7 @@ import { askText, keepWishEvent, keptWishes, wishToAsk } from '#/lib/wishFulfill
 import { useShelfPet } from '#/components/creatures/useShelfPet'
 import { requestBookshop } from '#/components/bookshop/BookshopCard'
 import { MissingDetails } from '#/components/MissingDetails'
+import { SeriesPage } from '#/components/SeriesPage'
 import { MissingWalk, openForWalk } from '#/components/MissingWalk'
 import { isCategory, ownedDecor } from '#/lib/creatures/shop'
 import type { ShopCategory } from '#/lib/creatures/shop'
@@ -79,7 +80,7 @@ export const Route = createFileRoute('/')({
   validateSearch: (
     search: Record<string, unknown>,
   ): {
-    view?: 'dashboard' | 'stats' | 'challenges' | 'calendar' | 'creatures' | 'garden'
+    view?: 'dashboard' | 'series' | 'stats' | 'challenges' | 'calendar' | 'creatures' | 'garden'
     focus?: ChallengeSection
     month?: string
     step?: 'choose' | 'hatch' | 'duplicate'
@@ -87,6 +88,7 @@ export const Route = createFileRoute('/')({
   } => {
     const view =
       search.view === 'dashboard' ||
+      search.view === 'series' ||
       search.view === 'stats' ||
       search.view === 'challenges' ||
       search.view === 'calendar' ||
@@ -687,6 +689,11 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           />
           </PageWhileLoading>
         )}
+        {view === 'series' && (
+          <PageWhileLoading>
+            <SeriesPage books={books} onShowBook={showBook} />
+          </PageWhileLoading>
+        )}
         {view === 'stats' && (
           <PageWhileLoading>
           <StatsPage
@@ -914,11 +921,13 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
   )
 }
 
-type View = 'shelf' | 'dashboard' | 'stats' | 'challenges' | 'calendar' | 'creatures' | 'garden'
+type View = 'shelf' | 'dashboard' | 'series' | 'stats' | 'challenges' | 'calendar' | 'creatures' | 'garden'
 
 const VIEWS = [
   { view: 'shelf', icon: '📚', label: 'Bookshelf' },
   { view: 'dashboard', icon: '📊', label: 'Dashboard' },
+  // every series with its covers (T-0132, D-0100); on a phone in More
+  { view: 'series', icon: '🗂️', label: 'Series' },
   { view: 'stats', icon: '📈', label: 'Stats' },
   { view: 'challenges', icon: '🏆', label: 'Challenges' },
   { view: 'calendar', icon: '📅', label: 'Calendar' },
@@ -971,7 +980,7 @@ function PageTabs({ view, onView }: { view: View; onView: (view: View) => void }
  * More for the rest. On a computer the tabs at the top stay; this bar is only shown on a phone.
  */
 const BAR: readonly View[] = ['shelf', 'dashboard', 'calendar', 'challenges']
-const MORE: readonly View[] = ['stats', 'creatures', 'garden']
+const MORE: readonly View[] = ['series', 'stats', 'creatures', 'garden']
 
 function BottomBar({ view, onView, onBookshop }: { view: View; onView: (view: View) => void; onBookshop: () => void }) {
   const [more, setMore] = useState(false)

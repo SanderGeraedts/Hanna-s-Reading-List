@@ -93,6 +93,7 @@ global one replaced ends its line with `Replaced by G-NNNN.`
 - [D-0097 Missing details: look up back texts, genres and countries for her to review, and go through the rest one book at a time](D-0097-missing-details.md): A list of books missing a back text, genres, country, tropes or characters; Open Library finds are reviewed before saving and only fill empty fields; one-by-one mode opens each book on the right tab.
 - [D-0098 A pile challenge counts books on the shelf before it was made; the Challenges page goes one year ahead](D-0098-pile-from-the-challenge-start-and-next-year.md): From my pile counts books added before the challenge was made, not before 1 January; next year can be drafted on the Challenges page.
 - [D-0099 A challenge can run until she reaches the goal instead of for one year; the Pile challenge does by default](D-0099-challenges-until-the-goal.md): For <year> or Until I reach the goal; counts from the day it was made across New Year; shows in every year it runs.
+- [D-0100 A Series page with every series as covers; Read the series opens the next unread book](D-0100-a-series-page.md): Series tab after Dashboard (More on a phone), covers in order, read in colour, sortable; the Stats Series block moves there; tapping a series in Read the series opens its next unread book.
 
 ## Open questions
 

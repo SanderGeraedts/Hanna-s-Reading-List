@@ -13,7 +13,7 @@ import { RhythmCard } from './NewBlocks'
 import { WrappedCard } from './DashboardMore'
 import { YearStory } from './YearStory'
 import { AuthorsCard } from './DashboardMore'
-import { OnThisDayCard, PileCard, SeriesCard } from './DashboardExtras'
+import { OnThisDayCard, PileCard } from './DashboardExtras'
 import { RatingsCard } from './Dashboard'
 import { BooksWorldMapCard } from './PictureBlocks'
 import { BadgesCard, CoverWallCard } from './NewBlocks'
@@ -175,7 +175,6 @@ export function StatsPage({ books, accountId, onShowBook, onOpenGoal, focusMap =
           <div className="dash-column">
             <RatingsCard books={books} onShowBook={onShowBook} />
             <AuthorsCard books={books} />
-            <SeriesCard books={books} onShowBook={onShowBook} />
             <PileCard books={books} />
             {!noTropes && <TropesCard books={books} onShowBook={onShowBook} />}
           </div>

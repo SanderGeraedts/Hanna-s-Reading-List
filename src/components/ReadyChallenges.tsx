@@ -6,7 +6,7 @@ import { localDay } from '#/lib/library'
 import { worldChallenge } from '#/lib/worldChallenge'
 import { seasonChallenge, seasonsDone } from '#/lib/seasonChallenge'
 import { MINUTES_GOAL, minutesMonth, minutesYear } from '#/lib/minutesChallenge'
-import { newSeriesPick, pickableSeries, seriesDone, seriesRows } from '#/lib/seriesChallenge'
+import { newSeriesPick, pickableSeries, seriesDone, seriesRows, nextInSeries } from '#/lib/seriesChallenge'
 import type { OwnChallenge } from '#/lib/ownChallenges'
 import { monthName } from './common'
 
@@ -156,6 +156,7 @@ export function SeriesChallengeCard({
   editable,
   onAdd,
   onRemove,
+  onShowBook,
 }: {
   books: Book[]
   year: number
@@ -164,6 +165,8 @@ export function SeriesChallengeCard({
   editable: boolean
   onAdd: (c: OwnChallenge) => void
   onRemove: (id: string) => void
+  /** tapping a series opens its next unread book (T-0132) */
+  onShowBook?: (id: string) => void
 }) {
   const rows = useMemo(() => seriesRows(own, books, year), [own, books, year])
   const options = useMemo(() => pickableSeries(books, own, year), [books, own, year])
@@ -186,7 +189,16 @@ export function SeriesChallengeCard({
             const label = `${r.name}: ${r.done} of ${r.total}${r.complete ? ', done' : ''}`
             return (
               <li key={r.challenge.id} className={r.complete ? 'series-row done' : 'series-row'}>
-                <span className="series-name">{r.name}</span>
+                {(() => {
+                  const next = r.complete ? undefined : nextInSeries(r, books)
+                  return next && onShowBook ? (
+                    <button type="button" className="link-btn series-name" onClick={() => onShowBook(next.id)} aria-label={`${r.name}: open the next book, ${next.title}`} title={`Next: ${next.title}`}>
+                      {r.name} <span className="muted small-text">· next: {next.title}</span>
+                    </button>
+                  ) : (
+                    <span className="series-name">{r.name}</span>
+                  )
+                })()}
                 <Bar done={r.done} goal={r.total} label={label} />
                 <span className="muted small-text series-count" aria-hidden>{`${r.done} of ${r.total}${r.complete ? ' ✓' : ''}`}</span>
                 {editable && (
