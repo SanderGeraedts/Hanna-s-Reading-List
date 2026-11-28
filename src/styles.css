@@ -8849,3 +8849,72 @@ button.today-item:hover {
   display: block;
   margin-top: 0.15rem;
 }
+
+/* ---- missing details (T-0129, D-0097) ------------------------------------------------------ */
+.missing-dialog .dialog-body {
+  gap: var(--space-3);
+}
+.missing-lookup {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+}
+.missing-found ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+.missing-found li {
+  display: grid;
+  gap: 0.3rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+.missing-pick {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: var(--fs-small);
+}
+.missing-pick input {
+  margin-top: 0.2rem;
+  flex: none;
+}
+.missing-detail summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.3rem 0;
+}
+.missing-books {
+  margin: 0.3rem 0 0.6rem;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.2rem;
+}
+/* going through them one at a time: a bar over the shelf, above the book panel */
+.missing-walk {
+  position: fixed;
+  z-index: 7;
+  left: 50%;
+  top: calc(var(--header-h, 4rem) + 0.5rem);
+  transform: translateX(-50%);
+  width: min(36rem, calc(100% - 1.5rem));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 14px;
+  background: var(--surface-solid);
+  color: var(--text);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.missing-walk-actions {
+  display: flex;
+  gap: 0.4rem;
+}

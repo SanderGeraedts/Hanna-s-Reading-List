@@ -52,6 +52,8 @@ import { troubleFromSync, troubleSentence } from '#/lib/trouble'
 import { askText, keepWishEvent, keptWishes, wishToAsk } from '#/lib/wishFulfilled'
 import { useShelfPet } from '#/components/creatures/useShelfPet'
 import { requestBookshop } from '#/components/bookshop/BookshopCard'
+import { MissingDetails } from '#/components/MissingDetails'
+import { MissingWalk, openForWalk } from '#/components/MissingWalk'
 import { isCategory, ownedDecor } from '#/lib/creatures/shop'
 import type { ShopCategory } from '#/lib/creatures/shop'
 import type { ChallengeSection } from '#/components/ChallengesPage'
@@ -398,6 +400,10 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     select(null)
     navigate({ search: { view: 'stats' } })
   }, [navigate, select])
+  /** Missing details (T-0129): the list over the shelf */
+  const [missingOpen, setMissingOpen] = useState(false)
+  /** going through the books one at a time (T-0129) */
+  const [walking, setWalking] = useState(false)
   /** the 📍 line in Reading today: the Stats page, scrolled to the map (T-0128) */
   const [mapWanted, setMapWanted] = useState(false)
   const openMap = useCallback(() => {
@@ -510,6 +516,14 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
                     >
                       <span aria-hidden>⭐</span> Make a wish
                     </button>
+                    <button
+                      onClick={() => {
+                        close()
+                        setMissingOpen(true)
+                      }}
+                    >
+                      <span aria-hidden>🔎</span> Missing details
+                    </button>
                   </div>
                 ))}
               </ViewMenu>
@@ -568,6 +582,10 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
                 }
               >
                 <span aria-hidden>⭐</span> Make a wish
+              </button>
+              {/* the books missing a back text, genres, tropes, characters or a country (T-0129) */}
+              <button className="btn desktop-only" onClick={() => setMissingOpen(true)}>
+                <span aria-hidden>🔎</span> Missing details
               </button>
             </>
           )}
@@ -740,6 +758,19 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
           onClose={() => setWishing(false)}
         />
       )}
+      {missingOpen && (
+        <MissingDetails
+          books={books}
+          onUpdate={updateBook}
+          onShowBook={showBook}
+          onClose={() => setMissingOpen(false)}
+          onWalk={(first) => {
+            setWalking(true)
+            openForWalk(first, showBook)
+          }}
+        />
+      )}
+      {walking && selected && <MissingWalk books={books} currentId={selected.id} onShowBook={showBook} onStop={() => setWalking(false)} />}
       {/* not on the dashboard: Reading today logs there (T-0124) */}
       <QuickUpdate books={books} onUpdate={updateBook} onShowBook={showBook} hidden={!loaded || !!selected || view === 'dashboard'} />
       {/* the phone's page bar; hidden by CSS on a computer, where the tabs at the top do this */}

@@ -23,7 +23,7 @@ const surname = (name?: string) =>
  * same author for one of the title's parts. Open Library mostly knows the
  * English editions, so a German title is often only found by its subtitle.
  */
-async function lookUpGenres(b: Book): Promise<string[]> {
+export async function lookUpGenres(b: Book): Promise<string[]> {
   const workKey = b.workKey ?? (await findOnOpenLibrary(b))?.workKey
   if (workKey) {
     const d = await getWorkDetails({ data: { workKey } })
@@ -46,7 +46,7 @@ async function lookUpGenres(b: Book): Promise<string[]> {
  * Where a finished book is set, from its Open Library work (for the map of
  * her books). An empty list means Open Library knows none.
  */
-async function lookUpPlaces(b: Book): Promise<string[]> {
+export async function lookUpPlaces(b: Book): Promise<string[]> {
   const workKey = b.workKey ?? (await findOnOpenLibrary(b))?.workKey
   if (!workKey) return []
   return (await getWorkDetails({ data: { workKey } })).places ?? []

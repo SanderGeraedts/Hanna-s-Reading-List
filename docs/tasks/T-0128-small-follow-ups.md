@@ -8,7 +8,7 @@ depends_on: [T-0124, T-0127]
 decisions: [D-0096, D-0093]
 raised_on: 2026-11-28
 done_on: ""
-result: []
+result: [https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/287]
 ---
 
 # Goal
@@ -35,4 +35,5 @@ Nothing new to look at besides the lines named above.
 # Log
 
 - 2026-11-28 developer: built.
+- 2026-11-28 developer: merged in #287 and live.
 - 2026-11-28 developer: Remaining: Hanna checks it on the live site.
