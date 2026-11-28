@@ -1,16 +1,22 @@
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import type { Book } from '#/lib/library'
 import { localDay } from '#/lib/library'
 import {
+  alsoIn,
   canChange,
   challengeCalendar,
   challengeFor,
   challengeNow,
   monthKey,
+  ownMonthPicks,
   pickFor,
   pickable,
   thisMonth,
 } from '#/lib/monthChallenge'
+import type { PicksOf } from '#/lib/monthChallenge'
+import { fits } from '#/lib/ownChallenges'
+import type { OwnChallenge } from '#/lib/ownChallenges'
+import { seriesGroups } from '#/lib/series'
 import type { ShareSpec } from '#/lib/shareImage'
 import { Cover, monthName } from './common'
 import { ShareButton } from './ShareButton'
@@ -30,6 +36,15 @@ interface Props {
   onOpen?: () => void
   /** the today dashboard (T-0124): this month's book only; the year is on the Challenges page */
   thisMonthOnly?: boolean
+  /**
+   * A monthly own challenge (T-0126, D-0094): the same card, with its picks kept in the challenge
+   * itself instead of on the books. Without it, this is the original Monthly challenge.
+   */
+  own?: OwnChallenge
+  onOwnChange?: (c: OwnChallenge) => void
+  onOwnDelete?: () => void
+  /** the other monthly challenges, for the "also in" note when one book is in two */
+  others?: ReadonlyArray<{ name: string; picksOf: PicksOf }>
 }
 
 /**
@@ -38,35 +53,70 @@ interface Props {
  * a reminder in December, and an editor to pick a book for each month that
  * hasn't started yet. See monthChallenge.ts.
  */
-export function ChallengeCard({ books, onShowBook, onUpdate, editing, onEditing, year: forYear, compact = false, onOpen, thisMonthOnly = false }: Props) {
+export function ChallengeCard({
+  books,
+  onShowBook,
+  onUpdate,
+  editing,
+  onEditing,
+  year: forYear,
+  compact = false,
+  onOpen,
+  thisMonthOnly = false,
+  own,
+  onOwnChange,
+  onOwnDelete,
+  others = [],
+}: Props) {
+  const titleId = useId()
   const today = localDay()
   const year = Number(today.slice(0, 4))
   const now = thisMonth(today)
-  const c = useMemo(() => challengeNow(books, today), [books, today])
-  // the year to edit: this one while a month is left to change, else next year
-  const [editYear, setEditYear] = useState(() => (today.slice(5, 7) === '12' || c.remindNextYear ? year + 1 : year))
+  const name = own?.name ?? 'Monthly challenge'
+  // where the picks live: in the challenge itself, or on the books (the original one)
+  const picksOf = useMemo<PicksOf>(() => (own ? ownMonthPicks(own, books) : (y) => challengeFor(books, y)), [own, books])
+  const hint = useMemo(() => {
+    if (!own || own.rule === 'any') return undefined
+    const series = seriesGroups(books)
+    return (b: Book) => fits(own, b, series)
+  }, [own, books])
+  const setPick = (month: string, bookId: string | null) => {
+    if (own) {
+      const months = { ...(own.months ?? {}) }
+      if (bookId) months[month.slice(5, 7)] = bookId
+      else delete months[month.slice(5, 7)]
+      onOwnChange?.({ ...own, months })
+      return
+    }
+    for (const [id, patch] of pickFor(books, month, bookId)) onUpdate(id, patch)
+  }
+  const c = useMemo(() => challengeNow(books, today, picksOf), [books, today, picksOf])
+  // the year to edit: this one while a month is left to change, else next year (an own one: its year)
+  const [editYear, setEditYear] = useState(() => own?.year ?? (c.remindNextYear ? year + 1 : year))
   // the year the calendar shows: this one, or next year once it has books
   const [chosenYear, setShowYear] = useState(year)
-  const showYear = forYear ?? chosenYear
+  const showYear = own?.year ?? forYear ?? chosenYear
   const pastYear = showYear < year
-  const nextHasBooks = useMemo(() => challengeFor(books, year + 1).size > 0, [books, year])
-  const calendar = useMemo(() => challengeCalendar(books, showYear, today), [books, showYear, today])
+  const nextHasBooks = useMemo(() => !own && picksOf(year + 1).size > 0, [own, picksOf, year])
+  const calendar = useMemo(() => challengeCalendar(books, showYear, today, picksOf), [books, showYear, today, picksOf])
   const doneCount = calendar.filter((m) => m.item?.doneOn).length
   const pickedCount = calendar.filter((m) => m.item).length
 
   if (editing) {
-    const picks = challengeFor(books, editYear)
+    const picks = picksOf(editYear)
     return (
-      <section className="dash-card challenge-card" aria-labelledby="challenge-title">
+      <section className="dash-card challenge-card" aria-labelledby={titleId}>
         <div className="dash-card-head">
-          <h2 id="challenge-title">Monthly challenge</h2>
-          <div className="segmented" role="group" aria-label="Year">
-            {[year, year + 1].map((y) => (
-              <button key={y} type="button" aria-pressed={editYear === y} onClick={() => setEditYear(y)}>
-                {y}
-              </button>
-            ))}
-          </div>
+          <h2 id={titleId}>{name}</h2>
+          {!own && (
+            <div className="segmented" role="group" aria-label="Year">
+              {[year, year + 1].map((y) => (
+                <button key={y} type="button" aria-pressed={editYear === y} onClick={() => setEditYear(y)}>
+                  {y}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <ul className="challenge-months">
           {Array.from({ length: 12 }, (_, i) => {
@@ -81,36 +131,62 @@ export function ChallengeCard({ books, onShowBook, onUpdate, editing, onEditing,
                 </li>
               )
             }
-            const options = pickable(books, key)
+            const options = pickable(books, key, picksOf, hint)
             if (picked && !options.some((b) => b.id === picked.id)) options.unshift(picked)
+            const fitting = hint ? options.filter(hint) : []
+            const rest = hint ? options.filter((b) => !hint(b)) : options
+            const also = picked ? alsoIn(picked.id, key, others) : []
+            const selectId = `${titleId}-${key}`
             return (
               <li key={key}>
-                <label className="challenge-month" htmlFor={`challenge-${key}`}>
+                <label className="challenge-month" htmlFor={selectId}>
                   {label}
                 </label>
-                <select
-                  id={`challenge-${key}`}
-                  className="input"
-                  value={picked?.id ?? ''}
-                  onChange={(e) => {
-                    for (const [id, patch] of pickFor(books, key, e.target.value || null)) onUpdate(id, patch)
-                  }}
-                >
+                <select id={selectId} className="input" value={picked?.id ?? ''} onChange={(e) => setPick(key, e.target.value || null)}>
                   <option value="">No book</option>
-                  {options.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.title}
-                    </option>
-                  ))}
+                  {hint ? (
+                    <>
+                      {fitting.length > 0 && (
+                        <optgroup label="Fits this challenge">
+                          {fitting.map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.title}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                      <optgroup label="Other books">
+                        {rest.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.title}
+                          </option>
+                        ))}
+                      </optgroup>
+                    </>
+                  ) : (
+                    options.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.title}
+                      </option>
+                    ))
+                  )}
                 </select>
+                {also.length > 0 && <span className="small-text muted challenge-also">also in {also.join(' and ')} for {label}</span>}
               </li>
             )
           })}
         </ul>
-        <p className="muted small-text">Months that have started can’t be changed. Sleep reads don’t count.</p>
-        <button type="button" className="btn small" onClick={() => onEditing(false)}>
-          Done
-        </button>
+        <p className="muted small-text">You can change a month until it’s over. Sleep reads don’t count.</p>
+        <div className="challenge-actions">
+          <button type="button" className="btn small" onClick={() => onEditing(false)}>
+            Done
+          </button>
+          {own && onOwnDelete && (
+            <button type="button" className="btn small" onClick={onOwnDelete}>
+              Remove challenge
+            </button>
+          )}
+        </div>
       </section>
     )
   }
@@ -122,9 +198,9 @@ export function ChallengeCard({ books, onShowBook, onUpdate, editing, onEditing,
     const left = lastDay - Number(today.slice(8, 10))
     const pct = cur ? Math.round((cur.book.progress ?? 0) * 100) : 0
     return (
-      <section className="dash-card challenge-card challenge-today" aria-labelledby="challenge-title">
+      <section className="dash-card challenge-card challenge-today" aria-labelledby={titleId}>
         <div className="dash-card-head">
-          <h2 id="challenge-title">This month’s challenge</h2>
+          <h2 id={titleId}>This month’s challenge</h2>
           <OpenLink onOpen={onOpen} label="Monthly challenge" />
         </div>
         {cur ? (
@@ -152,7 +228,7 @@ export function ChallengeCard({ books, onShowBook, onUpdate, editing, onEditing,
   }
 
   const carried = c.open.filter((i) => i.month < now)
-  const title = `Monthly challenge ${showYear}`
+  const title = `${name} ${showYear}`
   const share = (): ShareSpec => ({
     title,
     subtitle: `${doneCount} of ${pickedCount || 12} months done`,
@@ -168,10 +244,10 @@ export function ChallengeCard({ books, onShowBook, onUpdate, editing, onEditing,
   })
 
   return (
-    <section className="dash-card challenge-card" aria-labelledby="challenge-title">
+    <section className="dash-card challenge-card" aria-labelledby={titleId}>
       <div className="dash-card-head">
-        <h2 id="challenge-title">Monthly challenge</h2>
-        <OpenLink onOpen={onOpen} label="Monthly challenge" />
+        <h2 id={titleId}>{name}</h2>
+        <OpenLink onOpen={onOpen} label={name} />
         {nextHasBooks && forYear === undefined ? (
           <div className="segmented" role="group" aria-label="Year">
             {[year, year + 1].map((y) => (
@@ -267,7 +343,7 @@ export function ChallengeCard({ books, onShowBook, onUpdate, editing, onEditing,
           ))}
         </ul>
       )}
-      {c.remindNextYear && !pastYear && <p className="small-text challenge-reminder">Set up your challenge for {year + 1}.</p>}
+      {!own && c.remindNextYear && !pastYear && <p className="small-text challenge-reminder">Set up your challenge for {year + 1}.</p>}
       <div className="challenge-actions">
         {!pastYear && (
           <button type="button" className="btn small" onClick={() => onEditing(true)}>
@@ -276,6 +352,77 @@ export function ChallengeCard({ books, onShowBook, onUpdate, editing, onEditing,
         )}
         {!compact && pickedCount > 0 && <ShareButton spec={share} label={title} />}
       </div>
+    </section>
+  )
+}
+
+/**
+ * The dashboard's "This month's challenge" (T-0124, T-0126, D-0094): one row per monthly
+ * challenge, the original first, each with this month's book and how far she is, or a way to
+ * pick one.
+ */
+export function ThisMonthChallenges({
+  books,
+  own,
+  onShowBook,
+  onOpen,
+}: {
+  books: Book[]
+  /** her monthly own challenges for this year */
+  own: readonly OwnChallenge[]
+  onShowBook: (id: string) => void
+  /** to the Challenges page, to pick or change */
+  onOpen?: () => void
+}) {
+  const titleId = useId()
+  const today = localDay()
+  const now = thisMonth(today)
+  const monthLabel = monthName(Number(now.slice(5, 7)))
+  const lastDay = new Date(Number(now.slice(0, 4)), Number(now.slice(5, 7)), 0).getDate()
+  const left = lastDay - Number(today.slice(8, 10))
+  const rows = useMemo(
+    () => [
+      { key: 'monthly', name: 'Monthly challenge', item: challengeNow(books, today).current },
+      ...own.map((c) => ({ key: c.id, name: c.name, item: challengeNow(books, today, ownMonthPicks(c, books)).current })),
+    ],
+    [books, own, today],
+  )
+  return (
+    <section className="dash-card challenge-card challenge-today" aria-labelledby={titleId}>
+      <div className="dash-card-head">
+        <h2 id={titleId}>This month’s challenge{rows.length > 1 ? 's' : ''}</h2>
+        <OpenLink onOpen={onOpen} label="Monthly challenge" />
+      </div>
+      <ul className="challenge-today-rows">
+        {rows.map((r) => (
+          <li key={r.key} className="challenge-now">
+            {r.item ? (
+              <>
+                <button className="cover-btn" aria-label={`Open ${r.item.book.title}`} onClick={() => onShowBook(r.item!.book.id)}>
+                  <Cover book={r.item.book} small />
+                </button>
+                <div>
+                  <span className="small-text muted">{r.name}</span>
+                  <strong>{r.item.book.title}</strong>
+                  <p className="muted small-text">
+                    {r.item.doneOn ? `✓ Done for ${monthLabel}` : `${Math.round((r.item.book.progress ?? 0) * 100)}% · ${left === 0 ? 'last day of' : `${left} ${left === 1 ? 'day' : 'days'} left in`} ${monthLabel}`}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div className="challenge-today-empty">
+                <span className="small-text muted">{r.name}</span>
+                <span className="small-text">No book for {monthLabel} yet</span>
+                {onOpen && (
+                  <button type="button" className="btn small" onClick={onOpen}>
+                    Pick
+                  </button>
+                )}
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
     </section>
   )
 }

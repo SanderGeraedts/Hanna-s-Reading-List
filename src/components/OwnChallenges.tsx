@@ -129,6 +129,8 @@ export function NewChallengeForm({
   onCancel: () => void
 }) {
   const [name, setName] = useState(start?.name ?? preset?.name ?? '')
+  // a number of books, or a book a month (T-0126, D-0094)
+  const [monthly, setMonthly] = useState(start?.kind === 'monthly' || preset?.kind === 'monthly')
   const [target, setTarget] = useState(String(start?.target ?? preset?.target ?? 5))
   const [unit, setUnit] = useState<GoalUnit>(unitOf(start ?? preset ?? {}))
   const [rule, setRule] = useState<RuleKind>(start?.rule ?? preset?.rule ?? 'any')
@@ -145,9 +147,7 @@ export function NewChallengeForm({
   const ruleOk = (r: RuleKind, v: string, list: Array<{ value: string }>) => !needsValue(r) || list.some((o) => o.value === v)
   const ok =
     name.trim() !== '' &&
-    Number.isInteger(n) &&
-    n >= 1 &&
-    n <= maxTarget(unit) &&
+    (monthly || (Number.isInteger(n) && n >= 1 && n <= maxTarget(unit))) &&
     ruleOk(rule, value, options) &&
     (!and || ruleOk(and, andValue, andOptions))
 
@@ -171,23 +171,43 @@ export function NewChallengeForm({
         onSave({
           id: start?.id ?? newChallengeId(),
           name: name.trim(),
-          target: n,
+          target: monthly ? 12 : n,
           year,
           rule,
           ...(needsValue(rule) && { value }),
-          ...(unit !== 'books' && { unit }),
+          ...(unit !== 'books' && !monthly && { unit }),
+          ...(monthly && { kind: 'monthly' as const, months: start?.months ?? {} }),
           ...(and && { and }),
           ...(and && needsValue(and) && { andValue }),
         })
       }}
     >
       <h2>{start ? 'Change challenge' : `New challenge for ${year}`}</h2>
+      {!start && (
+        <div className="segmented" role="group" aria-label="Kind of challenge">
+          <button type="button" aria-pressed={!monthly} className={!monthly ? 'active' : undefined} onClick={() => setMonthly(false)}>
+            A number of books
+          </button>
+          <button
+            type="button"
+            aria-pressed={monthly}
+            className={monthly ? 'active' : undefined}
+            onClick={() => {
+              setMonthly(true)
+              if (rule === 'finishseries') pickRule('any')
+            }}
+          >
+            A book a month
+          </button>
+        </div>
+      )}
       <div className="field-row">
         <label>
           <span className="muted small-text">Name</span>
           <input className="input" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} placeholder="e.g. Fantasy year" autoFocus />
         </label>
         {/* not one wrapping label: the number and the unit are two controls with two names */}
+        {!monthly && (
         <div className="goal-amount">
           <label className="muted small-text" htmlFor={`${formId}-amount`}>
             How many
@@ -212,12 +232,13 @@ export function NewChallengeForm({
             </select>
           </span>
         </div>
+        )}
       </div>
       <div className="field-row">
         <label>
-          <span className="muted small-text">What counts</span>
+          <span className="muted small-text">{monthly ? 'Shown first when picking' : 'What counts'}</span>
           <select className="input" value={rule} onChange={(e) => pickRule(e.target.value as RuleKind)}>
-            {RULES.map((r) => (
+            {RULES.filter((r) => !monthly || r !== 'finishseries').map((r) => (
               <option key={r} value={r}>
                 {RULE_LABELS[r]}
               </option>

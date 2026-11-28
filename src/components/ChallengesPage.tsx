@@ -19,7 +19,8 @@ import { useNarrow } from './common'
 import { cleanTwoColumns, showIn } from '#/lib/twoColumns'
 import type { TwoColumns } from '#/lib/twoColumns'
 import { NewChallengeForm, OwnChallengeCard, useOwnChallenges } from './OwnChallenges'
-import { PILE_CHALLENGE } from '#/lib/ownChallenges'
+import { PILE_CHALLENGE, isMonthly } from '#/lib/ownChallenges'
+import { challengeFor, ownMonthPicks } from '#/lib/monthChallenge'
 import { troubleLine } from '#/lib/trouble'
 import { useCreatureChoices } from './useCreatureChoices'
 
@@ -93,6 +94,8 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
   const thisYear = years[years.length - 1]
   const [year, setYear] = useState(thisYear)
   const [editing, setEditing] = useState(false)
+  /** which monthly own challenge's months are open for picking (T-0126) */
+  const [editingOwn, setEditingOwn] = useState<string | null>(null)
   // the order of the challenges, which she arranges like the dashboard (per device)
   const [savedLayout, setLayout] = useChallengeLayout(accountId)
   const [own, setOwn, ownNotSent] = useOwnChallenges(accountId)
@@ -116,6 +119,15 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
   // the card being played, so a swap is saved under the right card number (D-0067 §2)
   const cardNow = useMemo(() => bingoYear(books, year, undefined, swaps).card, [books, year, swaps])
   const at = years.indexOf(year)
+  // every monthly challenge of the year, for the "also in" note when one book is in two (T-0126)
+  const monthlySources = useMemo(
+    () => [
+      { key: 'monthly', name: 'Monthly challenge', picksOf: (y: number) => challengeFor(books, y) },
+      ...ownThisYear.filter(isMonthly).map((c) => ({ key: c.id, name: c.name, picksOf: ownMonthPicks(c, books) })),
+    ],
+    [books, ownThisYear],
+  )
+  const othersThan = (key: string) => monthlySources.filter((m) => m.key !== key)
 
   // "Open ›" on the dashboard: scroll to that challenge
   useEffect(() => {
@@ -274,7 +286,23 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
           id.startsWith('own:') ? (
             (() => {
               const c = ownThisYear.find((x) => `own:${x.id}` === id)
-              return c ? (
+              return c && isMonthly(c) ? (
+                // a book a month: the same card as the Monthly challenge (T-0126, D-0094)
+                <ChallengeCard
+                  books={books}
+                  onShowBook={onShowBook}
+                  onUpdate={onUpdate}
+                  editing={editingOwn === c.id}
+                  onEditing={(open) => setEditingOwn(open ? c.id : null)}
+                  own={c}
+                  onOwnChange={(next) => setOwn(own.map((x) => (x.id === c.id ? next : x)))}
+                  onOwnDelete={() => {
+                    setEditingOwn(null)
+                    setOwn(own.filter((x) => x.id !== c.id))
+                  }}
+                  others={othersThan(c.id)}
+                />
+              ) : c ? (
                 <OwnChallengeCard
                   challenge={c}
                   books={books}
@@ -296,6 +324,7 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
               editing={editing}
               onEditing={setEditing}
               year={year}
+              others={othersThan('monthly')}
             />
           ) : id === 'bingo' ? (
             <BingoCard

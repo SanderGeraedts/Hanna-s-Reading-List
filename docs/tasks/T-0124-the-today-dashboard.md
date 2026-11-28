@@ -8,7 +8,7 @@ depends_on: [T-0121]
 decisions: [D-0092, D-0093]
 raised_on: 2026-11-28
 done_on: ""
-result: []
+result: [https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/283]
 ---
 
 # Goal
@@ -37,4 +37,5 @@ From the feature chat of 28 November 2026 (D-0093). Looked at on a phone and a c
 # Log
 
 - 2026-11-28 developer: built on `feat/today-dashboard`.
+- 2026-11-28 developer: merged in #283 and live.
 - 2026-11-28 developer: Remaining: Hanna checks it on the live site.
