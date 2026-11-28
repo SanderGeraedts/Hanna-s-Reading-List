@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Book } from '#/lib/library'
+import { localDay } from '#/lib/library'
 import { challengeYears, fullCardsLine } from '#/lib/trophies'
 import { challengeRings, completedChallenges } from '#/lib/challengeRings'
 import { toCelebrate } from '#/lib/challengeCelebrate'
@@ -19,7 +20,7 @@ import { useNarrow } from './common'
 import { cleanTwoColumns, showIn } from '#/lib/twoColumns'
 import type { TwoColumns } from '#/lib/twoColumns'
 import { NewChallengeForm, OwnChallengeCard, useOwnChallenges } from './OwnChallenges'
-import { PILE_CHALLENGE, isMonthly } from '#/lib/ownChallenges'
+import { PILE_CHALLENGE, isMonthly, showsIn } from '#/lib/ownChallenges'
 import { challengeFor, ownMonthPicks } from '#/lib/monthChallenge'
 import { troubleLine } from '#/lib/trouble'
 import { useCreatureChoices } from './useCreatureChoices'
@@ -109,7 +110,11 @@ export function ChallengesPage({ books, accountId, onShowBook, onUpdate, focus }
   // the new-challenge form: empty, or filled in by the Pile challenge button (T-0014)
   const [adding, setAdding] = useState<false | 'new' | 'pile'>(false)
   // the series picks live in the Read the series card, not as cards of their own (D-0065 §4)
-  const ownThisYear = useMemo(() => own.filter((c) => c.year === year && c.rule !== 'finishseries'), [own, year])
+  // an until-the-goal challenge shows in every year it runs (T-0131)
+  const ownThisYear = useMemo(
+    () => own.filter((c) => showsIn(c, year, books, Number(localDay().slice(0, 4))) && c.rule !== 'finishseries'),
+    [own, year, books],
+  )
   const known = useMemo<ChallengeId[]>(() => [...CHALLENGE_IDS, ...ownThisYear.map((c) => `own:${c.id}` as const)], [ownThisYear])
   const layout = useMemo(() => cleanTwoColumns(savedLayout, known, DEFAULT_ORDER), [savedLayout, known])
   const nameOf = (id: ChallengeId) =>

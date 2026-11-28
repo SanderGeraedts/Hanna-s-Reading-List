@@ -4,7 +4,7 @@ import { LETTERS, alphabetYear } from './alphabet'
 import { bingoYear } from './bingo'
 import { challengeCalendar } from './monthChallenge'
 import { periodStats } from './stats'
-import { challengeBooks, challengeDone, doneText, unitOf } from './ownChallenges'
+import { challengeBooks, challengeDone, doneText, unitOf, showsIn } from './ownChallenges'
 import type { OwnChallenge } from './ownChallenges'
 import { worldChallenge } from './worldChallenge'
 import { seasonChallenge, seasonsDone } from './seasonChallenge'
@@ -130,7 +130,7 @@ export function challengeRings({ books, year, goal, own = [], swaps, today = loc
 
   // her own challenges, the series picks aside (they are the Read the series card)
   for (const c of own) {
-    if (c.year !== year || c.rule === 'finishseries') continue
+    if (!showsIn(c, year, books, Number(today.slice(0, 4))) || c.rule === 'finishseries') continue
     const done = challengeDone(c, challengeBooks(c, books))
     const unit = unitOf(c)
     push({

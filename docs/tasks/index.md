@@ -59,6 +59,7 @@ None.
 - [T-0128 Fill empty months, open the map from the 📍 line, show the book of the week, and fewer words](T-0128-small-follow-ups.md) (small): Empty started months can still get a book (D-0096); the 📍 line in Reading today opens the Stats page at the map; Today in your world names the bookshop's book of the week; three more sentences trimmed.
 - [T-0129 List the books missing details, look up what Open Library knows, and go through the rest one by one](T-0129-missing-details.md): Missing details: back text, genres, country, tropes and characters per book; Open Library finds reviewed before saving; a one-book-at-a-time mode.
 - [T-0130 Count the pile from the day the challenge was made, and let her draft next year's challenges](T-0130-pile-and-next-year.md) (small): From my pile counts books on the shelf before the challenge was made; the Challenges page steps one year ahead for drafting.
+- [T-0131 Let a challenge run until the goal is reached instead of for one year](T-0131-challenges-until-the-goal.md) (small): For <year> or Until I reach the goal in the new-challenge form; the Pile challenge runs until the goal; the 📖 button steps aside while a form is open.
 
 ## Done
 

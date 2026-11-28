@@ -62,6 +62,12 @@ export interface OwnChallenge {
   kind?: 'monthly'
   /** the books picked, by month: "01" … "12" → book id */
   months?: Record<string, string>
+  /**
+   * Until she reaches the goal (T-0131, D-0099): not one year but from the day it was made
+   * (`challengeStart`) on, across New Year, finished once the goal is reached. `year` is then
+   * the year it started. Not for a book a month.
+   */
+  untilDone?: true
 }
 
 export const RULE_LABELS: Record<RuleKind, string> = {
@@ -133,6 +139,7 @@ export function cleanChallenges(raw: unknown): OwnChallenge[] {
     if (!c || typeof c !== 'object') continue
     const { id, name, target, year, rule, value, unit, and, andValue, kind, months } = c as Record<string, unknown>
     const monthly = kind === 'monthly'
+    const untilDone = !monthly && (c as Record<string, unknown>).untilDone === true
     if (monthly && out.filter((x) => x.kind === 'monthly').length >= MAX_MONTHLY) continue
     if (typeof id !== 'string' || !/^[\w-]{1,40}$/.test(id) || seen.has(id)) continue
     if (typeof name !== 'string' || !name.trim()) continue
@@ -170,6 +177,7 @@ export function cleanChallenges(raw: unknown): OwnChallenge[] {
       ...(firstValue !== undefined && { value: firstValue }),
       ...(goalUnit !== 'books' && !monthly && { unit: goalUnit }),
       ...(monthly && { kind: 'monthly' as const, months: cleanMonths(months) }),
+      ...(untilDone && { untilDone: true as const }),
       ...(second && { and: second }),
       ...(secondValue !== undefined && { andValue: secondValue }),
     })
@@ -190,7 +198,38 @@ function cleanMonths(raw: unknown): Record<string, string> {
 
 export const isMonthly = (c: Pick<OwnChallenge, 'kind'>) => c.kind === 'monthly'
 
-export const PILE_CHALLENGE: Omit<OwnChallenge, 'id' | 'year'> = { name: 'Pile challenge', target: 12, rule: 'pile' }
+/** yyyy-mm-dd of a moment, local time. */
+const localDayOf = (t: number) => {
+  const d = new Date(t)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/**
+ * The year an until-the-goal challenge was finished in: the year of the finish that reached the
+ * goal, or none while it runs (T-0131). Only for a books count; pages and hours count on.
+ */
+export function doneYear(c: OwnChallenge, books: Book[]): number | undefined {
+  if (!c.untilDone) return undefined
+  const counted = challengeBooks(c, books)
+  if (challengeDone(c, counted) < c.target) return undefined
+  // the finishes in order: the one that made the goal
+  const days = counted
+    .map((b) => (b.finished ?? []).filter((d) => d >= localDayOf(challengeStart(c))).sort()[0])
+    .filter(Boolean)
+    .sort()
+  const reached = days[Math.min(days.length, c.target) - 1]
+  return reached ? Number(reached.slice(0, 4)) : undefined
+}
+
+/** Whether a challenge shows in a year: its own year, or every year an until-the-goal one runs. */
+export function showsIn(c: OwnChallenge, year: number, books: Book[], thisYear: number): boolean {
+  if (!c.untilDone) return c.year === year
+  const end = doneYear(c, books) ?? Math.max(thisYear, c.year)
+  return year >= c.year && year <= end
+}
+
+/** The Pile challenge button: 12 books from her pile, until she reaches them (T-0131, D-0099). */
+export const PILE_CHALLENGE: Omit<OwnChallenge, 'id' | 'year'> = { name: 'Pile challenge', target: 12, rule: 'pile', untilDone: true }
 
 export const newChallengeId = () => `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
 
@@ -269,9 +308,14 @@ export function challengeBooks(c: OwnChallenge, books: Book[]): Book[] {
   if (c.rule === 'finishseries')
     return books.filter((b) => !sleep.has(b.id) && timesRead(b) > 0 && fits(c, b, series))
   const last = new Map<string, string>()
+  // until the goal is reached: every finish from the day it was made, whatever the year (T-0131)
+  const from = c.untilDone ? localDayOf(challengeStart(c)) : null
   for (const f of allFinishes(books)) {
-    if (!f.day?.startsWith(`${c.year}-`) || sleep.has(f.book.id) || !fits(c, f.book, series)) continue
-    if ((last.get(f.book.id) ?? '') < f.day) last.set(f.book.id, f.day)
+    const day = f.day
+    if (!day) continue
+    const inTime = from ? day >= from : day.startsWith(`${c.year}-`)
+    if (!inTime || sleep.has(f.book.id) || !fits(c, f.book, series)) continue
+    if ((last.get(f.book.id) ?? '') < day) last.set(f.book.id, day)
   }
   return books.filter((b) => last.has(b.id)).sort((a, b) => last.get(b.id)!.localeCompare(last.get(a.id)!))
 }

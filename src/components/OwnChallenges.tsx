@@ -19,6 +19,7 @@ import {
   ruleOptions,
   ruleText,
   unitOf,
+  challengeStart,
 } from '#/lib/ownChallenges'
 import type { GoalUnit, OwnChallenge, RuleKind } from '#/lib/ownChallenges'
 import { loadChallenges, saveChallenges } from '#/server/shelf'
@@ -131,6 +132,8 @@ export function NewChallengeForm({
   const [name, setName] = useState(start?.name ?? preset?.name ?? '')
   // a number of books, or a book a month (T-0126, D-0094)
   const [monthly, setMonthly] = useState(start?.kind === 'monthly' || preset?.kind === 'monthly')
+  // one year, or until she reaches the goal (T-0131, D-0099)
+  const [untilDone, setUntilDone] = useState(!!(start?.untilDone ?? preset?.untilDone))
   const [target, setTarget] = useState(String(start?.target ?? preset?.target ?? 5))
   const [unit, setUnit] = useState<GoalUnit>(unitOf(start ?? preset ?? {}))
   const [rule, setRule] = useState<RuleKind>(start?.rule ?? preset?.rule ?? 'any')
@@ -177,6 +180,7 @@ export function NewChallengeForm({
           ...(needsValue(rule) && { value }),
           ...(unit !== 'books' && !monthly && { unit }),
           ...(monthly && { kind: 'monthly' as const, months: start?.months ?? {} }),
+          ...(!monthly && untilDone && { untilDone: true as const }),
           ...(and && { and }),
           ...(and && needsValue(and) && { andValue }),
         })
@@ -198,6 +202,16 @@ export function NewChallengeForm({
             }}
           >
             A book a month
+          </button>
+        </div>
+      )}
+      {!monthly && (
+        <div className="segmented" role="group" aria-label="How long">
+          <button type="button" aria-pressed={!untilDone} className={!untilDone ? 'active' : undefined} onClick={() => setUntilDone(false)}>
+            For {start?.year ?? year}
+          </button>
+          <button type="button" aria-pressed={untilDone} className={untilDone ? 'active' : undefined} onClick={() => setUntilDone(true)}>
+            Until I reach the goal
           </button>
         </div>
       )}
@@ -393,7 +407,10 @@ export function OwnChallengeCard({
           </>
         )}
       </div>
-      <p className="muted small-text">{ruleText(c, books)}</p>
+      <p className="muted small-text">
+        {ruleText(c, books)}
+        {c.untilDone && ` · since ${new Date(challengeStart(c)).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}, until you reach it`}
+      </p>
       <p>
         <span className="own-challenge-count">{doneParts(c, done).done}</span> <span className="muted">{doneParts(c, done).rest}</span>
         {done >= c.target && <span> · Done! 🎉</span>}

@@ -69,8 +69,9 @@ describe('her own challenges', () => {
 })
 
 describe('the Pile challenge button (T-0014)', () => {
-  it('fills in "Pile challenge", From my pile, 12 books, which saves as a valid challenge', () => {
-    expect(PILE_CHALLENGE).toEqual({ name: 'Pile challenge', target: 12, rule: 'pile' })
+  it('fills in "Pile challenge", From my pile, 12 books until reached, which saves as a valid challenge', () => {
+    // until she reaches the goal since T-0131 (D-0099)
+    expect(PILE_CHALLENGE).toEqual({ name: 'Pile challenge', target: 12, rule: 'pile', untilDone: true })
     const saved = { id: 'pile1', year: 2026, ...PILE_CHALLENGE }
     expect(cleanChallenges([saved])).toEqual([saved])
   })
