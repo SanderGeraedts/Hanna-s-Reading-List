@@ -19,6 +19,8 @@ export interface WorldNews {
   cookies: number
   garden: string
   shop: { copies: number; coins: number; note: string | null } | null
+  /** the bookshop's book of the week, while the shop has anything to say today */
+  weekBest: string | null
 }
 
 /** Today's news from each of the three, or nothing. */
@@ -29,6 +31,7 @@ export function worldNews(c: Creatures, gardenNews: string, shop: Bookshop): Wor
     cookies: c.pet || c.egg ? c.earnedToday : 0,
     garden: gardenNews,
     shop: sold && sold.copies > 0 ? { copies: sold.copies, coins: sold.coins, note: note && note.day === shop.today ? note.text : null } : null,
+    weekBest: shop.weekBest ? `${shop.weekBest.book.title} (${copiesWord(shop.weekBest.copies)})` : null,
   }
 }
 
@@ -80,6 +83,7 @@ export function YourWorldCard({
             <button type="button" className="link-btn" onClick={() => requestBookshop()}>
               🪙 The bookshop sold {copiesWord(news.shop.copies)} today ({coinsWord(news.shop.coins)})
             </button>
+            {news.weekBest && <span className="small-text">📖 Book of the week: {news.weekBest}</span>}
             {news.shop.note && <span className="small-text muted">📌 “{news.shop.note}”</span>}
           </li>
         )}

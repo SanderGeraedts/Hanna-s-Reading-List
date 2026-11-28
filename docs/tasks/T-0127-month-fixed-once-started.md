@@ -8,7 +8,7 @@ depends_on: [T-0126]
 decisions: [D-0095]
 raised_on: 2026-11-28
 done_on: ""
-result: []
+result: [https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/286]
 ---
 
 # Goal
@@ -34,4 +34,5 @@ The editor says again: "Months that have started can't be changed."
 # Log
 
 - 2026-11-28 developer: rule changed back.
+- 2026-11-28 developer: merged in #286 and live; empty months can be filled since T-0128 (D-0096).
 - 2026-11-28 developer: Remaining: Hanna checks it on the live site.

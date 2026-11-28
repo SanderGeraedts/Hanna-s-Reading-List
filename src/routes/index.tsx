@@ -398,6 +398,12 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
     select(null)
     navigate({ search: { view: 'stats' } })
   }, [navigate, select])
+  /** the 📍 line in Reading today: the Stats page, scrolled to the map (T-0128) */
+  const [mapWanted, setMapWanted] = useState(false)
+  const openMap = useCallback(() => {
+    setMapWanted(true)
+    openStats()
+  }, [openStats])
   /** the Shop view (T-0031): switching Den ↔ Shop is a history entry (Back returns), a category change replaces it */
   const openShop = useCallback(
     (shop: ShopCategory | null, opts?: { replace?: boolean }) =>
@@ -652,6 +658,7 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             onOpenCreatures={openCreatures}
             onOpenGarden={openGarden}
             onOpenStats={openStats}
+            onOpenMap={openMap}
             factMark={factMark}
             wishDone={wishDone}
             trouble={
@@ -669,6 +676,8 @@ function Shelf({ account, offline, onSignOut, onExpired }: ShelfProps) {
             accountId={account?.id ?? null}
             onShowBook={showBook}
             onOpenGoal={() => openChallenges('goal')}
+            focusMap={mapWanted}
+            onFocused={() => setMapWanted(false)}
           />
           </PageWhileLoading>
         )}

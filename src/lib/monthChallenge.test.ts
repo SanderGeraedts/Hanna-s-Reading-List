@@ -159,3 +159,14 @@ describe('monthly own challenges, the same as the Monthly challenge (T-0126, D-0
     expect(JSON.stringify(cleanChallenges(all)).length).toBeLessThan(12 * 1024)
   })
 })
+
+describe('filling an empty month (T-0128, D-0096)', async () => {
+  const { canPick } = await import('./monthChallenge')
+  it('opens a started month only while it has no book', () => {
+    expect(canPick('2026-12', true, '2026-11-28')).toBe(true)
+    expect(canPick('2026-11', false, '2026-11-28')).toBe(true)
+    expect(canPick('2026-11', true, '2026-11-28')).toBe(false)
+    expect(canPick('2026-03', false, '2026-11-28')).toBe(true)
+    expect(canPick('2026-03', true, '2026-11-28')).toBe(false)
+  })
+})

@@ -130,6 +130,13 @@ export function challengeCalendar(books: Book[], year: number, today = localDay(
 export const canChange = (month: MonthKey, today = localDay()) => month > thisMonth(today)
 
 /**
+ * Whether a month's picking list is open (T-0128, D-0096): before the month starts, always; once
+ * it has started, only while it has no book yet, so an empty month can still be filled. A book
+ * picked into a started month is fixed from then on.
+ */
+export const canPick = (month: MonthKey, hasBook: boolean, today = localDay()) => canChange(month, today) || !hasBook
+
+/**
  * Books that can be picked for a month: not finished, not a sleep read, not picked for another
  * month of the same challenge that year. Books that fit the challenge's rule (`hint`) come
  * first; any book can still be picked.

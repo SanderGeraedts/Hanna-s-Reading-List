@@ -202,7 +202,7 @@ export function AddBookDialog({
           <a href="https://openlibrary.org" target="_blank" rel="noreferrer">
             Open Library
           </a>
-          . Spines and back covers are generated from the book's details.
+          .
         </p>
       </div>
     </dialog>

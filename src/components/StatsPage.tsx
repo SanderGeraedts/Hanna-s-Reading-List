@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Book } from '#/lib/library'
 import { breakdown } from '#/lib/insights'
 import type { BreakdownKind } from '#/lib/insights'
@@ -42,9 +42,19 @@ interface Props {
   onShowBook: (id: string) => void
   /** "Open ›" on the goal ring: the Challenges page, where the goal is set */
   onOpenGoal?: () => void
+  /** opened from the 📍 line on the dashboard: scroll to the map (T-0128) */
+  focusMap?: boolean
+  onFocused?: () => void
 }
 
-export function StatsPage({ books, accountId, onShowBook, onOpenGoal }: Props) {
+export function StatsPage({ books, accountId, onShowBook, onOpenGoal, focusMap = false, onFocused }: Props) {
+  useEffect(() => {
+    if (!focusMap) return
+    const el = document.getElementById('world-title')
+    el?.scrollIntoView({ block: 'start' })
+    el?.focus({ preventScroll: true })
+    onFocused?.()
+  }, [focusMap, onFocused])
   const years = useMemo(() => readingYears(books), [books])
   const [year, setYear] = useState<StatsYear>(years[0])
   const [compare, setCompare] = useState<number | null>(null)

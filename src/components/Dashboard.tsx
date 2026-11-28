@@ -118,6 +118,8 @@ interface DashboardProps extends Props {
   onOpenGarden?: () => void
   /** "Open ›" on My year: the Stats page (T-0080) */
   onOpenStats?: () => void
+  /** the 📍 line: Stats, at the map (T-0128) */
+  onOpenMap?: () => void
   /** how far along her facts are (D-0079), so one can never come round twice */
   factMark?: number
   /** a wish she already has on her shelf, to offer in Waiting for you (D-0086) */
@@ -174,6 +176,7 @@ export function Dashboard({
   onOpenCreatures,
   onOpenGarden,
   onOpenStats,
+  onOpenMap,
   factMark = 0,
   wishDone,
   trouble,
@@ -358,7 +361,7 @@ export function Dashboard({
         onShowBook={onShowBook}
         onUpdate={onUpdate}
         onOpenCalendar={onOpenCalendar && (() => onOpenCalendar(localDay().slice(0, 7)))}
-        onOpenMap={onOpenStats}
+        onOpenMap={onOpenMap ?? onOpenStats}
       />
     ),
     yourworld: (

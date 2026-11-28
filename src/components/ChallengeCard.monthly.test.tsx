@@ -29,8 +29,8 @@ describe('a monthly own challenge', () => {
     render(<ChallengeCard books={BOOKS} onShowBook={() => {}} onUpdate={() => {}} editing onEditing={() => {}} own={classics} onOwnChange={onOwnChange} />)
     expect(screen.getByRole('heading', { name: 'Classics' })).toBeTruthy()
     const december = screen.getByLabelText('December') as HTMLSelectElement
-    // November has started: fixed (T-0127, D-0095); December can still be picked
-    expect(screen.queryByLabelText('November')).toBeNull()
+    // November has started but has no book yet: it can still get one (T-0128, D-0096)
+    expect(screen.getByLabelText('November')).toBeTruthy()
     const groups = within(december).getAllByRole('group')
     expect(groups[0].getAttribute('label')).toBe('Fits this challenge')
     expect(within(groups[0]).getAllByRole('option').map((o) => o.textContent)).toEqual(['Jane Eyre'])
@@ -45,10 +45,12 @@ describe('a monthly own challenge', () => {
     expect(screen.getByText('also in Monthly challenge for December')).toBeTruthy()
   })
 
-  it('the original Monthly challenge follows the same rule: this month is fixed, the next can change', () => {
+  it('the original Monthly challenge follows the same rule: a started month with a book is fixed, the next can change', () => {
     const onUpdate = vi.fn()
     render(<ChallengeCard books={BOOKS} onShowBook={() => {}} onUpdate={onUpdate} editing onEditing={() => {}} />)
+    // November has Babel: fixed; an empty earlier month can still be filled
     expect(screen.queryByLabelText('November')).toBeNull()
+    expect(screen.getByLabelText('October')).toBeTruthy()
     expect(screen.getByText('Babel')).toBeTruthy()
     fireEvent.change(screen.getByLabelText('December'), { target: { value: 'dune' } })
     expect(onUpdate).toHaveBeenCalledWith('dune', { challengeMonth: '2026-12' })
