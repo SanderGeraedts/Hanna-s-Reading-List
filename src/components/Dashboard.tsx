@@ -29,7 +29,6 @@ import { AgainCard } from './AgainCard'
 import { AlphabetCard } from './AlphabetCard'
 import { NewForYouCard } from './NewForYouCard'
 import { storytelLink } from '#/lib/storytelLink'
-import { ChallengeCard } from './ChallengeCard'
 import { OpenLink } from './OpenLink'
 import type { ChallengeSection } from './ChallengesPage'
 import { topRated } from '#/lib/ratings'
@@ -58,6 +57,9 @@ import {
 } from '#/lib/dashboardLayout'
 import type { ArrowKey, BlockId, SectionId } from '#/lib/dashboardLayout'
 import { ReadingTodayCard } from './ReadingTodayCard'
+import { ThisMonthChallenges } from './ChallengeCard'
+import { useOwnChallenges } from './OwnChallenges'
+import { isMonthly } from '#/lib/ownChallenges'
 import { YourWorldCard, hasWorldNews, useWorldNews } from './YourWorldCard'
 import { BookshopHost } from './bookshop/BookshopCard'
 import { addedToday, longLent, pickKind, showPick } from '#/lib/todayDashboard'
@@ -185,7 +187,6 @@ export function Dashboard({
   const [openedAnyway, setOpenedAnyway] = useState<BlockId[]>([])
   const arrangeBar = useArrangeBarHeight()
   // the monthly challenge's editor is open (#144)
-  const [challengeEditing, setChallengeEditing] = useState(false)
   const [drag, setDrag] = useState<Drag | null>(null)
   const narrow = useNarrow()
   const root = useRef<HTMLDivElement>(null)
@@ -315,6 +316,7 @@ export function Dashboard({
     !gardenWaiting &&
     !trouble
 
+  const [ownChallenges] = useOwnChallenges(accountId)
   const world = useWorldNews(creatures.c, garden.garden, books, creatures.api.choices.log, accountId)
 
   // nothing noted anywhere yet: the Tropes & characters block keeps out of the way
@@ -376,16 +378,13 @@ export function Dashboard({
     tropes: <TropesCard books={books} onShowBook={onShowBook} />,
     covers: <CoverWallCard books={books} onShowBook={onShowBook} />,
     world: <BooksWorldMapCard books={books} onShowBook={onShowBook} />,
+    // one row per monthly challenge (T-0126, D-0094)
     challenge: (
-      <ChallengeCard
+      <ThisMonthChallenges
         books={books}
+        own={ownChallenges.filter((c) => isMonthly(c) && c.year === new Date().getFullYear())}
         onShowBook={onShowBook}
-        onUpdate={onUpdate}
-        editing={challengeEditing}
-        onEditing={setChallengeEditing}
-        compact
         onOpen={open('monthly')}
-        thisMonthOnly
       />
     ),
     // the one block about her reading left on the dashboard (D-0060); the charts are on the Stats page

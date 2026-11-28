@@ -54,6 +54,14 @@ export interface OwnChallenge {
   and?: RuleKind
   /** the second rule's value, when it needs one */
   andValue?: string
+  /**
+   * A book a month (T-0126, D-0094): one book picked for each month of its year, like the
+   * Monthly challenge. The rule is a hint (books that fit come first when picking), the target
+   * is always 12, and a month counts once its book is finished that year.
+   */
+  kind?: 'monthly'
+  /** the books picked, by month: "01" … "12" → book id */
+  months?: Record<string, string>
 }
 
 export const RULE_LABELS: Record<RuleKind, string> = {
@@ -102,6 +110,11 @@ export const UNIT_LABELS: Record<GoalUnit, string> = { books: 'Books', pages: 'P
 export const UNITS: readonly GoalUnit[] = ['books', 'pages', 'hours']
 
 export const MAX_CHALLENGES = 50
+/**
+ * At most this many monthly challenges: each keeps twelve book ids, and all her challenges are
+ * saved together in one field on the server with a size limit (20 kB), so a save is never refused.
+ */
+export const MAX_MONTHLY = 10
 /** the most books a challenge can ask for */
 export const MAX_TARGET = 500
 /** the most pages or hours a challenge can ask for (D-0066 §4) */
@@ -118,14 +131,16 @@ export function cleanChallenges(raw: unknown): OwnChallenge[] {
   const out: OwnChallenge[] = []
   for (const c of raw) {
     if (!c || typeof c !== 'object') continue
-    const { id, name, target, year, rule, value, unit, and, andValue } = c as Record<string, unknown>
+    const { id, name, target, year, rule, value, unit, and, andValue, kind, months } = c as Record<string, unknown>
+    const monthly = kind === 'monthly'
+    if (monthly && out.filter((x) => x.kind === 'monthly').length >= MAX_MONTHLY) continue
     if (typeof id !== 'string' || !/^[\w-]{1,40}$/.test(id) || seen.has(id)) continue
     if (typeof name !== 'string' || !name.trim()) continue
     if (!RULES.includes(rule as RuleKind)) continue
     if (needsValue(rule as RuleKind) && (typeof value !== 'string' || !value)) continue
     // the unit decides what a target may be, so it is read first
     const goalUnit: GoalUnit = unit === 'pages' || unit === 'hours' ? unit : 'books'
-    if (!Number.isInteger(target) || (target as number) < 1 || (target as number) > maxTarget(goalUnit)) continue
+    if (!monthly && (!Number.isInteger(target) || (target as number) < 1 || (target as number) > maxTarget(goalUnit))) continue
     if (!Number.isInteger(year) || (year as number) < 1900 || (year as number) > 3000) continue
     const first = rule as RuleKind
     const firstValue = needsValue(first) ? (value as string).slice(0, 100) : undefined
@@ -149,11 +164,12 @@ export function cleanChallenges(raw: unknown): OwnChallenge[] {
     out.push({
       id,
       name: name.trim().slice(0, MAX_NAME),
-      target: target as number,
+      target: monthly ? 12 : (target as number),
       year: year as number,
       rule: first,
       ...(firstValue !== undefined && { value: firstValue }),
-      ...(goalUnit !== 'books' && { unit: goalUnit }),
+      ...(goalUnit !== 'books' && !monthly && { unit: goalUnit }),
+      ...(monthly && { kind: 'monthly' as const, months: cleanMonths(months) }),
       ...(second && { and: second }),
       ...(secondValue !== undefined && { andValue: secondValue }),
     })
@@ -163,6 +179,17 @@ export function cleanChallenges(raw: unknown): OwnChallenge[] {
 }
 
 /** What the Pile challenge button fills in (T-0014): she can change anything before saving. */
+/** A monthly challenge's picks made safe: months 01–12, each a book id of a sensible length. */
+function cleanMonths(raw: unknown): Record<string, string> {
+  const out: Record<string, string> = {}
+  if (!raw || typeof raw !== 'object') return out
+  for (const [m, id] of Object.entries(raw as Record<string, unknown>))
+    if (/^(0[1-9]|1[0-2])$/.test(m) && typeof id === 'string' && id.length > 0 && id.length <= 80) out[m] = id
+  return out
+}
+
+export const isMonthly = (c: Pick<OwnChallenge, 'kind'>) => c.kind === 'monthly'
+
 export const PILE_CHALLENGE: Omit<OwnChallenge, 'id' | 'year'> = { name: 'Pile challenge', target: 12, rule: 'pile' }
 
 export const newChallengeId = () => `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
@@ -215,6 +242,16 @@ export function fits(c: OwnChallenge, book: Book, series: ReturnType<typeof seri
  */
 export function challengeBooks(c: OwnChallenge, books: Book[]): Book[] {
   const sleep = sleepReadIds(books)
+  // a book a month: the picked books finished that year, one per month (T-0126)
+  if (c.kind === 'monthly') {
+    const byId = new Map(books.map((b) => [b.id, b]))
+    const out: Book[] = []
+    for (const id of Object.values(c.months ?? {})) {
+      const b = byId.get(id)
+      if (b && !sleep.has(b.id) && (b.finished ?? []).some((d) => d >= `${c.year}-01-01`)) out.push(b)
+    }
+    return out
+  }
   const series = seriesGroups(books)
   if (c.rule === 'finishseries')
     return books.filter((b) => !sleep.has(b.id) && timesRead(b) > 0 && fits(c, b, series))
@@ -361,6 +398,8 @@ const asNumber = (x: number) => x.toLocaleString('en')
  */
 export function doneParts(c: OwnChallenge, done: number): { done: string; rest: string } {
   const unit = unitOf(c)
+  // a book a month counts months (T-0126)
+  if (c.kind === 'monthly') return { done: asNumber(done), rest: `of 12 months` }
   return { done: asNumber(done), rest: `of ${asNumber(c.target)}${unit === 'books' ? '' : ` ${unit}`}` }
 }
 

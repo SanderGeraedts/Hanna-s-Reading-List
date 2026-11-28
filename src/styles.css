@@ -8821,3 +8821,31 @@ button.today-item:hover {
   color: inherit;
   text-decoration: underline;
 }
+
+/* ---- monthly challenges, the same everywhere (T-0126, D-0094) ------------------------- */
+.challenge-today-rows {
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.7rem;
+}
+.challenge-today-rows .challenge-now > div {
+  display: grid;
+  gap: 0.05rem;
+  min-width: 0;
+}
+.challenge-today-empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.6rem;
+}
+.challenge-today-empty .muted {
+  flex-basis: 100%;
+}
+.challenge-also {
+  grid-column: 1 / -1;
+  display: block;
+  margin-top: 0.15rem;
+}

@@ -31,6 +31,27 @@ export interface ChallengeItem {
   late: boolean
 }
 
+/**
+ * Where a monthly challenge's picks come from (T-0126, D-0094): the original Monthly challenge
+ * keeps them on the books (`challengeMonth`); a monthly own challenge keeps them in itself. Both
+ * read and work the same through this.
+ */
+export type PicksOf = (year: number) => Map<MonthKey, Book>
+
+/** The picks of a monthly own challenge, for its own year only. */
+export function ownMonthPicks(c: { year: number; months?: Record<string, string> }, books: Book[]): PicksOf {
+  return (year) => {
+    const out = new Map<MonthKey, Book>()
+    if (year !== c.year) return out
+    const byId = new Map(books.map((b) => [b.id, b]))
+    for (const [m, id] of Object.entries(c.months ?? {}).sort(([a], [b]) => a.localeCompare(b))) {
+      const b = byId.get(id)
+      if (b) out.set(monthKey(year, Number(m)), b)
+    }
+    return out
+  }
+}
+
 /** The books picked for a year's months, one per month (the first if there are two). */
 export function challengeFor(books: Book[], year: number): Map<MonthKey, Book> {
   const out = new Map<MonthKey, Book>()
@@ -59,19 +80,19 @@ export interface ChallengeNow {
 }
 
 /** What the dashboard shows today. */
-export function challengeNow(books: Book[], today = localDay()): ChallengeNow {
+export function challengeNow(books: Book[], today = localDay(), picksOf: PicksOf = (y) => challengeFor(books, y)): ChallengeNow {
   const sleep = sleepReadIds(books)
   const now = thisMonth(today)
   const year = Number(today.slice(0, 4))
   // last year's unfinished books carry over into this one
-  const picks = [...challengeFor(books, year - 1), ...challengeFor(books, year)]
+  const picks = [...picksOf(year - 1), ...picksOf(year)]
   const items = picks.filter(([m]) => m <= now).map(([m, b]) => itemFor(m, b, sleep))
-  const next = challengeFor(books, year + 1)
+  const next = picksOf(year + 1)
   return {
     open: items.filter((i) => !i.doneOn),
     current: items.find((i) => i.month === now),
     remindNextYear: today.slice(5, 7) === '12' && next.size === 0,
-    notStarted: challengeFor(books, year).size === 0 && next.size === 0,
+    notStarted: picksOf(year).size === 0 && next.size === 0,
   }
 }
 
@@ -89,9 +110,9 @@ export interface CalendarMonth {
  * The year as a calendar of twelve months (#154), so the block stays on the
  * dashboard: each month with its book, done ones marked.
  */
-export function challengeCalendar(books: Book[], year: number, today = localDay()): CalendarMonth[] {
+export function challengeCalendar(books: Book[], year: number, today = localDay(), picksOf: PicksOf = (y) => challengeFor(books, y)): CalendarMonth[] {
   const sleep = sleepReadIds(books)
-  const picks = challengeFor(books, year)
+  const picks = picksOf(year)
   const now = thisMonth(today)
   return Array.from({ length: 12 }, (_, i) => {
     const month = monthKey(year, i + 1)
@@ -105,18 +126,27 @@ export function challengeCalendar(books: Book[], year: number, today = localDay(
   })
 }
 
-/** A month can still be changed while it hasn't started. */
-export const canChange = (month: MonthKey, today = localDay()) => month > thisMonth(today)
+/** A month can be picked or changed until it is over (T-0126, D-0094: the same for every monthly challenge). */
+export const canChange = (month: MonthKey, today = localDay()) => month >= thisMonth(today)
 
-/** Books that can be picked for a month: not finished, not a sleep read, not picked for another month that year. */
-export function pickable(books: Book[], month: MonthKey): Book[] {
+/**
+ * Books that can be picked for a month: not finished, not a sleep read, not picked for another
+ * month of the same challenge that year. Books that fit the challenge's rule (`hint`) come
+ * first; any book can still be picked.
+ */
+export function pickable(books: Book[], month: MonthKey, picksOf: PicksOf = (y) => challengeFor(books, y), hint?: (b: Book) => boolean): Book[] {
   const sleep = sleepReadIds(books)
-  const taken = new Set(
-    books.filter((b) => b.challengeMonth?.startsWith(month.slice(0, 5)) && b.challengeMonth !== month).map((b) => b.id),
-  )
+  const taken = new Set([...picksOf(Number(month.slice(0, 4)))].filter(([m]) => m !== month).map(([, b]) => b.id))
+  const fit = (b: Book) => (hint && hint(b) ? 0 : 1)
   return books
     .filter((b) => b.status !== 'read' && !sleep.has(b.id) && !taken.has(b.id))
-    .sort((a, b) => a.title.localeCompare(b.title))
+    .sort((a, b) => fit(a) - fit(b) || a.title.localeCompare(b.title))
+}
+
+/** The other monthly challenges that have this book in this month: their names, for the "also in" note. */
+export function alsoIn(bookId: string, month: MonthKey, others: ReadonlyArray<{ name: string; picksOf: PicksOf }>): string[] {
+  const year = Number(month.slice(0, 4))
+  return others.filter((o) => o.picksOf(year).get(month)?.id === bookId).map((o) => o.name)
 }
 
 /** The changes that put `bookId` in `month` (or empty it with null): book id → patch. */

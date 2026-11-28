@@ -8,7 +8,7 @@ depends_on: [T-0120]
 decisions: [D-0045]
 raised_on: 2026-11-28
 done_on: ""
-result: []
+result: [https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/284]
 ---
 
 # Goal
@@ -34,4 +34,5 @@ Before: the chair's arm and blanket covered the first spines of the second and t
 # Log
 
 - 2026-11-28 developer: moved and shrunk the reading corner.
+- 2026-11-28 developer: merged in #284 and live.
 - 2026-11-28 developer: Remaining: Hanna checks the shelf on her computer.
