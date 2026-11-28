@@ -337,7 +337,9 @@ export function RoomExtras({
           corner is tucked against the case's left shoulder: the lamp stands where it can be
           seen, and the chair's near arm and blanket come into the frame beside it */}
       {room.readingCorner && corner && (
-        <group position={[-side - 0.3, 0, front + 0.06]} rotation={[0, 0.5, 0]}>
+        <group position={[-side - 0.48, 0, front + 0.02]} rotation={[0, 0.55, 0]} scale={0.88}>
+          {/* a step further from the case and a little smaller than the first padded chair, which
+              stood in front of the books at the left end of the lower shelves (T-0125) */}
           <ReadingCorner room={room} night={night} />
           {/* on a computer the lamp lights its corner at night; never on a phone */}
           {lampLightOn({ night, readingCorner: true, lite }) && <pointLight position={[LAMP[0], 1.14, LAMP[2]]} intensity={0.9} distance={2.2} decay={2} color="#ffd79a" />}
