@@ -587,13 +587,6 @@ export function RhythmCard({ books, year: forYear }: { books: Book[]; year?: Sta
           </span>
         ))}
       </div>
-      <p className="muted small-text">
-        {view === 'week'
-          ? scope === 'recent'
-            ? 'Reading days per weekday, the last twelve months.'
-            : `Reading days per weekday, ${year === 'all' ? 'all time' : year}.`
-          : `Reading days per month, ${year === 'all' ? 'all time' : year}.`}
-      </p>
     </section>
   )
 }

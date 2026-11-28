@@ -48,7 +48,7 @@ describe('New for you (#186)', () => {
     render(<NewForYouCard books={shelf} accountId={null} onAdd={() => {}} />)
     expect(screen.getByRole('heading', { name: 'New for you' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Suggest books' })).toBeTruthy()
-    expect(screen.getByText('New books by your favourite authors and in your favourite genres.')).toBeTruthy()
+    expect(screen.getByText('New books by authors and in genres you like.')).toBeTruthy()
     expect(screen.queryByText(/Rate a few books/)).toBeNull()
     expect(ol.browse).not.toHaveBeenCalled()
   })

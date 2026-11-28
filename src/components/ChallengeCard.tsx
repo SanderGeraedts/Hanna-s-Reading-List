@@ -3,7 +3,7 @@ import type { Book } from '#/lib/library'
 import { localDay } from '#/lib/library'
 import {
   alsoIn,
-  canChange,
+  canPick,
   challengeCalendar,
   challengeFor,
   challengeNow,
@@ -123,7 +123,7 @@ export function ChallengeCard({
             const key = monthKey(editYear, i + 1)
             const picked = picks.get(key)
             const label = monthName(i + 1)
-            if (!canChange(key, today)) {
+            if (!canPick(key, !!picked, today)) {
               return (
                 <li key={key}>
                   <span className="challenge-month">{label}</span>
@@ -176,7 +176,7 @@ export function ChallengeCard({
             )
           })}
         </ul>
-        <p className="muted small-text">Months that have started can’t be changed. Sleep reads don’t count.</p>
+        <p className="muted small-text">A month’s book is fixed once the month has started; an empty month can still get one. Sleep reads don’t count.</p>
         <div className="challenge-actions">
           <button type="button" className="btn small" onClick={() => onEditing(false)}>
             Done
