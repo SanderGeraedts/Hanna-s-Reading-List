@@ -176,7 +176,7 @@ export function ChallengeCard({
             )
           })}
         </ul>
-        <p className="muted small-text">You can change a month until it’s over. Sleep reads don’t count.</p>
+        <p className="muted small-text">Months that have started can’t be changed. Sleep reads don’t count.</p>
         <div className="challenge-actions">
           <button type="button" className="btn small" onClick={() => onEditing(false)}>
             Done

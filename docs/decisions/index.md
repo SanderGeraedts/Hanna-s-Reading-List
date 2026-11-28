@@ -88,6 +88,7 @@ global one replaced ends its line with `Replaced by G-NNNN.`
 - [D-0092 The dashboard is about today; on a phone, a page bar at the bottom](D-0092-the-dashboard-is-about-today.md): The dashboard keeps what is about today or what to read next; looking-back blocks move to Stats and A–Z and Book bingo stay only on Challenges, so each lives in one place; on a phone a bottom bar (Shelf, Dashboard, Calendar, Challenges, More) replaces the top tabs.
 - [D-0093 Every dashboard card shows only its today part, and hides on a day it has nothing to say](D-0093-every-dashboard-card-shows-only-today.md): Reading today, Today in your world and Pick of the day replace nine blocks; quiet cards hide behind a Hidden today line; On this day comes back; Lent out and Added today only when they matter today.
 - [D-0094 Monthly challenges of her own, and every monthly challenge works the same](D-0094-monthly-challenges-the-same-everywhere.md): A book a month as an own challenge (picks kept in the challenge, rule shown first, also-in note); the original Monthly challenge gets the same card and rules and keeps its picks on the books; change a month until it is over; one dashboard row each.
+- [D-0095 In every monthly challenge, a month's book is fixed once the month starts](D-0095-a-month-is-fixed-once-it-starts.md): Replaces only the change rule of D-0094 §4: pick or change a month before it starts, for the original and her own monthly challenges.
 
 ## Open questions
 

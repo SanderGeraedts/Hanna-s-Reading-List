@@ -24,33 +24,34 @@ afterAll(() => vi.useRealTimers())
 afterEach(cleanup)
 
 describe('a monthly own challenge', () => {
-  it('picks this month (until it is over) into the challenge itself, with books that fit first', () => {
+  it('picks a month that has not started into the challenge itself, with books that fit first', () => {
     const onOwnChange = vi.fn()
     render(<ChallengeCard books={BOOKS} onShowBook={() => {}} onUpdate={() => {}} editing onEditing={() => {}} own={classics} onOwnChange={onOwnChange} />)
     expect(screen.getByRole('heading', { name: 'Classics' })).toBeTruthy()
-    const november = screen.getByLabelText('November') as HTMLSelectElement
-    // October is over: fixed; November can still be picked
-    expect(screen.queryByLabelText('October')).toBeNull()
-    const groups = within(november).getAllByRole('group')
+    const december = screen.getByLabelText('December') as HTMLSelectElement
+    // November has started: fixed (T-0127, D-0095); December can still be picked
+    expect(screen.queryByLabelText('November')).toBeNull()
+    const groups = within(december).getAllByRole('group')
     expect(groups[0].getAttribute('label')).toBe('Fits this challenge')
     expect(within(groups[0]).getAllByRole('option').map((o) => o.textContent)).toEqual(['Jane Eyre'])
-    fireEvent.change(november, { target: { value: 'jane' } })
-    expect(onOwnChange).toHaveBeenCalledWith({ ...classics, months: { '11': 'jane' } })
+    fireEvent.change(december, { target: { value: 'jane' } })
+    expect(onOwnChange).toHaveBeenCalledWith({ ...classics, months: { '12': 'jane' } })
   })
 
   it('says when the same book is in another monthly challenge that month', () => {
-    const picked = { ...classics, months: { '11': 'babel' } }
-    const others = [{ name: 'Monthly challenge', picksOf: ownMonthPicks({ year: 2026, months: { '11': 'babel' } }, BOOKS) }]
+    const picked = { ...classics, months: { '12': 'dune' } }
+    const others = [{ name: 'Monthly challenge', picksOf: ownMonthPicks({ year: 2026, months: { '12': 'dune' } }, BOOKS) }]
     render(<ChallengeCard books={BOOKS} onShowBook={() => {}} onUpdate={() => {}} editing onEditing={() => {}} own={picked} others={others} />)
-    expect(screen.getByText('also in Monthly challenge for November')).toBeTruthy()
+    expect(screen.getByText('also in Monthly challenge for December')).toBeTruthy()
   })
 
-  it('the original Monthly challenge can now change this month too', () => {
+  it('the original Monthly challenge follows the same rule: this month is fixed, the next can change', () => {
     const onUpdate = vi.fn()
     render(<ChallengeCard books={BOOKS} onShowBook={() => {}} onUpdate={onUpdate} editing onEditing={() => {}} />)
-    fireEvent.change(screen.getByLabelText('November'), { target: { value: 'dune' } })
-    expect(onUpdate).toHaveBeenCalledWith('dune', { challengeMonth: '2026-11' })
-    expect(onUpdate).toHaveBeenCalledWith('babel', { challengeMonth: undefined })
+    expect(screen.queryByLabelText('November')).toBeNull()
+    expect(screen.getByText('Babel')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('December'), { target: { value: 'dune' } })
+    expect(onUpdate).toHaveBeenCalledWith('dune', { challengeMonth: '2026-12' })
   })
 })
 

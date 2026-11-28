@@ -66,8 +66,8 @@ describe('monthly challenge (#144)', () => {
 
   it('only changes months that have not started, one book per month and each book once a year', () => {
     expect(canChange('2026-12', '2026-11-16')).toBe(true)
-    // until the month is over (T-0126, D-0094): this month can still change, last month can't
-    expect(canChange('2026-11', '2026-11-16')).toBe(true)
+    // only before it starts (T-0127, D-0095): this month is fixed, like last month
+    expect(canChange('2026-11', '2026-11-16')).toBe(false)
     expect(canChange('2026-10', '2026-11-16')).toBe(false)
     const shelf = [book('a', { challengeMonth: '2027-01' }), book('b'), book('c', { status: 'read' })]
     // a is January's already, c is finished: only b can go in February

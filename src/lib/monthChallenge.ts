@@ -126,8 +126,8 @@ export function challengeCalendar(books: Book[], year: number, today = localDay(
   })
 }
 
-/** A month can be picked or changed until it is over (T-0126, D-0094: the same for every monthly challenge). */
-export const canChange = (month: MonthKey, today = localDay()) => month >= thisMonth(today)
+/** A month can be picked or changed only before it starts, in every monthly challenge (T-0127, D-0095). */
+export const canChange = (month: MonthKey, today = localDay()) => month > thisMonth(today)
 
 /**
  * Books that can be picked for a month: not finished, not a sleep read, not picked for another
