@@ -55,6 +55,7 @@ None.
 - [T-0124 Make every dashboard card show only today](T-0124-the-today-dashboard.md): Reading today, Today in your world and Pick of the day replace nine blocks; quiet cards hide behind a Hidden today line; On this day comes back; and the armchair no longer breaks the room on a computer.
 - [T-0125 Move the armchair away from the books](T-0125-armchair-out-of-the-way.md) (small): The padded armchair from T-0120 stood in front of the books at the left end of the lower shelves on a computer; it now stands a step further from the case and a little smaller.
 - [T-0126 Let her make her own monthly challenges, and make every monthly challenge the same](T-0126-monthly-challenges.md): A book a month as an own challenge (e.g. Classics, From my TBR) next to the original Monthly challenge, with one card, one set of rules and one dashboard row for all of them.
+- [T-0127 Fix a month's book once the month starts, in every monthly challenge](T-0127-month-fixed-once-started.md) (small): Back to the original rule for all monthly challenges: pick or change a month only before it starts.
 
 ## Done
 

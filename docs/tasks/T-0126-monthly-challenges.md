@@ -8,7 +8,7 @@ depends_on: [T-0124]
 decisions: [D-0094, D-0066]
 raised_on: 2026-11-28
 done_on: ""
-result: []
+result: [https://github.com/SanderGeraedts/Hanna-s-Reading-List/pull/285]
 ---
 
 # Goal
@@ -35,4 +35,5 @@ From the feature chat of 28 November 2026 (D-0094).
 # Log
 
 - 2026-11-28 developer: built on `feat/monthly-challenges`.
+- 2026-11-28 developer: merged in #285 and live; the change rule then went back to "before the month starts" in T-0127 (D-0095).
 - 2026-11-28 developer: Remaining: Hanna makes a monthly challenge on the live site.
